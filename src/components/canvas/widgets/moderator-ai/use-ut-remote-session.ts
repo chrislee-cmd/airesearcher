@@ -304,7 +304,11 @@ export function useUtRemoteSession(): UseUtRemoteSession {
       setSessionId(created.id);
       setParticipantUrl(created.participant_url);
       setPhase('waiting');
-      void connectViewer(created.id);
+      // 라이브 관전은 moderated 전용이다. unmoderated 는 참여자가 혼자
+      // 진행하고 리서처는 사후 리뷰만 하므로, LiveKit room 에 join 하지 않는다
+      // (라이브 pane 없음, phase 가 'live' 로 걷지 않음). 진행 상태(대기→진행중
+      // →리뷰)는 status 폴링이 reviewStatus 로 구동한다.
+      if (opts.sessionKind === 'moderated') void connectViewer(created.id);
     },
     [connectViewer],
   );

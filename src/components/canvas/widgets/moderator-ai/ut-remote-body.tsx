@@ -153,28 +153,81 @@ export function UtRemoteBody({
     );
   }
 
-  // ── waiting — 링크 발급 + 참가자 대기 ────────────────────────────────
+  // ── waiting — 링크 발급 + 참가자 대기/진행 ──────────────────────────
   if (remote.phase === 'waiting') {
+    const isUnmoderated = remote.sessionKind === 'unmoderated';
+
+    // 공통 — 참가자 링크 공유 region. 설명 문구만 kind 로 분기(언모더는 라이브
+    // 관전을 암시하지 않는다).
+    const shareRegion = (
+      <ControlBoardPanel.Region label={t('remote.share.label')}>
+        <div className="flex flex-wrap items-center gap-2">
+          <ChromeInput
+            readOnly
+            value={remote.participantUrl ?? ''}
+            onFocus={(e) => e.currentTarget.select()}
+            className="min-w-[220px] max-w-[420px] flex-1 !border-line-soft !text-ink font-mono"
+            aria-label={t('remote.share.label')}
+          />
+          <ChromeButton size="md" onClick={() => void copyLink()}>
+            {copied ? t('remote.share.copied') : t('remote.share.copy')}
+          </ChromeButton>
+        </div>
+        <p className="mt-2 text-xs text-mute-soft">
+          {isUnmoderated
+            ? t('remote.unmoderated.shareDescription')
+            : t('remote.share.description')}
+        </p>
+      </ControlBoardPanel.Region>
+    );
+
+    // ── 언모더레이티드 — 라이브 pane 없음. 참여자 진행 상태 + 완료 후 리뷰
+    //    안내. reviewStatus 폴링: null/'waiting' = 대기(미참여), 'live' =
+    //    진행중(참여). 완료(uploading→…) 시엔 폴링이 phase 를 'review' 로
+    //    넘겨 위의 review 블록이 처리한다.
+    if (isUnmoderated) {
+      const inProgress = remote.reviewStatus === 'live';
+      return (
+        <div className="flex h-full min-h-0 flex-col">
+          <ControlBoardPanel gap="section">
+            <ControlBoardPanel.Region
+              label={t('remote.unmoderated.explainTitle')}
+            >
+              <p className="text-sm text-mute">
+                {t('remote.unmoderated.explain')}
+              </p>
+            </ControlBoardPanel.Region>
+            {shareRegion}
+            <ControlBoardPanel.Region
+              label={t('remote.unmoderated.stateLabel')}
+            >
+              <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
+                <span className="mr-1" aria-hidden>
+                  {inProgress ? '🟢' : '⌛'}
+                </span>
+                {inProgress
+                  ? t('remote.unmoderated.stateInProgress')
+                  : t('remote.unmoderated.stateWaiting')}
+              </div>
+              <p className="mt-2 text-xs text-mute-soft">
+                {t('remote.unmoderated.reviewHint')}
+              </p>
+            </ControlBoardPanel.Region>
+            <ControlBoardPanel.Action>
+              <Button variant="ghost" size="sm" onClick={remote.reset}>
+                {t('remote.waiting.cancel')}
+              </Button>
+            </ControlBoardPanel.Action>
+          </ControlBoardPanel>
+        </div>
+      );
+    }
+
+    // ── 모더레이티드 (기존) — 참가자 참여 시 라이브 관전으로 전환. 불변.
     return (
       <div className="flex h-full min-h-0 flex-col">
         <ControlBoardPanel gap="section">
-          <ControlBoardPanel.Region label={t('remote.share.label')}>
-            <div className="flex flex-wrap items-center gap-2">
-              <ChromeInput
-                readOnly
-                value={remote.participantUrl ?? ''}
-                onFocus={(e) => e.currentTarget.select()}
-                className="min-w-[220px] max-w-[420px] flex-1 !border-line-soft !text-ink font-mono"
-                aria-label={t('remote.share.label')}
-              />
-              <ChromeButton size="md" onClick={() => void copyLink()}>
-                {copied ? t('remote.share.copied') : t('remote.share.copy')}
-              </ChromeButton>
-            </div>
-            <p className="mt-2 text-xs text-mute-soft">
-              {t('remote.share.description')}
-            </p>
-          </ControlBoardPanel.Region>
+          {shareRegion}
           <ControlBoardPanel.Region>
             <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
               <span className="mr-1" aria-hidden>

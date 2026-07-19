@@ -66,6 +66,15 @@
         "copy": "Copy",
         "copied": "Copied"
       },
+      "unmoderated": {
+        "shareDescription": "Share this link with the participant. They open it in their own time and run the session alone — there's no live monitoring.",
+        "explainTitle": "Unmoderated session",
+        "explain": "The participant runs the session alone, in their own time, via the link. There's no live monitoring — once they finish, review the recording and transcript here.",
+        "stateLabel": "Progress",
+        "stateWaiting": "Waiting — the participant hasn't opened the link yet.",
+        "stateInProgress": "In progress — the participant is running the session.",
+        "reviewHint": "The recording and transcript review will appear here once they finish."
+      },
       "waiting": {
         "status": "Waiting for the participant to join…",
         "cancel": "Cancel"
