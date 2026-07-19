@@ -49,11 +49,14 @@ function makeParticipantToken(): string {
   return out;
 }
 
-// Deployment base URL for the shareable participant link (prefer the
-// deployment-specific URL so previews link to themselves).
+// Base URL for the shareable participant link. Prefer the stable public site
+// URL over VERCEL_URL: VERCEL_URL is the per-deployment preview host, so a link
+// built from it dies the moment a newer deployment supersedes it — and
+// participant links are meant to outlive individual deploys. Fall back to
+// VERCEL_URL (preview branches with no NEXT_PUBLIC_SITE_URL set) then localhost.
 function baseUrl(): string {
-  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
   if (env.NEXT_PUBLIC_SITE_URL) return env.NEXT_PUBLIC_SITE_URL;
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
   return 'http://localhost:3000';
 }
 
