@@ -12,7 +12,11 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
-import type { WidgetContent, WidgetStateInfo } from '../widget-types';
+import {
+  resolveWidgetLabel,
+  type WidgetContent,
+  type WidgetStateInfo,
+} from '../widget-types';
 import { useWidgetStateOf } from './widget-state-context';
 import { ACCENT_BG } from './tokens';
 
@@ -143,9 +147,7 @@ export function SidebarNav({
                 className={`h-2 w-2 shrink-0 rounded-full ${ACCENT_BG[w.meta.accent]}`}
                 aria-hidden
               />
-              <span className="truncate">
-                {w.meta.labelKey ? tRoot(w.meta.labelKey) : w.meta.label}
-              </span>
+              <span className="truncate">{resolveWidgetLabel(tRoot, w.meta)}</span>
             </span>
             {isLocked ? <WidgetLockedBadge /> : <WidgetStateBadge widgetKey={w.key} />}
           </button>

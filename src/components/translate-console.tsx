@@ -38,6 +38,10 @@ import { IconButton } from './ui/icon-button';
 import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
+import {
+  BrowserAudioNotice,
+  isBrowserAudioNoticeSuppressed,
+} from './browser-audio-notice';
 import { FileDropZone } from './ui/file-drop-zone';
 import { DropdownMenu } from './ui/dropdown-menu';
 import { ControlTrigger } from './ui/control-trigger';
@@ -792,12 +796,16 @@ export function TranslateConsole({
     [setSelection],
   );
   // Capture mode picker. Default '' (미선택) — 프로빙(#536)과 동작 통일.
-  // picker 옵션은 'mic-only'(기기 마이크) / 'tab-only'(브라우저 오디오 인풋)
-  // 2개뿐 — 'both'(mic+tab 병렬)은 사용자 명시로 옵션에서 제거됐다. 'both'
-  // 타입/코드경로는 dormant 로 남아 있으나 picker 로는 도달 불가.
-  // 'tab-only' 은 getDisplayMedia 를 쓰므로 user gesture 가 필요 — picker 는
-  // Start 전까지 state 만 기록한다. 미선택('')이면 아래 idle CTA 가 비활성.
+  // picker 옵션 3개: 'mic-only'(기기 마이크) / 'tab-only'(브라우저 오디오 인풋)
+  // / 'both'(mic=진행자 + tab=응답자, 두 병렬 세션 — 브라우저 화상 인터뷰
+  // 양방향 캡처). 'both' 는 한때 옵션에서 제거돼 dormant 였다가 재노출(card
+  // #620) — 코드경로(activeSlots/SLOT_SPEAKER/슬롯 표시등/에코 억제/graceful
+  // degradation)는 그대로 살아 있었다. 'tab-only'/'both' 는 getDisplayMedia 를
+  // 쓰므로 user gesture 가 필요 — picker 는 Start 전까지 state 만 기록한다.
+  // 미선택('')이면 아래 idle CTA 가 비활성.
   const [captureMode, setCaptureMode] = useState<CaptureMode | ''>('');
+  // 브라우저 오디오 안내(blocking ack) — tab 슬롯 포함 캡처 모드에서 시작 시 노출.
+  const [browserAudioNoticeOpen, setBrowserAudioNoticeOpen] = useState(false);
   // Per-slot live indicator. Flips true once the slot's RTCPeerConnection
   // reaches `connected` (or the slot's recorder starts, whichever first)
   // so the topbar can show "🎤 진행자 · 📺 응답자" with active dots.
@@ -3483,6 +3491,23 @@ export function TranslateConsole({
     gate,
   ]);
 
+  // 시작 클릭 진입점 — tab 슬롯(브라우저 오디오 캡처)이 포함된 모드(both /
+  // tab-only)는 캡처 직전 브라우저 오디오 안내를 blocking ack 로 띄운다.
+  // mic-only(기기 마이크)는 브라우저 설정 무관이라 바로 진행. "다시 보지
+  // 않기"로 억제됐으면 tab 경로도 바로 진행.
+  const handleStartClick = useCallback(() => {
+    const usesTab = !!captureMode && activeSlots(captureMode).includes('tab');
+    if (usesTab && !isBrowserAudioNoticeSuppressed()) {
+      setBrowserAudioNoticeOpen(true);
+      return;
+    }
+    void start();
+  }, [captureMode, start]);
+  const handleBrowserAudioConfirm = useCallback(() => {
+    setBrowserAudioNoticeOpen(false);
+    void start();
+  }, [start]);
+
   // 🚨 Session auto-renewal (graceful handover). Called by the interval below
   // when the current OpenAI session epoch approaches the ~30 min server cap.
   // For each active slot: fetch a fresh ephemeral, boot a NEW RTCPeerConnection
@@ -4339,11 +4364,19 @@ export function TranslateConsole({
             disabled={busy || live}
           />
         </Field>
-        <Field label={t('captureMode.label')}>
+        <Field
+          label={t('captureMode.label')}
+          // both = mic + tab 두 병렬 세션 → OpenAI realtime 비용 2배. 선택 시에만
+          // 안내(다른 모드는 단일 세션이라 무관). bothCostHint 는 이 경고 전용 키.
+          description={captureMode === 'both' ? t('captureMode.bothCostHint') : undefined}
+        >
           <DropdownMenu
             items={[
               { key: 'mic-only', label: t('captureMode.micOnly'), mode: 'mic-only' },
               { key: 'tab-only', label: t('captureMode.tabOnly'), mode: 'tab-only' },
+              // both(mic=진행자 + tab=응답자, 두 병렬 세션) 재노출 — 브라우저 화상
+              // 인터뷰 양방향 캡처. dormant 였던 코드경로를 picker 로 다시 도달 가능하게.
+              { key: 'both', label: t('captureMode.both'), mode: 'both' },
             ].map((o) => ({
               key: o.key,
               label: o.label,
@@ -4362,7 +4395,9 @@ export function TranslateConsole({
                   ? t('captureMode.micOnly')
                   : captureMode === 'tab-only'
                     ? t('captureMode.tabOnly')
-                    : t('select')}
+                    : captureMode === 'both'
+                      ? t('captureMode.both')
+                      : t('select')}
               </ControlTrigger>
             )}
           />
@@ -4488,6 +4523,54 @@ export function TranslateConsole({
                 <p className="text-sm text-mute-soft">{t('controlBoard.lockedHint')}</p>
               ) : null}
 
+              {/* 슬롯별 라이브 표시등 — 실행 중인 캡처 모드의 각 슬롯을 화자
+                  역할(🎤 진행자=mic / 📺 응답자=tab)로 표시. `both` 면 두 배지가
+                  나란히, 단일 모드면 그 슬롯 하나만. `slotActive[slot]` = pc
+                  connected 여부 → 점 색으로 라이브(text-amore)/연결중
+                  (text-mute-soft) 구분. bit-rot 복구(card #620): slotActive 는
+                  기록만 되고 렌더가 없었다. */}
+              {live && captureMode ? (
+                <div
+                  className="flex flex-wrap items-center gap-3"
+                  role="group"
+                  aria-label={t('slotIndicator.groupAria')}
+                >
+                  {activeSlots(captureMode).map((slot) => {
+                    const on = slotActive[slot];
+                    const isHost = SLOT_SPEAKER[slot] === 'host';
+                    return (
+                      <span
+                        key={slot}
+                        className="inline-flex items-center gap-1.5 text-sm text-mute"
+                        aria-label={
+                          isHost
+                            ? t('slotIndicator.hostAria')
+                            : t('slotIndicator.guestAria')
+                        }
+                      >
+                        <span aria-hidden>{isHost ? '🎤' : '📺'}</span>
+                        <span>
+                          {isHost
+                            ? t('slotIndicator.host')
+                            : t('slotIndicator.guest')}
+                        </span>
+                        <span
+                          aria-hidden
+                          className={on ? 'text-amore' : 'text-mute-soft'}
+                          title={
+                            on
+                              ? t('slotIndicator.live')
+                              : t('slotIndicator.connecting')
+                          }
+                        >
+                          ●
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+
               {/* CTA — live: 경과 타이머 + (갱신 중 표시) + 정지. ended: 다음
                   세션용 🚀 세션 시작. 정렬은 .Action SSOT — live=between(타이머 좌 +
                   정지 우), ended=full(시작 버튼 폭 채움, 옛 flex-col stretch 유지). */}
@@ -4512,7 +4595,7 @@ export function TranslateConsole({
                   <ChromeButton
                     variant="default"
                     size="lg"
-                    onClick={() => void start()}
+                    onClick={handleStartClick}
                     disabled={busy || !canStart}
                   >
                     {busy ? t('starting') : `🚀 ${t('start')}`}
@@ -4661,9 +4744,15 @@ export function TranslateConsole({
           busyLabel={t('starting')}
           busy={busy}
           disabled={busy || !canStart}
-          onClick={() => void start()}
+          onClick={handleStartClick}
         />
       )}
+
+      <BrowserAudioNotice
+        open={browserAudioNoticeOpen}
+        onConfirm={handleBrowserAudioConfirm}
+        onCancel={() => setBrowserAudioNoticeOpen(false)}
+      />
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
           directly (see monitorAudioRefs). Hidden; audible unless the host

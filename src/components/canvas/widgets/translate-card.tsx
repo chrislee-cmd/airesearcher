@@ -76,6 +76,8 @@ function ExpandedBody() {
 export const translateCard: WidgetContent = {
   key: 'translate',
   meta: {
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051 회귀). 영문 기본 라벨.
+    label: 'Live Interpreter',
     labelKey: 'Features.translate.title',
     accent: 'mint',
     cost: 50,

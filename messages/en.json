@@ -1,5 +1,58 @@
 {
   "AiUt": {
+    "mode": {
+      "label": "Session mode",
+      "local": "Local (my screen)",
+      "remote": "Remote (invite a participant)"
+    },
+    "remote": {
+      "subtitle": {
+        "idle": "Remote participant session",
+        "live": "Monitoring participant live"
+      },
+      "task": {
+        "label": "Task for the participant",
+        "description": "What you want the participant to do. Shown to them and used as analysis context.",
+        "placeholder": "e.g. Sign up for a new account and add an item to the cart."
+      },
+      "url": {
+        "label": "Target site URL (optional)",
+        "description": "The site the participant will test. They can also open it themselves."
+      },
+      "kind": {
+        "label": "Session type",
+        "moderated": "Moderated (watch live)",
+        "unmoderated": "Unmoderated (review later)"
+      },
+      "cta": {
+        "create": "Create session · get link",
+        "creating": "Creating…"
+      },
+      "share": {
+        "label": "Participant link",
+        "description": "Share this link with the participant. They open it, share their screen once, and you monitor live. Keep it private.",
+        "copy": "Copy",
+        "copied": "Copied"
+      },
+      "waiting": {
+        "status": "Waiting for the participant to join…",
+        "cancel": "Cancel"
+      },
+      "live": {
+        "watching": "Watching live",
+        "stop": "Stop monitoring",
+        "hint": "You're watching the participant's shared screen in real time. They control their own session."
+      },
+      "review": {
+        "pending": "The participant is still in the session. Results appear here once they finish.",
+        "refresh": "Refresh"
+      },
+      "error": {
+        "create": "Couldn't create the session. Please try again in a moment.",
+        "unavailable": "Remote sessions are unavailable — live monitoring isn't configured. Use local mode instead.",
+        "monitor": "Couldn't connect to the live monitor. The session is still active; results will appear once the participant finishes."
+      }
+    },
     "consent": {
       "title": "This session records your screen and voice",
       "body": "This session records <b>the screen you share</b> and <b>your microphone</b>. Everything visible while recording is saved.",
@@ -59,8 +112,68 @@
       "download": "An error occurred during download."
     }
   },
+  "UtParticipant": {
+    "intro": {
+      "heading": "Usability test session",
+      "subtitle": "You'll be asked to share your screen once, then use the site as you normally would while thinking aloud."
+    },
+    "task": {
+      "heading": "Your task",
+      "noGoal": "Use the site freely and share your thoughts out loud as you go.",
+      "targetLabel": "Site:"
+    },
+    "consent": {
+      "warning": "⚠ This session records your shared screen and your microphone. Anything visible while recording — including login passwords or card numbers — can be captured. Only share the tab you're testing, and avoid entering sensitive data.",
+      "note": "The recording is stored privately for the researcher and is not shared publicly.",
+      "checkbox": "I understand and agree to have my screen and voice recorded.",
+      "start": "Share screen & start"
+    },
+    "starting": {
+      "heading": "Getting ready…",
+      "body": "Pick the tab or window you want to share, then allow microphone access."
+    },
+    "live": {
+      "recording": "Recording · {time}",
+      "hint": "Use the site in the new tab as you normally would, and say your thoughts out loud. When you're done, come back here and end the session.",
+      "end": "End session",
+      "reopen": "Reopen the site"
+    },
+    "ending": {
+      "heading": "Wrapping up…",
+      "body": "Saving your session. This only takes a moment — please keep this tab open."
+    },
+    "ended": {
+      "heading": "All done — thank you!",
+      "body": "Your session has ended and been saved. You can close this tab now."
+    },
+    "notice": {
+      "invalid": {
+        "heading": "This link isn't valid",
+        "body": "The session link is invalid or has been removed. Please check with the person who shared it."
+      },
+      "ended": {
+        "heading": "This session has ended",
+        "body": "This usability test is already finished. Please check with the person who shared the link."
+      }
+    },
+    "error": {
+      "screen": "Couldn't start screen sharing. Please check that your browser supports it and try again.",
+      "mic": "Microphone access is required. Allow the microphone via the lock icon → site settings in your address bar, then try again.",
+      "join": "Couldn't start the session. Please check your connection and try again.",
+      "ended": "This session has already ended, so it can't be started."
+    },
+    "unsupported": "This browser doesn't support screen sharing. Please use a recent desktop browser such as Chrome or Edge."
+  },
   "Brand": {
     "name": "Research-Canvas"
+  },
+  "BrowserAudioNotice": {
+    "title": "Use browser tab audio",
+    "body": "This session captures audio from your browser tab. Open the meeting or website in your browser — not the native desktop app (Zoom, Teams, etc.) — so its sound can be captured.",
+    "hint": "Native app audio can't be captured; only the browser tab's audio is picked up.",
+    "dontShowAgain": "Don't show this again",
+    "cancel": "Cancel",
+    "confirm": "Continue"
   },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
@@ -1173,7 +1286,12 @@
       "hostAria": "Host (mic) capture status",
       "guestAria": "Guest (tab) capture status",
       "degradedHost": "Host capture paused —",
-      "degradedGuest": "Guest capture paused —"
+      "degradedGuest": "Guest capture paused —",
+      "host": "Host",
+      "guest": "Guest",
+      "live": "Live",
+      "connecting": "Connecting…",
+      "groupAria": "Live capture status per speaker"
     },
     "monitorMute": {
       "muteAria": "Mute translated audio locally (viewers still hear it)",
