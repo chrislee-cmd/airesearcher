@@ -126,6 +126,31 @@ function recordingNotSavedReason(
   return t('card.recordingUploadFailed');
 }
 
+// 슬롯 비치명 에러 코드 → 사람이 읽을 안내(graceful degradation 배너용). 세션
+// 에러 토스트 매핑과 동일 카피를 재사용 — both 병렬 캡처에서 한 슬롯만 실패했을
+// 때 어느 화자 캡처가 왜 빠졌는지 알린다. 미매핑 코드는 원문 그대로 노출.
+function humanSlotError(code: string, t: ProbingT): string {
+  switch (code) {
+    case 'microphone_denied':
+      return t('card.errorMicDenied');
+    case 'microphone_failed':
+      return t('card.errorMicFailed');
+    case 'tab_audio_denied':
+      return t('card.errorTabDenied');
+    case 'tab_audio_unavailable':
+      return t('card.errorTabUnavailable');
+    case 'tab_audio_failed':
+      return t('card.errorTabFailed');
+    case 'probing_connect_timeout':
+      return t('card.errorConnectTimeout');
+    case 'session_failed':
+    case 'session_timeout':
+      return t('card.errorSessionStart');
+    default:
+      return code;
+  }
+}
+
 // 좌패널 reflection 이 모델에 보낼 누적 transcript 상한.
 const REFLECTION_MAX_CHARS = 60_000;
 // 우패널 think 가 보낼 transcript 상한.
@@ -215,6 +240,45 @@ function segmentsText(segments: TranscriptionSegment[]): string {
     .join('\n');
 }
 
+// 화자 태그 리터럴 — transcript_window 에 실려 reflection(페르소나) 이 발화
+// 귀속을 구분하는 데이터 토큰. **UI 텍스트 아님** — 서버의 한국어 페르소나
+// 프롬프트가 이 고정 토큰을 참조하므로 로케일 무관하게 고정한다(STT locale 도
+// 'ko' 고정). i18n-allow-korean -- 분석 파이프라인 데이터 토큰(진행자/응답자 귀속)
+const SPEAKER_TAG_HOST = '[진행자]';
+// i18n-allow-korean -- 분석 파이프라인 데이터 토큰(진행자/응답자 귀속)
+const SPEAKER_TAG_GUEST = '[응답자]';
+
+// 페르소나(reflection) 로 넘길 화자 태그 포함 transcript window. both(병렬)
+// 모드에서 라인마다 speaker(host/guest)가 있으면 [진행자]/[응답자] 로 라벨링해
+// 서버가 응답자 발화만 페르소나 신호로 채굴하고 진행자 발화는 문맥으로만 쓰게
+// 한다. 단일 모드(speaker 태그 없음)면 라벨 없이 plain — 옛 동작 100%(후방호환).
+function reflectionWindowText(segments: TranscriptionSegment[]): {
+  text: string;
+  dualSpeaker: boolean;
+} {
+  const dualSpeaker = segments.some(
+    (s) => s.speaker === 'host' || s.speaker === 'guest',
+  );
+  if (!dualSpeaker) {
+    return { text: segmentsText(segments), dualSpeaker: false };
+  }
+  const text = segments
+    .map((s) => {
+      const line = s.text.trim();
+      if (!line) return '';
+      const tag =
+        s.speaker === 'host'
+          ? SPEAKER_TAG_HOST
+          : s.speaker === 'guest'
+            ? SPEAKER_TAG_GUEST
+            : null;
+      return tag ? `${tag} ${line}` : line;
+    })
+    .filter(Boolean)
+    .join('\n');
+  return { text, dualSpeaker: true };
+}
+
 // 누적 transcript 문자 수 — 웜업(emit 가드) / 최소 길이 게이트 판정용.
 function cumulativeCharsOf(segments: TranscriptionSegment[]): number {
   return segments.reduce((sum, s) => sum + s.text.trim().length, 0);
@@ -268,6 +332,8 @@ function ExpandedBody() {
     renewing: sessionRenewing,
     sessionId,
     recording,
+    slotActive,
+    slotError,
     start: startSession,
     stop: stopSession,
   } = useRealtimeTranscription({ locale: 'ko' });
@@ -865,7 +931,10 @@ function ExpandedBody() {
   const runReflection = useCallback(async () => {
     if (reflectionInFlightRef.current) return;
     const segs = rawSegmentsRef.current;
-    const fullText = segmentsText(segs);
+    // both(병렬) 모드면 화자 태그([진행자]/[응답자]) 포함 window — 서버가 응답자
+    // 발화만 페르소나 신호로 채굴하고 진행자 발화는 문맥으로만 쓴다(오귀속 방지).
+    // 단일 모드면 plain(옛 동작). think 는 화자 미태깅 plain window 그대로(불변).
+    const { text: fullText, dualSpeaker } = reflectionWindowText(segs);
     if (fullText.length < MIN_TRANSCRIPT_CHARS) return;
     const trimmed =
       fullText.length > REFLECTION_MAX_CHARS
@@ -950,6 +1019,9 @@ function ExpandedBody() {
           transcript_window: trimmed,
           interview_guide: '',
           output_lang: outputLangRef.current,
+          // 화자 태그 포함 window 여부 — 서버가 응답자만 페르소나 채굴하는
+          // 지시문을 켠다. 단일 모드(false)면 옛 무태깅 동작 100%.
+          dual_speaker: dualSpeaker,
           // 활성 기본 섹션 key — 미전달과 달리 명시 목록. 전부 켜져 있으면
           // 기본 9 전체라 옛 동작과 동일.
           default_section_keys: activeDefaultKeys,
@@ -1376,12 +1448,16 @@ function ExpandedBody() {
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
   }, [gate, startSession, source, outputLang]);
-  // 시작 클릭 진입점 — source='tab'(브라우저 오디오 캡처) 경로는 캡처 직전
-  // 브라우저 오디오 안내를 blocking ack 로 띄운다. mic(기기 마이크)은 브라우저
-  // 설정 무관이라 바로 진행. "다시 보지 않기"로 억제됐으면 tab 도 바로 진행.
+  // 시작 클릭 진입점 — 탭 오디오를 캡처하는 경로(source='tab' 또는 'both')는
+  // 캡처 직전 브라우저 오디오 안내를 blocking ack 로 띄운다(both 는 응답자 탭
+  // 캡처 + 에코 방지 이어폰 안내 필수 — 615 결합). mic(기기 마이크)은 브라우저
+  // 설정 무관이라 바로 진행. "다시 보지 않기"로 억제됐으면 바로 진행.
   const handleStartSession = useCallback(() => {
     if (!source || !outputLang) return;
-    if (source === 'tab' && !isBrowserAudioNoticeSuppressed()) {
+    if (
+      (source === 'tab' || source === 'both') &&
+      !isBrowserAudioNoticeSuppressed()
+    ) {
       setBrowserAudioNoticeOpen(true);
       return;
     }
@@ -1560,6 +1636,17 @@ function ExpandedBody() {
   // 입력 소스 / 언어 는 세션 진행 중 (idle/error 외) 에는 변경 불가 — 옛 동작.
   const controlsDisabled =
     sessionStatus !== 'idle' && sessionStatus !== 'error';
+
+  // 슬롯별 라이브 표시등 대상 — 선택된 캡처 모드의 실제 슬롯(mic=진행자,
+  // tab=응답자). both 면 둘, 단일이면 하나, 미선택이면 없음.
+  const slotKinds: ('mic' | 'tab')[] =
+    source === 'both'
+      ? ['mic', 'tab']
+      : source === 'tab'
+        ? ['tab']
+        : source === 'mic'
+          ? ['mic']
+          : [];
 
   const canRefreshReflection =
     isLive &&
@@ -2027,6 +2114,9 @@ function ExpandedBody() {
               onStop={handleStopSession}
               stopDisabled={stopDisabled}
               statusLabel={statusLabel}
+              // 슬롯별 라이브 표시등 (🎤 진행자 / 📺 응답자) — both 병렬 캡처.
+              slotKinds={slotKinds}
+              slotActive={slotActive}
               // 페르소나 섹션 구성 (PR #470) — active-section SSOT.
               customSections={customSections}
               hiddenSectionKeys={hiddenDefaultKeys}
@@ -2094,6 +2184,28 @@ function ExpandedBody() {
             }}
           >
             {t('card.thinkFailedInline', { msg: thinkingError })}
+          </div>
+        )}
+        {/* 슬롯 부분 실패 안내 (graceful degradation) — both 병렬 캡처에서 한
+            슬롯만 실패하고 다른 슬롯은 라이브일 때. 세션은 계속 — 어느 화자
+            캡처가 빠졌는지만 quiet 하게 알린다. */}
+        {isLive && (slotError.mic || slotError.tab) && (
+          <div className="mx-3 mb-2 bg-paper px-3 py-2 text-sm text-mute"
+            style={{
+              border: '1px solid var(--color-line)',
+              borderRadius: 'var(--sidebar-nav-radius)',
+            }}
+          >
+            {slotError.mic && (
+              <div>
+                {t('card.degradedHost')} {humanSlotError(slotError.mic, t)}
+              </div>
+            )}
+            {slotError.tab && (
+              <div>
+                {t('card.degradedGuest')} {humanSlotError(slotError.tab, t)}
+              </div>
+            )}
           </div>
         )}
         {/* 세션 원본 녹음(#554) — 종료 후 다운로드 표면. 비라이브에서만, 녹음이
@@ -2226,6 +2338,8 @@ function ExpandedBody() {
         open={browserAudioNoticeOpen}
         onConfirm={handleBrowserAudioConfirm}
         onCancel={() => setBrowserAudioNoticeOpen(false)}
+        // both(진행자 mic + 응답자 tab 병렬)는 스피커 에코 위험 — 이어폰 안내 결합.
+        note={source === 'both' ? t('card.bothEchoNote') : undefined}
       />
 
       {exportConfirmOpen && (

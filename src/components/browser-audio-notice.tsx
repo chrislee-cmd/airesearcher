@@ -46,10 +46,15 @@ export function BrowserAudioNotice({
   open,
   onConfirm,
   onCancel,
+  note,
 }: {
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  // 호출부가 넘기는 추가 안내(선택). 프로빙 both(진행자+응답자 병렬 캡처)는
+  // 여기에 에코/이어폰 안내를 실어 브라우저 안내 + 이어폰 안내를 결합한다.
+  // 미전달이면(translate·단일 모드) 종전 그대로 — 브라우저 안내만.
+  note?: string;
 }) {
   const t = useTranslations('BrowserAudioNotice');
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -71,6 +76,9 @@ export function BrowserAudioNotice({
       <div className="flex flex-col gap-4">
         <p className="text-sm leading-snug text-mute">{t('body')}</p>
         <p className="text-sm leading-snug text-mute-soft">{t('hint')}</p>
+        {note ? (
+          <p className="text-sm leading-snug text-mute">{note}</p>
+        ) : null}
         <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
           <Checkbox
             checked={dontShowAgain}
