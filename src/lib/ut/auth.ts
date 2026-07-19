@@ -36,6 +36,11 @@ export type UtSessionRow = {
   livekit_room: string | null;
   participant_joined_at: string | null;
   session_kind: string;
+  // Explicit participant language (633, migration 20260719… input_language).
+  // A languages.ts code ('ko'/'en'/…); legacy rows are NULL (Scribe/STT then
+  // auto-detects). Drives both the batch Scribe hint and the live-caption (634)
+  // realtime transcription language hint.
+  input_language: string | null;
   // Insight-clips pipeline (card 626, migration 20260719033833_ut_insight_clips).
   // All NULL until the researcher triggers clip generation.
   transcript_words: TranscriptTurn[] | null;

@@ -12,7 +12,7 @@
    렌더(스트림 단일 부착) — 로컬 프리뷰와 동형.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +28,10 @@ import type {
   UseUtRemoteSession,
   UtSessionKind,
 } from './use-ut-remote-session';
+import type {
+  UtCaptionLine,
+  UtLiveCaptionStatus,
+} from './use-ut-live-caption';
 
 type Props = {
   remote: UseUtRemoteSession;
@@ -50,6 +54,54 @@ type Props = {
   inputLanguage: string;
   onInputLanguage: (v: string) => void;
 };
+
+// 라이브 캡션(634) — 모더 관전 중 참여자 발화 실시간 자막. 화면 <video> 와 동시
+// 가시("화면+대화 같이"). final 라인은 확정색(text-ink), interim(진행 중)은
+// 흐리게(text-mute-soft). 새 라인마다 하단 자동 스크롤. STT 실패/미시작(error/idle)
+// 시 영역 자체를 숨겨 관전 화면을 건드리지 않는다(graceful).
+function UtLiveCaptions({
+  lines,
+  status,
+}: {
+  lines: UtCaptionLine[];
+  status: UtLiveCaptionStatus;
+}) {
+  const t = useTranslations('AiUt');
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines]);
+
+  if (status !== 'connecting' && status !== 'live') return null;
+
+  return (
+    <ControlBoardPanel.Region label={t('remote.live.captionLabel')}>
+      <div
+        ref={scrollRef}
+        className="max-h-32 overflow-y-auto rounded-xs border border-line-soft bg-paper-soft px-3 py-2"
+        aria-live="polite"
+      >
+        {lines.length === 0 ? (
+          <p className="text-sm text-mute-soft">
+            {t('remote.live.captionWaiting')}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {lines.map((l) => (
+              <li
+                key={l.id}
+                className={l.final ? 'text-sm text-ink' : 'text-sm text-mute-soft'}
+              >
+                {l.text}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </ControlBoardPanel.Region>
+  );
+}
 
 export function UtRemoteBody({
   remote,
@@ -154,6 +206,10 @@ export function UtRemoteBody({
             {monitorVideo}
             <p className="mt-2 text-xs text-mute-soft">{t('remote.live.hint')}</p>
           </ControlBoardPanel.Region>
+          <UtLiveCaptions
+            lines={remote.captionLines}
+            status={remote.captionStatus}
+          />
         </ControlBoardPanel>
       </div>
     );
