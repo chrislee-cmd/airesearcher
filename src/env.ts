@@ -191,6 +191,30 @@ export const env = createEnv({
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
 
+    // Live-caption VAD tuning (637). The moderated live-caption STT session
+    // (caption-token route) over-segmented natural speech: server_vad committed
+    // a segment after only 500ms of silence, so continuous speech shattered into
+    // "저는 지금" / "어." fragments (one caption line per micro-pause). Raise the
+    // silence window so segments span sentence/thought units. Kept as a string
+    // (this env object is iterated as Record<string,string|undefined> elsewhere,
+    // so numbers break that cast) — parsed at the route with Number().
+    OPENAI_CAPTION_VAD_SILENCE_MS: z
+      .string()
+      .regex(/^\d+$/, 'must be a non-negative integer')
+      .default('1500'),
+    // Optionally switch the caption VAD to semantic_vad — segments on semantic
+    // utterance completion instead of a fixed silence window, giving more natural
+    // full-sentence captions where supported. Defaults to the known-good
+    // server_vad; flip per-env to evaluate without a rebuild.
+    OPENAI_CAPTION_VAD_MODE: z
+      .enum(['server_vad', 'semantic_vad'])
+      .default('server_vad'),
+    // semantic_vad only — how eagerly a turn is closed. 'low' waits longest
+    // (most complete sentences); 'high' cuts sooner. Ignored for server_vad.
+    OPENAI_CAPTION_VAD_EAGERNESS: z
+      .enum(['low', 'medium', 'high', 'auto'])
+      .default('low'),
+
     // Custom translation TTS (single fixed voice). The realtime model's
     // audio uses dynamic voice adaptation with no voice selector, so we
     // re-synthesize the translated text through OpenAI TTS pinned to ONE
@@ -364,6 +388,9 @@ export const env = createEnv({
 
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
+    OPENAI_CAPTION_VAD_SILENCE_MS: process.env.OPENAI_CAPTION_VAD_SILENCE_MS,
+    OPENAI_CAPTION_VAD_MODE: process.env.OPENAI_CAPTION_VAD_MODE,
+    OPENAI_CAPTION_VAD_EAGERNESS: process.env.OPENAI_CAPTION_VAD_EAGERNESS,
     TRANSLATE_TTS_VOICE: process.env.TRANSLATE_TTS_VOICE,
     TRANSLATE_TTS_MODEL: process.env.TRANSLATE_TTS_MODEL,
     TRANSLATE_TTS_VOICE_MIC: process.env.TRANSLATE_TTS_VOICE_MIC,

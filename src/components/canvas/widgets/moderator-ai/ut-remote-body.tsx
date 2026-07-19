@@ -55,10 +55,13 @@ type Props = {
   onInputLanguage: (v: string) => void;
 };
 
-// 라이브 캡션(634) — 모더 관전 중 참여자 발화 실시간 자막. 화면 <video> 와 동시
-// 가시("화면+대화 같이"). final 라인은 확정색(text-ink), interim(진행 중)은
-// 흐리게(text-mute-soft). 새 라인마다 하단 자동 스크롤. STT 실패/미시작(error/idle)
-// 시 영역 자체를 숨겨 관전 화면을 건드리지 않는다(graceful).
+// 라이브 캡션(634/637) — 모더 관전 중 참여자 발화 실시간 자막. 화면 <video> 와
+// 동시 가시("화면+대화 같이"). VAD 세그먼트를 **줄마다 끊지 않고 흐르는 문단
+// (rolling transcript)** 으로 이어 그린다 — 확정(final) 세그먼트는 확정색
+// (text-ink), 진행 중(interim) tail 은 흐리게(text-mute-soft) 이어붙어, 미세
+// pause 로 세그먼트가 나뉘어도 화면은 연속 텍스트로 흐른다(637 파편화 체감 완화).
+// 새 텍스트마다 하단 자동 스크롤. 롤링 cap 은 훅의 LINE_CAP 이 유지. STT 실패/
+// 미시작(error/idle) 시 영역 자체를 숨겨 관전 화면을 건드리지 않는다(graceful).
 function UtLiveCaptions({
   lines,
   status,
@@ -87,16 +90,17 @@ function UtLiveCaptions({
             {t('remote.live.captionWaiting')}
           </p>
         ) : (
-          <ul className="flex flex-col gap-1">
-            {lines.map((l) => (
-              <li
+          <p className="text-sm leading-relaxed text-ink">
+            {lines.map((l, i) => (
+              <span
                 key={l.id}
-                className={l.final ? 'text-sm text-ink' : 'text-sm text-mute-soft'}
+                className={l.final ? 'text-ink' : 'text-mute-soft'}
               >
+                {i > 0 ? ' ' : ''}
                 {l.text}
-              </li>
+              </span>
             ))}
-          </ul>
+          </p>
         )}
       </div>
     </ControlBoardPanel.Region>

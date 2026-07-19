@@ -74,9 +74,36 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const language =
     langEntry && langEntry.code !== 'multi' ? iso639(langEntry.code) : null;
 
-  // Unified Realtime client_secrets — transcription-only mode. server_vad gives
-  // us the per-utterance `*.completed` boundary the caption renderer needs to
-  // promote interim → final. Same endpoint/shape as translate + probing.
+  // VAD tuning (637). The original config committed a segment after only 500ms
+  // of silence (server_vad, silence_duration_ms: 500). Natural speech has micro-
+  // pauses between words/phrases that routinely exceed 500ms, so continuous
+  // speech over-segmented into staccato fragments ("저는 지금" / "어."), each a
+  // new item_id / caption line. We keep the `*.completed` boundary the renderer
+  // needs to promote interim → final, but widen the segment so it spans a
+  // sentence/thought unit:
+  //   - server_vad (default): raise silence_duration_ms via env knob (~1500ms).
+  //     interim deltas still stream live, so only the *final* promotion is
+  //     delayed by the extra silence window — no perceived latency.
+  //   - semantic_vad (opt-in per env): segment on semantic utterance completion
+  //     instead of a fixed silence window. Left as an env flip because it needs
+  //     live validation in the caption session; the shipped default is the
+  //     known-good server_vad path.
+  const vadSilenceMs = Number(env.OPENAI_CAPTION_VAD_SILENCE_MS) || 1500;
+  const turnDetection =
+    env.OPENAI_CAPTION_VAD_MODE === 'semantic_vad'
+      ? {
+          type: 'semantic_vad' as const,
+          eagerness: env.OPENAI_CAPTION_VAD_EAGERNESS,
+        }
+      : {
+          type: 'server_vad' as const,
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: vadSilenceMs,
+        };
+
+  // Unified Realtime client_secrets — transcription-only mode. Same
+  // endpoint/shape as translate + probing.
   const body = {
     session: {
       type: 'transcription',
@@ -86,12 +113,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
             model: transcriptionModel,
             ...(language ? { language } : {}),
           },
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 500,
-          },
+          turn_detection: turnDetection,
         },
       },
     },
