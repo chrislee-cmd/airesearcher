@@ -94,6 +94,8 @@ export type UseUtParticipantSession = {
   elapsedMs: number;
   error: string | null;
   isSupported: boolean;
+  /** displaySurface 미보고 브라우저에서 창 공유를 확정 못 했을 때 true — 소프트 리마인더용. */
+  surfaceReminder: boolean;
   /** 라이브 화면 프리뷰 <video> 에 스트림을 붙이는 ref 콜백. */
   attachPreview: (el: HTMLVideoElement | null) => void;
   /** 대상 사이트를 (다시) 새 탭으로 오픈 — 자기 브라우저 네이티브 사용. */
@@ -114,6 +116,9 @@ export function useUtParticipantSession(opts: {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(false);
+  // 브라우저가 displaySurface 를 미보고(undefined)해 단일 탭 여부를 확정 못 한 경우
+  // true — 라이브 화면에 "창 전체 공유" 소프트 리마인더를 띄우기 위한 신호.
+  const [surfaceReminder, setSurfaceReminder] = useState(false);
 
   // 유저-facing 문자열은 messages(UtParticipant). 흐름 함수가 stable 하도록
   // t 도 ref 로 읽는다.
@@ -388,6 +393,7 @@ export function useUtParticipantSession(opts: {
   const start = useCallback(async () => {
     if (phaseRef.current !== 'consent' && phaseRef.current !== 'error') return;
     setError(null);
+    setSurfaceReminder(false);
     setPhase('starting');
 
     // 1) 마이크 먼저 — 이게 진짜 게이트다. 참가자가 마이크를 거부/무시한 채
@@ -418,17 +424,50 @@ export function useUtParticipantSession(opts: {
 
     // 2) 화면 공유 — 마이크가 승인된 뒤에만 픽커를 띄운다. 취소하면 이미 잡은
     //    마이크 트랙을 정리(누수 방지)하고 조용히 종료.
+    //    표면(surface) 유도: 참가자가 대상 사이트를 window.open 새 탭으로 진행하므로,
+    //    단일 탭만 공유하면 그 새 탭이 캡처되지 않아 리서처 관전이 예전 탭에 고정된다.
+    //    브라우저 API 상 활성 탭 자동전환은 불가(보안) → 창(또는 전체 화면) 공유로
+    //    창 내 모든 탭·전환·새 탭까지 캡처되게 유도한다.
+    //    · displaySurface:'window' — 픽커에서 창 탭을 우선 노출하는 선호 힌트(강제 아님,
+    //      실제 단일 탭 차단은 성공 직후 getSettings().displaySurface 감지가 담당).
+    //    · surfaceSwitching:'include' — 공유 중 "다른 항목 공유" 전환 컨트롤 노출.
+    //    · preferCurrentTab:false — 현재 탭 자동공유 유도 끔(반대 방향).
+    //    표준 lib.dom 의 DisplayMediaStreamOptions 는 아직 surfaceSwitching/preferCurrentTab
+    //    을 포함하지 않는 Chromium 확장이라 확장 타입으로 지정.
     let screen: MediaStream;
+    const displayOpts: DisplayMediaStreamOptions & {
+      surfaceSwitching?: 'include' | 'exclude';
+      preferCurrentTab?: boolean;
+    } = {
+      video: { frameRate: 30, displaySurface: 'window' },
+      audio: false,
+      surfaceSwitching: 'include',
+      preferCurrentTab: false,
+    };
     try {
-      screen = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
-        audio: false,
-      });
+      screen = await navigator.mediaDevices.getDisplayMedia(displayOpts);
     } catch (e) {
       mic.getTracks().forEach((tr) => tr.stop());
       handleMediaError(e, 'screen');
       return;
     }
+
+    // 2-b) 단일 탭 차단 — 성공 직후 실제 선택된 표면을 확인한다. displaySurface 는
+    //    'browser'(단일 탭) · 'window'(브라우저 창) · 'monitor'(전체 화면).
+    //    'browser' 면 새 탭이 캡처되지 않으므로 거부: 트랙(화면+마이크) 정리 후 발행
+    //    없이 error 로 돌려보내 "창 전체 공유" 안내 + 재시도(마이크 재승인 즉시)를 유도.
+    //    'window'/'monitor' 는 통과. undefined(일부 브라우저 미보고)는 graceful 통과
+    //    하되 라이브 화면에 소프트 리마인더를 띄운다(데스크톱 Chrome/Edge 는 보고 — 632).
+    const surface = screen.getVideoTracks()[0]?.getSettings().displaySurface;
+    if (surface === 'browser') {
+      screen.getTracks().forEach((tr) => tr.stop());
+      mic.getTracks().forEach((tr) => tr.stop());
+      setSurfaceReminder(false);
+      setError(tRef.current('error.singleTab'));
+      setPhase('error');
+      return;
+    }
+    setSurfaceReminder(surface == null);
 
     // 3) publisher-token — LiveKit publish JWT + status waiting→live(join stamp).
     let livekit: { url: string; token: string; room: string };
@@ -562,6 +601,7 @@ export function useUtParticipantSession(opts: {
     pendingStopRef.current = 0;
     setElapsedMs(0);
     setError(null);
+    setSurfaceReminder(false);
     setPhase('consent');
   }, [clearTimer, teardownLiveKit, teardownStreams]);
 
@@ -570,6 +610,7 @@ export function useUtParticipantSession(opts: {
     elapsedMs,
     error,
     isSupported,
+    surfaceReminder,
     attachPreview,
     openTarget,
     start,
