@@ -114,7 +114,16 @@ export function UtSessionBody() {
           setState({ kind: 'running', label: 'PREPARING' });
           break;
         case 'waiting':
-          setState({ kind: 'running', label: 'WAITING' });
+          // unmoderated 는 phase 가 'live' 로 걷지 않으므로(라이브 관전 없음),
+          // 참여자 진행 여부는 reviewStatus 로만 드러난다 — 'live' 면 진행중.
+          setState({
+            kind: 'running',
+            label:
+              remote.sessionKind === 'unmoderated' &&
+              remote.reviewStatus === 'live'
+                ? 'IN PROGRESS'
+                : 'WAITING',
+          });
           break;
         case 'live':
           setState({ kind: 'running', label: 'MONITORING' });
@@ -158,6 +167,7 @@ export function UtSessionBody() {
     session.error,
     remote.phase,
     remote.reviewStatus,
+    remote.sessionKind,
     remote.error,
     setState,
   ]);
@@ -239,6 +249,7 @@ export function UtSessionBody() {
           onDownloadTranscript={session.downloadTranscript}
           onRetry={session.retryUpload}
           onReset={session.reset}
+          getPlaybackUrl={session.getPlaybackUrl}
         />
       );
     }

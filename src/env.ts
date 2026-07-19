@@ -63,6 +63,11 @@ export const env = createEnv({
     ELEVENLABS_WEBHOOK_SECRET: z.string().min(16).optional(),
     TWELVELABS_API_KEY: z.string().min(20).optional(),
     TWELVELABS_ANALYZE_INDEX_ID: z.string().min(8).optional(),
+    // Gemini — AI UT behavior-analytics vision post-processing (card 622). Reads
+    // the screen recording natively (video-in) to infer quantitative interaction
+    // events. Optional: if absent, analysis is skipped gracefully and the
+    // session stays 'done' with a null behavior_metrics.
+    GEMINI_API_KEY: z.string().min(20).optional(),
 
     LEMONSQUEEZY_API_KEY: z.string().min(20).optional(),
     // Legacy single-store env. When the dual-store vars below are unset,
@@ -282,6 +287,7 @@ export const env = createEnv({
     ELEVENLABS_WEBHOOK_SECRET: process.env.ELEVENLABS_WEBHOOK_SECRET,
     TWELVELABS_API_KEY: process.env.TWELVELABS_API_KEY,
     TWELVELABS_ANALYZE_INDEX_ID: process.env.TWELVELABS_ANALYZE_INDEX_ID,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 
     LEMONSQUEEZY_API_KEY: process.env.LEMONSQUEEZY_API_KEY,
     LEMONSQUEEZY_STORE_ID: process.env.LEMONSQUEEZY_STORE_ID,

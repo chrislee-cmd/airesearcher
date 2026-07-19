@@ -1,5 +1,37 @@
 {
   "AiUt": {
+    "behavior": {
+      "title": "행동 계량 (추정)",
+      "disclaimer": "화면 녹화 기반 추정치입니다. 정밀 DOM 추적이 아니며, confidence 낮은 값은 흐리게 표시됩니다.",
+      "analyzing": "인터랙션 분석 중… (녹화 후처리)",
+      "skipped": "이 세션은 인터랙션 분석을 건너뛰었습니다.",
+      "error": "인터랙션 분석에 실패했습니다. 녹화·전사·다운로드에는 영향이 없습니다.",
+      "empty": "추정된 인터랙션 이벤트가 없습니다.",
+      "confidenceLabel": "평균 confidence {pct}%",
+      "metrics": {
+        "rageClick": "분노 클릭",
+        "backtrack": "되돌아가기",
+        "hesitation": "망설임",
+        "hesitationMax": "최대 {ms}ms",
+        "scrollDepth": "스크롤 깊이",
+        "steps": "단계",
+        "events": "이벤트"
+      },
+      "units": {
+        "times": "{n}회",
+        "seconds": "{n}초"
+      },
+      "hotspots": {
+        "title": "마찰 핫스팟",
+        "hint": "핫스팟을 누르면 해당 시점으로 이동합니다.",
+        "empty": "두드러진 마찰 구간이 없습니다.",
+        "seekTitle": "{time}초로 이동"
+      },
+      "steps": {
+        "title": "단계별 소요시간",
+        "label": "{n}단계"
+      }
+    },
     "mode": {
       "label": "세션 모드",
       "local": "로컬 (내 화면)",
@@ -33,6 +65,15 @@
         "description": "이 링크를 참가자에게 공유하세요. 참가자가 열어 화면을 한 번 공유하면 실시간으로 관전할 수 있어요. 링크는 외부에 노출하지 마세요.",
         "copy": "복사",
         "copied": "복사됨"
+      },
+      "unmoderated": {
+        "shareDescription": "이 링크를 참가자에게 공유하세요. 참가자가 자기 시간에 열어 혼자 진행해요. 라이브 관전은 없어요.",
+        "explainTitle": "언모더레이티드 세션",
+        "explain": "참여자가 링크로 자기 시간에 혼자 진행하는 세션이에요. 실시간 관전은 없어요 — 완료되면 여기서 녹화·전사를 리뷰하세요.",
+        "stateLabel": "진행 상태",
+        "stateWaiting": "대기 중 — 참여자가 아직 링크를 열지 않았어요.",
+        "stateInProgress": "진행 중 — 참여자가 세션을 진행하고 있어요.",
+        "reviewHint": "완료되면 이 자리에 녹화·전사 리뷰가 표시돼요."
       },
       "waiting": {
         "status": "참가자가 참여하기를 기다리는 중이에요…",

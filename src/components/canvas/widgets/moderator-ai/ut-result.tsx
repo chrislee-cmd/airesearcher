@@ -17,6 +17,7 @@
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { UtPhase, UtSessionResult } from './use-ut-session';
+import { UtBehaviorView } from './ut-behavior-view';
 
 function formatDuration(ms: number | null): string {
   if (!ms || ms < 0) return '—';
@@ -37,6 +38,8 @@ type Props = {
   // 원격 모드는 참가자가 업로드/전사하므로 리서처가 재시도할 수 없다 → 생략.
   onRetry?: () => void;
   onReset: () => void;
+  // 행동 계량 뷰(622) — 핫스팟 seek 용 인라인 재생 URL 발급. 없으면 계량 뷰 생략.
+  getPlaybackUrl?: () => Promise<string | null>;
 };
 
 export function UtResultView({
@@ -48,6 +51,7 @@ export function UtResultView({
   onDownloadTranscript,
   onRetry,
   onReset,
+  getPlaybackUrl,
 }: Props) {
   const t = useTranslations('AiUt');
   const transcribing = phase === 'transcribing' || phase === 'uploading';
@@ -102,6 +106,20 @@ export function UtResultView({
           )}
         </div>
       </div>
+
+      {/* 행동 계량 레이어(622) — 전사 완료 후 비전 후처리 산출. 626(질적 클립/
+          서술)과 분리된 정량 패널로 여기 공존. */}
+      {phase === 'done' && getPlaybackUrl && result && (
+        <UtBehaviorView
+          metrics={result.behavior_metrics}
+          events={result.events}
+          analysisStatus={result.analysis_status}
+          analysisError={result.analysis_error}
+          durationMs={result.duration_ms}
+          hasRecording={hasRecording}
+          getPlaybackUrl={getPlaybackUrl}
+        />
+      )}
 
       {/* 다운로드 */}
       <div className="flex flex-col gap-2">

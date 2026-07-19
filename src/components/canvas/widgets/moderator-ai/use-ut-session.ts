@@ -25,6 +25,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
+import type { UtEvent } from '@/lib/ut-vision/schema';
+import type { BehaviorMetrics } from '@/lib/ut-vision/metrics';
 
 export type UtPhase =
   | 'idle'
@@ -39,6 +41,7 @@ export type UtSessionResult = {
   id: string;
   status: string;
   target_url: string | null;
+  task_goal: string | null;
   transcript: string | null;
   duration_ms: number | null;
   has_audio: boolean;
@@ -46,6 +49,11 @@ export type UtSessionResult = {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  // 행동 계량 레이어(622) — 비전 후처리 산출. 분석 전엔 null/idle/[].
+  behavior_metrics: BehaviorMetrics | null;
+  analysis_status: string; // idle | analyzing | done | error | skipped
+  analysis_error: string | null;
+  events: UtEvent[];
 };
 
 type Blobs = { audio: Blob | null; recording: Blob | null };
@@ -103,6 +111,12 @@ export function normalizeTargetUrl(raw: string): string | null {
 const POLL_TRIES = 8;
 const POLL_INTERVAL_MS = 1500;
 
+// 비전 후처리(622)는 영상 업로드 + Gemini 처리라 전사보다 훨씬 오래 걸린다 —
+// analyze POST 를 fire-and-forget 로 던지고 GET 을 길게 폴링해 analysis_status
+// 가 terminal(done/error/skipped) 이 될 때까지 result 를 갱신한다.
+const ANALYZE_POLL_TRIES = 40;
+const ANALYZE_POLL_INTERVAL_MS = 6000;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -121,6 +135,8 @@ export type UseUtSession = {
   retryUpload: () => void;
   reset: () => void;
   download: (kind: 'recording' | 'audio') => Promise<void>;
+  /** 인라인 재생용 서명 URL(핫스팟 seek). 실패 시 null. */
+  getPlaybackUrl: () => Promise<string | null>;
   downloadTranscript: () => void;
 };
 
@@ -164,6 +180,8 @@ export function useUtSession(): UseUtSession {
   const pendingStopRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoElRef = useRef<HTMLVideoElement | null>(null);
+  // 세션당 한 번만 비전 후처리(622)를 트리거하기 위한 가드.
+  const analyzeStartedRef = useRef(false);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -270,6 +288,34 @@ export function useUtSession(): UseUtSession {
     [],
   );
 
+  // 전사 done 이후 비전 후처리(622)를 세션당 한 번 트리거하고, analysis_status
+  // 가 terminal 이 될 때까지 result 를 갱신한다. analyze POST 는 최대 300s 라
+  // await 로 UI 를 막지 않고 fire-and-forget — 진행/완료는 GET 폴링으로 읽는다.
+  // 실패해도 세션은 done 유지(전사는 이미 성공) — 계량 뷰만 비거나 에러 톤.
+  const runAnalysis = useCallback(
+    async (id: string) => {
+      if (analyzeStartedRef.current) return;
+      analyzeStartedRef.current = true;
+      // 녹화가 없으면(오디오만) 후처리 대상 없음 — 스킵.
+      if (!blobsRef.current?.recording && !(await fetchSession(id))?.has_recording) return;
+      void fetchWithAuth(`/api/ut/sessions/${id}/analyze`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }).catch(() => {});
+      for (let i = 0; i < ANALYZE_POLL_TRIES; i++) {
+        await sleep(ANALYZE_POLL_INTERVAL_MS);
+        const s = await fetchSession(id);
+        if (s) {
+          setResult(s);
+          const st = s.analysis_status;
+          if (st === 'done' || st === 'error' || st === 'skipped') return;
+        }
+      }
+    },
+    [fetchSession],
+  );
+
   // finalize 는 전사를 동기 실행하므로 첫 폴링에 대개 done/error 로 해소된다.
   const pollUntilResolved = useCallback(
     async (id: string) => {
@@ -279,6 +325,7 @@ export function useUtSession(): UseUtSession {
           setResult(s);
           if (s.status === 'done') {
             setPhase('done');
+            void runAnalysis(id); // 전사 완료 → 행동 계량 후처리 개시(백그라운드)
             return;
           }
           if (s.status === 'error') {
@@ -291,9 +338,12 @@ export function useUtSession(): UseUtSession {
         await sleep(POLL_INTERVAL_MS);
       }
       // 폴링 타임아웃 — 업로드는 성공했으니 결과 표면은 열어둔다(전사만 지연).
+      // 분석은 여기서 트리거하지 않는다 — 전사가 아직 'done' 이 아닐 수 있어
+      // analyze 가 status 를 앞질러 쓰면 전사 status write 와 경합한다. 전사가
+      // 확정 done 된 위 경로에서만 후처리를 건다.
       setPhase('done');
     },
-    [fetchSession],
+    [fetchSession, runAnalysis],
   );
 
   // 업로드 → finalize(전사 트리거) → 폴링. onstop 두 개가 모두 끝난 뒤,
@@ -570,6 +620,7 @@ export function useUtSession(): UseUtSession {
     sessionIdRef.current = null;
     startedAtRef.current = null;
     pendingStopRef.current = 0;
+    analyzeStartedRef.current = false;
     setSessionId(null);
     setElapsedMs(0);
     setError(null);
@@ -594,6 +645,24 @@ export function useUtSession(): UseUtSession {
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
       setError(tRef.current('error.download'));
+    }
+  }, []);
+
+  // 인라인 재생용 서명 URL(disposition=inline) — 행동 계량 뷰가 <video> 에
+  // 물려 핫스팟 t_ms 로 seek 한다. 다운로드 라우트와 같은 owner/super-admin
+  // 게이트 + 5분 TTL. 실패 시 null(재생 없이 타임라인/카드만).
+  const getPlaybackUrl = useCallback(async (): Promise<string | null> => {
+    const id = sessionIdRef.current;
+    if (!id) return null;
+    try {
+      const res = await fetchWithAuth(
+        `/api/ut/sessions/${id}/download?kind=recording&disposition=inline`,
+      );
+      if (!res.ok) return null;
+      const { url } = (await res.json()) as { url: string };
+      return url ?? null;
+    } catch {
+      return null;
     }
   }, []);
 
@@ -626,6 +695,7 @@ export function useUtSession(): UseUtSession {
     retryUpload,
     reset,
     download,
+    getPlaybackUrl,
     downloadTranscript,
   };
 }
