@@ -190,7 +190,7 @@
   "UtParticipant": {
     "intro": {
       "heading": "Usability test session",
-      "subtitle": "You'll be asked to allow your microphone and share your screen once, then use the site as you normally would while thinking aloud."
+      "subtitle": "You'll be asked to allow your microphone and share a browser window once, then use the site as you normally would while thinking aloud."
     },
     "task": {
       "heading": "Your task",
@@ -198,20 +198,21 @@
       "targetLabel": "Site:"
     },
     "consent": {
-      "warning": "⚠ This session records your shared screen and your microphone. Anything visible while recording — including login passwords or card numbers — can be captured. Only share the tab you're testing, and avoid entering sensitive data.",
+      "warning": "⚠ This session records your shared screen and your microphone. Please share your entire browser window so new tabs and tab switches are captured — if you share just one tab, sites that open in a new tab won't be visible to the researcher. Other tabs in that window may be captured too, so avoid entering sensitive data (login passwords, card numbers) while recording.",
       "note": "The recording is stored privately for the researcher and is not shared publicly.",
       "checkbox": "I understand and agree to have my screen and voice recorded.",
       "start": "Allow microphone & start"
     },
     "starting": {
       "heading": "Getting ready…",
-      "body": "First allow microphone access, then pick the tab or window you want to share."
+      "body": "First allow microphone access, then choose the browser window you want to share."
     },
     "live": {
       "recording": "Recording · {time}",
       "hint": "Use the site in the new tab as you normally would, and say your thoughts out loud. When you're done, come back here and end the session.",
       "end": "End session",
-      "reopen": "Reopen the site"
+      "reopen": "Reopen the site",
+      "surfaceReminder": "Sharing your entire browser window captures new tabs and tab switches too. If you're sharing just one tab, sites that open in a new tab may not be visible to the researcher."
     },
     "ending": {
       "heading": "Wrapping up…",
@@ -235,7 +236,8 @@
       "screen": "Couldn't start screen sharing. Please check that your browser supports it and try again.",
       "mic": "Microphone access is required. Allow the microphone via the lock icon → site settings in your address bar, then try again.",
       "join": "Couldn't start the session. Please check your connection and try again.",
-      "ended": "This session has already ended, so it can't be started."
+      "ended": "This session has already ended, so it can't be started.",
+      "singleTab": "Sharing a single tab means sites that open in a new tab won't be captured. Please share your entire browser window (or your whole screen) and try again."
     },
     "unsupported": {
       "heading": "Please open this on a PC",

@@ -43,6 +43,7 @@ export function ParticipantCapture({
     elapsedMs,
     error,
     isSupported,
+    surfaceReminder,
     attachPreview,
     openTarget,
     start,
@@ -140,6 +141,12 @@ export function ParticipantCapture({
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-mute">{t('live.hint')}</p>
+
+        {surfaceReminder && (
+          <p className="mt-3 text-xs leading-relaxed text-mute-soft">
+            {t('live.surfaceReminder')}
+          </p>
+        )}
 
         <div className="mt-4">{taskBlock}</div>
 
