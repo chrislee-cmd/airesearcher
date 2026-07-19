@@ -202,6 +202,105 @@
   --raw-font-hand: "Caveat", cursive;
 }
 
+/* Audit theme — Sentinel (dev QA 전용, 프로덕션 비노출: design-audit-toggle 이
+   NODE_ENV 가드로 dev 에서만 <html data-theme="audit"> 를 붙임).
+
+   목적: 미관이 아니라 감사. Layer 1 raw 를 전부 명백한 sentinel(형광/극단)로
+   오염시키면 — 토큰(var(--color-*)·shadow-memphis-*·radius/font 유틸)을 경유하는
+   요소는 전부 형광/극단으로 확 변하고, 인라인 #hex·arbitrary shadow-[...]·
+   rounded-[Npx] 같은 하드코드는 var 를 안 거치므로 그대로 남아 시각적으로 튄다.
+   → "형광으로 안 변한 게 하드코드(범인)". 627 정적 가드의 시각 QA 보조 렌즈.
+
+   additive only — 이 블록만 추가. pop/editorial·Layer 2/3·@theme·호출처 전부
+   불변이라 기본 테마 회귀 0. */
+[data-theme="audit"] {
+  /* surface — 형광 마젠타 계열(토큰 경유 배경이 즉시 형광으로 pop) */
+  --raw-surface-page: #ff00ff;
+  --raw-surface-card: #ff2bff;
+  --raw-surface-elevated: #ff66ff;
+  --raw-surface-accent-yellow: #00ffff;
+  --raw-surface-accent-yellow-strong: #00ffcc;
+  --raw-surface-banner-yellow: #00ff66;
+  --raw-surface-nav-hover: #ffff00;
+
+  /* ink — 형광 시안(토큰 경유 텍스트가 즉시 형광으로 pop) */
+  --raw-ink-100: #00ffff;
+  --raw-ink-80: #33ffff;
+  --raw-ink-60: #66ffff;
+  --raw-ink-40: #99ffff;
+  --raw-ink-mid: #00ffcc;
+
+  /* border color — 형광 라임(토큰 보더가 확 튐) */
+  --raw-border-strong: #00ff00;
+  --raw-border-medium: #00ff00;
+  --raw-border-subtle: #ff00ff;
+
+  /* border width — 극단 확대(토큰 보더는 두꺼워지고 border-[Npx] 하드코드는 그대로) */
+  --raw-border-width-hairline: 2px;
+  --raw-border-width-medium: 3px;
+  --raw-border-width-strong: 4px;
+  --raw-border-width-heavy: 5px;
+
+  /* shadow — 형광 극단(토큰 섀도우는 형광 glow 로 확 달라지고 shadow-[...] 는 그대로) */
+  --raw-shadow-hard-md: 8px 8px 0 #ff00ff, 0 0 0 3px #00ff00;
+  --raw-shadow-hard-sm: 5px 5px 0 #ff00ff, 0 0 0 2px #00ff00;
+  --raw-shadow-hard-xs: 3px 3px 0 #ff00ff;
+  --raw-shadow-chrome: 6px 6px 0 #00ff00;
+  --raw-shadow-soft: 0 0 0 4px #ff00ff, 0 0 16px #00ffff;
+
+  /* memphis offset — 극단 확대(토큰 memphis 섀도우가 눈에 띄게 부풀어 pop) */
+  --raw-memphis-2xs: 4px 4px;
+  --raw-memphis-xs: 5px 5px;
+  --raw-memphis-sm: 6px 6px;
+  --raw-memphis-md: 8px 8px;
+  --raw-memphis-lg: 10px 10px;
+  --raw-memphis-2xl: 16px 16px;
+
+  /* accent — 형광 대비색 */
+  --raw-accent-pink: #ff0066;
+  --raw-accent-pink-soft: #ff3399;
+  --raw-accent-pink-bg: #00ffff;
+  --raw-accent-purple: #cc00ff;
+  --raw-accent-purple-soft: #dd66ff;
+  --raw-accent-purple-bg: #00ff99;
+
+  /* pastel palette — 형광 대비색(muted 파스텔이 형광으로 튀면 토큰 경유 확인) */
+  --raw-pastel-lav: #cc00ff;
+  --raw-pastel-peach: #ff6600;
+  --raw-pastel-mint: #00ff66;
+  --raw-pastel-sun: #ffff00;
+  --raw-pastel-sky: #00ffff;
+  --raw-pastel-rose: #ff0099;
+
+  /* signal — 형광 대비색 */
+  --raw-signal-success: #00ff00;
+  --raw-signal-warning: #ff9900;
+  --raw-signal-warning-bg: #00ffff;
+  --raw-signal-warning-line: #ff00ff;
+  --raw-signal-am: #ff9900;
+  --raw-signal-pm: #00ccff;
+
+  /* radius — 전부 pill 극단(토큰 radius 는 완전히 둥글어지고 rounded-[Npx] 는 그대로) */
+  --raw-radius-2xs: 999px;
+  --raw-radius-xs: 999px;
+  --raw-radius-sm: 999px;
+  --raw-radius-md: 999px;
+  --raw-radius-pill: 999px;
+  --raw-radius-chrome: 999px;
+  --raw-radius-nav: 999px;
+  --raw-radius-canvas-button: 999px;
+  --raw-radius-canvas-input: 999px;
+
+  /* pattern — 형광 grid(토큰 경유 dot 배경이 형광으로) */
+  --raw-pattern-dot: radial-gradient(circle, #ff00ff 3px, transparent 3px);
+  --raw-pattern-dot-size: 24px 24px;
+
+  /* fonts — 모노스페이스 sentinel(토큰 경유 폰트는 mono 로 바뀌고 하드코드
+     font-family 는 그대로 → 폰트 토큰 미사용 지점도 감지) */
+  --raw-font-sans: "Courier New", ui-monospace, monospace;
+  --raw-font-hand: "Courier New", ui-monospace, monospace;
+}
+
 /* =========================================================================
    Layer 2 — Semantic Tokens (의미 → raw)
    컴포넌트가 이 토큰을 직접 참조. theme-agnostic.

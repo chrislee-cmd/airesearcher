@@ -7,6 +7,7 @@ import { MixpanelProvider } from '@/components/mixpanel-provider';
 import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { CookieConsentBanner } from '@/components/cookie-consent-banner';
+import { DesignAuditToggle } from '@/components/design-audit-toggle';
 import { LocaleSuggestBanner } from '@/components/locale-suggest-banner';
 import { createClient } from '@/lib/supabase/server';
 import '../globals.css';
@@ -71,6 +72,11 @@ export default async function LocaleLayout({
                   첫 방문에 1회성 언어 제안 배너(client-only, /en 에서만). */}
               <LocaleSuggestBanner />
               <CookieConsentBanner />
+              {/* 디자인 감사 테마 토글 — dev QA 전용. 프로덕션 배포에선
+                  false && … 로 dead-code 라 유저 비노출. VERCEL_ENV 사용 —
+                  NODE_ENV 는 preview 빌드도 'production' 이라 preview QA 를
+                  막으므로 부적합(preview 는 비프로덕션으로 활성 유지). */}
+              {process.env.VERCEL_ENV !== 'production' && <DesignAuditToggle />}
             </PostHogProvider>
           </MixpanelProvider>
         </NextIntlClientProvider>
