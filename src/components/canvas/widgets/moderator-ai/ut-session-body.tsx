@@ -239,6 +239,7 @@ export function UtSessionBody() {
           onDownloadTranscript={session.downloadTranscript}
           onRetry={session.retryUpload}
           onReset={session.reset}
+          getPlaybackUrl={session.getPlaybackUrl}
         />
       );
     }

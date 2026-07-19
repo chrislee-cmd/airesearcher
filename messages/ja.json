@@ -1,5 +1,37 @@
 {
   "AiUt": {
+    "behavior": {
+      "title": "行動計測（推定）",
+      "disclaimer": "画面録画から推定した値です。正確なDOM追跡ではなく、確信度の低い値は薄く表示されます。",
+      "analyzing": "インタラクションを分析中…（録画の後処理）",
+      "skipped": "このセッションではインタラクション分析をスキップしました。",
+      "error": "インタラクション分析に失敗しました。録画・文字起こし・ダウンロードには影響ありません。",
+      "empty": "推定されたインタラクションイベントはありません。",
+      "confidenceLabel": "平均確信度 {pct}%",
+      "metrics": {
+        "rageClick": "連打クリック",
+        "backtrack": "戻る操作",
+        "hesitation": "ためらい",
+        "hesitationMax": "最大 {ms}ms",
+        "scrollDepth": "スクロール深度",
+        "steps": "ステップ",
+        "events": "イベント"
+      },
+      "units": {
+        "times": "{n}回",
+        "seconds": "{n}秒"
+      },
+      "hotspots": {
+        "title": "摩擦ホットスポット",
+        "hint": "ホットスポットをクリックするとその時点に移動します。",
+        "empty": "目立つ摩擦区間はありません。",
+        "seekTitle": "{time}秒へ移動"
+      },
+      "steps": {
+        "title": "ステップ別の所要時間",
+        "label": "ステップ{n}"
+      }
+    },
     "mode": {
       "label": "セッションモード",
       "local": "ローカル（自分の画面）",
