@@ -143,6 +143,33 @@
       "transcript": "📄 文字起こし",
       "transcriptTitle": "文字起こしテキストをダウンロード"
     },
+    "insight": {
+      "title": "インサイトクリップ",
+      "description": "録画から意味のある瞬間を自動的に切り出して分析し、セッションのインサイトレポートを作成します。TwelveLabsの映像分析を使用し、数分かかる場合があります。",
+      "generate": "インサイトクリップを生成",
+      "regenerate": "再生成",
+      "statusIndexing": "動画をインデックス化しています…（数分かかる場合があります）",
+      "statusSearching": "意味のある瞬間を探してクリップを切り出しています…",
+      "statusAnalyzing": "クリップを分析しています…（{done}/{total}）",
+      "statusReporting": "セッションのインサイトレポートをまとめています…",
+      "error": "インサイトクリップを作成できませんでした。しばらくしてからもう一度お試しください。",
+      "clipsTitle": "{count}件のクリップ",
+      "clipUntitled": "注目の瞬間",
+      "reportTitle": "セッションインサイトレポート",
+      "overview": "概要",
+      "outcome": "タスクの成功／離脱",
+      "themes": "主要テーマ",
+      "frictions": "主な摩擦",
+      "quotes": "注目の発言",
+      "play": "▶ クリップを再生",
+      "playLoading": "読み込み中…",
+      "noMedia": "クリップ映像がありません（テキスト分析のみ）。",
+      "severity": {
+        "low": "低",
+        "medium": "中",
+        "high": "高"
+      }
+    },
     "error": {
       "transcribe": "文字起こしに失敗しました。画面収録と音声は引き続きダウンロードできます。",
       "upload": "アップロードに失敗しました。しばらくしてからもう一度お試しください。",
