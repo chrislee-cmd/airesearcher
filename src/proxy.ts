@@ -142,10 +142,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  // Routes under /auth (OAuth callback, sign-out, etc.) and /live (the
-  // anonymous live-interpretation viewer) live outside the `[locale]`
-  // segment and must NOT be prefixed. Without this guard next-intl
-  // rewrites `/live/abc` to `/ko/live/abc`, which 404s.
+  // Routes under /auth (OAuth callback, sign-out, etc.), /live (the anonymous
+  // live-interpretation viewer), and /ut-live (the anonymous AI-UT participant
+  // capture page, 624) live outside the `[locale]` segment and must NOT be
+  // prefixed. Without this guard next-intl rewrites `/live/abc` to
+  // `/ko/live/abc` (or `/ut-live/abc` to `/ko/ut-live/abc`), which 404s.
   //
   // `/`, `/ko`, `/en` all flow through this same intl middleware:
   // anonymous root → redirected to the user's preferred locale via
@@ -153,7 +154,11 @@ export async function proxy(request: NextRequest) {
   // index page (`[locale]/page.tsx`) then renders the marketing
   // landing for anonymous users and forwards authenticated users to
   // /dashboard.
-  if (!pathname.startsWith('/auth/') && !pathname.startsWith('/live/')) {
+  if (
+    !pathname.startsWith('/auth/') &&
+    !pathname.startsWith('/live/') &&
+    !pathname.startsWith('/ut-live/')
+  ) {
     // Neutralize Accept-Language only when the user hasn't made an explicit
     // choice yet (no NEXT_LOCALE cookie) — see the note above.
     const reqForIntl = request.cookies.has(LOCALE_COOKIE)
