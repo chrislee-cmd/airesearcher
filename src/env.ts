@@ -191,29 +191,33 @@ export const env = createEnv({
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
 
-    // Live-caption VAD tuning (637). The moderated live-caption STT session
-    // (caption-token route) over-segmented natural speech: server_vad committed
-    // a segment after only 500ms of silence, so continuous speech shattered into
-    // "저는 지금" / "어." fragments (one caption line per micro-pause). Raise the
-    // silence window so segments span sentence/thought units. Kept as a string
-    // (this env object is iterated as Record<string,string|undefined> elsewhere,
-    // so numbers break that cast) — parsed at the route with Number().
+    // Live-caption VAD tuning (637). CRITICAL: the Realtime *transcription*
+    // session only transcribes a segment AFTER the VAD commits it (on silence) —
+    // there are no live partial transcripts mid-speech. So silence_duration_ms is
+    // really a RESPONSIVENESS knob, not a "final-only delay" knob: raising it
+    // means continuous speech rarely commits, so little/nothing gets transcribed
+    // (an early 1500ms default made captions nearly stop streaming). Keep it SMALL
+    // for responsive, complete streaming; the visual fragmentation this causes is
+    // handled at the render layer (flowing rolling transcript in ut-remote-body),
+    // NOT by widening the VAD. Kept as a string (this env object is iterated as
+    // Record<string,string|undefined> elsewhere) — parsed at the route.
     OPENAI_CAPTION_VAD_SILENCE_MS: z
       .string()
       .regex(/^\d+$/, 'must be a non-negative integer')
-      .default('1500'),
+      .default('500'),
     // Optionally switch the caption VAD to semantic_vad — segments on semantic
-    // utterance completion instead of a fixed silence window, giving more natural
-    // full-sentence captions where supported. Defaults to the known-good
-    // server_vad; flip per-env to evaluate without a rebuild.
+    // utterance completion instead of a fixed silence window. NOTE: like a larger
+    // silence window, this also gates transcription on turn completion, so it can
+    // reduce how much streams during continuous speech; evaluate before adopting.
+    // Defaults to the responsive server_vad; flip per-env without a rebuild.
     OPENAI_CAPTION_VAD_MODE: z
       .enum(['server_vad', 'semantic_vad'])
       .default('server_vad'),
-    // semantic_vad only — how eagerly a turn is closed. 'low' waits longest
-    // (most complete sentences); 'high' cuts sooner. Ignored for server_vad.
+    // semantic_vad only — how eagerly a turn is closed. 'high' cuts sooner (more
+    // responsive); 'low' waits longest. Ignored for server_vad.
     OPENAI_CAPTION_VAD_EAGERNESS: z
       .enum(['low', 'medium', 'high', 'auto'])
-      .default('low'),
+      .default('high'),
 
     // Custom translation TTS (single fixed voice). The realtime model's
     // audio uses dynamic voice adaptation with no voice selector, so we

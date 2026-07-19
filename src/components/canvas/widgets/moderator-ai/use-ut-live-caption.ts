@@ -60,9 +60,8 @@ const LINE_CAP = 120;
 const SESSION_MAX_MS = 25 * 60 * 1000;
 const RENEW_CHECK_INTERVAL_MS = 10_000;
 // 25분 PC swap 시 옛 PC 를 잠깐 유지해 마지막 세그먼트의 `*.completed` 를 받는다.
-// 637 로 VAD silence 창이 ~1500ms 로 넓어져, swap 경계에 걸친 발화가 commit 되기
-// 전 옛 PC 가 닫히면 tail 이 누락될 수 있어 grace 를 넉넉히(silence 창 + 여유) 둔다.
-const RENEW_OLD_PC_GRACE_MS = 3500;
+// VAD silence 창이 작아(~500ms) swap 경계 세그먼트가 금방 commit 되므로 2초면 충분.
+const RENEW_OLD_PC_GRACE_MS = 2000;
 // capture(사용자 조작) 구간이 없으므로 토큰 발급 직후 순수 네트워크 연결만 감시.
 const CONNECT_TIMEOUT_MS = 10_000;
 
