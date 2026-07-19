@@ -185,10 +185,15 @@ function Report({ summary, clips }: { summary: InsightSummary; clips: InsightCli
 export function UtInsightClips({ sessionId }: { sessionId: string }) {
   const t = useTranslations('AiUt');
   const locale = useLocale();
-  const { state, running, trigger } = useUtInsightClips(sessionId, locale);
+  // autoStart: the pipeline kicks itself on mount (transcript done + recording
+  // present) — no more researcher "Generate" click. Idempotent via the hook's
+  // server-status guard. trigger() is kept only for the error "try again" path.
+  const { state, running, trigger } = useUtInsightClips(sessionId, locale, true);
 
   const status = state?.status ?? 'idle';
   const isRunning = running || RUNNING.has(status);
+  // idle before the auto-start GET has kicked in — treat as pending, not opt-in.
+  const isPending = status === 'idle' && !isRunning;
   const clips = state?.clips ?? [];
 
   const statusLabel =
@@ -204,19 +209,14 @@ export function UtInsightClips({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-          {t('insight.title')}
-        </h3>
-        {!isRunning && (
-          <Button variant="secondary" size="sm" onClick={() => void trigger()}>
-            {status === 'done' ? t('insight.regenerate') : t('insight.generate')}
-          </Button>
-        )}
-      </div>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
+        {t('insight.title')}
+      </h3>
 
-      {status === 'idle' && !isRunning && (
-        <p className="text-sm text-mute-soft">{t('insight.description')}</p>
+      {isPending && (
+        <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
+          {t('insight.preparing')}
+        </div>
       )}
 
       {isRunning && (
@@ -226,8 +226,13 @@ export function UtInsightClips({ sessionId }: { sessionId: string }) {
       )}
 
       {status === 'error' && !isRunning && (
-        <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
-          {t('insight.error')}
+        <div className="flex flex-col gap-2 rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+          <span>{t('insight.error')}</span>
+          <div>
+            <Button variant="secondary" size="sm" onClick={() => void trigger()}>
+              {t('insight.retry')}
+            </Button>
+          </div>
         </div>
       )}
 
