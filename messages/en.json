@@ -183,7 +183,7 @@
   "UtParticipant": {
     "intro": {
       "heading": "Usability test session",
-      "subtitle": "You'll be asked to share your screen once, then use the site as you normally would while thinking aloud."
+      "subtitle": "You'll be asked to allow your microphone and share your screen once, then use the site as you normally would while thinking aloud."
     },
     "task": {
       "heading": "Your task",
@@ -194,11 +194,11 @@
       "warning": "⚠ This session records your shared screen and your microphone. Anything visible while recording — including login passwords or card numbers — can be captured. Only share the tab you're testing, and avoid entering sensitive data.",
       "note": "The recording is stored privately for the researcher and is not shared publicly.",
       "checkbox": "I understand and agree to have my screen and voice recorded.",
-      "start": "Share screen & start"
+      "start": "Allow microphone & start"
     },
     "starting": {
       "heading": "Getting ready…",
-      "body": "Pick the tab or window you want to share, then allow microphone access."
+      "body": "First allow microphone access, then pick the tab or window you want to share."
     },
     "live": {
       "recording": "Recording · {time}",
@@ -230,7 +230,13 @@
       "join": "Couldn't start the session. Please check your connection and try again.",
       "ended": "This session has already ended, so it can't be started."
     },
-    "unsupported": "This browser doesn't support screen sharing. Please use a recent desktop browser such as Chrome or Edge."
+    "unsupported": {
+      "heading": "Please open this on a PC",
+      "why": "Mobile browsers don't support screen sharing, so this session needs to run on a desktop computer (Chrome or Edge).",
+      "how": "Open this link in a browser on your PC. Use the button below to copy the link and send it to your computer.",
+      "copyLink": "Copy link",
+      "copied": "Copied"
+    }
   },
   "Brand": {
     "name": "Research-Canvas"

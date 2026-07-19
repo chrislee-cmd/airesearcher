@@ -49,6 +49,23 @@ export function ParticipantCapture({
     stop,
   } = useUtParticipantSession({ token, targetUrl });
   const [agreed, setAgreed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // 미지원(모바일 등) 안내에서 현재 링크를 클립보드로 — PC 로 이관하기 쉽게.
+  // window.location 은 클릭 시점(클라)에만 읽어 SSR/hydration mismatch 를 피한다.
+  function copyLink() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    if (!url) return;
+    void navigator.clipboard?.writeText(url).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+      () => {
+        // 클립보드 거부(권한/비보안 컨텍스트) — 조용히 무시, 사용자는 수동 복사.
+      },
+    );
+  }
 
   // 대상 사이트 host 만 뽑아 안내(전체 URL 은 title 로). 실패 시 원문.
   let targetLabel = targetUrl ?? '';
@@ -85,15 +102,24 @@ export function ParticipantCapture({
     </div>
   );
 
-  // ── unsupported ────────────────────────────────────────────────
+  // ── unsupported (모바일/구형 브라우저 — 데스크톱 전용) ────────────
+  // 모바일(iOS Safari 등)은 getDisplayMedia 자체가 없어 캡처 불가 = 플랫폼 한계.
+  // 딱딱한 "미지원" 경고 대신 왜(모바일은 화면공유 미지원) + 어떻게(PC 에서 열기)
+  // 를 안내하고, 모바일→PC 링크 이관 마찰을 줄이는 URL 복사 버튼을 제공한다.
   if (!isSupported) {
     return (
       <Shell>
         <h1 className="text-xl font-semibold tracking-[-0.01em] text-ink-2">
-          {t('intro.heading')}
+          {t('unsupported.heading')}
         </h1>
-        <div className="mt-4 rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
-          {t('unsupported')}
+        <p className="mt-3 text-sm leading-relaxed text-ink-2">{t('unsupported.why')}</p>
+        <div className="mt-4 rounded-sm border border-line bg-paper-soft p-4">
+          <p className="text-sm leading-relaxed text-ink-2">{t('unsupported.how')}</p>
+          <div className="mt-3">
+            <Button variant="secondary" size="sm" onClick={copyLink}>
+              {copied ? t('unsupported.copied') : t('unsupported.copyLink')}
+            </Button>
+          </div>
         </div>
       </Shell>
     );
