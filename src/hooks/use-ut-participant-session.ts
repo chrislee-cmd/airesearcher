@@ -12,7 +12,8 @@
      · POST /api/ut/public/[token]/finalize          → 전사 트리거
 
    흐름 (start):
-     1. getDisplayMedia(화면) + getUserMedia(mic) — 공유 1회.
+     1. getUserMedia(mic) 먼저(게이트) → 승인돼야 getDisplayMedia(화면) 픽커.
+        마이크 거부 시 화면 픽커도 안 뜨고 abort — 무녹음 데이터 손실 원천 차단(632).
      2. publisher-token → LiveKit room 에 화면+음성 트랙 **실시간 발행**
         (리서처 625 가 viewer 토큰으로 관전). 이게 로컬 방식 D 와의 핵심 차이.
      3. 대상 사이트를 자기 브라우저 새 탭으로 오픈 (로그인/결제 네이티브).
@@ -389,7 +390,34 @@ export function useUtParticipantSession(opts: {
     setError(null);
     setPhase('starting');
 
-    // 1) 화면 공유 — 유저가 공유할 탭/창을 고른다. 취소하면 조용히 종료.
+    // 1) 마이크 먼저 — 이게 진짜 게이트다. 참가자가 마이크를 거부/무시한 채
+    //    화면만 고르면 세션이 live 로 못 가 무녹음 데이터 손실이 나던 버그(632)를
+    //    막기 위해, 마이크 승인을 화면공유 픽커보다 앞세운다. 거부하면 화면 픽커
+    //    자체를 안 띄우고 즉시 abort.
+    //    STT 튜닝: think-aloud 단일화자라 mono(채널1)면 충분·전사 안정적.
+    //    autoGainControl 은 off — think-aloud 는 발화 사이 무음 구간이 길어 AGC 가
+    //    무음에서 게인을 끌어올렸다가 발화 시작에 급강하하는 펌핑을 만들고, 이게
+    //    STT 에 "또렷하지 않은" 레벨 출렁임으로 들어간다(사용자 보고와 일치).
+    //    echoCancellation/noiseSuppression 은 단일화자 환경 잡음 억제에 무난해 유지.
+    //    (트레이드오프: 마이크가 아주 멀어 입력이 과도하게 작은 참가자는 AGC on 이
+    //    나을 수 있으나, 데스크 마이크/헤드셋 기본 거리에서는 off 가 STT 에 유리.)
+    let mic: MediaStream;
+    try {
+      mic = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: { ideal: 1 },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false,
+        },
+      });
+    } catch (e) {
+      handleMediaError(e, 'mic');
+      return;
+    }
+
+    // 2) 화면 공유 — 마이크가 승인된 뒤에만 픽커를 띄운다. 취소하면 이미 잡은
+    //    마이크 트랙을 정리(누수 방지)하고 조용히 종료.
     let screen: MediaStream;
     try {
       screen = await navigator.mediaDevices.getDisplayMedia({
@@ -397,23 +425,8 @@ export function useUtParticipantSession(opts: {
         audio: false,
       });
     } catch (e) {
+      mic.getTracks().forEach((tr) => tr.stop());
       handleMediaError(e, 'screen');
-      return;
-    }
-
-    // 2) 마이크(think-aloud 발화).
-    let mic: MediaStream;
-    try {
-      mic = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-    } catch (e) {
-      screen.getTracks().forEach((tr) => tr.stop());
-      handleMediaError(e, 'mic');
       return;
     }
 
