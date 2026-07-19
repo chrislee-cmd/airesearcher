@@ -74,21 +74,20 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const language =
     langEntry && langEntry.code !== 'multi' ? iso639(langEntry.code) : null;
 
-  // VAD tuning (637). The original config committed a segment after only 500ms
-  // of silence (server_vad, silence_duration_ms: 500). Natural speech has micro-
-  // pauses between words/phrases that routinely exceed 500ms, so continuous
-  // speech over-segmented into staccato fragments ("저는 지금" / "어."), each a
-  // new item_id / caption line. We keep the `*.completed` boundary the renderer
-  // needs to promote interim → final, but widen the segment so it spans a
-  // sentence/thought unit:
-  //   - server_vad (default): raise silence_duration_ms via env knob (~1500ms).
-  //     interim deltas still stream live, so only the *final* promotion is
-  //     delayed by the extra silence window — no perceived latency.
-  //   - semantic_vad (opt-in per env): segment on semantic utterance completion
-  //     instead of a fixed silence window. Left as an env flip because it needs
-  //     live validation in the caption session; the shipped default is the
-  //     known-good server_vad path.
-  const vadSilenceMs = Number(env.OPENAI_CAPTION_VAD_SILENCE_MS) || 1500;
+  // VAD tuning (637). KEY FACT (validated on preview): the Realtime transcription
+  // session transcribes a segment only AFTER the VAD commits it on silence — there
+  // is NO live partial transcript mid-speech. So silence_duration_ms is a
+  // RESPONSIVENESS knob: a large window means continuous speech rarely commits and
+  // almost nothing streams (a 1500ms trial nearly stopped captions). We therefore
+  // keep the window SMALL (default 500ms) so every utterance commits promptly and
+  // streams completely. The over-segmentation this causes ("저는 지금" / "어." on
+  // separate lines) is fixed at the RENDER layer — ut-remote-body joins segments
+  // into a flowing rolling transcript — not by widening the VAD. Env-tunable so
+  // ops can trade responsiveness for fewer segments without a rebuild.
+  //   - server_vad (default): fixed silence window (env: OPENAI_CAPTION_VAD_SILENCE_MS).
+  //   - semantic_vad (opt-in): segments on semantic turn completion; same
+  //     commit-gated tradeoff, so evaluate on preview before adopting.
+  const vadSilenceMs = Number(env.OPENAI_CAPTION_VAD_SILENCE_MS) || 500;
   const turnDetection =
     env.OPENAI_CAPTION_VAD_MODE === 'semantic_vad'
       ? {
