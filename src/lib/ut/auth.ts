@@ -20,6 +20,9 @@ export type UtSessionRow = {
   transcript: string | null;
   duration_ms: number | null;
   meta: Record<string, unknown> | null;
+  // Behavior-analytics layer (card 622, migration 20260719001227_ut_events).
+  // Null until vision post-processing completes.
+  behavior_metrics: Record<string, unknown> | null;
   started_at: string | null;
   ended_at: string | null;
   created_at: string;

@@ -1,5 +1,37 @@
 {
   "AiUt": {
+    "behavior": {
+      "title": "행동 계량 (추정)",
+      "disclaimer": "화면 녹화 기반 추정치입니다. 정밀 DOM 추적이 아니며, confidence 낮은 값은 흐리게 표시됩니다.",
+      "analyzing": "인터랙션 분석 중… (녹화 후처리)",
+      "skipped": "이 세션은 인터랙션 분석을 건너뛰었습니다.",
+      "error": "인터랙션 분석에 실패했습니다. 녹화·전사·다운로드에는 영향이 없습니다.",
+      "empty": "추정된 인터랙션 이벤트가 없습니다.",
+      "confidenceLabel": "평균 confidence {pct}%",
+      "metrics": {
+        "rageClick": "분노 클릭",
+        "backtrack": "되돌아가기",
+        "hesitation": "망설임",
+        "hesitationMax": "최대 {ms}ms",
+        "scrollDepth": "스크롤 깊이",
+        "steps": "단계",
+        "events": "이벤트"
+      },
+      "units": {
+        "times": "{n}회",
+        "seconds": "{n}초"
+      },
+      "hotspots": {
+        "title": "마찰 핫스팟",
+        "hint": "핫스팟을 누르면 해당 시점으로 이동합니다.",
+        "empty": "두드러진 마찰 구간이 없습니다.",
+        "seekTitle": "{time}초로 이동"
+      },
+      "steps": {
+        "title": "단계별 소요시간",
+        "label": "{n}단계"
+      }
+    },
     "mode": {
       "label": "세션 모드",
       "local": "로컬 (내 화면)",

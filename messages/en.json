@@ -1,5 +1,37 @@
 {
   "AiUt": {
+    "behavior": {
+      "title": "Behavior analytics (inferred)",
+      "disclaimer": "Inferred from the screen recording — not precise DOM tracking. Low-confidence values are shown faded.",
+      "analyzing": "Analyzing interactions… (post-processing the recording)",
+      "skipped": "Interaction analysis was skipped for this session.",
+      "error": "Interaction analysis failed. Your recording, transcript, and downloads are unaffected.",
+      "empty": "No interaction events were inferred.",
+      "confidenceLabel": "avg confidence {pct}%",
+      "metrics": {
+        "rageClick": "Rage clicks",
+        "backtrack": "Backtracks",
+        "hesitation": "Hesitations",
+        "hesitationMax": "up to {ms}ms",
+        "scrollDepth": "Scroll depth",
+        "steps": "Steps",
+        "events": "Events"
+      },
+      "units": {
+        "times": "{n}×",
+        "seconds": "{n}s"
+      },
+      "hotspots": {
+        "title": "Friction hotspots",
+        "hint": "Click a hotspot to jump to that moment.",
+        "empty": "No notable friction spots.",
+        "seekTitle": "Jump to {time}s"
+      },
+      "steps": {
+        "title": "Time per step",
+        "label": "Step {n}"
+      }
+    },
     "mode": {
       "label": "Session mode",
       "local": "Local (my screen)",
