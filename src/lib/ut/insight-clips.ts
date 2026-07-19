@@ -341,7 +341,7 @@ async function stepAnalyzing(
       insight = await analyzeClipText(clip.transcript_span ?? '', clip.theme ?? '', s.task_goal, locale);
     } catch {
       insight = {
-        summary: clip.transcript_span?.slice(0, 300) || '분석을 생성하지 못했습니다.',
+        summary: clip.transcript_span?.slice(0, 300) || 'No analysis could be generated.',
         quote: '',
         friction: '',
         emotion: '',
@@ -451,13 +451,13 @@ function pegasusSpanPrompt(
 ): string {
   const lang = locale === 'en'
     ? 'Respond in English.'
-    : '한국어(존댓말)로 응답하세요.';
-  const goal = taskGoal ? `과제 목표: ${taskGoal}\n` : '';
-  const theme = clip.theme ? `이 순간의 테마: ${clip.theme}\n` : '';
-  return `이 영상은 UX 사용성 테스트(UT) 녹화입니다. [${mmss(clip.start_ms)}~${mmss(clip.end_ms)}] 구간에 집중해서 분석하세요. ${goal}${theme}
-그 구간에서 화면과 음성을 근거로 다음을 JSON 한 개로만 답하세요(다른 텍스트 없이):
-{"summary": "그 순간 무슨 일이 있었는지 2~3문장", "quote": "핵심 발화 인용(없으면 빈 문자열)", "friction": "마찰/어려움(없으면 빈 문자열)", "emotion": "감정(없으면 빈 문자열)", "severity": "low|medium|high"}
-관찰된 사실만. 카드번호·비밀번호 등 민감정보는 절대 옮기지 마세요. ${lang}`;
+    : 'Respond in Korean, using a polite, formal register.';
+  const goal = taskGoal ? `Task goal: ${taskGoal}\n` : '';
+  const theme = clip.theme ? `Moment theme: ${clip.theme}\n` : '';
+  return `This is a UX usability test (UT) recording. Focus your analysis on the [${mmss(clip.start_ms)}-${mmss(clip.end_ms)}] segment. ${goal}${theme}
+From that segment, using the screen and audio as evidence, answer with a SINGLE JSON object only (no other text):
+{"summary": "2-3 sentences on what happened in that moment", "quote": "key verbatim quote (empty string if none)", "friction": "friction/difficulty (empty string if none)", "emotion": "emotion (empty string if none)", "severity": "low|medium|high"}
+Observed facts only. Never copy sensitive data such as card numbers or passwords. ${lang}`;
 }
 
 // Pegasus streams prose even when asked for JSON — extract the first {...} block
@@ -485,7 +485,7 @@ function parsePegasusInsight(raw: string): ClipInsight {
     }
   }
   return {
-    summary: text.slice(0, 600) || '분석 결과가 비어 있습니다.',
+    summary: text.slice(0, 600) || 'The analysis result was empty.',
     quote: '',
     friction: '',
     emotion: '',
