@@ -27,7 +27,7 @@ function mmss(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
-const RUNNING = new Set(['indexing', 'searching', 'analyzing', 'reporting']);
+const RUNNING = new Set(['indexing', 'searching', 'clipping', 'analyzing', 'reporting']);
 
 function SeverityBadge({ severity }: { severity?: string }) {
   const t = useTranslations('AiUt');
@@ -188,24 +188,29 @@ export function UtInsightClips({ sessionId }: { sessionId: string }) {
   // autoStart: the pipeline kicks itself on mount (transcript done + recording
   // present) — no more researcher "Generate" click. Idempotent via the hook's
   // server-status guard. trigger() is kept only for the error "try again" path.
-  const { state, running, trigger } = useUtInsightClips(sessionId, locale, true);
+  const { state, running, delayed, trigger } = useUtInsightClips(sessionId, locale, true);
 
   const status = state?.status ?? 'idle';
   const isRunning = running || RUNNING.has(status);
   // idle before the auto-start GET has kicked in — treat as pending, not opt-in.
   const isPending = status === 'idle' && !isRunning;
   const clips = state?.clips ?? [];
+  // Surface a stalled/504 run (still non-terminal) as "delayed + try again" rather
+  // than an infinite spinner (card 638 §3). A hard error keeps its own surface.
+  const showDelayed = delayed && status !== 'error' && status !== 'done';
 
   const statusLabel =
     status === 'indexing'
       ? t('insight.statusIndexing')
       : status === 'searching'
         ? t('insight.statusSearching')
-        : status === 'analyzing'
-          ? t('insight.statusAnalyzing', { done: clips.filter((c) => c.insight).length, total: clips.length })
-          : status === 'reporting'
-            ? t('insight.statusReporting')
-            : '';
+        : status === 'clipping'
+          ? t('insight.statusClipping', { done: clips.filter((c) => c.has_clip).length, total: clips.length })
+          : status === 'analyzing'
+            ? t('insight.statusAnalyzing', { done: clips.filter((c) => c.insight).length, total: clips.length })
+            : status === 'reporting'
+              ? t('insight.statusReporting')
+              : '';
 
   return (
     <div className="flex flex-col gap-3">
@@ -219,9 +224,20 @@ export function UtInsightClips({ sessionId }: { sessionId: string }) {
         </div>
       )}
 
-      {isRunning && (
+      {isRunning && !showDelayed && (
         <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
           {statusLabel || t('insight.statusIndexing')}
+        </div>
+      )}
+
+      {showDelayed && (
+        <div className="flex flex-col gap-2 rounded-xs border border-line bg-paper-soft px-3 py-2 text-sm text-ink-2">
+          <span>{t('insight.delayed')}</span>
+          <div>
+            <Button variant="secondary" size="sm" onClick={() => void trigger()}>
+              {t('insight.retry')}
+            </Button>
+          </div>
         </div>
       )}
 
