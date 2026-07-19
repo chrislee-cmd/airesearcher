@@ -1,11 +1,14 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   UtResultView — 세션 종료 후 결과 표면 (발화 로그 + 다운로드).
+   UtResultView — 세션 종료 후 결과 표면 (인사이트 주노출 + 발화 로그 + 다운로드).
 
-   전사 완료(폴링) 시 발화 로그(전사 텍스트)를 보여주고, 화면녹화(webm)·
-   오디오·전사 텍스트 다운로드 버튼(613 서명 URL)을 제공한다. 전사 실패
-   (error) 여도 업로드된 녹화/오디오는 다운로드 가능 — 부분 산출물 보존.
+   리뷰 진입 시 **인사이트 리포트 + 하이라이트 클립(626)** 이 자동 생성되어
+   최상단 주 표면으로 노출된다(리서처 클릭 불필요). 행동 계량(622)은 그 아래
+   보조. **발화 로그(전사 텍스트)는 기본 접힘** — "발화 전문 보기" 토글로만
+   펼친다(인용 맥락이 필요할 때만). 화면녹화(webm)·오디오·전사 텍스트 다운로드
+   버튼(613 서명 URL)은 그대로 유지 — 전사를 화면에서 숨겨도 데이터는 보존.
+   전사 실패(error)여도 업로드된 녹화/오디오는 다운로드 가능 — 부분 산출물 보존.
 
    ⚠ 타임스탬프: 613 은 전사를 세션 단위 단일 텍스트로 저장(배치 Scribe) —
    발화별 타임스탬프는 없다. 그래서 로그는 전사 텍스트 + 세션 길이/시작시각
@@ -14,6 +17,7 @@
    카피는 messages 의 `AiUt.result`/`AiUt.download`/`AiUt.cta` (en+ko).
    ──────────────────────────────────────────────────────────────────── */
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { UtPhase, UtSessionResult } from './use-ut-session';
@@ -59,9 +63,11 @@ export function UtResultView({
   const transcript = result?.transcript?.trim();
   const hasRecording = Boolean(result?.has_recording);
   const hasAudio = Boolean(result?.has_audio);
+  // 발화 로그는 기본 접힘 — 리서처가 인용 맥락이 필요할 때만 토글로 펼친다.
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
       {/* 상태 배너 */}
       {transcribing && (
         <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
@@ -81,35 +87,14 @@ export function UtResultView({
         </div>
       )}
 
-      {/* 발화 로그 */}
-      <div className="flex min-h-0 flex-1 flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-            {t('result.logTitle')}
-          </h3>
-          {result && (
-            <span className="text-xs text-mute-soft">
-              {t('result.durationLabel', { duration: formatDuration(result.duration_ms) })}
-            </span>
-          )}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xs border border-line-soft bg-paper p-3">
-          {transcript ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
-              {transcript}
-            </p>
-          ) : (
-            <p className="text-sm text-mute-soft">
-              {transcribing
-                ? t('result.logPlaceholderTranscribing')
-                : t('result.logPlaceholderEmpty')}
-            </p>
-          )}
-        </div>
-      </div>
+      {/* 인사이트 클립 레이어(626) — 주 표면(최상단). 전사 완료 + 녹화 존재 시
+          리뷰 진입과 동시에 자동 생성되어 리포트+하이라이트 클립을 노출한다. */}
+      {phase === 'done' && result && hasRecording && (
+        <UtInsightClips sessionId={result.id} />
+      )}
 
-      {/* 행동 계량 레이어(622) — 전사 완료 후 비전 후처리 산출. 626(질적 클립/
-          서술)과 분리된 정량 패널로 여기 공존. */}
+      {/* 행동 계량 레이어(622) — 보조. 전사 완료 후 비전 후처리 산출. 626(질적
+          클립/서술)과 분리된 정량 패널로 인사이트 아래 공존. */}
       {phase === 'done' && getPlaybackUrl && result && (
         <UtBehaviorView
           metrics={result.behavior_metrics}
@@ -122,11 +107,46 @@ export function UtResultView({
         />
       )}
 
-      {/* 인사이트 클립 레이어(626) — 전사 완료 + 녹화 존재 시 질적 클립/리포트.
-          622 계량 뷰(정량)와 분리된 질적 레이어로 결과 뷰에 공존. */}
-      {phase === 'done' && result && hasRecording && (
-        <UtInsightClips sessionId={result.id} />
-      )}
+      {/* 발화 로그 — 기본 접힘. "발화 전문 보기" 토글로만 펼친다. 전사 진행
+          중에는 상태 안내를 위해 펼쳐 둔다. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
+              {t('result.logTitle')}
+            </h3>
+            {result && (
+              <span className="text-xs text-mute-soft">
+                {t('result.durationLabel', { duration: formatDuration(result.duration_ms) })}
+              </span>
+            )}
+          </div>
+          {!transcribing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTranscriptOpen((v) => !v)}
+            >
+              {transcriptOpen ? t('result.hideTranscript') : t('result.showTranscript')}
+            </Button>
+          )}
+        </div>
+        {(transcriptOpen || transcribing) && (
+          <div className="max-h-64 overflow-y-auto rounded-xs border border-line-soft bg-paper p-3">
+            {transcript ? (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
+                {transcript}
+              </p>
+            ) : (
+              <p className="text-sm text-mute-soft">
+                {transcribing
+                  ? t('result.logPlaceholderTranscribing')
+                  : t('result.logPlaceholderEmpty')}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* 다운로드 */}
       <div className="flex flex-col gap-2">

@@ -65,11 +65,18 @@ function isTerminal(status: string): boolean {
   return status === 'done' || status === 'error';
 }
 
-export function useUtInsightClips(sessionId: string | null, locale: string) {
+export function useUtInsightClips(
+  sessionId: string | null,
+  locale: string,
+  autoStart = false,
+) {
   const [state, setState] = useState<InsightState | null>(null);
   const [running, setRunning] = useState(false);
   const runningRef = useRef(false);
   const aliveRef = useRef(true);
+  // Guards the mount-time auto-start so a re-render / refetch never re-kicks the
+  // pipeline (each POST costs a TwelveLabs/Pegasus step — double-charge risk).
+  const autoStartedRef = useRef(false);
 
   useEffect(() => {
     aliveRef.current = true;
@@ -77,27 +84,6 @@ export function useUtInsightClips(sessionId: string | null, locale: string) {
       aliveRef.current = false;
     };
   }, []);
-
-  // Initial read (no advance) so a re-opened session shows an existing report.
-  useEffect(() => {
-    if (!sessionId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetchWithAuth(`/api/ut/sessions/${sessionId}/insight-clips`, {
-          cache: 'no-store',
-        });
-        if (!res.ok || cancelled) return;
-        const j = (await res.json()) as InsightState;
-        if (!cancelled) setState(j);
-      } catch {
-        /* ignore — trigger() surfaces errors */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId]);
 
   const advance = useCallback(async (): Promise<InsightState | null> => {
     if (!sessionId) return null;
@@ -135,6 +121,37 @@ export function useUtInsightClips(sessionId: string | null, locale: string) {
       if (aliveRef.current) setRunning(false);
     }
   }, [sessionId, advance]);
+
+  // Initial read (no advance) so a re-opened session shows an existing report.
+  // When autoStart is on, kick the pipeline exactly once based on the *server*
+  // status (SSOT): idle → start, a mid-run status (indexing…reporting) → resume
+  // driving it to terminal. Never auto-run a done report (nothing to do) or
+  // auto-retry an error (avoid burning quota on repeated failures — that stays
+  // a manual "try again"). trigger()'s runningRef also blocks concurrent kicks.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchWithAuth(`/api/ut/sessions/${sessionId}/insight-clips`, {
+          cache: 'no-store',
+        });
+        if (!res.ok || cancelled) return;
+        const j = (await res.json()) as InsightState;
+        if (cancelled) return;
+        setState(j);
+        if (autoStart && !autoStartedRef.current && !isTerminal(j.status)) {
+          autoStartedRef.current = true;
+          void trigger();
+        }
+      } catch {
+        /* ignore — trigger() surfaces errors */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, autoStart, trigger]);
 
   return { state, running, trigger };
 }

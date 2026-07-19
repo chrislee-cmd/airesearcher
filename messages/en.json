@@ -140,6 +140,8 @@
       "durationLabel": "Length {duration}",
       "logPlaceholderTranscribing": "Your speech will appear here once transcription finishes.",
       "logPlaceholderEmpty": "No speech was transcribed.",
+      "showTranscript": "Show full transcript",
+      "hideTranscript": "Hide full transcript",
       "downloadTitle": "Downloads"
     },
     "download": {
@@ -153,6 +155,8 @@
     "insight": {
       "title": "Insight clips",
       "description": "Automatically clips meaningful moments from the recording, analyzes each, and builds a session insight report. Uses TwelveLabs video analysis and can take a few minutes.",
+      "preparing": "Starting insight analysis…",
+      "retry": "Try again",
       "generate": "Generate insight clips",
       "regenerate": "Regenerate",
       "statusIndexing": "Indexing the video… (this can take a few minutes)",
