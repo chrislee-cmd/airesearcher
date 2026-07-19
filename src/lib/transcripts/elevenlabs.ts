@@ -23,6 +23,41 @@ export type ElevenLabsScribeResult = {
   request_id?: string;
 };
 
+// Speaker-grouped turn with millisecond boundaries — the shape AI-UT persists
+// as `ut_sessions.transcript_words` so card 626 can snap clip boundaries to
+// utterance edges (avoid cutting mid-sentence). Kept separate from the markdown
+// path so QA/interview consumers are untouched.
+export type TranscriptTurn = {
+  start_ms: number;
+  end_ms: number;
+  speaker: number;
+  text: string;
+};
+
+export function buildTurnsMs(result: ElevenLabsScribeResult): TranscriptTurn[] {
+  const root = result.data ?? result;
+  const words = (root.words ?? []).filter(
+    (w) => w.type !== 'spacing' && typeof w.text === 'string',
+  );
+  const turns: TranscriptTurn[] = [];
+  for (const w of words) {
+    const speaker = normalizeSpeaker(w.speaker_id);
+    const startMs = Math.round((typeof w.start === 'number' ? w.start : 0) * 1000);
+    const endMs = Math.round(
+      (typeof w.end === 'number' ? w.end : (typeof w.start === 'number' ? w.start : 0)) * 1000,
+    );
+    const piece = w.type === 'audio_event' ? `[${w.text}]` : (w.text as string);
+    const prev = turns[turns.length - 1];
+    if (prev && prev.speaker === speaker) {
+      prev.text = prev.text ? `${prev.text} ${piece}`.trim() : piece;
+      prev.end_ms = endMs;
+    } else {
+      turns.push({ start_ms: startMs, end_ms: endMs, speaker, text: piece });
+    }
+  }
+  return turns;
+}
+
 function toTimestamp(secs: number): string {
   if (!Number.isFinite(secs) || secs < 0) return '00:00:00';
   const h = Math.floor(secs / 3600);

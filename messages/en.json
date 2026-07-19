@@ -143,6 +143,33 @@
       "transcript": "📄 Transcript",
       "transcriptTitle": "Download transcript text"
     },
+    "insight": {
+      "title": "Insight clips",
+      "description": "Automatically clips meaningful moments from the recording, analyzes each, and builds a session insight report. Uses TwelveLabs video analysis and can take a few minutes.",
+      "generate": "Generate insight clips",
+      "regenerate": "Regenerate",
+      "statusIndexing": "Indexing the video… (this can take a few minutes)",
+      "statusSearching": "Finding meaningful moments and cutting clips…",
+      "statusAnalyzing": "Analyzing clips… ({done}/{total})",
+      "statusReporting": "Compiling the session insight report…",
+      "error": "Couldn't build the insight clips. Please try again in a moment.",
+      "clipsTitle": "{count} clips",
+      "clipUntitled": "Moment",
+      "reportTitle": "Session insight report",
+      "overview": "Overview",
+      "outcome": "Task success / drop-off",
+      "themes": "Key themes",
+      "frictions": "Top frictions",
+      "quotes": "Notable quotes",
+      "play": "▶ Play clip",
+      "playLoading": "Loading…",
+      "noMedia": "No clip video (text analysis only).",
+      "severity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    },
     "error": {
       "transcribe": "Transcription failed. You can still download the screen recording and audio.",
       "upload": "Upload failed. Please try again in a moment.",

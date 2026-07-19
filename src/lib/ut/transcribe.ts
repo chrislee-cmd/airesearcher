@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { scribeTranscribe } from '@/lib/transcripts/scribe';
+import { buildTurnsMs } from '@/lib/transcripts/elevenlabs';
 
 export type UtTranscribeResult =
   | { ok: true; transcript: string }
@@ -78,9 +79,29 @@ export async function transcribeUtSession(
     return { ok: false, error: outcome.error, status: outcome.status };
   }
 
+  // The core write (transcript + status) goes first and ALONE — this is the
+  // contract every existing consumer depends on and must never be coupled to a
+  // newer column.
   await admin
     .from('ut_sessions')
     .update({ transcript: outcome.transcript, status: 'done', meta: withContext })
     .eq('id', sessionId);
+
+  // Persist word/turn timestamps in a SEPARATE, best-effort write (626 gap): the
+  // clip pipeline snaps moment boundaries to these turn edges. Kept separate so
+  // the ~few-minute additive-migration drift window after merge (PROJECT.md
+  // §7.5 — the `transcript_words` column lands slightly after this code) can't
+  // break the transcript/status write above. Empty when Scribe returned text
+  // only; the clip pipeline then falls back to time-only windows.
+  const turns = buildTurnsMs({ words: outcome.words });
+  if (turns.length > 0) {
+    const { error: wordsErr } = await admin
+      .from('ut_sessions')
+      .update({ transcript_words: turns })
+      .eq('id', sessionId);
+    if (wordsErr) {
+      console.warn('[ut/transcribe] transcript_words persist skipped', wordsErr.message);
+    }
+  }
   return { ok: true, transcript: outcome.transcript };
 }

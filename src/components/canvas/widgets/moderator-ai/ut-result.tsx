@@ -18,6 +18,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { UtPhase, UtSessionResult } from './use-ut-session';
 import { UtBehaviorView } from './ut-behavior-view';
+import { UtInsightClips } from './ut-insight-clips';
 
 function formatDuration(ms: number | null): string {
   if (!ms || ms < 0) return '—';
@@ -119,6 +120,12 @@ export function UtResultView({
           hasRecording={hasRecording}
           getPlaybackUrl={getPlaybackUrl}
         />
+      )}
+
+      {/* 인사이트 클립 레이어(626) — 전사 완료 + 녹화 존재 시 질적 클립/리포트.
+          622 계량 뷰(정량)와 분리된 질적 레이어로 결과 뷰에 공존. */}
+      {phase === 'done' && result && hasRecording && (
+        <UtInsightClips sessionId={result.id} />
       )}
 
       {/* 다운로드 */}

@@ -7,10 +7,13 @@
 // Short clips only: no webhook flag → the POST blocks until the transcript is
 // ready and returns the full body. Fine well inside a 60s function budget.
 import { ELEVENLABS_API_MODEL } from './models';
-import type { ElevenLabsScribeResult } from './elevenlabs';
+import type { ElevenLabsScribeResult, ElevenLabsWord } from './elevenlabs';
 
 export type ScribeOutcome =
-  | { ok: true; transcript: string }
+  // `words` carries the raw word-level data (start/end/speaker) so callers that
+  // need clip-boundary timestamps (AI-UT insight clips, card 626) can persist
+  // turns without a second round trip. Empty when Scribe returns text only.
+  | { ok: true; transcript: string; words: ElevenLabsWord[] }
   | { ok: false; error: string; status: number };
 
 export async function scribeTranscribe(
@@ -40,6 +43,7 @@ export async function scribeTranscribe(
   }
 
   const result = (await resp.json().catch(() => ({}))) as ElevenLabsScribeResult;
-  const transcript = (result.data?.text ?? result.text ?? '').trim();
-  return { ok: true, transcript };
+  const root = result.data ?? result;
+  const transcript = (root.text ?? '').trim();
+  return { ok: true, transcript, words: root.words ?? [] };
 }
