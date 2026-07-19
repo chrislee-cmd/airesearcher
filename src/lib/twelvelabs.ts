@@ -135,6 +135,66 @@ export async function getIndexedAsset(
   return data;
 }
 
+// ─── Marengo semantic moment search ──────────────────────────────────────────
+// Retrieve time ranges in the index that best match a natural-language query
+// (혼란/망설임·에러·강한 반응 …). The analyze index is SHARED across every
+// video, so callers MUST filter the results down to their own asset via
+// `filterVideoId` (the indexed-asset id) — otherwise a search could surface
+// moments from another user's session. Returns [] on any error so the caller
+// can gracefully fall back to transcript-only segmentation (card 626 §graceful).
+export type TLSearchClip = {
+  video_id: string;
+  score: number;
+  confidence?: string;
+  start: number; // seconds
+  end: number; // seconds
+};
+
+export async function searchIndex(
+  indexId: string,
+  query: string,
+  opts?: { filterVideoId?: string; pageLimit?: number },
+): Promise<TLSearchClip[]> {
+  const key = getKey();
+  const form = new FormData();
+  form.append('index_id', indexId);
+  form.append('query_text', query);
+  // Multimodal moment retrieval — screen visuals + spoken audio.
+  form.append('search_options', 'visual');
+  form.append('search_options', 'audio');
+  form.append('page_limit', String(opts?.pageLimit ?? 10));
+
+  const res = await fetch(`${BASE}/search`, {
+    method: 'POST',
+    headers: { 'x-api-key': key },
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`tl_search_${res.status}: ${text.slice(0, 160)}`);
+  }
+  const body = (await res.json().catch(() => ({}))) as {
+    data?: Array<{ video_id?: string; score?: number; confidence?: string; start?: number; end?: number }>;
+  };
+  const rows = (body.data ?? [])
+    .filter((r) => typeof r.start === 'number' && typeof r.end === 'number')
+    .map((r) => ({
+      video_id: r.video_id ?? '',
+      score: typeof r.score === 'number' ? r.score : 0,
+      confidence: r.confidence,
+      start: r.start as number,
+      end: r.end as number,
+    }));
+  if (opts?.filterVideoId) {
+    const mine = rows.filter((r) => r.video_id === opts.filterVideoId);
+    // Some deployments key search hits on the asset rather than the indexed
+    // asset id; if the filter zeroes everything out, prefer no moments over
+    // cross-session leakage — the caller falls back to transcript segments.
+    return mine;
+  }
+  return rows;
+}
+
 // ─── Step 4: Analyze with Pegasus 1.5 (open-ended prompt) ────────────────────
 // Uses the new `video: { type: "asset_id", asset_id }` form. The legacy
 // `video_id` parameter is deprecated and worked only with pegasus1.2 — and the

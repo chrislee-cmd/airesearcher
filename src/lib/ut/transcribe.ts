@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { scribeTranscribe } from '@/lib/transcripts/scribe';
+import { buildTurnsMs } from '@/lib/transcripts/elevenlabs';
 
 export type UtTranscribeResult =
   | { ok: true; transcript: string }
@@ -78,9 +79,19 @@ export async function transcribeUtSession(
     return { ok: false, error: outcome.error, status: outcome.status };
   }
 
+  // Persist word/turn timestamps alongside the plain transcript (626 gap): the
+  // clip pipeline snaps moment boundaries to these turn edges. Empty array when
+  // Scribe returned text only — the clip pipeline then falls back to time-only
+  // windows. Never fail transcription over this (best-effort column).
+  const turns = buildTurnsMs({ words: outcome.words });
   await admin
     .from('ut_sessions')
-    .update({ transcript: outcome.transcript, status: 'done', meta: withContext })
+    .update({
+      transcript: outcome.transcript,
+      transcript_words: turns.length > 0 ? turns : null,
+      status: 'done',
+      meta: withContext,
+    })
     .eq('id', sessionId);
   return { ok: true, transcript: outcome.transcript };
 }

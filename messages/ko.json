@@ -143,6 +143,33 @@
       "transcript": "📄 전사 텍스트",
       "transcriptTitle": "전사 텍스트 다운로드"
     },
+    "insight": {
+      "title": "인사이트 클립",
+      "description": "녹화에서 의미 있는 순간을 자동으로 잘라 분석하고 세션 인사이트 리포트를 만들어요. 트웰브랩스 영상 분석을 사용하며 몇 분 걸릴 수 있어요.",
+      "generate": "인사이트 클립 생성",
+      "regenerate": "다시 생성",
+      "statusIndexing": "영상을 인덱싱하는 중이에요… (몇 분 걸릴 수 있어요)",
+      "statusSearching": "의미 있는 순간을 찾아 클립을 자르는 중이에요…",
+      "statusAnalyzing": "클립을 분석하는 중이에요… ({done}/{total})",
+      "statusReporting": "세션 인사이트 리포트를 정리하는 중이에요…",
+      "error": "인사이트 클립을 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
+      "clipsTitle": "클립 {count}개",
+      "clipUntitled": "관심 순간",
+      "reportTitle": "세션 인사이트 리포트",
+      "overview": "개요",
+      "outcome": "과제 성공/이탈",
+      "themes": "핵심 테마",
+      "frictions": "상위 마찰",
+      "quotes": "주목 인용",
+      "play": "▶ 클립 재생",
+      "playLoading": "불러오는 중…",
+      "noMedia": "클립 영상이 없어요 (텍스트 분석만).",
+      "severity": {
+        "low": "낮음",
+        "medium": "보통",
+        "high": "높음"
+      }
+    },
     "error": {
       "transcribe": "전사에 실패했어요. 화면녹화·오디오는 다운로드할 수 있어요.",
       "upload": "업로드에 실패했어요. 잠시 후 다시 시도해 주세요.",

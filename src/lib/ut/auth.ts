@@ -8,6 +8,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import type { TranscriptTurn } from '@/lib/transcripts/elevenlabs';
 
 export type UtSessionRow = {
   id: string;
@@ -35,6 +36,15 @@ export type UtSessionRow = {
   livekit_room: string | null;
   participant_joined_at: string | null;
   session_kind: string;
+  // Insight-clips pipeline (card 626, migration 20260719033833_ut_insight_clips).
+  // All NULL until the researcher triggers clip generation.
+  transcript_words: TranscriptTurn[] | null;
+  tl_asset_id: string | null;
+  tl_indexed_asset_id: string | null;
+  tl_index_id: string | null;
+  insight_status: string | null; // indexing | searching | analyzing | reporting | done | error
+  insight_error: string | null;
+  insight_summary: Record<string, unknown> | null;
 };
 
 export type UtAccess =
