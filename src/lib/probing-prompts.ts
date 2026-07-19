@@ -457,7 +457,10 @@ export function buildProbingPersonaSystem(
   // stateful=true 면 사용자 프롬프트에 "## 기존 패널" 블록이 딸려 오며, 아래
   // 비교 지시문(refine/contradict/none + 보수적 모순 분류)을 system 에 주입한다.
   // false(첫 tick, prior 없음)면 옛 무상태 프롬프트 그대로 — backward compat.
-  opts?: { stateful?: boolean },
+  // dualSpeaker=true 면 transcript 라인이 [진행자]/[응답자] 로 화자 태깅돼 있어
+  // 응답자 발화만 페르소나 신호로 채굴하는 지시문을 주입한다(진행자 질문
+  // 오귀속 방지 — pr-probing-mic-plus-tab-dual-capture). false 면 옛 무태깅 동작.
+  opts?: { stateful?: boolean; dualSpeaker?: boolean },
 ): string {
   const label = outputLangLabel(outputLang);
   const langSection = label
@@ -516,6 +519,21 @@ export function buildProbingPersonaSystem(
 - 기존 "SNS 를 자주 본다" → 새 "특히 인스타를 아침에 본다" = **refine** (같은 방향 구체화).
 - 기존 "차분한 성격" → 새 "결정은 빠르게 내린다" = **refine** (다른 측면, 충돌 아님).`
     : '';
+  // 화자분리(both 병렬 캡처) 전용 — transcript 라인이 [진행자]/[응답자] 로 태깅.
+  // 페르소나는 응답자(인터뷰 대상자)를 그리는 것이므로 진행자(인터뷰어) 발화를
+  // 페르소나 신호로 채굴하면 안 된다(진행자 질문이 응답자 특성으로 오귀속되면
+  // 데이터 신뢰성이 붕괴). 진행자 발화는 문맥(무엇을 물었는가)으로만 쓴다.
+  const speakerBlock = opts?.dualSpeaker
+    ? `
+
+## ⚠️ 화자분리 — 페르소나는 [응답자] 발화만 (가장 중요한 정확도 룰)
+transcript 의 각 라인은 화자 태그로 시작합니다:
+- **[응답자]** — 인터뷰 대상자(피면접자)의 발화. **페르소나 신호의 유일한 소스.** 모든 summary / signals 는 오직 이 발화에서만 도출하세요.
+- **[진행자]** — 인터뷰어(질문자)의 발화. **페르소나 신호로 절대 채굴 금지.** 진행자가 던진 질문·유도·예시·의견은 응답자의 특성이 아닙니다. 진행자 발화는 오직 **문맥**(응답자가 무엇에 답하고 있는지)으로만 참고하세요.
+- 태그 없는 라인이 있으면 응답자 발화로 간주합니다(안전한 기본값).
+- 예: \`[진행자] 가격이 중요하세요?\` → \`[응답자] 아니요, 저는 품질을 더 봐요.\` 에서 페르소나 신호는 **"품질 우선"(응답자)** 뿐입니다. "가격 중시"는 진행자의 질문 프레임이므로 신호가 아닙니다.
+- quote 를 넣을 때도 **[응답자] 라인에서만** 인용하세요. 태그([진행자]/[응답자])는 quote 에 포함하지 마세요.`
+    : '';
   // 출력 모양 설명에 붙는 stateful 전용 필드 안내.
   const outputShapeExtra = opts?.stateful
     ? `
@@ -529,7 +547,7 @@ export function buildProbingPersonaSystem(
 - **응답자 1인칭 관점** — 일반 사용자 / 시장 일반론이 아니라 **이 응답자** 가 보이는 신호만.
 - **닫힌 결론 금지** — 인터뷰어가 다음 질문으로 검증할 수 있는 **가설** 로 표현 ("X 일 가능성", "X 를 중시할 수도").
 - **빈약 섹션 = insufficient** — transcript 에 그 섹션의 신호가 없으면 confidence='insufficient' + summary 비움 + signals 빈 배열. 빈 칸을 일반론으로 채우지 마세요.
-- **모든 ${n} 섹션을 반드시 출력** — insufficient 라도 객체는 채워야 합니다 (스키마 강제). 출력 JSON 의 각 섹션 key 는 위 목록의 key (${keyList}) 와 **정확히 일치**해야 합니다.
+- **모든 ${n} 섹션을 반드시 출력** — insufficient 라도 객체는 채워야 합니다 (스키마 강제). 출력 JSON 의 각 섹션 key 는 위 목록의 key (${keyList}) 와 **정확히 일치**해야 합니다.${speakerBlock}
 
 ## 반드시 응답에 포함할 key 목록 (누락 절대 금지)
 ${keyListComma}

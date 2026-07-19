@@ -135,7 +135,7 @@
   "src/lib/interviews-docx.ts": 10,
   "src/lib/llm/sanitize.ts": 2,
   "src/lib/probing-persona-docx.ts": 31,
-  "src/lib/probing-prompts.ts": 91,
+  "src/lib/probing-prompts.ts": 93,
   "src/lib/qa-tags.ts": 9,
   "src/lib/quant/crosstab.ts": 6,
   "src/lib/recruiting-email-schema.ts": 6,

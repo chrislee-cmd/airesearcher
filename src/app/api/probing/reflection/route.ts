@@ -37,6 +37,11 @@ const Body = z.object({
   // PR (probing-output-lang-select): 분석 출력 언어. 미전달 시 transcript
   // 주 언어 자동 추론 (옛 동작). 전달 시 그 언어로 강제.
   output_lang: z.enum(PROBING_OUTPUT_LANGS).optional(),
+  // PR (pr-probing-mic-plus-tab-dual-capture): 화자분리(both 병렬 캡처) 여부.
+  // true 면 transcript_window 라인이 [진행자]/[응답자] 로 태깅돼 있어, 응답자
+  // 발화만 페르소나 신호로 채굴하는 지시문을 켠다(진행자 질문 오귀속 방지).
+  // 미전달/false 면 옛 무태깅 동작 100% — 단일 모드 후방호환.
+  dual_speaker: z.boolean().optional(),
   // PR (probing-persona-dynamic-sections): 사용자 정의 커스텀 섹션. 기본 8
   // 섹션 뒤에 append 되어 persona LLM 이 함께 채운다. 미전달 시 기본 8만
   // (옛 동작). key 는 기본 8 key 와 충돌하지 않도록 클라이언트 책임 —
@@ -194,6 +199,7 @@ ${filledPrior
     schema: buildProbingPersonaSchema(sections),
     system: buildProbingPersonaSystem(sections, parsed.data.output_lang, {
       stateful: hasPrior,
+      dualSpeaker: parsed.data.dual_speaker === true,
     }),
     prompt: `${guideBlock}${priorBlock}## Transcript (누적)
 ${transcriptSan.wrapped}
