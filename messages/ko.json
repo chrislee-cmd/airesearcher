@@ -896,6 +896,29 @@
       "cost": "1크레딧"
     },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "프로젝트",
+        "step1Title": "작업중인 프로젝트를 선택해주세요",
+        "step1Selected": "선택 완료",
+        "step2Short": "전사 방식",
+        "step2Title": "전사 방식을 선택해주세요",
+        "step3Short": "분석 언어",
+        "step3Title": "어떤 언어로 분석을 원하시나요?",
+        "step3Field": "원본 오디오 언어",
+        "step4Short": "오디오",
+        "step4Title": "전사할 오디오를 업로드하거나 녹음하세요",
+        "orDivider": "또는",
+        "change": "변경"
+      },
+      "method": {
+        "sectionLabel": "전사 방식",
+        "groupAria": "전사 방식 선택",
+        "micTitle": "정성 인터뷰 전사",
+        "micSub": "1:1 심층 · 화자 분리",
+        "minutesTitle": "회의록 전사",
+        "minutesSub": "다자 발화 · 요약"
+      },
       "transcribingEta": "{elapsed} 경과 · 약 {remain} 남음 (추정)",
       "languageConfirm": {
         "title": "이 언어로 전사할까요?",
