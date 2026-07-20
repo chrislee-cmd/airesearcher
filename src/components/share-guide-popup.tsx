@@ -46,11 +46,14 @@ function suppressShareGuide() {
   }
 }
 
-// 스크린샷 애셋(디자인 가드 예외 = 이미지). Zoom 기준 — 프로토 애셋 이관 전까지
-// 각 스텝을 도식화한 일러스트 placeholder.
+// 스크린샷 애셋(디자인 가드 예외 = 이미지). 실물 캡처 —
+//   STEP 1 = Zoom "Join meeting" 화면의 "Join from browser" 버튼(앱 대신 브라우저 참가)
+//   STEP 2 = Chrome 화면공유 선택창의 "시스템 오디오도 공유" 토글 ON
+// 비율이 스텝마다 달라(1.22:1 / 1:1) width/height 를 실제 픽셀로 동반 —
+// h-auto w-full 스케일 시 CLS(레이아웃 점프) 방지.
 const STEP_ASSET = {
-  1: '/share-guide/zoom-browser-join.svg',
-  2: '/share-guide/share-audio-on3.svg',
+  1: { src: '/share-guide/zoom-browser-join.png', width: 1210, height: 988 },
+  2: { src: '/share-guide/share-system-audio.png', width: 596, height: 590 },
 } as const;
 
 export function ShareGuidePopup({
@@ -146,10 +149,10 @@ export function ShareGuidePopup({
         {/* 스크린샷 프레임 (이미지 애셋) */}
         <div className="overflow-hidden rounded-sm border-2 border-ink">
           <Image
-            src={STEP_ASSET[step]}
+            src={STEP_ASSET[step].src}
             alt={t(`${s}.imgAlt`)}
-            width={640}
-            height={400}
+            width={STEP_ASSET[step].width}
+            height={STEP_ASSET[step].height}
             className="h-auto w-full"
             unoptimized
           />
