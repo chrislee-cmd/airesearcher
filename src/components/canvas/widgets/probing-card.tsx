@@ -62,6 +62,7 @@ import {
   ProbingControlPanel,
   type SourceKind,
 } from './probing/control-board';
+import { ProbingSetupAccordion } from './probing/setup-accordion';
 import { CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
 import { useProbingPersonaConfig } from './probing/use-probing-persona-config';
 import { useProjectSelection } from '@/components/project-selection-provider';
@@ -342,6 +343,10 @@ function ExpandedBody() {
   // (아래 startDisabled 게이트). 선택 후에만 실제 값이 start payload 로 발화.
   const [source, setSource] = useState<SourceKind | ''>('');
 
+  // STEP4 질문 입력 draft (결정②) — 아직 추가 안 한 타이핑 중 텍스트. 커밋된
+  // 질문 리스트는 context.injected_questions (DB 영속).
+  const [questionDraft, setQuestionDraft] = useState('');
+
   // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
   // (영속화 X). 기본 미선택('') — 게이트로 선택 강제. think / reflection 자동
   // 호출은 useCallback 안에서 ref 로 최신 값을 읽는다 (deps 재생성 회피).
@@ -439,6 +444,7 @@ function ExpandedBody() {
   const [context, setContext] = useState<ResearchContext>({
     research_goal: '',
     key_research_question: '',
+    injected_questions: [],
   });
   const [contextHydrated, setContextHydrated] = useState(false);
   // probing_sessions.id — 공유 링크(#477) resource_id(probing_persona). 컨텍스트가
@@ -463,6 +469,7 @@ function ExpandedBody() {
             id?: string | null;
             research_goal?: string;
             key_research_question?: string;
+            injected_questions?: string[] | null;
           };
         };
         if (cancelled) return;
@@ -472,6 +479,7 @@ function ExpandedBody() {
           setContext({
             research_goal: j.row.research_goal ?? '',
             key_research_question: j.row.key_research_question ?? '',
+            injected_questions: j.row.injected_questions ?? [],
           });
         }
       } catch {
@@ -498,6 +506,7 @@ function ExpandedBody() {
               research_goal: contextRef.current.research_goal,
               key_research_question:
                 contextRef.current.key_research_question,
+              injected_questions: contextRef.current.injected_questions,
             }),
           });
           // 저장 직후 probing_sessions.id 확보 — 공유 버튼(#477) 활성화용.
@@ -2134,13 +2143,33 @@ function ExpandedBody() {
             />
           );
 
-          // idle — 컨트롤만. (사고흐름/기록 본문은 라이브에서만 의미.)
-          // 컨트롤보드 layout = ControlBoardPanel SSOT (px-4 → px-5 정합 포함).
-          // gap="field" — 슬롯 간 세로 리듬을 cluster gap 이 소유(옛 손코딩 gap-5
-          // 제거, translate/quotes 와 동일 field 리듬으로 통일).
+          // idle — 유스케이스 4-스텝 아코디언 (V2 세팅 PR-B). 옛 평면 컨트롤
+          // 리스트(ProbingControlPanel)를 대체하되, ControlBoardPanel 프레임은
+          // 유지 (.Region = 규격 프레임 + 콘텐츠 자유 — 아코디언 내부 레이아웃은
+          // 위젯 자유). live/전체보기 표면은 아래 분기로 그대로(회귀 0).
           if (!isLive && !isCurrent) {
             return (
-              <ControlBoardPanel gap="field">{controlPanel}</ControlBoardPanel>
+              <ControlBoardPanel gap="none">
+                <ControlBoardPanel.Region>
+                  <ProbingSetupAccordion
+                    projectId={selectedProjectId}
+                    onProjectChange={(id) => setSelection('probing', id)}
+                    source={source}
+                    onSourceChange={setSource}
+                    outputLang={outputLang}
+                    onOutputLangChange={setOutputLang}
+                    questions={context.injected_questions}
+                    onQuestionsChange={(next) =>
+                      setContext((prev) => ({
+                        ...prev,
+                        injected_questions: next,
+                      }))
+                    }
+                    questionDraft={questionDraft}
+                    onQuestionDraftChange={setQuestionDraft}
+                  />
+                </ControlBoardPanel.Region>
+              </ControlBoardPanel>
             );
           }
 
@@ -2263,6 +2292,12 @@ function ExpandedBody() {
             label={t('card.startSession')}
             disabled={startDisabled}
             onClick={handleStartSession}
+            // 아코디언 푸터 좌측 상태 라벨 (프로토 D10). ready = 소스+언어 선택 완료.
+            statusLabel={
+              !source || !outputLang
+                ? t('setup.readyPending')
+                : t('setup.readyGo')
+            }
           />
         )}
       </div>

@@ -10,6 +10,10 @@ type Props = {
   onClick: () => void;
   busyLabel?: string; // 기본 = label 유지
   icon?: ReactNode; // 기본 = 🚀
+  // 좌측 상태 라벨 (아코디언 푸터 readyLabel — "준비 완료 · 시작할 수 있어요" 등).
+  // 넘기면 액션 바가 justify-between 으로 좌 상태 + 우 CTA. 미전달이면 우측 CTA 만
+  // (기존 6 위젯 동작 불변).
+  statusLabel?: ReactNode;
 };
 
 // 6 위젯 주 CTA SSOT — 바디 최하단 고정 액션 바(레이아웃 행) + 🚀 pill ChromeButton.
@@ -24,9 +28,17 @@ export function WidgetPrimaryCta({
   onClick,
   busyLabel,
   icon = '🚀',
+  statusLabel,
 }: Props) {
   return (
-    <div className="flex shrink-0 justify-end border-t border-line-soft px-5 py-3">
+    <div
+      className={`flex shrink-0 items-center border-t border-line-soft px-5 py-3 ${
+        statusLabel != null ? 'justify-between gap-3' : 'justify-end'
+      }`}
+    >
+      {statusLabel != null && (
+        <span className="min-w-0 truncate text-xs text-mute">{statusLabel}</span>
+      )}
       <ChromeButton
         variant="primary"
         size="lg"

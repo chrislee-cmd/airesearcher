@@ -1340,6 +1340,23 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "프로젝트",
+      "step1Title": "작업중인 프로젝트를 선택해주세요",
+      "step1Selected": "선택 완료",
+      "step2Short": "인터뷰 방식",
+      "step2Title": "인터뷰 방식을 선택해주세요",
+      "step3Short": "통역 언어",
+      "step3Title": "통역 언어를 설정해주세요",
+      "step4Short": "특수 키워드",
+      "step4Title": "특수 키워드 / 고유 명사가 있으면 추가해주세요",
+      "glossarySummary": "{count}개 키워드 추가됨",
+      "change": "변경",
+      "optional": "(선택)",
+      "readyPending": "통역 언어까지 설정해주세요",
+      "readyGo": "준비 완료 · 통역을 시작할 수 있어요"
+    },
     "sourceLang": "원어",
     "targetLang": "번역 언어",
     "project": "프로젝트",
@@ -2290,6 +2307,27 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "프로젝트",
+      "step1Title": "작업중인 프로젝트를 선택해주세요",
+      "step1Selected": "선택 완료",
+      "step2Short": "인터뷰 방식",
+      "step2Title": "인터뷰 방식을 선택해주세요",
+      "step3Short": "분석 언어",
+      "step3Title": "어떤 언어로 분석을 원하시나요?",
+      "step4Short": "질문",
+      "step4Title": "반드시 확인하고 싶은 질문을 주입해주세요",
+      "questionPlaceholder": "꼭 물어볼 질문을 입력하고 Enter",
+      "questionAdd": "추가",
+      "questionRemove": "질문 삭제",
+      "questionEmpty": "아직 주입된 질문이 없습니다",
+      "questionSummary": "{count}개 질문 주입됨",
+      "change": "변경",
+      "optional": "(선택)",
+      "readyPending": "입력 소스와 언어를 선택해주세요",
+      "readyGo": "준비 완료 · 시작할 수 있어요"
+    },
     "card": {
       "recordingNoAudioTab": "오디오가 캡처되지 않았어요. 탭 공유 세션이라면 \"탭 오디오 공유\"를 켰는지 확인해 주세요.",
       "recordingUnsupported": "이 브라우저는 세션 녹음을 지원하지 않아요.",

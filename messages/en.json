@@ -1340,6 +1340,23 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step2Short": "Interview method",
+      "step2Title": "Choose your interview method",
+      "step3Short": "Languages",
+      "step3Title": "Set your interpretation languages",
+      "step4Short": "Custom terms",
+      "step4Title": "Add any special keywords or proper nouns",
+      "glossarySummary": "{count} term(s) added",
+      "change": "Change",
+      "optional": "(optional)",
+      "readyPending": "Set the interpretation languages",
+      "readyGo": "Ready · You can start interpreting"
+    },
     "sourceLang": "Source",
     "targetLang": "Target",
     "project": "Project",
@@ -2290,6 +2307,27 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step2Short": "Interview method",
+      "step2Title": "Choose your interview method",
+      "step3Short": "Analysis language",
+      "step3Title": "Which language would you like the analysis in?",
+      "step4Short": "Questions",
+      "step4Title": "Inject questions you must cover",
+      "questionPlaceholder": "Type a must-ask question and press Enter",
+      "questionAdd": "Add",
+      "questionRemove": "Remove question",
+      "questionEmpty": "No questions injected yet",
+      "questionSummary": "{count} question(s) injected",
+      "change": "Change",
+      "optional": "(optional)",
+      "readyPending": "Select an input source and language",
+      "readyGo": "Ready · You can start"
+    },
     "card": {
       "recordingNoAudioTab": "Audio wasn't captured. If this was a tab-share session, check that \"Share tab audio\" was on.",
       "recordingUnsupported": "This browser doesn't support session recording.",
