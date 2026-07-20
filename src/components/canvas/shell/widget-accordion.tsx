@@ -173,7 +173,12 @@ function AccordionStep({
       <button
         type="button"
         onClick={onOpen}
-        className="relative flex items-center gap-3 text-left"
+        // data-canvas-action: globals.css `[data-canvas-body] button` 캐스케이드
+        // (2.5px ink 보더 + 하드 그림자 + radius 박스) 를 opt-out. 이게 없으면
+        // 완료 스텝이 프로토(R6/D6)의 보더없는 요약행이 아니라 꽉 찬 박스로
+        // 렌더돼 좌측 타임라인 레일이 끊긴다.
+        data-canvas-action
+        className="relative flex w-full items-center gap-3 text-left"
       >
         <span className="relative z-10">{node}</span>
         {complete ? (
