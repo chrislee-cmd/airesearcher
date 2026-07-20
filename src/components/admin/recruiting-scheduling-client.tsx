@@ -18,7 +18,7 @@ export type SchedBatch = {
 // participant link; the PR1 list never renders it.
 export type SchedCandidate = {
   id: string;
-  email: string;
+  email: string | null;
   name: string | null;
   phone: string | null;
   fields: Record<string, string>;
@@ -91,7 +91,6 @@ export function RecruitingSchedulingClient({
       );
       const json = (await res.json().catch(() => ({}))) as {
         upserted?: number;
-        skippedNoEmail?: number;
         error?: string;
       };
       if (!res.ok) {
@@ -100,13 +99,7 @@ export function RecruitingSchedulingClient({
         );
         return;
       }
-      const count = json.upserted ?? 0;
-      const skipped = json.skippedNoEmail ?? 0;
-      setMessage(
-        skipped > 0
-          ? t('uploadedWithSkip', { count, skipped })
-          : t('uploaded', { count }),
-      );
+      setMessage(t('uploaded', { count: json.upserted ?? 0 }));
       router.refresh();
     } finally {
       setUploading(false);
@@ -201,7 +194,7 @@ export function RecruitingSchedulingClient({
                 ) : (
                   candidates.map((c) => (
                     <tr key={c.id} className="border-b border-line-soft">
-                      <td className="px-3 py-2 text-ink">{c.email}</td>
+                      <td className="px-3 py-2 text-ink">{c.email ?? '—'}</td>
                       <td className="px-3 py-2 text-ink">{c.name ?? '—'}</td>
                       <td className="px-3 py-2 text-ink">{c.phone ?? '—'}</td>
                       {fieldColumns.map((col) => (

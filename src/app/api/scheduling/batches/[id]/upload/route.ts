@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
-import { parseCandidateFile } from '@/lib/scheduling/candidates-parse';
+import {
+  parseCandidateFile,
+  candidateIdentity,
+  type ParsedCandidate,
+} from '@/lib/scheduling/candidates-parse';
 
 // Bulk-upload candidates into a batch from a CSV or XLSX file (super-admin
-// only; non-admins get 404). Candidates are merged by email — the
-// unique(batch_id,email) constraint plus an upsert means re-uploading the same
-// sheet updates existing rows in place instead of creating duplicates.
-// participant_token is intentionally omitted from the upsert payload so the DB
-// default mints it once on insert and existing rows keep their token.
+// only; non-admins get 404). email is optional — candidates merge by
+// best-available identity (email > phone > name); anonymous rows are appended.
+// Merge is done in code: each parsed row resolves to an UPDATE (carries the
+// matching existing row's id) or an INSERT (omits id). A single upsert on the
+// `id` primary key applies both. participant_token is omitted from the payload
+// so the DB default mints it once on insert and existing rows keep their token.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -60,30 +65,53 @@ export async function POST(
     return NextResponse.json({ error: 'parse_failed' }, { status: 400 });
   }
   if (parsed.candidates.length === 0) {
-    return NextResponse.json(
-      { error: 'no_candidates', skippedNoEmail: parsed.skippedNoEmail },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
   }
 
-  const rows = parsed.candidates.map((c) => ({
-    batch_id: batchId,
-    email: c.email,
-    name: c.name,
-    phone: c.phone,
-    fields: c.fields,
-  }));
+  // Existing rows in this batch, keyed by identity, so a re-upload updates in
+  // place instead of duplicating (only where an identity exists).
+  const { data: existingRows } = await admin
+    .from('sched_candidates')
+    .select('id, email, name, phone, fields')
+    .eq('batch_id', batchId);
+  const existingByIdentity = new Map<string, { id: string; fields: Record<string, string> }>();
+  for (const r of existingRows ?? []) {
+    const key = candidateIdentity(r as ParsedCandidate);
+    if (key != null) {
+      existingByIdentity.set(key, {
+        id: r.id,
+        fields: (r.fields ?? {}) as Record<string, string>,
+      });
+    }
+  }
+
+  const payload = parsed.candidates.map((c) => {
+    const key = candidateIdentity(c);
+    const match = key != null ? existingByIdentity.get(key) : undefined;
+    const base = {
+      batch_id: batchId,
+      email: c.email,
+      name: c.name,
+      phone: c.phone,
+      // Union fields with the existing row so a partial re-upload never drops
+      // columns captured in an earlier upload.
+      fields: match ? { ...match.fields, ...c.fields } : c.fields,
+    };
+    // Include id only for updates — inserts omit it so the DB default mints a
+    // fresh uuid (and participant_token).
+    return match ? { id: match.id, ...base } : base;
+  });
 
   const { data, error } = await admin
     .from('sched_candidates')
-    .upsert(rows, { onConflict: 'batch_id,email' })
+    .upsert(payload, { onConflict: 'id' })
     .select('id');
   if (error) {
     return NextResponse.json({ error: 'save_failed' }, { status: 500 });
   }
 
   return NextResponse.json(
-    { upserted: data?.length ?? 0, skippedNoEmail: parsed.skippedNoEmail },
+    { upserted: data?.length ?? 0 },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

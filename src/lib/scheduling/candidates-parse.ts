@@ -3,9 +3,11 @@ import { parseXlsxToRows } from '@/lib/xlsx-parse';
 
 // Parse a candidate upload (CSV or XLSX) into normalized rows. email/name/phone
 // are mapped off a multi-locale header alias table (mirrors scheduler/csv.ts);
-// every other column is preserved verbatim under `fields` so nothing the
-// uploader put in the sheet is lost. Rows without an email are dropped — email
-// is the upsert key (unique(batch_id,email)) and the column is NOT NULL.
+// every other column is preserved verbatim under `fields`.
+//
+// email is OPTIONAL (product decision 2026-07-21) — phone-only, name-only, or
+// even fully anonymous rows are kept. Merge/dedup happens by best-available
+// identity (email > phone > name); rows with no identity are always distinct.
 
 // The non-ASCII entries below are header-matching TOKENS for uploaded
 // spreadsheets (a Korean sheet may label the column "이메일"), not UI copy —
@@ -34,7 +36,7 @@ const PHONE_KEYS = [
 ];
 
 export type ParsedCandidate = {
-  email: string;
+  email: string | null;
   name: string | null;
   phone: string | null;
   fields: Record<string, string>;
@@ -43,7 +45,6 @@ export type ParsedCandidate = {
 export type ParseCandidatesResult = {
   candidates: ParsedCandidate[];
   headers: string[];
-  skippedNoEmail: number;
 };
 
 function normalize(s: string): string {
@@ -87,6 +88,17 @@ function toStr(v: unknown): string {
   return typeof v === 'string' ? v : String(v);
 }
 
+// Best-available identity for merge/dedup. null = anonymous (never merges).
+export function candidateIdentity(c: ParsedCandidate): string | null {
+  if (c.email) return `e:${c.email.trim().toLowerCase()}`;
+  if (c.phone) {
+    const digits = c.phone.replace(/\D/g, '');
+    if (digits) return `p:${digits}`;
+  }
+  if (c.name) return `n:${c.name.trim().toLowerCase()}`;
+  return null;
+}
+
 export async function parseCandidateFile(file: File): Promise<ParseCandidatesResult> {
   const buf = await file.arrayBuffer();
   const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
@@ -94,52 +106,52 @@ export async function parseCandidateFile(file: File): Promise<ParseCandidatesRes
     ? parseCsvString(decodeCsvBuffer(buf))
     : await parseXlsxToRows(buf);
 
-  if (rows.length === 0) return { candidates: [], headers: [], skippedNoEmail: 0 };
+  if (rows.length === 0) return { candidates: [], headers: [] };
 
   const emailKey = findKey(headers, EMAIL_KEYS);
   const nameKey = findKey(headers, NAME_KEYS);
   const phoneKey = findKey(headers, PHONE_KEYS);
   const reserved = new Set([emailKey, nameKey, phoneKey].filter(Boolean) as string[]);
 
-  const candidates: ParsedCandidate[] = [];
-  let skippedNoEmail = 0;
-
+  const parsed: ParsedCandidate[] = [];
   for (const row of rows) {
-    const email = emailKey ? toStr(row[emailKey]).trim().toLowerCase() : '';
-    if (!email) {
-      skippedNoEmail++;
-      continue;
-    }
     const fields: Record<string, string> = {};
     for (const h of headers) {
       if (reserved.has(h)) continue;
       const s = toStr(row[h]).trim();
       if (s !== '') fields[h] = s;
     }
-    candidates.push({
-      email,
+    parsed.push({
+      email: emailKey ? toStr(row[emailKey]).trim().toLowerCase() || null : null,
       name: nameKey ? toStr(row[nameKey]).trim() || null : null,
       phone: phoneKey ? toStr(row[phoneKey]).trim() || null : null,
       fields,
     });
   }
 
-  // De-dupe within a single file by email (last row wins, fields merged) so the
-  // DB upsert never sees two rows with the same (batch_id,email) in one call.
-  const byEmail = new Map<string, ParsedCandidate>();
-  for (const c of candidates) {
-    const prev = byEmail.get(c.email);
+  // Merge within a single file by identity (last row wins on scalars, fields
+  // union) so the DB upsert never sees two rows sharing one identity in one
+  // call. Anonymous rows (no identity) are kept distinct.
+  const byIdentity = new Map<string, ParsedCandidate>();
+  const anonymous: ParsedCandidate[] = [];
+  for (const c of parsed) {
+    const key = candidateIdentity(c);
+    if (key == null) {
+      anonymous.push(c);
+      continue;
+    }
+    const prev = byIdentity.get(key);
     if (prev) {
-      byEmail.set(c.email, {
-        email: c.email,
+      byIdentity.set(key, {
+        email: c.email ?? prev.email,
         name: c.name ?? prev.name,
         phone: c.phone ?? prev.phone,
         fields: { ...prev.fields, ...c.fields },
       });
     } else {
-      byEmail.set(c.email, c);
+      byIdentity.set(key, c);
     }
   }
 
-  return { candidates: [...byEmail.values()], headers, skippedNoEmail };
+  return { candidates: [...byIdentity.values(), ...anonymous], headers };
 }
