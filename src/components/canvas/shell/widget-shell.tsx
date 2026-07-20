@@ -19,6 +19,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
@@ -35,6 +36,7 @@ import {
 } from './widget-state-context';
 import { WidgetStatePill, widgetStatePillLabel } from './widget-state-pill';
 import { WidgetCreditBadge } from './widget-credit-badge';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import {
   useCreditDeductionEvent,
   type CreditDeductionEvent,
@@ -174,14 +176,22 @@ function ToolbarStatusSegment() {
 }
 
 // 통합 툴바 pill — chrome(1.5px ink border · radius 10 · memphis-sm · bg-paper).
+// 세그 순서(좌→우 고정): 💎 크레딧 │ ● 상태 │ 🎨 색상 변경 │ ⤢ 풀뷰.
+// 🎨 = 기존 WidgetHeaderColorPicker 재배치 (신규 구현 아님) — 645 툴바 재작성
+// 때 cardFrame 에서 빠진 색상 커스텀을 position #3 에 복원. 팔레트 글리프는
+// 듀오톤(fill var(--widget-tone))이라 현재 헤더 톤으로 채워져 상태를 표시.
 function WidgetToolbar({
   cost,
   costLabel,
+  headerColor,
+  onHeaderColorChange,
   onFullview,
   fullviewLabel,
 }: {
   cost: number | undefined;
   costLabel: string | undefined;
+  headerColor: string | null;
+  onHeaderColorChange: (color: string | null) => void;
   onFullview?: () => void;
   fullviewLabel: string;
 }) {
@@ -202,12 +212,18 @@ function WidgetToolbar({
           className="inline-flex items-center gap-1 font-bold tabular-nums"
           style={{ padding: '6px 10px', fontSize: 11, color: 'var(--canvas-card-header-text)' }}
         >
-          <span aria-hidden>💎</span>
+          <DuotoneIcon name="diamond" size={14} />
           <span>{costLabel ?? cost}</span>
         </span>
       )}
       {hasCredit && <ToolbarDivider />}
       <ToolbarStatusSegment />
+      <ToolbarDivider />
+      <WidgetHeaderColorPicker
+        value={headerColor}
+        onChange={onHeaderColorChange}
+        variant="segment"
+      />
       {onFullview && (
         <>
           <ToolbarDivider />
@@ -219,7 +235,7 @@ function WidgetToolbar({
             className="inline-flex items-center justify-center"
             style={{ padding: '6px 10px', color: 'var(--canvas-card-header-text)' }}
           >
-            <FullviewIcon className="h-4 w-4" />
+            <DuotoneIcon name="fullview" size={16} />
           </button>
         </>
       )}
@@ -296,7 +312,15 @@ function WidgetShellInner({
           border: '3px solid var(--canvas-card-border)',
           borderRadius: 'var(--widget-card-frame-radius)',
           boxShadow: 'var(--shadow-memphis-md)',
-        }}
+          // ── 헤더↔아이콘 톤 매칭 단일 소스 (R7/D1) ────────────────────────
+          // 해상된 헤더 톤을 CSS 변수 하나로 카드 하위 전체에 노출한다:
+          //   유저 per-widget 색(headerColor) > accent 파스텔 > 전역 default.
+          // 헤더밴드 bg · DuotoneIcon fill · 팔레트글리프 fill 이 모두 이 var 를
+          // 읽어 → 🎨 로 색을 바꾸면 헤더+카드내 아이콘+🎨 글리프가 동시 리틴트.
+          '--widget-tone':
+            headerColor ??
+            `var(--widget-header-bg-${content.meta.accent}, var(--canvas-card-header-bg))`,
+        } as CSSProperties}
       >
         {/* 헤더밴드 — 파스텔(accent) bg · 2px ink bottom border · Outfit 800 29px
             타이틀 + 통합 툴바. 헤더 영역 = drag handle. */}
@@ -306,7 +330,9 @@ function WidgetShellInner({
           }`}
           {...dragHandleProps}
           style={{
-            background: `var(--widget-header-bg-${content.meta.accent}, var(--canvas-card-header-bg))`,
+            // 헤더밴드 bg = var(--widget-tone) (매칭 불변식 단일 소스). 🎨 변경
+            // 시 아이콘·팔레트글리프와 동시에 리틴트된다.
+            background: 'var(--widget-tone)',
             color: 'var(--canvas-card-header-text)',
             fontFamily: 'var(--font-outfit), var(--font-sans)',
             borderBottom: '2px solid var(--canvas-card-border)',
@@ -328,6 +354,8 @@ function WidgetShellInner({
           <WidgetToolbar
             cost={content.meta.cost}
             costLabel={content.meta.costLabel}
+            headerColor={headerColor}
+            onHeaderColorChange={setHeaderColor}
             onFullview={onFullview}
             fullviewLabel={tWidgets('fullview')}
           />

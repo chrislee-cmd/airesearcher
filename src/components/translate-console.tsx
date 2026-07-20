@@ -47,6 +47,7 @@ import {
   CaptureUseCaseCards,
   type CaptureUseCaseOption,
 } from './ui/capture-usecase-cards';
+import { DuotoneIcon } from './ui/icons/duotone-icon';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import {
@@ -728,7 +729,7 @@ export function TranslateConsole({
   const CAPTURE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
     {
       id: 'mic-only',
-      icon: '🤝',
+      icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
@@ -737,7 +738,7 @@ export function TranslateConsole({
     },
     {
       id: 'both',
-      icon: '💻',
+      icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaTab') }),
@@ -745,7 +746,7 @@ export function TranslateConsole({
     },
     {
       id: 'tab-only',
-      icon: '👀',
+      icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
       hostVia: tc('hostVia', { via: tc('viaTab') }),
       guestVia: tc('guestVia', { via: tc('viaTab') }),
