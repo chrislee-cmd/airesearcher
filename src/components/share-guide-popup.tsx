@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
@@ -51,10 +52,61 @@ function suppressShareGuide() {
 //   STEP 2 = Chrome 화면공유 선택창의 "시스템 오디오도 공유" 토글 ON
 // 비율이 스텝마다 달라(1.22:1 / 1:1) width/height 를 실제 픽셀로 동반 —
 // h-auto w-full 스케일 시 CLS(레이아웃 점프) 방지.
+//
+// ── 주석 오버레이 ──────────────────────────────────────────────────────
+// 실물 스크린샷 자체엔 강조가 없어, 프로토(구 placeholder SVG)가 담던 3요소를
+// CSS 오버레이로 재현한다 — 원본 픽셀 좌표 대비 %(w-full 스케일에 따라감):
+//   ① mark: 옳은 선택(good=success 초록 ✓) / 피할 선택(bad=warning ✕) 박스.
+//   ② blur: 실제 데스크톱 썸네일(코드·영상 등) 프라이버시 가림.
+//   ③ frameLabel/badge: 프레임 라벨 칩 + "시스템 오디오 ON" 필.
+// 좌표는 스크린샷 요소 bbox 를 픽셀 측정해 % 로 환산(fine-tune 은 preview 로).
+// 색은 토큰만 — success(초록)·warning(danger 대체, 기존 경고박스와 동일 관례).
+
+type Region = { left: number; top: number; width: number; height: number };
+type Annotation =
+  | { type: 'blur'; region: Region }
+  | { type: 'mark'; tone: 'good' | 'bad'; region: Region; badge?: boolean };
+
 const STEP_ASSET = {
-  1: { src: '/share-guide/zoom-browser-join.png', width: 1210, height: 988 },
-  2: { src: '/share-guide/share-system-audio.png', width: 596, height: 590 },
+  1: {
+    src: '/share-guide/zoom-browser-join.png',
+    width: 1210,
+    height: 988,
+    frameLabelKey: 'step1.frameLabel',
+    badgeKey: null,
+    annotations: [
+      // "Join from Zoom Workplace app" (파랑) — 앱 참가 = 회피
+      { type: 'mark', tone: 'bad', badge: true, region: { left: 15.5, top: 38.5, width: 68.5, height: 11.5 } },
+      // "Join from browser" (아웃라인) — 권장
+      { type: 'mark', tone: 'good', badge: true, region: { left: 15.5, top: 51.7, width: 68.5, height: 11.3 } },
+    ] as Annotation[],
+  },
+  2: {
+    src: '/share-guide/share-system-audio.png',
+    width: 596,
+    height: 590,
+    frameLabelKey: 'step2.frameLabel',
+    badgeKey: 'step2.badge',
+    annotations: [
+      // 실제 데스크톱 썸네일 그리드 — 프라이버시 블러
+      { type: 'blur', region: { left: 2.5, top: 30.5, width: 95, height: 48 } },
+      // "창" 탭 강조
+      { type: 'mark', tone: 'good', region: { left: 34, top: 18.5, width: 32, height: 11.5 } },
+      // "시스템 오디오도 공유" 토글 행 강조
+      { type: 'mark', tone: 'good', region: { left: 3, top: 79, width: 94, height: 9 } },
+    ] as Annotation[],
+  },
 } as const;
+
+/** Region(%) → 절대배치 스타일. w-full 이미지 위 오버레이라 % 가 곧 이미지 좌표. */
+function regionStyle(r: Region): CSSProperties {
+  return {
+    left: `${r.left}%`,
+    top: `${r.top}%`,
+    width: `${r.width}%`,
+    height: `${r.height}%`,
+  };
+}
 
 export function ShareGuidePopup({
   open,
@@ -93,6 +145,7 @@ export function ShareGuidePopup({
 
   const sub = widget === 'probing' ? t('sub.probing') : t('sub.translate');
   const s = step === 1 ? 'step1' : 'step2';
+  const asset = STEP_ASSET[step];
 
   return (
     <Modal
@@ -146,16 +199,61 @@ export function ShareGuidePopup({
 
         <p className="text-sm leading-snug text-mute-soft">{sub}</p>
 
-        {/* 스크린샷 프레임 (이미지 애셋) */}
-        <div className="overflow-hidden rounded-sm border-2 border-ink">
+        {/* 스크린샷 프레임 (이미지 애셋 + 주석 오버레이) */}
+        <div className="relative overflow-hidden rounded-sm border-2 border-ink">
           <Image
-            src={STEP_ASSET[step].src}
+            src={asset.src}
             alt={t(`${s}.imgAlt`)}
-            width={STEP_ASSET[step].width}
-            height={STEP_ASSET[step].height}
-            className="h-auto w-full"
+            width={asset.width}
+            height={asset.height}
+            className="block h-auto w-full"
             unoptimized
           />
+
+          {asset.annotations.map((a, i) =>
+            a.type === 'blur' ? (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="absolute rounded-2xs backdrop-blur-sm"
+                style={regionStyle(a.region)}
+              />
+            ) : (
+              <div
+                key={i}
+                aria-hidden="true"
+                className={`absolute rounded-2xs border-2 ${
+                  a.tone === 'good' ? 'border-success' : 'border-warning'
+                }`}
+                style={regionStyle(a.region)}
+              >
+                {a.badge ? (
+                  <span
+                    className={`absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border-2 bg-paper text-md font-bold leading-none ${
+                      a.tone === 'good'
+                        ? 'border-success text-success'
+                        : 'border-warning text-warning'
+                    }`}
+                    style={{ right: '-0.75rem' }}
+                  >
+                    {a.tone === 'good' ? '✓' : '✕'}
+                  </span>
+                ) : null}
+              </div>
+            ),
+          )}
+
+          {/* 프레임 라벨 칩 (좌상단) */}
+          <span className="absolute left-2 top-2 rounded-2xs border border-line bg-paper px-1.5 py-0.5 text-xs font-medium text-mute">
+            {t(asset.frameLabelKey)}
+          </span>
+
+          {/* "시스템 오디오 ON" 필 (우상단, STEP2) */}
+          {asset.badgeKey ? (
+            <span className="absolute right-2 top-2 rounded-pill border border-success bg-paper px-2 py-0.5 text-xs font-semibold text-success">
+              {t(asset.badgeKey)}
+            </span>
+          ) : null}
         </div>
 
         <p className="text-sm leading-snug text-mute">{t(`${s}.body`)}</p>

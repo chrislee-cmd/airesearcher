@@ -299,13 +299,16 @@
       "title": "Join the meeting in your browser",
       "body": "When you open the meeting link, choose “Continue in browser” — not the app. Native desktop apps like Zoom or Teams have no tab audio, so voices won't be captured.",
       "warn": "Opening in the native app means audio can't be captured.",
-      "imgAlt": "Prompt to choose the browser instead of the app when joining a meeting"
+      "imgAlt": "Prompt to choose the browser instead of the app when joining a meeting",
+      "frameLabel": "Meeting join screen"
     },
     "step2": {
       "title": "Share system audio · must be ON",
       "body": "In the screen-share window, turn ON the “Also share system audio” toggle at the bottom-left before you start sharing.",
       "warn": "If the toggle is off, audio won't be saved.",
-      "imgAlt": "Prompt to pick the Window tab and turn on the Also share system audio toggle in the screen-share window"
+      "imgAlt": "Prompt to pick the Window tab and turn on the Also share system audio toggle in the screen-share window",
+      "frameLabel": "Screen share dialog",
+      "badge": "System audio ON"
     }
   },
   "Landing": {
