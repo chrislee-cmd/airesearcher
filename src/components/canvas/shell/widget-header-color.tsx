@@ -21,6 +21,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
@@ -87,9 +88,15 @@ const POPOVER_WIDTH = 220;
 export function WidgetHeaderColorPicker({
   value,
   onChange,
+  variant = 'icon',
 }: {
   value: string | null;
   onChange: (color: string | null) => void;
+  // 'icon' = 기존 IconButton 트리거(비-cardFrame 헤더 우측, 회귀 0).
+  // 'segment' = cardFrame 통합 툴바 세그먼트용 bare 버튼 — 컴팩트 pill 안에서
+  //   IconButton 의 memphis chrome 이 이중 보더로 보여 부적합(⤢ 풀뷰 세그와
+  //   동일 사유). 팔레트 글리프는 두 모드 공통(듀오톤 · fill var(--widget-tone)).
+  variant?: 'icon' | 'segment';
 }) {
   const t = useTranslations('Shell');
   const [open, setOpen] = useState(false);
@@ -145,24 +152,42 @@ export function WidgetHeaderColorPicker({
 
   const currentHue = parseHue(value);
 
+  // 트리거 자체가 dnd 핸들 안에 있어 mousedown 이 헤더 drag 를 시작시킬 수
+  // 있음 — stopPropagation 으로 차단 (popover 는 portal 이라 DOM 상 헤더 밖이라
+  // 별도 보호 불필요). 클릭은 팝오버 토글.
+  const onTriggerMouseDown = (e: ReactMouseEvent) => e.stopPropagation();
+  const onTriggerClick = (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    setOpen((o) => !o);
+  };
+
   return (
     <>
-      <IconButton
-        ref={triggerRef}
-        aria-label={t('headerColorSelect')}
-        variant="ghost"
-        size="sm"
-        // 트리거 자체가 dnd 핸들 안에 있어 mousedown 이 헤더 drag 를 시작
-        // 시킬 수 있음 — stopPropagation 으로 차단 (popover 는 portal 이라
-        // DOM 상 헤더 밖이라 별도 보호 불필요).
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((o) => !o);
-        }}
-      >
-        <PaletteGlyph />
-      </IconButton>
+      {variant === 'segment' ? (
+        // eslint-disable-next-line react/forbid-elements -- 통합 툴바 세그 버튼(🎨). ui/ IconButton 의 memphis chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — ⤢ 풀뷰 세그(widget-shell)와 동일한 셸 카드 프레임 정의 지점의 bare 세그 버튼.
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label={t('headerColorSelect')}
+          className="inline-flex items-center justify-center"
+          style={{ padding: '6px 10px', color: 'var(--canvas-card-header-text)' }}
+          onMouseDown={onTriggerMouseDown}
+          onClick={onTriggerClick}
+        >
+          <PaletteGlyph />
+        </button>
+      ) : (
+        <IconButton
+          ref={triggerRef}
+          aria-label={t('headerColorSelect')}
+          variant="ghost"
+          size="sm"
+          onMouseDown={onTriggerMouseDown}
+          onClick={onTriggerClick}
+        >
+          <PaletteGlyph />
+        </IconButton>
+      )}
       {open &&
         pos &&
         typeof document !== 'undefined' &&
@@ -289,6 +314,11 @@ function PickerIndicator({ hue }: { hue: number }) {
   );
 }
 
+// 듀오톤 팔레트 글리프 (R7 토큰화) — stroke ink(currentColor) + 팔레트 몸통
+// fill = var(--widget-tone). cardFrame 툴바에선 현재 헤더 톤으로 채워져
+// "이 색으로 헤더가 칠해져 있다" 는 상태를 시각적으로 표시하고, 🎨 로 색을
+// 바꾸면 헤더·아이콘과 함께 동시 리틴트된다. var 미정의(비-cardFrame) 컨텍스트
+// 에선 transparent 폴백 → 기존 아웃라인 룩 유지(회귀 0). 물감 점은 ink 유지.
 function PaletteGlyph() {
   return (
     <svg
@@ -302,11 +332,14 @@ function PaletteGlyph() {
       strokeLinejoin="round"
       aria-hidden
     >
+      <path
+        d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9z"
+        fill="var(--widget-tone, transparent)"
+      />
       <circle cx="13.5" cy="6.5" r="1" fill="currentColor" />
       <circle cx="17.5" cy="10.5" r="1" fill="currentColor" />
       <circle cx="8.5" cy="7.5" r="1" fill="currentColor" />
       <circle cx="6.5" cy="12.5" r="1" fill="currentColor" />
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9z" />
     </svg>
   );
 }

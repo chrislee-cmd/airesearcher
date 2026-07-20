@@ -31,6 +31,7 @@ import {
   CaptureUseCaseCards,
   type CaptureUseCaseOption,
 } from '@/components/ui/capture-usecase-cards';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useProjectSelection } from '@/components/project-selection-provider';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
@@ -171,7 +172,7 @@ export function ProbingSetupAccordion({
   const SOURCE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
     {
       id: 'mic',
-      icon: '🤝',
+      icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
@@ -179,7 +180,7 @@ export function ProbingSetupAccordion({
     },
     {
       id: 'both',
-      icon: '💻',
+      icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaTab') }),
@@ -187,7 +188,7 @@ export function ProbingSetupAccordion({
     },
     {
       id: 'tab',
-      icon: '👀',
+      icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
       hostVia: tc('hostVia', { via: tc('viaTab') }),
       guestVia: tc('guestVia', { via: tc('viaTab') }),

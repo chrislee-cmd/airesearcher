@@ -24,12 +24,15 @@
    하드코딩 hex/px 없음 (design-system 가드 준수).
    ──────────────────────────────────────────────────────────────────── */
 
+import type { ReactNode } from 'react';
+
 export type CaptureUseCaseOption = {
   // 위젯별 모드값 (예: 'mic' | 'both' | 'tab-only'). 이 컴포넌트는 불투명
   // 문자열로만 취급 — 의미 해석은 호출부 매핑 테이블 책임.
   id: string;
-  // 유스케이스 이모지 (🤝 / 💻 / 👀). 장식이라 aria-hidden.
-  icon: string;
+  // 유스케이스 아이콘 (듀오톤 offline/online/observe). 장식이라 aria-hidden —
+  // 호출부가 DuotoneIcon 노드를 넘긴다(예전 이모지 문자열에서 R7 교체).
+  icon: ReactNode;
   // 카드 제목 — 유스케이스 이름 (예: "오프라인 인터뷰").
   title: string;
   // 진행자 음성이 어디로 들어오는지 한 줄 (예: "진행자 · 마이크").
@@ -107,7 +110,7 @@ export function CaptureUseCaseCards({
                 </svg>
               </span>
             )}
-            <span aria-hidden className="text-xl leading-none">
+            <span aria-hidden className="flex leading-none">
               {opt.icon}
             </span>
             <span className="text-sm font-medium text-ink">{opt.title}</span>

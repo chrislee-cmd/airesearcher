@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { ChromeButton } from '@/components/ui/chrome-button';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 
 type Props = {
   label: string;
@@ -9,14 +10,14 @@ type Props = {
   disabled?: boolean;
   onClick: () => void;
   busyLabel?: string; // 기본 = label 유지
-  icon?: ReactNode; // 기본 = 🚀
+  icon?: ReactNode; // 기본 = 듀오톤 start(mono) — amore CTA 위 흰 글리프
   // 좌측 상태 라벨 (아코디언 푸터 readyLabel — "준비 완료 · 시작할 수 있어요" 등).
   // 넘기면 액션 바가 justify-between 으로 좌 상태 + 우 CTA. 미전달이면 우측 CTA 만
   // (기존 6 위젯 동작 불변).
   statusLabel?: ReactNode;
 };
 
-// 6 위젯 주 CTA SSOT — 바디 최하단 고정 액션 바(레이아웃 행) + 🚀 pill ChromeButton.
+// 6 위젯 주 CTA SSOT — 바디 최하단 고정 액션 바(레이아웃 행) + start pill ChromeButton.
 // absolute 오버레이 폐기: 위젯 body 를 flex flex-col 로 두고 콘텐츠(flex-1
 // overflow-y-auto) 아래 마지막 자식(shrink-0)으로 배치한다 → 콘텐츠 겹침 구조적
 // 해소 + 6 위젯 CTA 가 카드 하단 우측 같은 y 로 싱크. 규격 = ChromeButton
@@ -27,7 +28,7 @@ export function WidgetPrimaryCta({
   disabled,
   onClick,
   busyLabel,
-  icon = '🚀',
+  icon = <DuotoneIcon name="start" size={16} mono />,
   statusLabel,
 }: Props) {
   return (

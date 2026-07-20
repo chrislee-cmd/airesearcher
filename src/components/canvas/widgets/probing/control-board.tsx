@@ -29,6 +29,7 @@ import {
   CaptureUseCaseCards,
   type CaptureUseCaseOption,
 } from '@/components/ui/capture-usecase-cards';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { ProjectPicker } from '@/components/project-picker';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 import { PersonaSectionConfigurator } from './persona-section-configurator';
@@ -92,7 +93,7 @@ function ControlFields({
   const SOURCE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
     {
       id: 'mic',
-      icon: '🤝',
+      icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
@@ -100,7 +101,7 @@ function ControlFields({
     },
     {
       id: 'both',
-      icon: '💻',
+      icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaTab') }),
@@ -108,7 +109,7 @@ function ControlFields({
     },
     {
       id: 'tab',
-      icon: '👀',
+      icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
       hostVia: tc('hostVia', { via: tc('viaTab') }),
       guestVia: tc('guestVia', { via: tc('viaTab') }),
@@ -343,7 +344,7 @@ export function ProbingControlPanel({
                     : t('slotIndicator.guestAria')
                 }
               >
-                <span aria-hidden>{isHost ? '🎤' : '📺'}</span>
+                <DuotoneIcon name={isHost ? 'host' : 'guest'} size={15} />
                 <span>
                   {isHost ? t('slotIndicator.host') : t('slotIndicator.guest')}
                 </span>
