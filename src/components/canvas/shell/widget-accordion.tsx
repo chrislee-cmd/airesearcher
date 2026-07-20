@@ -66,7 +66,9 @@ export type AccordionStepConfig = {
 //
 //   isExpanded(index, complete) = 각 스텝이 body 를 노출할지 여부.
 //     - 수동 override(manual)가 있으면 그 값(재오픈=true / 개별접기=false).
-//     - 아니면 기본값 = !complete (미완이면 펼침, 완료면 요약 접힘).
+//     - 아니면 기본값 = 항상 펼침, 명시적 토글(캐럿/헤더 클릭)로만 접힘.
+//       (완료돼도 자동 접힘 없음 — 최초·재오픈 동작 일치. complete 는 노드 색·
+//        접힘 시 요약행 렌더에만 사용, 펼침 판정에는 미사용.)
 //
 //   open(i)     = 접힌 스텝 재오픈 (수동 override=true).
 //   collapse(i) = 개별 접기 (수동 override=false). 펼친 헤더 클릭 경로.
@@ -76,7 +78,10 @@ export function useWidgetAccordion() {
   return {
     isExpanded: (index: number, complete: boolean): boolean => {
       if (index in manual) return manual[index];
-      return !complete;
+      // 기본값 = 항상 펼침. 완료돼도 자동 접힘 없음 — 오직 명시적 토글
+      // (collapse → manual[i]=false) 로만 접힘. complete 는 미사용(노드 색·
+      // 접힘 시 요약행 렌더가 별도로 사용).
+      return true;
     },
     open: (index: number) => setManual((m) => ({ ...m, [index]: true })),
     collapse: (index: number) => setManual((m) => ({ ...m, [index]: false })),
