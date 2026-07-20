@@ -1544,6 +1544,13 @@
       "controlHint": "통역 시작 · 중지 · 공유는 위젯 카드에서 조작하세요.",
       "backToWidget": "위젯으로 돌아가기"
     },
+    "live": {
+      "fullviewHeading": "전체 보기를 확인하세요",
+      "fullviewSubInterpreter": "세션이 시작되었습니다. 전체 보기에서 실시간 통역을 확인하세요.",
+      "backToSetup": "← 세팅으로 돌아가기",
+      "backToPrompt": "← 전체 보기 안내로",
+      "sessionInProgress": "세션 진행 중"
+    },
     "speaker": {
       "host": "진행자",
       "guest": "응답자"
@@ -2625,6 +2632,14 @@
       "liveHint": "세션 진행 중 · 전체 보기에서 AI 사고 흐름과 제안 질문을 확인하세요",
       "startHint": "세션을 시작하세요",
       "openFullview": "전체 보기 열기"
+    },
+    "live": {
+      "fullviewHeading": "전체 보기를 확인하세요",
+      "fullviewSubProbing": "세션이 시작되었습니다. 전체 보기에서 실시간 프로빙 진행 상황을 확인하세요.",
+      "backToSetup": "← 세팅으로 돌아가기",
+      "backToPrompt": "← 전체 보기 안내로",
+      "sessionInProgress": "세션 진행 중",
+      "endSession": "세션 종료"
     }
   },
   "CaptureUseCase": {

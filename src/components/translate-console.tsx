@@ -57,6 +57,8 @@ import {
 } from './canvas/shell/widget-accordion';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
+import { WidgetLiveFullviewPrompt } from './canvas/shell/widget-live-fullview-prompt';
+import { useFullview } from './canvas/shell/fullview-shell-context';
 import { ListenerPanel } from './translate/listener-panel';
 import { LangDualDropdown } from './translate/lang-dual-dropdown';
 import { ProjectPicker } from '@/components/project-picker';
@@ -2440,6 +2442,8 @@ export function TranslateConsole({
     }
     if (status === 'live' || status === 'starting') return;
     startInFlightRef.current = true;
+    // 새 세션은 항상 "전체보기 유도" 화면에서 시작 (직전 세션의 setup-peek 잔상 리셋).
+    setSetupPeek(false);
     // 위젯 동시사용 게이트 — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가
     // 뜨고 admitted 로 바뀔 때까지 여기서 보류된다(자동 진행). 취소 시 false.
     const admitted = await gate.acquire();
@@ -4306,6 +4310,15 @@ export function TranslateConsole({
 
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
+
+  // 라이브 카드 본문 = "전체보기 유도" 컴팩트 화면 (기본). 인라인 자막
+  // 스트림(PrompterPane)은 전체보기(TranslateFullviewView, promptedLines
+  // 미러)로 이관 — 자막 유실 0. "Back to setup" 으로 세팅/컨트롤 뷰(공유 URL·
+  // 음성 토글 포함)로 비파괴 토글, 세션은 계속. 세션 종료 시 prompt 로 리셋.
+  // useFullview: 카드 안(FullviewShellProvider) 이면 전체보기 open, /live
+  // 단독 페이지(provider 부재)면 no-op(안전).
+  const { openFullview } = useFullview('translate');
+  const [setupPeek, setSetupPeek] = useState(false);
   const langOptions = useMemo(() => LANGS, []);
   // Display-only rolling window. We keep every line in `outputLines`
   // state for the eventual "download full transcript" feature (PR-B),
@@ -4602,11 +4615,12 @@ export function TranslateConsole({
   return (
     <div
       className={
-        idlePhase
-          ? // idle — 컨트롤보드 layout(wrapper/폭/정렬/간격) 은 ControlBoardPanel
-            // SSOT 가 소유. 이 래퍼는 flex-col + 높이 체인만 제공한다 (CTA 는
-            // 하단 액션 바로 분리). 부모(translate-card) 패딩 0 → 타 5위젯과
-            // 동일 경로로 ControlBoardPanel pt-10=40px 를 그대로 흡수.
+        idlePhase || (live && !setupPeek)
+          ? // idle / 라이브 유도 화면 — 컨트롤보드 layout(wrapper/폭/정렬/간격)은
+            // ControlBoardPanel SSOT 가 소유. 이 래퍼는 flex-col + 높이 체인만
+            // 제공한다 (CTA 는 하단 액션 바로 분리). 라이브 유도 화면도 동일
+            // flex-col 로 footer(mt-auto)가 카드 하단에 붙는다. 부모
+            // (translate-card) 패딩 0 → 타 5위젯과 동일 경로로 프레임 여백 흡수.
             'flex min-h-0 flex-1 flex-col'
           : 'space-y-4'
       }
@@ -4639,8 +4653,44 @@ export function TranslateConsole({
               i18n(onboarding.*)은 미사용으로 남김.) */}
           {errorBanner}
         </ControlBoardPanel>
+      ) : live && !setupPeek ? (
+        // 라이브 — 카드 본문 = "전체보기 유도" 컴팩트 화면. 인라인 자막
+        // 스트림(PrompterPane)은 전체보기로 이관 (promptedLines 미러 → 유실 0).
+        // footer(좌 Session in progress · 우 종료)는 유지 — 세션/캡처 회귀 0.
+        <div className="flex min-h-0 flex-1 flex-col">
+          <WidgetLiveFullviewPrompt
+            onFullview={openFullview}
+            onBackToSetup={() => setSetupPeek(true)}
+            heading={t('live.fullviewHeading')}
+            sub={t('live.fullviewSubInterpreter')}
+            backLabel={t('live.backToSetup')}
+          />
+          {/* footer — 좌 진행 상태 · 우 통역 종료. stop() 경로 불변(세션 종료
+              로직 동일). 라벨은 기존 t('stop') 유지. */}
+          <div className="mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-line-soft px-4 py-3">
+            <span className="text-xs text-mute">
+              {renewing ? t('renewing') : t('live.sessionInProgress')}
+            </span>
+            <ChromeButton size="lg" onClick={() => void stop()}>
+              {t('stop')}
+            </ChromeButton>
+          </div>
+        </div>
       ) : (
         <>
+          {/* setupPeek 토글-백 스트립 — 라이브 중 세팅/컨트롤 뷰에서 다시
+              "전체보기 유도" 화면으로 복귀. ended 등 비-라이브에선 노출 X. */}
+          {live ? (
+            <div className="flex shrink-0 items-center border-b border-line-soft px-4 py-2">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setSetupPeek(false)}
+              >
+                {t('live.backToPrompt')}
+              </Button>
+            </div>
+          ) : null}
           {/* 컨트롤 패널 — live/ending/ended. 손코딩 상단 바 제거, idle 과
               동일한 ControlBoardPanel active 프레임 경유(상태 불변 — idle→active
               프레임/컨트롤 위치 픽셀 불변). 부모 패딩 0 → ControlBoardPanel 이

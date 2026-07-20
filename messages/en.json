@@ -1544,6 +1544,13 @@
       "controlHint": "Start, stop, and sharing are controlled from the widget card.",
       "backToWidget": "Back to widget"
     },
+    "live": {
+      "fullviewHeading": "Please check the full view",
+      "fullviewSubInterpreter": "The session has started. Track live interpretation in the full view.",
+      "backToSetup": "← Back to setup",
+      "backToPrompt": "← Back to live view",
+      "sessionInProgress": "Session in progress"
+    },
     "speaker": {
       "host": "Host",
       "guest": "Guest"
@@ -2625,6 +2632,14 @@
       "liveHint": "Session in progress · check the AI reasoning and suggested questions in full view",
       "startHint": "Start a session",
       "openFullview": "Open full view"
+    },
+    "live": {
+      "fullviewHeading": "Please check the full view",
+      "fullviewSubProbing": "The session has started. Track live probing progress in the full view.",
+      "backToSetup": "← Back to setup",
+      "backToPrompt": "← Back to live view",
+      "sessionInProgress": "Session in progress",
+      "endSession": "End session"
     }
   },
   "CaptureUseCase": {
