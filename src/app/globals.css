@@ -416,6 +416,13 @@
   --widget-header-bg-lav: var(--raw-pastel-lav);
   --widget-header-bg-sun: var(--raw-pastel-sun);
   --widget-header-bg-rose: var(--raw-pastel-rose);
+
+  /* widget 카드 프레임(Canvas 1c) — probing·interpreter 세팅 표면 셸의 구조
+     radius. 카드 셸(20)·통합 툴바 pill(10). 파스텔 헤더밴드 색은 위
+     --widget-header-bg-{accent} 재사용(스펙 proposed surface-widget-header-*
+     와 동등 — 중복 신설 회피). theme-agnostic 구조값이라 :root 단일 정의. */
+  --widget-card-frame-radius: 20px;
+  --widget-card-frame-toolbar-radius: 10px;
 }
 
 /* =========================================================================
