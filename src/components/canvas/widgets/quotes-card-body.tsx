@@ -22,13 +22,11 @@ import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { ControlDropzone } from '@/components/ui/control-dropzone';
 import { TranscriptRecordButton } from '@/components/canvas/widgets/transcript-record-button';
+import { TranscriptSetupAccordion } from '@/components/canvas/widgets/transcript-setup-accordion';
 import { JobProgress } from '@/components/ui/job-progress';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { DropdownMenu } from '@/components/ui/dropdown-menu';
-import { ControlTrigger } from '@/components/ui/control-trigger';
-import { ModeCardGroup } from '@/components/ui/mode-button';
 import { Modal } from '@/components/ui/modal';
 import {
   SectionLabel,
@@ -43,7 +41,6 @@ import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { uploadResumable } from '@/lib/transcripts/resumable-upload';
-import { ProjectPicker } from '@/components/project-picker';
 import { useProjectSelection } from '@/components/project-selection-provider';
 
 // ── idle 복귀(dismissal) 영속화 ────────────────────────────────────────────
@@ -231,10 +228,13 @@ export function QuotesCardBody() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [language, setLanguage] = useState<string>('multi');
   // 전사 모드 — default 'research'(현행 동작 보존). 회의록 결과물은 #485.
+  // 세팅 V2: STEP2 전사방식 2-카드(mic=research / minutes=meeting)로 선택.
   const [mode, setMode] = useState<TranscriptMode>('research');
-  // 발화자 수 — default 3("3명 이상") = auto diarize = 현행 동작 보존.
-  // 1·2 선택 시에만 서버가 ElevenLabs num_speakers hint 를 실어 보낸다.
-  const [speakerCount, setSpeakerCount] = useState<SpeakerCount>(3);
+  // 발화자 수 — 세팅 V2(BUILD-SPEC 4-스텝)는 발화자 수 컨트롤을 별도로 두지
+  // 않는다(전사방식 2-카드가 화자 의미를 담음). 값은 default 3("3명 이상") =
+  // auto diarize 로 고정해 create/start 페이로드 및 잡 동작을 현행 default 와
+  // 동일하게 보존한다(회귀 0). 서버 스키마(speaker_count 1~3)는 불변.
+  const [speakerCount] = useState<SpeakerCount>(3);
   // 통일 "전체 보기" — 전사 작업 전체를 풀스크린 list + 파일명 검색으로.
   // 공유 모달(CanvasBoard FullviewShell)이 소유하고 quotes 가 currentKey 일
   // 때만 본문을 모달 slot 으로 portal. useTranscriptJobs provider 기반이라
@@ -1113,149 +1113,43 @@ export function QuotesCardBody() {
     }
   }, [job.jobs]);
 
-  const tLang = useTranslations('Languages');
-  const languageOptions = LANGUAGES.map((l) => ({
-    value: l.code,
-    label: `${l.flag} ${tLang(l.code)}`,
-  }));
-  // 컨트롤 드롭다운 통일 — native <Select> → DropdownMenu(인터뷰 기준).
-  // 항목/value/onChange 로직 불변, 껍데기만 교체 (spec 결정 3).
-  const languageItems = languageOptions.map((o) => ({
-    key: o.value,
-    label: o.label,
-    onSelect: () => setLanguage(o.value),
-  }));
-  const currentLanguageLabel =
-    languageOptions.find((o) => o.value === language)?.label ?? language;
-
-  // 전사 모드 카드 (ModeCardGroup #852 primitive 재사용, single). default
-  // 리서치 = 현행. 회의록은 값만 저장 — 요약+Todo 결과물은 #485.
-  const MODE_OPTIONS: { key: TranscriptMode; icon: string }[] = [
-    { key: 'research', icon: '🎙️' },
-    { key: 'meeting', icon: '📝' },
-  ];
-  const modeTitle: Record<TranscriptMode, string> = {
-    research: tWidgets('transcriptModeResearch'),
-    meeting: tWidgets('transcriptModeMeeting'),
-  };
-
-  // 발화자 수 드롭다운 (언어 옆). 1/2/3("3명 이상"). ControlTrigger 통일.
-  const speakerOptions: { value: SpeakerCount; label: string }[] = [
-    { value: 1, label: tWidgets('transcriptSpeaker1') },
-    { value: 2, label: tWidgets('transcriptSpeaker2') },
-    { value: 3, label: tWidgets('transcriptSpeaker3') },
-  ];
-  const speakerItems = speakerOptions.map((o) => ({
-    key: String(o.value),
-    label: o.label,
-    onSelect: () => setSpeakerCount(o.value),
-  }));
-  const currentSpeakerLabel =
-    speakerOptions.find((o) => o.value === speakerCount)?.label ?? '';
-
-  // 컨트롤 패널 본체 — 위젯 메인 안에 상시 노출. 언어 드롭다운 + 인라인
-  // 드래그드롭 dropzone (데스크/프로빙 컨트롤과 통일 — 업로드가 모달 뒤에
-  // 숨지 않는다). 드롭/클릭 → startUploads → language-confirm → 업로드+자동
-  // 전사. 언어 트리거 = DropdownMenu(aria-label) 라 Field htmlFor 불필요.
+  // 컨트롤 패널 본체 — 세팅 V2(Canvas 1c): 옛 평면 컨트롤(프로젝트/언어/발화자
+  // 행 + 모드 카드 + 인라인 드롭존/녹음)을 유스케이스 4-스텝 아코디언으로
+  // 재배치한다. ①프로젝트 ②전사방식 2-카드(mic/minutes) ③분석 언어 ④업로드/녹음.
+  // 업로드/녹음/잡 생성 로직은 불변 — 드롭존·녹음 버튼은 그대로 STEP4 슬롯으로
+  // 주입한다(드롭/클릭 → startUploads → language-confirm → 업로드+자동 전사).
   const renderControls = () => (
-    // 컨트롤↔dropzone 세로 간격 SSOT — 인터뷰(interviews-card) 와 동일하게
-    // ControlBoardPanel gap="field"(gap-4=16px) 가 소유. 위젯 임의 space-y 금지.
     <>
-      {/* 프로젝트 + 언어 + 발화자 수 — 한 행(#588). 프로빙 어시스턴트를 컨트롤
-          간격 표준으로 통일(사용자 결정 2026-07-14): flex flex-wrap gap-4(16px) +
-          프로젝트는 min-w 래퍼 없이 ProjectPicker 를 직접 배치해 콘텐츠 폭으로
-          붙인다(옛 min-w-44 래퍼가 프로젝트 뒤 ~56px 빈 공간을 만들어 간격이
-          벌어졌던 원인 — probing/control-board.tsx 와 동일 구조). 프로젝트는 위젯
-          슬롯 'quotes' 의 독립 선택(프로빙/통역과 동일 ProjectPicker). 미선택(null)
-          허용 — 프로젝트 없이도 전사 생성. 프로빙과 달리 "이 기기에만 저장" 안내
-          카피는 넣지 않는다(#586 — 사용자가 그 문구를 싫어함). 언어/발화자수는
-          프로빙과 동일하게 min-w-24 wrapper 로 하한폭 고정. 발화자 수는
-          diarization hint 로 배선. 드롭다운 간 간격·정렬은
-          ControlBoardPanel.Settings 슬롯 SSOT(SETTINGS_ROW_GAP + items-end) —
-          손코딩 flex gap 제거. */}
-      <ControlBoardPanel.Settings>
-        <Field label={tView('fieldProject')}>
-          <ProjectPicker
-            widget="quotes"
-            value={projectId}
-            onChange={(id) => setSelection('quotes', id)}
-          />
-        </Field>
-
-        <Field label={tView('fieldLanguage')}>
-          <div className="min-w-24">
-            <DropdownMenu
-              items={languageItems}
-              trigger={({ open, onClick, ...aria }) => (
-                <ControlTrigger
-                  {...aria}
-                  data-open={open}
-                  onClick={onClick}
-                  aria-label={tView('fieldLanguage')}
-                >
-                  {currentLanguageLabel}
-                </ControlTrigger>
-              )}
-            />
-          </div>
-        </Field>
-
-        <Field label={tWidgets('transcriptSpeakerLabel')}>
-          <div className="min-w-24">
-            <DropdownMenu
-              items={speakerItems}
-              trigger={({ open, onClick, ...aria }) => (
-                <ControlTrigger
-                  {...aria}
-                  data-open={open}
-                  onClick={onClick}
-                  aria-label={tWidgets('transcriptSpeakerLabel')}
-                >
-                  {currentSpeakerLabel}
-                </ControlTrigger>
-              )}
-            />
-          </div>
-        </Field>
-      </ControlBoardPanel.Settings>
-
-      {/* 전사 모드 — 리서치(현행) / 회의록. ModeCardGroup(#852) single.
-          라벨↔컨트롤 간격은 .Input(Field mb-1.5) SSOT. */}
-      <ControlBoardPanel.Input label={tWidgets('transcriptModeLabel')}>
-        <ModeCardGroup
-          ariaLabel={tWidgets('transcriptModeLabel')}
-          options={MODE_OPTIONS.map((opt) => ({
-            key: opt.key,
-            icon: opt.icon,
-            label: modeTitle[opt.key],
-          }))}
-          value={mode}
-          onChange={(key) => setMode(key as TranscriptMode)}
-        />
-      </ControlBoardPanel.Input>
-
-      {/* 인라인 업로드 — 옛 📤 업로드 버튼 + 모달을 대체. 드래그드롭 + 클릭
-          업로드 둘 다 primitive 가 지원. onDropRaw 로 워크스페이스 artifact
-          드롭도 그대로 수용. .Region = 규격 프레임 + 콘텐츠(dropzone) 자유. */}
       <ControlBoardPanel.Region>
-        <ControlDropzone
-          accept={ACCEPT}
-          multiple
-          disabled={busyUpload}
-          onFiles={(files) => startUploads(files)}
-          onDropRaw={handleArtifactDrop}
-          label={tUp('dropHere')}
-          helperText={tUp('supported')}
-        />
-      </ControlBoardPanel.Region>
-
-      {/* 직접 녹음 — 파일 업로드 대신 위젯에서 바로 마이크 녹음 (#503).
-          정지 시 Blob→File 로 래핑해 startUploads 로 투입 → 파일 업로드와
-          동일한 언어확인·업로드·전사 흐름(mode/발화자/언어)이 재사용된다. */}
-      <ControlBoardPanel.Region>
-        <TranscriptRecordButton
-          disabled={busyUpload}
-          onRecorded={(file) => startUploads([file])}
+        <TranscriptSetupAccordion
+          projectId={projectId}
+          onProjectChange={(id) => setSelection('quotes', id)}
+          method={mode}
+          onMethodChange={setMode}
+          language={language}
+          onLanguageChange={setLanguage}
+          audioReady={readyCount > 0 || hasUploads || anyInflight}
+          dropzone={
+            // 인라인 업로드 — 드래그드롭 + 클릭 둘 다 primitive 지원. onDropRaw 로
+            // 워크스페이스 artifact 드롭도 수용.
+            <ControlDropzone
+              accept={ACCEPT}
+              multiple
+              disabled={busyUpload}
+              onFiles={(files) => startUploads(files)}
+              onDropRaw={handleArtifactDrop}
+              label={tUp('dropHere')}
+              helperText={tUp('supported')}
+            />
+          }
+          recordButton={
+            // 직접 녹음 — 정지 시 Blob→File 래핑해 startUploads 로 투입(#503).
+            // 파일 업로드와 동일한 언어확인·업로드·전사 흐름(mode/언어)이 재사용.
+            <TranscriptRecordButton
+              disabled={busyUpload}
+              onRecorded={(file) => startUploads([file])}
+            />
+          }
         />
       </ControlBoardPanel.Region>
 

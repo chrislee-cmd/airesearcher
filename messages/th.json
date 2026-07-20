@@ -962,6 +962,29 @@
       "cost": "1 เครดิต"
     },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "โปรเจกต์",
+        "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำงานอยู่",
+        "step1Selected": "เลือกแล้ว",
+        "step2Short": "วิธีถอดเสียง",
+        "step2Title": "เลือกวิธีการถอดเสียง",
+        "step3Short": "ภาษาวิเคราะห์",
+        "step3Title": "คุณต้องการวิเคราะห์เป็นภาษาใด?",
+        "step3Field": "ภาษาของเสียงต้นฉบับ",
+        "step4Short": "เสียง",
+        "step4Title": "อัปโหลดหรือบันทึกเสียงที่ต้องการถอดเสียง",
+        "orDivider": "หรือ",
+        "change": "เปลี่ยน"
+      },
+      "method": {
+        "sectionLabel": "วิธีถอดเสียง",
+        "groupAria": "เลือกวิธีการถอดเสียง",
+        "micTitle": "ถอดเสียงสัมภาษณ์เชิงคุณภาพ",
+        "micSub": "เชิงลึกแบบ 1:1 · แยกผู้พูด",
+        "minutesTitle": "ถอดเสียงบันทึกการประชุม",
+        "minutesSub": "การพูดหลายฝ่าย · สรุป"
+      },
       "transcribingEta": "ผ่านไป {elapsed} · เหลืออีกประมาณ {remain} (ประมาณการ)",
       "languageConfirm": {
         "title": "ใช้ภาษานี้ในการถอดเสียงหรือไม่",

@@ -872,6 +872,29 @@
       "cost": "1 credit"
     },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "Project",
+        "step1Title": "Select the project you are working on",
+        "step1Selected": "Selected",
+        "step2Short": "Method",
+        "step2Title": "Select the transcription method",
+        "step3Short": "Language",
+        "step3Title": "Which language do you want for analysis?",
+        "step3Field": "Source audio language",
+        "step4Short": "Audio",
+        "step4Title": "Upload or record the audio to transcribe",
+        "orDivider": "or",
+        "change": "Change"
+      },
+      "method": {
+        "sectionLabel": "Transcription method",
+        "groupAria": "Select the transcription method",
+        "micTitle": "Qualitative interview transcription",
+        "micSub": "1:1 in-depth · speaker separation",
+        "minutesTitle": "Meeting minutes transcription",
+        "minutesSub": "Multi-party speech · summary"
+      },
       "transcribingEta": "{elapsed} elapsed · ~{remain} remaining (est.)",
       "languageConfirm": {
         "title": "Use this language to transcribe?",

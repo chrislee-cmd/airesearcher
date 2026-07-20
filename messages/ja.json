@@ -962,6 +962,29 @@
       "cost": "1クレジット"
     },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "プロジェクト",
+        "step1Title": "作業中のプロジェクトを選択してください",
+        "step1Selected": "選択済み",
+        "step2Short": "文字起こし方式",
+        "step2Title": "文字起こしの方式を選択してください",
+        "step3Short": "分析言語",
+        "step3Title": "どの言語で分析しますか？",
+        "step3Field": "元の音声の言語",
+        "step4Short": "音声",
+        "step4Title": "文字起こしする音声をアップロードまたは録音してください",
+        "orDivider": "または",
+        "change": "変更"
+      },
+      "method": {
+        "sectionLabel": "文字起こし方式",
+        "groupAria": "文字起こし方式の選択",
+        "micTitle": "定性インタビュー文字起こし",
+        "micSub": "1:1 デプス · 話者分離",
+        "minutesTitle": "議事録の文字起こし",
+        "minutesSub": "複数話者の発話 · 要約"
+      },
       "transcribingEta": "{elapsed} 経過 · 残り約{remain}（推定）",
       "languageConfirm": {
         "title": "この言語で文字起こししますか？",
