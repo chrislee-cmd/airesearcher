@@ -16,7 +16,7 @@ export type InsightClipView = {
 };
 
 export type InsightState = {
-  status: string; // idle | indexing | searching | analyzing | reporting | done | error
+  status: string; // idle | indexing | searching | clipping | analyzing | reporting | done | error
   error: string | null;
   summary: Record<string, unknown> | null;
   clips: InsightClipView[];

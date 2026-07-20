@@ -6,6 +6,44 @@ import { env } from '@/env';
 
 const BASE = 'https://api.twelvelabs.io/v1.3';
 
+// Per-call timeout budgets (ms). Every external fetch below carries one so a slow
+// or hung TwelveLabs response fails fast with a labeled error instead of pinning
+// the serverless function until the 300s platform limit → 504 (card 638 §1). The
+// budgets are sized so the heaviest single POST (searching: plan + ≤6 Marengo
+// probes) still lands well under maxDuration.
+const TIMEOUT = {
+  asset: 30_000,   // create asset from URL
+  index: 30_000,   // create indexed asset
+  poll: 20_000,    // poll indexed-asset status
+  search: 20_000,  // Marengo moment search
+  analyze: 90_000, // Pegasus /analyze (slow streaming)
+} as const;
+
+// A TimeoutError (fetch abort) or an error we labeled `tl_timeout:*` — callers use
+// this to degrade gracefully (retry the step in place) instead of hard-failing.
+export function isTimeoutError(err: unknown): boolean {
+  if (err instanceof DOMException) return err.name === 'TimeoutError' || err.name === 'AbortError';
+  return err instanceof Error && /timeout|aborted/i.test(err.message);
+}
+
+// fetch with a hard per-call deadline. On timeout the AbortSignal rejects the
+// fetch with a DOMException('TimeoutError') which we relabel for clear logs.
+async function tlFetch(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+  label: string,
+): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+      throw new Error(`tl_timeout:${label}`);
+    }
+    throw e;
+  }
+}
+
 function getKey(): string {
   const key = env.TWELVELABS_API_KEY;
   if (!key) throw new Error('missing_twelvelabs_key');
@@ -55,11 +93,11 @@ export async function createAsset(
   form.append('url', videoUrl);
   form.append('filename', filename);
 
-  const res = await fetch(`${BASE}/assets`, {
+  const res = await tlFetch(`${BASE}/assets`, {
     method: 'POST',
     headers: { 'x-api-key': key },
     body: form,
-  });
+  }, TIMEOUT.asset, 'create_asset');
   const data = (await res.json()) as { id?: string; _id?: string; code?: string; message?: string };
   const assetId = data.id ?? data._id;
   if (!res.ok || !assetId) {
@@ -82,14 +120,14 @@ export async function createIndexedAsset(
   assetId: string,
 ): Promise<string> {
   const key = getKey();
-  const res = await fetch(`${BASE}/indexes/${indexId}/indexed-assets`, {
+  const res = await tlFetch(`${BASE}/indexes/${indexId}/indexed-assets`, {
     method: 'POST',
     headers: {
       'x-api-key': key,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ asset_id: assetId }),
-  });
+  }, TIMEOUT.index, 'create_indexed_asset');
 
   if (res.status !== 202 && !res.ok) {
     const text = await res.text().catch(() => '');
@@ -118,9 +156,10 @@ export async function getIndexedAsset(
   indexedAssetId: string,
 ): Promise<TLIndexedAsset> {
   const key = getKey();
-  const res = await fetch(
+  const res = await tlFetch(
     `${BASE}/indexes/${indexId}/indexed-assets/${indexedAssetId}`,
     { headers: { 'x-api-key': key } },
+    TIMEOUT.poll, 'get_indexed_asset',
   );
   const text = await res.text();
   let data: TLIndexedAsset & { code?: string; message?: string };
@@ -164,11 +203,11 @@ export async function searchIndex(
   form.append('search_options', 'audio');
   form.append('page_limit', String(opts?.pageLimit ?? 10));
 
-  const res = await fetch(`${BASE}/search`, {
+  const res = await tlFetch(`${BASE}/search`, {
     method: 'POST',
     headers: { 'x-api-key': key },
     body: form,
-  });
+  }, TIMEOUT.search, 'search');
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`tl_search_${res.status}: ${text.slice(0, 160)}`);
@@ -211,7 +250,7 @@ export async function analyzeVideo(
   maxTokens = 4000,
 ): Promise<string> {
   const key = getKey();
-  const res = await fetch(`${BASE}/analyze`, {
+  const res = await tlFetch(`${BASE}/analyze`, {
     method: 'POST',
     headers: {
       'x-api-key': key,
@@ -225,7 +264,7 @@ export async function analyzeVideo(
       max_tokens: maxTokens,
       stream: true,
     }),
-  });
+  }, TIMEOUT.analyze, 'analyze');
 
   const rawText = await res.text();
 
