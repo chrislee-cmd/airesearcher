@@ -1459,7 +1459,6 @@
       "micOnly": "Device microphone",
       "tabOnly": "Browser audio input",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only.",
-      "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)",
       "shortBoth": "mic + tab",
       "shortMic": "mic",
       "shortTab": "tab"
@@ -2615,7 +2614,6 @@
     "offlineDesc": "An interview where you meet and talk in person",
     "onlineDesc": "An interview where you talk over a video call",
     "observeDesc": "I only listen in, over a video call",
-    "offlineNote": "One device mic captures the whole room · no speaker separation",
-    "onlineNote": "Interviewer & participant captured separately · 2× realtime cost"
+    "offlineNote": "One device mic captures the whole room · no speaker separation"
   }
 }

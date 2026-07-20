@@ -181,7 +181,6 @@ export function ProbingSetupAccordion({
       icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
       desc: tc('onlineDesc'),
-      note: tc('onlineNote'),
     },
     {
       id: 'tab',
