@@ -39,9 +39,9 @@ import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import {
-  BrowserAudioNotice,
-  isBrowserAudioNoticeSuppressed,
-} from './browser-audio-notice';
+  ShareGuidePopup,
+  isShareGuideSuppressed,
+} from './share-guide-popup';
 import { FileDropZone } from './ui/file-drop-zone';
 import {
   CaptureUseCaseCards,
@@ -3537,13 +3537,13 @@ export function TranslateConsole({
   // 않기"로 억제됐으면 tab 경로도 바로 진행.
   const handleStartClick = useCallback(() => {
     const usesTab = !!captureMode && activeSlots(captureMode).includes('tab');
-    if (usesTab && !isBrowserAudioNoticeSuppressed()) {
+    if (usesTab && !isShareGuideSuppressed()) {
       setBrowserAudioNoticeOpen(true);
       return;
     }
     void start();
   }, [captureMode, start]);
-  const handleBrowserAudioConfirm = useCallback(() => {
+  const handleShareGuideConfirm = useCallback(() => {
     setBrowserAudioNoticeOpen(false);
     void start();
   }, [start]);
@@ -4902,9 +4902,10 @@ export function TranslateConsole({
         />
       )}
 
-      <BrowserAudioNotice
+      <ShareGuidePopup
         open={browserAudioNoticeOpen}
-        onConfirm={handleBrowserAudioConfirm}
+        widget="translate"
+        onConfirm={handleShareGuideConfirm}
         onCancel={() => setBrowserAudioNoticeOpen(false)}
       />
 

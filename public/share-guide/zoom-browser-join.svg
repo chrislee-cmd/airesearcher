@@ -1,0 +1,40 @@
+<svg width="640" height="400" viewBox="0 0 640 400" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="회의 참가 시 앱이 아니라 브라우저를 선택하는 안내">
+  <!-- 제품 스크린샷 대체용 일러스트 placeholder (프로토 zoom-browser-join.png).
+       회의 링크를 열 때 뜨는 "앱으로 열기 / 브라우저로 참가" 선택을 도식화. -->
+  <rect width="640" height="400" fill="#fbf8f3"/>
+  <rect x="0.5" y="0.5" width="639" height="399" fill="none" stroke="#1d1b20" stroke-width="1"/>
+
+  <!-- 브라우저 크롬 -->
+  <rect x="40" y="36" width="560" height="52" rx="8" fill="#ffffff" stroke="#1d1b20" stroke-width="2"/>
+  <circle cx="64" cy="62" r="6" fill="#ff5c8a"/>
+  <circle cx="84" cy="62" r="6" fill="#fbbf24"/>
+  <circle cx="104" cy="62" r="6" fill="#16a34a"/>
+  <rect x="130" y="48" width="440" height="28" rx="14" fill="#f1ede6" stroke="#1d1b20" stroke-width="1.5"/>
+  <text x="150" y="67" font-family="sans-serif" font-size="15" fill="#5b5965">meet.example.com/join</text>
+
+  <!-- 브라우저 확인 다이얼로그 -->
+  <rect x="120" y="118" width="400" height="120" rx="10" fill="#ffffff" stroke="#1d1b20" stroke-width="2"/>
+  <text x="144" y="152" font-family="sans-serif" font-size="16" font-weight="700" fill="#1d1b20">이 사이트에서 앱을 열려고 합니다</text>
+  <text x="144" y="180" font-family="sans-serif" font-size="14" fill="#5b5965">회의 앱으로 열지, 이 브라우저에서 계속할지 선택하세요.</text>
+
+  <!-- 앱으로 열기 (X, 위험) -->
+  <rect x="144" y="196" width="160" height="30" rx="6" fill="#ffffff" stroke="#c2334f" stroke-width="1.5"/>
+  <text x="164" y="216" font-family="sans-serif" font-size="14" fill="#c2334f">앱으로 열기</text>
+  <line x1="278" y1="205" x2="292" y2="219" stroke="#c2334f" stroke-width="2.2"/>
+  <line x1="292" y1="205" x2="278" y2="219" stroke="#c2334f" stroke-width="2.2"/>
+
+  <!-- 브라우저로 참가 (권장) -->
+  <rect x="328" y="196" width="168" height="30" rx="6" fill="#16a34a" stroke="#1d1b20" stroke-width="1.5"/>
+  <text x="352" y="216" font-family="sans-serif" font-size="14" font-weight="700" fill="#ffffff">브라우저에서 계속</text>
+
+  <!-- 대비 요약 badge -->
+  <rect x="120" y="272" width="180" height="88" rx="10" fill="#fdecef" stroke="#c2334f" stroke-width="2"/>
+  <text x="140" y="302" font-family="sans-serif" font-size="15" font-weight="700" fill="#c2334f">✕ 네이티브 앱</text>
+  <text x="140" y="328" font-family="sans-serif" font-size="13" fill="#5b5965">음성이 잡히지 않아요</text>
+  <text x="140" y="348" font-family="sans-serif" font-size="13" fill="#5b5965">(Zoom · Teams 데스크톱)</text>
+
+  <rect x="340" y="272" width="180" height="88" rx="10" fill="#e7f6ec" stroke="#16a34a" stroke-width="2"/>
+  <text x="360" y="302" font-family="sans-serif" font-size="15" font-weight="700" fill="#16a34a">✓ 브라우저 탭</text>
+  <text x="360" y="328" font-family="sans-serif" font-size="13" fill="#5b5965">탭 오디오가 캡처돼요</text>
+  <text x="360" y="348" font-family="sans-serif" font-size="13" fill="#5b5965">(권장)</text>
+</svg>

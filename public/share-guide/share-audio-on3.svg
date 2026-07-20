@@ -1,0 +1,38 @@
+<svg width="640" height="400" viewBox="0 0 640 400" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="화면 공유 창에서 시스템 오디오도 공유 토글을 켜는 안내">
+  <!-- 제품 스크린샷 대체용 일러스트 placeholder (프로토 share-audio-on3.png).
+       화면 공유 다이얼로그 좌측 하단의 "시스템 오디오도 공유" 토글 ON 을 도식화. -->
+  <rect width="640" height="400" fill="#fbf8f3"/>
+  <rect x="0.5" y="0.5" width="639" height="399" fill="none" stroke="#1d1b20" stroke-width="1"/>
+
+  <!-- 공유 다이얼로그 -->
+  <rect x="80" y="36" width="480" height="300" rx="12" fill="#ffffff" stroke="#1d1b20" stroke-width="2"/>
+  <text x="104" y="72" font-family="sans-serif" font-size="17" font-weight="700" fill="#1d1b20">공유할 대상 선택</text>
+  <line x1="80" y1="90" x2="560" y2="90" stroke="#1d1b20" stroke-width="1" opacity="0.15"/>
+
+  <!-- 탭 선택 목록 -->
+  <rect x="104" y="110" width="200" height="120" rx="8" fill="#f1ede6" stroke="#6c7aff" stroke-width="2"/>
+  <rect x="120" y="126" width="168" height="70" rx="4" fill="#cfe6ff"/>
+  <text x="120" y="220" font-family="sans-serif" font-size="13" fill="#5b5965">회의 탭</text>
+
+  <rect x="336" y="110" width="200" height="120" rx="8" fill="#ffffff" stroke="#1d1b20" stroke-width="1.5"/>
+  <rect x="352" y="126" width="168" height="70" rx="4" fill="#e7defe"/>
+  <text x="352" y="220" font-family="sans-serif" font-size="13" fill="#5b5965">전체 화면</text>
+
+  <!-- 좌측 하단 시스템 오디오 토글 (ON, 강조) -->
+  <rect x="96" y="256" width="290" height="56" rx="10" fill="#e7f6ec" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="116" y="290" font-family="sans-serif" font-size="15" font-weight="700" fill="#1d1b20">시스템 오디오도 공유</text>
+  <!-- 토글 스위치 ON -->
+  <rect x="322" y="274" width="46" height="24" rx="12" fill="#16a34a"/>
+  <circle cx="356" cy="286" r="9" fill="#ffffff"/>
+  <!-- 강조 화살표 -->
+  <path d="M60 284 L92 284" stroke="#c2334f" stroke-width="3" stroke-linecap="round"/>
+  <path d="M84 278 L92 284 L84 290" fill="none" stroke="#c2334f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 확인 버튼 -->
+  <rect x="440" y="268" width="96" height="34" rx="8" fill="#1d1b20"/>
+  <text x="462" y="290" font-family="sans-serif" font-size="14" font-weight="700" fill="#ffffff">공유</text>
+
+  <!-- 하단 경고 라인 -->
+  <text x="80" y="366" font-family="sans-serif" font-size="14" font-weight="700" fill="#c2334f">🔊 시스템 오디오 ON</text>
+  <text x="270" y="366" font-family="sans-serif" font-size="13" fill="#5b5965">— 끄면 음성이 저장되지 않아요</text>
+</svg>

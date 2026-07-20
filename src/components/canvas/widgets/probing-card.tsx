@@ -34,9 +34,9 @@ import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
 import {
-  BrowserAudioNotice,
-  isBrowserAudioNoticeSuppressed,
-} from '@/components/browser-audio-notice';
+  ShareGuidePopup,
+  isShareGuideSuppressed,
+} from '@/components/share-guide-popup';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
@@ -1465,14 +1465,14 @@ function ExpandedBody() {
     if (!source || !outputLang) return;
     if (
       (source === 'tab' || source === 'both') &&
-      !isBrowserAudioNoticeSuppressed()
+      !isShareGuideSuppressed()
     ) {
       setBrowserAudioNoticeOpen(true);
       return;
     }
     void runStartSession();
   }, [source, outputLang, runStartSession]);
-  const handleBrowserAudioConfirm = useCallback(() => {
+  const handleShareGuideConfirm = useCallback(() => {
     setBrowserAudioNoticeOpen(false);
     void runStartSession();
   }, [runStartSession]);
@@ -2369,9 +2369,10 @@ function ExpandedBody() {
         </WidgetFullviewPanel>,
       )}
 
-      <BrowserAudioNotice
+      <ShareGuidePopup
         open={browserAudioNoticeOpen}
-        onConfirm={handleBrowserAudioConfirm}
+        widget="probing"
+        onConfirm={handleShareGuideConfirm}
         onCancel={() => setBrowserAudioNoticeOpen(false)}
         // both(진행자 mic + 응답자 tab 병렬)는 스피커 에코 위험 — 이어폰 안내 결합.
         note={source === 'both' ? t('card.bothEchoNote') : undefined}
