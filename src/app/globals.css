@@ -90,6 +90,9 @@
   --raw-signal-warning-line: #ffd9bf;
   --raw-signal-am: #fb923c;
   --raw-signal-pm: #6c7aff;
+  /* signal-progress (proposed) — "진행 중" 시그널 바이올렛. StageFlow active
+     노드 펄스 전용(전사록 V2). warning/success 와 구분되는 중립-활성 톤. */
+  --raw-signal-progress: #8b5cf6;
 
   /* radius scale */
   --raw-radius-2xs: 2px;
@@ -181,6 +184,7 @@
   --raw-signal-warning-line: #ffd9bf;
   --raw-signal-am: #fb923c;
   --raw-signal-pm: #6c7aff;
+  --raw-signal-progress: #8b5cf6;
 
   /* radius (동일 스케일) */
   --raw-radius-2xs: 2px;
@@ -279,6 +283,7 @@
   --raw-signal-warning-line: #ff00ff;
   --raw-signal-am: #ff9900;
   --raw-signal-pm: #00ccff;
+  --raw-signal-progress: #cc00ff;
 
   /* radius — 전부 pill 극단(토큰 radius 는 완전히 둥글어지고 rounded-[Npx] 는 그대로) */
   --raw-radius-2xs: 999px;
@@ -335,6 +340,7 @@
   --signal-warning: var(--raw-signal-warning);
   --signal-warning-bg: var(--raw-signal-warning-bg);
   --signal-warning-line: var(--raw-signal-warning-line);
+  --signal-progress: var(--raw-signal-progress);
 
   /* component foundations — primitive 가 이 값들을 참조 */
   --component-card-border-width: var(--raw-border-width-heavy);
@@ -466,6 +472,7 @@
   --color-warning: var(--raw-signal-warning);
   --color-warning-bg: var(--raw-signal-warning-bg);
   --color-warning-line: var(--raw-signal-warning-line);
+  --color-signal-progress: var(--raw-signal-progress);
 
   /* Typography */
   --font-sans: var(--raw-font-sans);
@@ -797,11 +804,18 @@ html, body {
    흐르는 중" 을 표현. 정적 엣지(pending)는 이 class 없이 단색 bg-line-soft.
    prefers-reduced-motion 존중 — 모션 off 시 애니메이션 정지, 상태 색만 유지. */
 @keyframes stageFlowNodePulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--color-ink); }
+  /* ring 색은 노드 element 의 --stage-flow-ring 로 해상(기본 ink). progress
+     톤(전사록 V2)은 .stage-flow-node-progress 가 signal-progress 로 덮는다 —
+     desk 등 기존 소비자는 변수를 안 세팅해 ink 폴백(회귀 0). */
+  0%, 100% { box-shadow: 0 0 0 0 var(--stage-flow-ring, var(--color-ink)); }
   50%      { box-shadow: 0 0 0 5px transparent; }
 }
 .stage-flow-node-active {
   animation: stageFlowNodePulse 1.6s ease-in-out infinite;
+}
+/* signal-progress(proposed) opt-in — active 펄스 ring 을 진행 바이올렛으로. */
+.stage-flow-node-progress {
+  --stage-flow-ring: var(--color-signal-progress);
 }
 @keyframes stageFlowEdgeFlowX {
   from { background-position: 0 0; }

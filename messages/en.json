@@ -1681,6 +1681,7 @@
     "viewAll": "View all →",
     "transcriptRunning": "Transcription in progress",
     "transcriptDone": "Transcription complete",
+    "transcriptReadyTitle": "Transcript is ready!",
     "transcriptStageUpload": "Upload",
     "transcriptStageTranscribe": "Transcribe",
     "transcriptStageMd": "Document",

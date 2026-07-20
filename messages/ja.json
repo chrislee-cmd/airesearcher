@@ -1774,6 +1774,7 @@
     "viewAll": "すべて見る →",
     "transcriptRunning": "文字起こし中",
     "transcriptDone": "文字起こし完了",
+    "transcriptReadyTitle": "文字起こしの準備ができました！",
     "transcriptStageUpload": "アップロード",
     "transcriptStageTranscribe": "文字起こし",
     "transcriptStageMd": "ドキュメント",
