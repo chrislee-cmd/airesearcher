@@ -25,6 +25,10 @@ import { TranscriptRecordButton } from '@/components/canvas/widgets/transcript-r
 import { TranscriptSetupAccordion } from '@/components/canvas/widgets/transcript-setup-accordion';
 import { JobProgress } from '@/components/ui/job-progress';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
+import {
+  DuotoneIcon,
+  type DuotoneIconName,
+} from '@/components/ui/icons/duotone-icon';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
@@ -129,14 +133,22 @@ const ACCEPT =
 //   여기서 markdown 저장 & job done) → [after() 백그라운드] cleanupTranscript(오탈자)
 //   → term/number-normalize(표현 보정).
 // 즉 문서 변환은 화자 분리 직후 중간 단계이고, 오탈자·표현 보정이 그 뒤에 온다.
-const TX_STAGE_DEFS = [
-  { id: 'upload', icon: '📤', phase: 'uploading', label: 'transcriptStageUpload' },
-  { id: 'transcribe', icon: '🎧', phase: 'transcribing', label: 'transcriptStageTranscribe' },
-  { id: 'speaker', icon: '🗣️', phase: 'speaker_diarization', label: 'transcriptStageSpeaker' },
-  { id: 'md', icon: '📄', phase: 'md_conversion', label: 'transcriptStageMd' },
-  { id: 'typo', icon: '✍️', phase: 'typo_correction', label: 'transcriptStageTypo' },
-  { id: 'phrasing', icon: '✨', phase: 'phrasing_polish', label: 'transcriptStagePhrasing' },
-] as const;
+// icon 은 Canvas 1c 듀오톤 아이콘 이름(이모지 전면 대체). 채움은 DuotoneIcon
+// 기본값 var(--widget-tone) → quotes 위젯(accent lav)의 헤더 톤으로 자동
+// 리틴트(“채움 lav”). name 은 이 StageFlow 6종용으로 추가된 세트를 쓴다.
+const TX_STAGE_DEFS: readonly {
+  id: string;
+  icon: DuotoneIconName;
+  phase: string;
+  label: string;
+}[] = [
+  { id: 'upload', icon: 'upload', phase: 'uploading', label: 'transcriptStageUpload' },
+  { id: 'transcribe', icon: 'audio', phase: 'transcribing', label: 'transcriptStageTranscribe' },
+  { id: 'speaker', icon: 'speakers', phase: 'speaker_diarization', label: 'transcriptStageSpeaker' },
+  { id: 'md', icon: 'document', phase: 'md_conversion', label: 'transcriptStageMd' },
+  { id: 'typo', icon: 'typos', phase: 'typo_correction', label: 'transcriptStageTypo' },
+  { id: 'phrasing', icon: 'polish', phase: 'phrasing_polish', label: 'transcriptStagePhrasing' },
+];
 const TX_STAGE_COUNT = TX_STAGE_DEFS.length;
 
 // ── 멈춤/실패 잡 감지 ──────────────────────────────────────────────────────
@@ -1000,7 +1012,7 @@ export function QuotesCardBody() {
       id: s.id,
       label: tWidgets(s.label as never),
       status,
-      icon: s.icon,
+      icon: <DuotoneIcon name={s.icon} size={24} />,
       description: tProcess(`transcripts.${s.phase}` as never),
       hint,
     };
@@ -1184,6 +1196,7 @@ export function QuotesCardBody() {
                 <StageFlow
                   stages={txStages}
                   orientation="vertical"
+                  activeTone="progress"
                   className="w-full max-w-xs"
                 />
                 {/* STOP — 진행 중 전사 강제종료 (데스크 미러). 실제 전사 잡이
@@ -1207,7 +1220,8 @@ export function QuotesCardBody() {
                 <StageFlow
                   stages={txStages}
                   complete
-                  completeLabel={tProcess('completeTitle')}
+                  activeTone="progress"
+                  completeLabel={tWidgets('transcriptReadyTitle')}
                   onResult={handleQuotesFullview}
                   resultLabel={tWidgets('viewAll')}
                 />
