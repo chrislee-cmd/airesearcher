@@ -73,12 +73,13 @@ export function CaptureUseCaseCards({
             disabled={disabled}
             onClick={() => onChange(opt.id)}
             className={[
-              // Canvas 1c method 카드 지오메트리(GEOMETRY.md §3): radius 13 ·
+              // Canvas 1c method 카드 지오메트리(GEOMETRY.md §3): radius ~13 ·
               // padding 13x11 · border 2 고정(상태 무관 → 선택 시 폭 변화로 인한
-              // 레이아웃 shift 0). 선택 = amore border-2 + soft glow(shadow-select-
-              // glow, R6 proposed) — 기존 memphis 하드 오프셋(shadow-memphis-md-
-              // amore) 대신 은은한 blur 후광.
-              'relative flex flex-col gap-1.5 rounded-[13px] border-2 bg-paper px-[11px] py-[13px] text-left',
+              // 레이아웃 shift 0). radius 는 토큰 rounded-sm(14px) 사용 — 실측 13 과
+              // 1px 차, 디자인 하드코드 게이트(check:design)상 토큰만 허용이라
+              // 보수적으로 근접 토큰 선택. 선택 = amore border-2 + soft glow
+              // (shadow-select-glow, R6 proposed) — 기존 memphis 하드 오프셋 대체.
+              'relative flex flex-col gap-1.5 rounded-sm border-2 bg-paper px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
