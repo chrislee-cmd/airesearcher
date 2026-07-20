@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { initPostHog, isPostHogReady, posthog } from '@/lib/analytics/posthog-client';
 import { createClient } from '@/lib/supabase/client';
+import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { isDeviceOptedOut, markDeviceOptedOut, readOptOutParam } from '@/lib/analytics/device-optout';
 
 // Boots the PostHog SDK on mount and ties analytics identity to the Supabase
 // session (analytics 3/6). Without an `identify` call, `person_profiles:
@@ -15,6 +17,22 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initPostHog();
     if (!isPostHogReady()) return; // no key (local dev / preview) — nothing to wire
+
+    // Device-level opt-out, applied before any capture on this load. Handles
+    // (1) a manual ?analytics_optout=1 / ?analytics_optin=1 toggle and (2) a
+    // browser that a prior internal login already flagged. PostHog persists its
+    // own opt-out state, so once opted out subsequent page loads suppress the
+    // initial pageview automatically. See lib/analytics/device-optout.ts.
+    const optOutChange = readOptOutParam();
+    if (optOutChange === 'optout') {
+      posthog.opt_out_capturing();
+      console.info('[analytics] 이 브라우저는 애널리틱스 수집에서 제외됩니다 (opt-out).');
+    } else if (optOutChange === 'optin') {
+      posthog.opt_in_capturing();
+      console.info('[analytics] 이 브라우저 애널리틱스 수집을 재개합니다 (opt-in).');
+    } else if (isDeviceOptedOut()) {
+      posthog.opt_out_capturing();
+    }
 
     captureUtmAttribution();
 
@@ -81,6 +99,23 @@ function captureUtmAttribution() {
 // user_id 를 distinct_id 로, email/created_at 을 person property 로 등록.
 // org_id / plan 은 후속 spec (fetchProfile hook 재사용) 범위라 여기서는 제외.
 function identifyUser(user: { id: string; email?: string | null; created_at?: string }) {
+  // Internal (our own) account: tag the person as internal for the dashboard
+  // "internal & test users" filter, then stop capturing on this browser for
+  // good. We intentionally do NOT posthog.identify() an internal user — we
+  // don't want to build a rich identity for excluded traffic. markDeviceOptedOut
+  // also carries the exclusion to anonymous landing visits on this browser (the
+  // whole point) and lets the Mixpanel provider read the same flag.
+  //
+  // Caveat (documented in the PR): under person_profiles:'identified_only' a
+  // setPersonProperties before identify may not attach to a server-side person,
+  // so the dashboard email-contains / IP filters are the reliable backstop.
+  if (isSuperAdminEmail(user.email)) {
+    posthog.setPersonProperties(undefined, { is_internal: true });
+    posthog.opt_out_capturing();
+    markDeviceOptedOut();
+    return;
+  }
+
   posthog.identify(user.id, {
     email: user.email ?? undefined,
     created_at: user.created_at,
