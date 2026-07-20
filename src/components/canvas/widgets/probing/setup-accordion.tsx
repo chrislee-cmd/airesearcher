@@ -175,7 +175,7 @@ export function ProbingSetupAccordion({
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
-      note: tc('offlineNote'),
+      // D4(GEOMETRY.md): 대면 카드는 2줄만 — 3번째 줄(offlineNote) 제거.
     },
     {
       id: 'both',

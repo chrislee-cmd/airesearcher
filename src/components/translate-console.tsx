@@ -35,7 +35,7 @@ import { Button } from './ui/button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
-import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import {
@@ -732,7 +732,8 @@ export function TranslateConsole({
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
-      note: tc('offlineNote'),
+      // D4(GEOMETRY.md): 대면 카드는 2줄만(진행자·마이크 / 참석자·마이크).
+      // 3번째 줄(offlineNote "마이크 하나로 방 전체…") 제거.
     },
     {
       id: 'both',
@@ -4438,10 +4439,9 @@ export function TranslateConsole({
           onChange={handleGlossaryChange}
           disabled={busy || live}
           ariaLabel={t('glossary.label')}
-          placeholder={t('glossary.placeholder')}
-          applyLabel={t('glossary.apply')}
-          applyTitle={t('glossary.applyTitle')}
-          dirtyNotice={t('glossary.dirtyNotice')}
+          placeholder={t('glossary.addPlaceholder')}
+          addLabel={t('glossary.add')}
+          removeLabel={t('glossary.remove')}
         />
       </ControlBoardPanel.Input>
     </>
@@ -4540,10 +4540,9 @@ export function TranslateConsole({
           onChange={handleGlossaryChange}
           disabled={busy}
           ariaLabel={t('glossary.label')}
-          placeholder={t('glossary.placeholder')}
-          applyLabel={t('glossary.apply')}
-          applyTitle={t('glossary.applyTitle')}
-          dirtyNotice={t('glossary.dirtyNotice')}
+          placeholder={t('glossary.addPlaceholder')}
+          addLabel={t('glossary.add')}
+          removeLabel={t('glossary.remove')}
         />
       ),
     },
@@ -5086,27 +5085,12 @@ function RecordingDownloadPanel({
 }
 
 // ── Layer B: glossary editor ──
-// Textarea + 명시적 "적용" 버튼 (프로빙 control-board.tsx 조사목적 패턴 미러).
-// 한 줄 = 용어 1개. 타이핑은 로컬 draft(string) 만 갱신하고, "적용" 클릭
-// 시에만 라인 파싱 → onChange(string[]) 1회 호출(= 영속화). glossary 의
-// 저장/세션 payload 계약은 여전히 string[] — Textarea 는 표현 계층만 담당.
+// D5(GEOMETRY.md): 인라인 AddRow(입력 + ＋추가) + 칩 리스트. 예전 Textarea +
+// "적용" 버튼(라인 파싱)을 프로빙 InjectedQuestionsField 규격에 정합 — 용어를
+// 하나씩 즉시 반영(Apply 없음), 칩은 rounded-pill bg-paper-soft border-line 에
+// "용어 ✕". glossary 의 저장/세션 payload 계약은 여전히 string[].
 const GLOSSARY_MAX_TERMS = 200;
 const GLOSSARY_MAX_LEN = 200;
-
-// draft(string) → string[]: 라인 분리 → trim → 빈 줄 제거 → 중복 제거
-// (순서 보존) → 각 항목 MAX_LEN slice → 전체 MAX_TERMS 제한.
-function parseGlossary(raw: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const line of raw.split('\n')) {
-    const term = line.trim().slice(0, GLOSSARY_MAX_LEN);
-    if (!term || seen.has(term)) continue;
-    seen.add(term);
-    out.push(term);
-    if (out.length >= GLOSSARY_MAX_TERMS) break;
-  }
-  return out;
-}
 
 function GlossaryField({
   values,
@@ -5114,68 +5098,85 @@ function GlossaryField({
   disabled,
   ariaLabel,
   placeholder,
-  applyLabel,
-  applyTitle,
-  dirtyNotice,
+  addLabel,
+  removeLabel,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
   ariaLabel: string;
   placeholder: string;
-  applyLabel: string;
-  applyTitle: string;
-  dirtyNotice: string;
+  addLabel: string;
+  removeLabel: string;
 }) {
-  // 외부 hydrate(프로젝트 전환/설정 로드)로 values 가 바뀌면 draft 를 재시드.
-  // 프로빙의 draft-vs-synced 리셋 패턴(render 중 감지) 을 준용 — effect 내
-  // 동기 setState 를 막는 design-system lint 룰 회피.
-  const synced = values.join('\n');
-  const [draft, setDraft] = useState(synced);
-  const [syncedSnapshot, setSyncedSnapshot] = useState(synced);
-  if (synced !== syncedSnapshot) {
-    setSyncedSnapshot(synced);
-    setDraft(synced);
-  }
+  // 입력 중인 한 용어만 로컬 draft. Enter/＋추가 시 즉시 values 에 append(중복
+  // 스킵) → onChange(string[]) 로 영속. 값 편집은 칩 ✕ 제거뿐 — Apply 없음.
+  const [draft, setDraft] = useState('');
+  const atMax = values.length >= GLOSSARY_MAX_TERMS;
 
-  // 적용해도 저장값이 달라질 때만 dirty(파싱 결과 기준 — 순수 공백/빈 줄
-  // 편집은 no-op 이라 버튼을 켜지 않는다).
-  const dirty = parseGlossary(draft).join('\n') !== synced;
-  const canApply = dirty && !disabled;
-
-  function apply() {
-    if (!canApply) return;
-    const next = parseGlossary(draft);
-    onChange(next);
-    // 정규화된 형태로 draft 재시드 — 후행 공백/중복/빈 줄 정리 반영.
-    setDraft(next.join('\n'));
+  function addTerm() {
+    if (disabled) return;
+    const term = draft.trim().slice(0, GLOSSARY_MAX_LEN);
+    if (!term) return;
+    if (values.includes(term)) {
+      setDraft('');
+      return;
+    }
+    if (atMax) return;
+    onChange([...values, term]);
+    setDraft('');
   }
 
   return (
-    <div>
-      <Textarea
-        aria-label={ariaLabel}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={3}
-        disabled={disabled}
-        placeholder={placeholder}
-        className="resize-none text-md"
-      />
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="text-xs text-mute" aria-live="polite">
-          {dirty ? dirtyNotice : ''}
-        </p>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.slice(0, GLOSSARY_MAX_LEN))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTerm();
+            }
+          }}
+          maxLength={GLOSSARY_MAX_LEN}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          disabled={disabled || atMax}
+          size="sm"
+        />
         <Button
           variant="primary"
           size="sm"
-          onClick={apply}
-          disabled={!canApply}
-          title={applyTitle}
+          onClick={addTerm}
+          disabled={disabled || !draft.trim() || atMax}
+          className="shrink-0 whitespace-nowrap"
         >
-          {applyLabel}
+          {addLabel}
         </Button>
       </div>
+      {values.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {values.map((term, i) => (
+            <li
+              key={`${i}-${term}`}
+              className="inline-flex items-center gap-1 rounded-pill border border-line bg-paper-soft py-1 pl-3 pr-1 text-sm text-ink"
+            >
+              <span className="break-words">{term}</span>
+              <IconButton
+                aria-label={`${removeLabel}: ${term}`}
+                size="sm"
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => onChange(values.filter((_, j) => j !== i))}
+                className="shrink-0"
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
