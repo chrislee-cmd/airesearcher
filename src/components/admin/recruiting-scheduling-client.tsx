@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -36,6 +37,7 @@ export function RecruitingSchedulingClient({
   selectedBatchId,
   candidates,
 }: Props) {
+  const t = useTranslations('RecruitingScheduling');
   const router = useRouter();
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
@@ -64,7 +66,7 @@ export function RecruitingSchedulingClient({
         body: JSON.stringify({ title }),
       });
       if (!res.ok) {
-        setMessage('배치 생성에 실패했습니다.');
+        setMessage(t('createFailed'));
         return;
       }
       const { batch } = (await res.json()) as { batch: SchedBatch };
@@ -94,16 +96,17 @@ export function RecruitingSchedulingClient({
       };
       if (!res.ok) {
         setMessage(
-          json.error === 'no_candidates'
-            ? '이메일 컬럼이 있는 후보자를 찾지 못했습니다.'
-            : '업로드에 실패했습니다.',
+          json.error === 'no_candidates' ? t('noCandidates') : t('uploadFailed'),
         );
         return;
       }
-      const skipped = json.skippedNoEmail
-        ? ` (이메일 없음 ${json.skippedNoEmail}행 제외)`
-        : '';
-      setMessage(`${json.upserted ?? 0}명 반영됨${skipped}.`);
+      const count = json.upserted ?? 0;
+      const skipped = json.skippedNoEmail ?? 0;
+      setMessage(
+        skipped > 0
+          ? t('uploadedWithSkip', { count, skipped })
+          : t('uploaded', { count }),
+      );
       router.refresh();
     } finally {
       setUploading(false);
@@ -113,16 +116,14 @@ export function RecruitingSchedulingClient({
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-ink">후보자 인터뷰 스케줄링</h1>
-        <p className="text-sm text-mute">
-          배치를 선택하거나 새로 만들고, CSV/XLSX 로 후보자를 업로드하세요.
-        </p>
+        <h1 className="text-xl font-semibold text-ink">{t('title')}</h1>
+        <p className="text-sm text-mute">{t('subtitle')}</p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3 border-b border-line pb-6">
         <div className="min-w-[220px]">
           <Select
-            label="배치"
+            label={t('batchLabel')}
             value={selectedBatchId ?? ''}
             onChange={(e) => selectBatch(e.target.value)}
             options={batches.map((b) => ({ value: b.id, label: b.title }))}
@@ -131,8 +132,8 @@ export function RecruitingSchedulingClient({
         </div>
         <div className="flex items-end gap-2">
           <Input
-            label="새 배치"
-            placeholder="배치 이름"
+            label={t('newBatchLabel')}
+            placeholder={t('newBatchPlaceholder')}
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => {
@@ -144,7 +145,7 @@ export function RecruitingSchedulingClient({
             onClick={createBatch}
             disabled={!newTitle.trim() || creating}
           >
-            {creating ? '생성 중…' : '생성'}
+            {creating ? t('creating') : t('create')}
           </Button>
         </div>
       </div>
@@ -158,9 +159,9 @@ export function RecruitingSchedulingClient({
             onFiles={(files) => {
               if (files[0]) uploadFile(files[0]);
             }}
-            onError={() => setMessage('파일이 너무 큽니다 (최대 10MB).')}
-            label={uploading ? '업로드 중…' : '후보자 파일 업로드'}
-            helperText="CSV 또는 XLSX · 이메일 기준 병합(재업로드 시 갱신)"
+            onError={() => setMessage(t('fileTooLarge'))}
+            label={uploading ? t('uploading') : t('uploadLabel')}
+            helperText={t('uploadHelper')}
             className="px-6 py-12"
           />
 
@@ -170,17 +171,21 @@ export function RecruitingSchedulingClient({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-mute">
-                  <th className="px-3 py-2 font-medium">이메일</th>
-                  <th className="px-3 py-2 font-medium">이름</th>
-                  <th className="px-3 py-2 font-medium">전화</th>
+                  <th className="px-3 py-2 font-medium">{t('colEmail')}</th>
+                  <th className="px-3 py-2 font-medium">{t('colName')}</th>
+                  <th className="px-3 py-2 font-medium">{t('colPhone')}</th>
                   {fieldColumns.map((col) => (
                     <th key={col} className="px-3 py-2 font-medium">
                       {col}
                     </th>
                   ))}
                   {/* 슬롯 / 공유링크 컬럼 자리 — PR2(캘린더)·PR4(참여자링크)에서 채움. */}
-                  <th className="px-3 py-2 font-medium text-mute-soft">슬롯</th>
-                  <th className="px-3 py-2 font-medium text-mute-soft">공유링크</th>
+                  <th className="px-3 py-2 font-medium text-mute-soft">
+                    {t('colSlot')}
+                  </th>
+                  <th className="px-3 py-2 font-medium text-mute-soft">
+                    {t('colShareLink')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -190,7 +195,7 @@ export function RecruitingSchedulingClient({
                       className="px-3 py-6 text-center text-mute"
                       colSpan={5 + fieldColumns.length}
                     >
-                      아직 후보자가 없습니다. 파일을 업로드하세요.
+                      {t('emptyCandidates')}
                     </td>
                   </tr>
                 ) : (
@@ -214,9 +219,7 @@ export function RecruitingSchedulingClient({
           </div>
         </>
       ) : (
-        <p className="text-sm text-mute">
-          배치를 먼저 만들면 후보자를 업로드할 수 있습니다.
-        </p>
+        <p className="text-sm text-mute">{t('selectBatchFirst')}</p>
       )}
     </div>
   );

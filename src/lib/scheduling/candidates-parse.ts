@@ -7,20 +7,27 @@ import { parseXlsxToRows } from '@/lib/xlsx-parse';
 // uploader put in the sheet is lost. Rows without an email are dropped — email
 // is the upsert key (unique(batch_id,email)) and the column is NOT NULL.
 
+// The non-ASCII entries below are header-matching TOKENS for uploaded
+// spreadsheets (a Korean sheet may label the column "이메일"), not UI copy —
+// they must stay as literals so parsing works. Mirrors scheduler/csv.ts's
+// alias tables.
 const EMAIL_KEYS = [
   'email', 'mail', 'emailaddress', 'e-mail',
+  // i18n-allow-korean -- 업로드 스프레드시트 헤더 매칭 토큰(UI 아님)
   '메일', '이메일',
   'メール', 'メールアドレス',
   'อีเมล',
 ];
 const NAME_KEYS = [
   'name', 'fullname', 'candidate', 'participant',
+  // i18n-allow-korean -- 업로드 스프레드시트 헤더 매칭 토큰(UI 아님)
   '이름', '성함', '닉네임', '후보자', '참여자',
   '氏名', '名前',
   'ชื่อ',
 ];
 const PHONE_KEYS = [
   'phone', 'mobile', 'tel', 'cellphone', 'contact', 'phonenumber',
+  // i18n-allow-korean -- 업로드 스프레드시트 헤더 매칭 토큰(UI 아님)
   '전화', '전화번호', '연락처', '휴대폰', '핸드폰',
   '電話', '携帯',
   'โทรศัพท์', 'เบอร์โทร',

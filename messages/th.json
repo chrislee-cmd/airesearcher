@@ -2574,5 +2574,30 @@
       "startHint": "เริ่มเซสชัน",
       "openFullview": "เปิดมุมมองเต็มหน้าจอ"
     }
+  },
+  "RecruitingScheduling": {
+    "title": "การจัดตารางสัมภาษณ์ผู้สมัคร",
+    "subtitle": "เลือกหรือสร้างชุดใหม่ แล้วอัปโหลดผู้สมัครผ่าน CSV/XLSX",
+    "batchLabel": "ชุด",
+    "newBatchLabel": "ชุดใหม่",
+    "newBatchPlaceholder": "ชื่อชุด",
+    "create": "สร้าง",
+    "creating": "กำลังสร้าง…",
+    "createFailed": "สร้างชุดไม่สำเร็จ",
+    "uploadLabel": "อัปโหลดไฟล์ผู้สมัคร",
+    "uploading": "กำลังอัปโหลด…",
+    "uploadHelper": "CSV หรือ XLSX · รวมตามอีเมล (อัปโหลดซ้ำจะอัปเดต)",
+    "fileTooLarge": "ไฟล์ใหญ่เกินไป (สูงสุด 10MB)",
+    "noCandidates": "ไม่พบผู้สมัครที่มีคอลัมน์อีเมล",
+    "uploadFailed": "อัปโหลดไม่สำเร็จ",
+    "uploaded": "บันทึกแล้ว {count} คน",
+    "uploadedWithSkip": "บันทึกแล้ว {count} คน (ข้าม {skipped} แถวที่ไม่มีอีเมล)",
+    "colEmail": "อีเมล",
+    "colName": "ชื่อ",
+    "colPhone": "โทรศัพท์",
+    "colSlot": "ช่วงเวลา",
+    "colShareLink": "ลิงก์แชร์",
+    "emptyCandidates": "ยังไม่มีผู้สมัคร อัปโหลดไฟล์",
+    "selectBatchFirst": "สร้างชุดก่อนเพื่ออัปโหลดผู้สมัคร"
   }
 }

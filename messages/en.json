@@ -2481,5 +2481,30 @@
       "startHint": "Start a session",
       "openFullview": "Open full view"
     }
+  },
+  "RecruitingScheduling": {
+    "title": "Interview Scheduling",
+    "subtitle": "Select or create a batch, then upload candidates via CSV/XLSX.",
+    "batchLabel": "Batch",
+    "newBatchLabel": "New batch",
+    "newBatchPlaceholder": "Batch name",
+    "create": "Create",
+    "creating": "Creating…",
+    "createFailed": "Failed to create the batch.",
+    "uploadLabel": "Upload candidate file",
+    "uploading": "Uploading…",
+    "uploadHelper": "CSV or XLSX · merged by email (re-upload updates)",
+    "fileTooLarge": "File is too large (max 10MB).",
+    "noCandidates": "No candidates with an email column were found.",
+    "uploadFailed": "Upload failed.",
+    "uploaded": "{count} candidates saved.",
+    "uploadedWithSkip": "{count} candidates saved ({skipped} rows without email skipped).",
+    "colEmail": "Email",
+    "colName": "Name",
+    "colPhone": "Phone",
+    "colSlot": "Slot",
+    "colShareLink": "Share link",
+    "emptyCandidates": "No candidates yet. Upload a file.",
+    "selectBatchFirst": "Create a batch first to upload candidates."
   }
 }
