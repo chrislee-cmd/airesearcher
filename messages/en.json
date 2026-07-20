@@ -908,6 +908,28 @@
       "description": "Generate interview scripts and discussion guides.",
       "cost": "1 credit"
     },
+    "transcriptResult": {
+      "kind": "Transcript",
+      "donePill": "Done",
+      "back": "List",
+      "open": "View results",
+      "minutes": "{min} min",
+      "speakers": "{count} speakers",
+      "searchPlaceholder": "Search transcript…",
+      "bySpeaker": "By speaker",
+      "byTimestamp": "Timestamp",
+      "exportTitle": "Export",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "Text (.txt)",
+      "exportSrt": "Subtitles (.srt)",
+      "loading": "Loading transcript…",
+      "error": "Couldn't load the transcript.",
+      "empty": "No turns to show.",
+      "noResults": "No matches.",
+      "aiSummaryTitle": "AI summary",
+      "keyThemesTitle": "Key themes",
+      "comingSoon": "Coming soon (later update)."
+    },
     "transcriptsView": {
       "setup": {
         "stepEyebrow": "STEP 0{n} · {label}",

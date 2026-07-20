@@ -20,7 +20,8 @@ export type ArtifactExt =
   | 'csv'
   | 'pptx'
   | 'html'
-  | 'txt';
+  | 'txt'
+  | 'srt';
 
 export interface BuildBaseNameOpts {
   prefix: ArtifactPrefix;

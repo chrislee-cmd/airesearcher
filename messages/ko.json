@@ -908,6 +908,28 @@
       "description": "오디오/영상 인터뷰를 정확한 스크립트로 변환합니다.",
       "cost": "1크레딧"
     },
+    "transcriptResult": {
+      "kind": "전사록",
+      "donePill": "완료",
+      "back": "목록",
+      "open": "결과 보기",
+      "minutes": "{min}분",
+      "speakers": "화자 {count}명",
+      "searchPlaceholder": "전사록 검색…",
+      "bySpeaker": "화자별",
+      "byTimestamp": "타임스탬프",
+      "exportTitle": "내보내기",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "텍스트 (.txt)",
+      "exportSrt": "자막 (.srt)",
+      "loading": "전사록 불러오는 중…",
+      "error": "전사록을 불러오지 못했어요.",
+      "empty": "표시할 발화가 없어요.",
+      "noResults": "검색 결과가 없어요.",
+      "aiSummaryTitle": "AI 요약",
+      "keyThemesTitle": "핵심 테마",
+      "comingSoon": "곧 제공됩니다 (후속 업데이트)."
+    },
     "transcriptsView": {
       "setup": {
         "stepEyebrow": "STEP 0{n} · {label}",

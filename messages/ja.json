@@ -998,6 +998,28 @@
       "description": "インタビュースクリプトとディスカッションガイドを生成します。",
       "cost": "1クレジット"
     },
+    "transcriptResult": {
+      "kind": "文字起こし",
+      "donePill": "完了",
+      "back": "一覧",
+      "open": "結果を見る",
+      "minutes": "{min}分",
+      "speakers": "話者{count}名",
+      "searchPlaceholder": "文字起こしを検索…",
+      "bySpeaker": "話者別",
+      "byTimestamp": "タイムスタンプ",
+      "exportTitle": "エクスポート",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "テキスト (.txt)",
+      "exportSrt": "字幕 (.srt)",
+      "loading": "文字起こしを読み込み中…",
+      "error": "文字起こしを読み込めませんでした。",
+      "empty": "表示する発話がありません。",
+      "noResults": "一致する結果がありません。",
+      "aiSummaryTitle": "AI要約",
+      "keyThemesTitle": "主要テーマ",
+      "comingSoon": "近日公開（今後のアップデート）。"
+    },
     "transcriptsView": {
       "setup": {
         "stepEyebrow": "STEP 0{n} · {label}",
