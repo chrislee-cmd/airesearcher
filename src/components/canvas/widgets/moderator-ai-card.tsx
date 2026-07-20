@@ -17,10 +17,17 @@ export const moderatorAiCard: WidgetContent = {
     // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051 회귀). 영문 기본 라벨.
     label: 'AI UT',
     labelKey: 'Features.moderator_ai.title',
-    accent: 'mint',
+    // Canvas 1c peach 톤 — 헤더밴드·`--widget-tone`·듀오톤 아이콘 fill 이 이 값 따라감.
+    accent: 'peach',
     cost: 0,
-    expandedCols: 2,
-    expandedRows: 2,
+    // PREVIEW 게이트(super-admin 노출, features.ts PREVIEW_FEATURES) — 크레딧 배지에
+    // 숫자/"무료" 대신 "PREVIEW" 라벨. costLabel 이 cost 보다 우선(widget-types 계약).
+    costLabel: 'PREVIEW',
+    // Canvas 1c 카드 프레임 opt-in — peach 파스텔 헤더밴드 + 통합 툴바
+    // (PREVIEW │ ● 상태 │ 🎨 │ ⤢ 풀뷰). probing/interpreter 와 동일 3-col span
+    // (expandedRows 미지정=1 → 604×900 카드가 2×2 큰 셀에 떠 하단 공백 나지 않음).
+    expandedCols: 3,
+    cardFrame: true,
   },
   state: 'idle',
   ExpandedBody: UtSessionBody,

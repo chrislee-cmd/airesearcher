@@ -106,6 +106,12 @@ export const ChromeButton = forwardRef<HTMLButtonElement, Props>(function Chrome
       type={type}
       className={cls}
       {...rest}
+      // data-canvas-action — ChromeButton 은 variant 로 자기 chrome(border/bg)을
+      // 소유하므로 canvas cascade([data-canvas-body] button:not([data-canvas-action]))
+      // 의 memphis 오버라이드에서 opt-out 해야 한다. 안 그러면 primary=bg-amore 가
+      // 흰 surface-card 로 덮여 Start CTA 가 흰 memphis 버튼이 되고, 그 위 흰 mono
+      // 아이콘이 투명해져 실종됐다(#1083 Rev1-C). BASE 주석의 #230 경고와 동일 위험.
+      data-canvas-action
       data-ds-primitive="ChromeButton"
     >
       {leftIcon ? <span className="shrink-0">{leftIcon}</span> : null}
