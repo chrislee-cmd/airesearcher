@@ -2572,5 +2572,18 @@
       "startHint": "セッションを開始する",
       "openFullview": "フルビューを開く"
     }
+  },
+  "CaptureUseCase": {
+    "sectionLabel": "インタビュー方式",
+    "groupAria": "インタビュー方式を選択",
+    "offlineTitle": "対面インタビュー",
+    "onlineTitle": "オンラインインタビュー",
+    "observeTitle": "オンライン視聴",
+    "hostVia": "進行者 · {via}",
+    "guestVia": "参加者 · {via}",
+    "viaMic": "マイク",
+    "viaTab": "タブ音声",
+    "offlineNote": "1台のマイクで部屋全体を収録 · 話者の区別なし",
+    "onlineNote": "進行者と参加者を個別に収録 · リアルタイム費用2倍"
   }
 }

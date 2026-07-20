@@ -2479,5 +2479,18 @@
       "startHint": "Start a session",
       "openFullview": "Open full view"
     }
+  },
+  "CaptureUseCase": {
+    "sectionLabel": "Interview setup",
+    "groupAria": "Select interview setup",
+    "offlineTitle": "In-person interview",
+    "onlineTitle": "Online interview",
+    "observeTitle": "Online observation",
+    "hostVia": "Interviewer · {via}",
+    "guestVia": "Participant · {via}",
+    "viaMic": "Microphone",
+    "viaTab": "Tab audio",
+    "offlineNote": "One device mic captures the whole room · no speaker separation",
+    "onlineNote": "Interviewer & participant captured separately · 2× realtime cost"
   }
 }
