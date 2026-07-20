@@ -23,10 +23,13 @@ import {
   useWidgetAccordion,
   type AccordionStepConfig,
 } from '@/components/canvas/shell/widget-accordion';
+import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import { ProjectPicker } from '@/components/project-picker';
 import {
   CaptureUseCaseCards,
@@ -176,17 +179,15 @@ export function UtSetupAccordion({
               />
             </Field>
           )}
-          <Field label={isGuest ? t('remote.url.label') : t('url.label')}>
-            <Input
-              id={`ut-url-${surface}`}
-              value={targetUrl}
-              onChange={(e) => onTargetUrl(e.target.value)}
-              placeholder="https://example.com"
-              inputMode="url"
-              autoComplete="off"
-              disabled={!isGuest && !supported}
-            />
-          </Field>
+          <UrlAddField
+            id={`ut-url-${surface}`}
+            value={targetUrl}
+            onChange={onTargetUrl}
+            disabled={!isGuest && !supported}
+            addLabel={t('url.add')}
+            removeLabel={t('url.remove')}
+            ariaLabel={isGuest ? t('remote.url.label') : t('url.label')}
+          />
           {!isGuest && (
             <label className="flex items-start gap-2 text-sm text-mute">
               <Checkbox
@@ -238,5 +239,93 @@ export function UtSetupAccordion({
       changeLabel={t('setup.change')}
       optionalLabel={t('setup.optional')}
     />
+  );
+}
+
+// 대상 URL 입력 — interpreter glossary(GlossaryField) 와 동형의 "타입 후 Add"
+// 어포던스. 단 URL 은 단일값이라 maxItems=1: 추가하면 제거 가능한 칩 1개로 고정되고
+// 입력행은 숨는다(칩 ✕ 로 제거하면 다시 입력행). 데이터 모델은 기존 단일 string
+// (targetUrl) 그대로 — 세션 payload/normalizeTargetUrl 계약 불변.
+// 라벨(Field)은 두지 않는다(사용자 요청: "target site url" 서브텍스트 제거).
+// 접근성용 aria-label 은 input/chip 에 부여.
+function UrlAddField({
+  id,
+  value,
+  onChange,
+  disabled,
+  addLabel,
+  removeLabel,
+  ariaLabel,
+}: {
+  id: string;
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  addLabel: string;
+  removeLabel: string;
+  ariaLabel: string;
+}) {
+  const [draft, setDraft] = useState('');
+
+  function add() {
+    if (disabled) return;
+    const url = draft.trim();
+    if (!url) return;
+    onChange(url);
+    setDraft('');
+  }
+
+  // 이미 추가된 URL → 제거 가능한 칩 (glossary 칩과 동일 스타일 토큰).
+  if (value) {
+    return (
+      <ul className="flex flex-wrap gap-2">
+        <li className="inline-flex items-center gap-1 rounded-pill border border-line bg-paper-soft py-1 pl-3 pr-1 text-sm text-ink">
+          <span className="break-all" aria-label={ariaLabel}>
+            {value}
+          </span>
+          <IconButton
+            aria-label={`${removeLabel}: ${value}`}
+            size="sm"
+            variant="ghost"
+            disabled={disabled}
+            onClick={() => onChange('')}
+            className="shrink-0"
+          >
+            <span aria-hidden>✕</span>
+          </IconButton>
+        </li>
+      </ul>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2">
+      <Input
+        id={id}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            add();
+          }
+        }}
+        placeholder="https://example.com"
+        aria-label={ariaLabel}
+        inputMode="url"
+        autoComplete="off"
+        disabled={disabled}
+        size="sm"
+      />
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={add}
+        disabled={disabled || !draft.trim()}
+        className="shrink-0 whitespace-nowrap"
+      >
+        {addLabel}
+      </Button>
+    </div>
   );
 }
