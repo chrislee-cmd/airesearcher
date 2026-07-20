@@ -18,6 +18,10 @@ import type { TranscriptTurn } from '@/lib/transcripts/elevenlabs';
 
 const MODEL = 'claude-sonnet-4-6';
 
+// Per-call LLM deadline (ms). Bounds each generateObject so a hung Anthropic call
+// can never pin the serverless step to the 300s platform limit (card 638 §1).
+const LLM_TIMEOUT = 60_000;
+
 // Output-language directive — English text only (no hardcoded Korean literal), so
 // the model localizes its OUTPUT while the source stays guard-clean.
 function langDirective(locale: string): string {
@@ -93,6 +97,8 @@ Keep moments non-overlapping and in time order. ${langDirective(locale)}`;
     prompt,
     temperature: 0.2,
     providerOptions: ZERO_RETENTION,
+    abortSignal: AbortSignal.timeout(LLM_TIMEOUT),
+    maxRetries: 2,
   });
 
   const dur = turns[turns.length - 1]?.end_ms ?? 0;
@@ -147,6 +153,8 @@ export async function analyzeClipText(
     prompt,
     temperature: 0.2,
     providerOptions: ZERO_RETENTION,
+    abortSignal: AbortSignal.timeout(LLM_TIMEOUT),
+    maxRetries: 2,
   });
   return { ...object, source: 'text' };
 }
@@ -234,6 +242,8 @@ Observed facts only. ${langDirective(locale)}`;
     prompt,
     temperature: 0.2,
     providerOptions: ZERO_RETENTION,
+    abortSignal: AbortSignal.timeout(LLM_TIMEOUT),
+    maxRetries: 2,
   });
   return { ...object, generated_at: nowIso };
 }
