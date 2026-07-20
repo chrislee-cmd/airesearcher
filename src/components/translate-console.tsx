@@ -790,7 +790,7 @@ export function TranslateConsole({
   // 선택 프로젝트가 있으면 glossary 를 그 프로젝트의 project_widget_settings
   // ('translate', { glossary }) 로 hydrate/save(DB 영속). 미선택이면 로컬/빈 값
   // (하위호환) — 세션 start payload(:2418)는 어느 쪽이든 이 glossary state 를 그대로 씀.
-  const { getSelection, setSelection } = useProjectSelection();
+  const { getSelection, setSelection, selection } = useProjectSelection();
   const projectId = getSelection('translate');
   const {
     settings: widgetSettings,
@@ -4459,6 +4459,16 @@ export function TranslateConsole({
   const projectName =
     v2Projects.find((p) => p.id === projectId)?.name ??
     t('setup.step1Selected');
+  // 크로스위젯 "일괄 적용" 반영(프로토 A.1) — 등장한 모든 위젯 선택이 이 위젯의
+  // 프로젝트와 동일하면 STEP1 done 요약에 "· 일괄" 태그. applyToAll 로 맞춰진 상태.
+  const selectionValues = Object.values(selection);
+  const projectAppliedToAll =
+    projectId != null &&
+    selectionValues.length > 0 &&
+    selectionValues.every((v) => v === projectId);
+  const projectSummary = projectAppliedToAll
+    ? `${projectName} · ${t('setup.step1BulkTag')}`
+    : projectName;
   const captureTitle =
     CAPTURE_USECASE_OPTIONS.find((o) => o.id === captureMode)?.title ?? '';
 
@@ -4467,7 +4477,7 @@ export function TranslateConsole({
       key: 'project',
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
-      summary: projectName,
+      summary: projectSummary,
       body: (
         <Field label={t('project')}>
           <ProjectPicker

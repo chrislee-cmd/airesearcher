@@ -860,6 +860,12 @@
     "placeholder": "プロジェクトを選択",
     "newProject": "+ 新規プロジェクト",
     "applyToAll": "すべてのウィジェットに適用",
+    "applyToAllHint": "☑ チェックすると全ウィジェットに一括適用 · 未チェックはこのウィジェットのみ",
+    "createPlaceholder": "新規プロジェクト名",
+    "createConfirm": "作成",
+    "creating": "作成中…",
+    "createCancel": "キャンセル",
+    "createFailed": "プロジェクトの作成に失敗しました",
     "menu": "プロジェクトメニュー"
   },
   "ComingSoon": {
@@ -1438,6 +1444,7 @@
       "step1Short": "プロジェクト",
       "step1Title": "作業中のプロジェクトを選択してください",
       "step1Selected": "選択済み",
+      "step1BulkTag": "一括",
       "step2Short": "インタビュー方式",
       "step2Title": "インタビュー方式を選択してください",
       "step3Short": "通訳言語",
@@ -2405,6 +2412,7 @@
       "step1Short": "プロジェクト",
       "step1Title": "作業中のプロジェクトを選択してください",
       "step1Selected": "選択済み",
+      "step1BulkTag": "一括",
       "step2Short": "インタビュー方式",
       "step2Title": "インタビュー方式を選択してください",
       "step3Short": "分析言語",

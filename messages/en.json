@@ -770,6 +770,12 @@
     "placeholder": "Select a project",
     "newProject": "+ New project",
     "applyToAll": "Apply to all widgets",
+    "applyToAllHint": "☑ Checked applies to all widgets · unchecked, this widget only",
+    "createPlaceholder": "New project name",
+    "createConfirm": "Create",
+    "creating": "Creating…",
+    "createCancel": "Cancel",
+    "createFailed": "Couldn't create the project",
     "menu": "Project menu"
   },
   "ComingSoon": {
@@ -1345,6 +1351,7 @@
       "step1Short": "Project",
       "step1Title": "Select the project you're working on",
       "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
       "step2Short": "Interview method",
       "step2Title": "Choose your interview method",
       "step3Short": "Languages",
@@ -2312,6 +2319,7 @@
       "step1Short": "Project",
       "step1Title": "Select the project you're working on",
       "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
       "step2Short": "Interview method",
       "step2Title": "Choose your interview method",
       "step3Short": "Analysis language",

@@ -770,6 +770,12 @@
     "placeholder": "프로젝트 선택",
     "newProject": "+ 새 프로젝트",
     "applyToAll": "전체 위젯에 적용",
+    "applyToAllHint": "☑ 체크 시 모든 위젯에 일괄 적용 · 미체크 시 이 위젯에만",
+    "createPlaceholder": "새 프로젝트 이름",
+    "createConfirm": "생성",
+    "creating": "생성 중…",
+    "createCancel": "취소",
+    "createFailed": "프로젝트 생성에 실패했어요",
     "menu": "프로젝트 메뉴"
   },
   "ComingSoon": {
@@ -1345,6 +1351,7 @@
       "step1Short": "프로젝트",
       "step1Title": "작업중인 프로젝트를 선택해주세요",
       "step1Selected": "선택 완료",
+      "step1BulkTag": "일괄",
       "step2Short": "인터뷰 방식",
       "step2Title": "인터뷰 방식을 선택해주세요",
       "step3Short": "통역 언어",
@@ -2312,6 +2319,7 @@
       "step1Short": "프로젝트",
       "step1Title": "작업중인 프로젝트를 선택해주세요",
       "step1Selected": "선택 완료",
+      "step1BulkTag": "일괄",
       "step2Short": "인터뷰 방식",
       "step2Title": "인터뷰 방식을 선택해주세요",
       "step3Short": "분석 언어",

@@ -33,6 +33,7 @@ import {
   type CaptureUseCaseOption,
 } from '@/components/ui/capture-usecase-cards';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
+import { useProjectSelection } from '@/components/project-selection-provider';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 import type { SourceKind } from './control-board';
 
@@ -163,6 +164,7 @@ export function ProbingSetupAccordion({
   const t = useTranslations('Probing');
   const tc = useTranslations('CaptureUseCase');
   const { projects } = useInterviewV2Projects();
+  const { selection } = useProjectSelection();
   const accordion = useWidgetAccordion(0);
 
   // 입력 소스 = 유스케이스 3-카드 (CaptureUseCaseCards, PR-A). control-board 와
@@ -196,6 +198,16 @@ export function ProbingSetupAccordion({
   const projectName =
     projects.find((p) => p.id === projectId)?.name ??
     t('setup.step1Selected');
+  // 크로스위젯 "일괄 적용" 반영(프로토 A.1) — 등장한 모든 위젯 선택이 이 위젯의
+  // 프로젝트와 동일하면 done 요약에 "· 일괄" 태그. applyToAll 로 맞춰진 상태.
+  const selValues = Object.values(selection);
+  const appliedToAll =
+    projectId != null &&
+    selValues.length > 0 &&
+    selValues.every((v) => v === projectId);
+  const projectSummary = appliedToAll
+    ? `${projectName} · ${t('setup.step1BulkTag')}`
+    : projectName;
   const sourceTitle =
     SOURCE_USECASE_OPTIONS.find((o) => o.id === source)?.title ?? '';
   const langLabel =
@@ -206,7 +218,7 @@ export function ProbingSetupAccordion({
       key: 'project',
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
-      summary: projectName,
+      summary: projectSummary,
       body: (
         <Field label={t('control.fieldProject')}>
           <ProjectPicker
