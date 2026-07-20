@@ -297,7 +297,7 @@ export function ProbingSetupAccordion({
       isExpanded={accordion.isExpanded}
       isComplete={isComplete}
       onOpenStep={accordion.open}
-      onCollapseAll={accordion.collapseAll}
+      onCollapseStep={accordion.collapse}
       changeLabel={t('setup.change')}
       optionalLabel={t('setup.optional')}
     />

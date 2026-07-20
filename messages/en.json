@@ -106,7 +106,9 @@
     },
     "url": {
       "label": "Target site URL",
-      "description": "The site you want to test. It opens in a new tab when the session starts."
+      "description": "The site you want to test. It opens in a new tab when the session starts.",
+      "add": "Add",
+      "remove": "Remove"
     },
     "language": {
       "label": "Expected participant language",

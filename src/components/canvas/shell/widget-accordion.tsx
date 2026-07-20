@@ -18,8 +18,7 @@
        접힘**(개별). 한 번에 하나 아님 — 여러 스텝 동시 펼침 허용.
      - 스텝 완료 → 그 스텝만 요약 접힘(auto). 완료 판정은 호출부(isComplete).
      - 접힌 스텝(완료 요약 / 컬랩스된 미완) 클릭 → 재오픈(onOpenStep).
-     - 빈영역(스텝 사이 gap / 레일 여백) 클릭 → **전체 컬랩스**
-       (target===currentTarget 가드, onCollapseAll).
+     - 펼친 스텝 헤더 클릭 → 개별 접기(onCollapseStep). 캐럿(▸/▾)이 토글 신호.
 
    비주얼 (번호 타임라인 레일):
      - 좌측 세로선(bg-line = ink 12%, 2px) + 스텝별 원형 번호 노드가 레일에
@@ -67,29 +66,20 @@ export type AccordionStepConfig = {
 //
 //   isExpanded(index, complete) = 각 스텝이 body 를 노출할지 여부.
 //     - 수동 override(manual)가 있으면 그 값(재오픈=true / 개별접기=false).
-//     - collapseAll 이 눌렸으면 전부 false.
 //     - 아니면 기본값 = !complete (미완이면 펼침, 완료면 요약 접힘).
 //
-//   open(i)        = 접힌 스텝 재오픈 (수동 override=true).
-//   collapse(i)    = 개별 접기 (수동 override=false).
-//   collapseAll()  = 빈영역 클릭 → 전체 접기 (manual 초기화 + collapsedAll).
+//   open(i)     = 접힌 스텝 재오픈 (수동 override=true).
+//   collapse(i) = 개별 접기 (수동 override=false). 펼친 헤더 클릭 경로.
 export function useWidgetAccordion() {
-  const [{ manual, collapsedAll }, setState] = useState<{
-    manual: Record<number, boolean>;
-    collapsedAll: boolean;
-  }>({ manual: {}, collapsedAll: false });
+  const [manual, setManual] = useState<Record<number, boolean>>({});
 
   return {
     isExpanded: (index: number, complete: boolean): boolean => {
       if (index in manual) return manual[index];
-      if (collapsedAll) return false;
       return !complete;
     },
-    open: (index: number) =>
-      setState((s) => ({ ...s, manual: { ...s.manual, [index]: true } })),
-    collapse: (index: number) =>
-      setState((s) => ({ ...s, manual: { ...s.manual, [index]: false } })),
-    collapseAll: () => setState({ manual: {}, collapsedAll: true }),
+    open: (index: number) => setManual((m) => ({ ...m, [index]: true })),
+    collapse: (index: number) => setManual((m) => ({ ...m, [index]: false })),
   };
 }
 
@@ -135,6 +125,28 @@ function CheckGlyph() {
   );
 }
 
+// 접기/펼치기 토글 표식. 접힘 = ▸(right), 펼침 = ▾(down) — 같은 chevron 을
+// transition-transform 으로 90° 회전시켜 토글 신호를 준다 (이모지 금지, 인라인
+// SVG). stroke 는 접힘=text-mute-soft / 펼침 헤더=text-ink 로 톤 매칭.
+function CaretGlyph({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className={`h-3 w-3 shrink-0 transition-transform ${
+        expanded ? 'rotate-90 text-ink' : 'text-mute-soft'
+      }`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4.5 2.5 8 6l-3.5 3.5" />
+    </svg>
+  );
+}
+
 function AccordionStep({
   index,
   nodeState,
@@ -142,6 +154,7 @@ function AccordionStep({
   complete,
   config,
   onOpen,
+  onCollapse,
   changeLabel,
   optionalLabel,
 }: {
@@ -154,6 +167,8 @@ function AccordionStep({
   complete: boolean;
   config: AccordionStepConfig;
   onOpen: () => void;
+  // 펼친 스텝 헤더 클릭 → 개별 접기 (accordion.collapse).
+  onCollapse: () => void;
   // "변경" 링크 라벨 (완료 요약).
   changeLabel: string;
   // "(선택)" 표식 라벨 (optional 스텝).
@@ -177,7 +192,9 @@ function AccordionStep({
         // cascade(globals.css)가 접힌 스텝 <button> 을 검정보더+하드섀도 memphis 카드로
         // 만들어 레일 표현을 무력화하던 버그 회피. 이 행은 레일 위 요약/타이틀일 뿐.
         data-canvas-action
-        className="relative flex items-center gap-3 text-left"
+        // 클릭 어포던스: cursor-pointer + subtle hover 배경(토큰) + rounded-sm.
+        // memphis cascade 재유입 금지 → 명시적 hover 클래스로만 (data-canvas-action 유지).
+        className="group relative flex cursor-pointer items-center gap-3 rounded-sm text-left transition-colors hover:bg-paper-soft"
       >
         <span className="relative z-10">{node}</span>
         {complete ? (
@@ -188,35 +205,47 @@ function AccordionStep({
                 {config.summary}
               </span>
             </span>
-            <span className="shrink-0 text-xs font-medium text-mute-soft">
+            <span className="shrink-0 text-xs font-medium text-mute-soft transition-colors group-hover:text-ink">
               {changeLabel}
             </span>
           </span>
         ) : (
-          <span className="text-sm font-semibold text-mute-soft">
+          <span className="min-w-0 flex-1 text-sm font-semibold text-mute-soft transition-colors group-hover:text-ink">
             {config.title}
             {config.optional && (
               <span className="ml-1.5 text-xs font-medium">{optionalLabel}</span>
             )}
           </span>
         )}
+        <CaretGlyph expanded={false} />
       </button>
     );
   }
 
-  // 펼침 — 번호 노드 + 타이틀 + body 세로 나열 (레일 우측 들여쓰기).
+  // 펼침 — 번호 노드 + 타이틀 헤더(클릭=개별 접기) + body 세로 나열.
+  // 헤더 행만 버튼(클릭영역), body 는 버튼 밖이라 컨트롤 조작이 접힘을 유발하지 않음.
   return (
     <div className="relative flex items-start gap-3">
       <span className="relative z-10 shrink-0">{node}</span>
       <div className="min-w-0 flex-1">
-        <div className="mb-3 flex min-h-6 items-center gap-2">
-          <span className="text-sm font-bold text-ink">{config.title}</span>
+        {/* eslint-disable-next-line react/forbid-elements -- 펼친 스텝 헤더 = 클릭 시 개별 접기하는 토글 행 (셸 프리미티브) */}
+        <button
+          type="button"
+          onClick={onCollapse}
+          // data-canvas-action — 헤더 버튼도 memphis cascade opt-out (접힌 행과 동일).
+          data-canvas-action
+          className="group mb-3 flex min-h-6 w-full cursor-pointer items-center gap-2 rounded-sm text-left transition-colors hover:bg-paper-soft"
+        >
+          <span className="min-w-0 flex-1 text-sm font-bold text-ink">
+            {config.title}
+          </span>
           {config.optional && (
             <span className="text-xs font-medium text-mute-soft">
               {optionalLabel}
             </span>
           )}
-        </div>
+          <CaretGlyph expanded />
+        </button>
         {config.body}
       </div>
     </div>
@@ -232,7 +261,7 @@ export function WidgetAccordion({
   isExpanded,
   isComplete,
   onOpenStep,
-  onCollapseAll,
+  onCollapseStep,
   changeLabel,
   optionalLabel,
 }: {
@@ -240,7 +269,9 @@ export function WidgetAccordion({
   isExpanded: (index: number, complete: boolean) => boolean;
   isComplete: (index: number) => boolean;
   onOpenStep: (index: number) => void;
-  onCollapseAll: () => void;
+  // 펼친 스텝 헤더 클릭 → 개별 접기 (accordion.collapse). 미배선(undefined)이면
+  // 헤더 클릭이 no-op — 하위호환. 4위젯은 accordion.collapse 를 배선한다.
+  onCollapseStep?: (index: number) => void;
   changeLabel: string;
   optionalLabel: string;
 }) {
@@ -248,15 +279,7 @@ export function WidgetAccordion({
   const firstIncomplete = steps.findIndex((_, index) => !isComplete(index));
 
   return (
-    <div
-      // 빈영역(스텝 사이 gap / 컨테이너 패딩) 클릭 → 전체 컬랩스. 스텝 행 내부
-      // 클릭은 target!==currentTarget 이라 통과 (프로토 pCollapse 가드). 레일선은
-      // pointer-events-none 이라 통과.
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCollapseAll();
-      }}
-      className="relative flex flex-col gap-6"
-    >
+    <div className="relative flex flex-col gap-6">
       {/* 좌측 세로 레일 — 노드 중심(left-3 = 24px 노드 폭의 절반)을 관통하는
           연속선. 노드 배경이 이 선을 덮어 "레일에 매달린 노드" 표현. 첫/마지막
           노드 중심(top-3/bottom-3)에서 시작·종료해 위아래로 삐져나오지 않는다. */}
@@ -280,6 +303,7 @@ export function WidgetAccordion({
             complete={complete}
             config={config}
             onOpen={() => onOpenStep(index)}
+            onCollapse={() => onCollapseStep?.(index)}
             changeLabel={changeLabel}
             optionalLabel={optionalLabel}
           />
