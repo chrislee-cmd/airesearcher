@@ -53,7 +53,6 @@ import {
   WidgetAccordion,
   useWidgetAccordion,
   type AccordionStepConfig,
-  type AccordionStepState,
 } from './canvas/shell/widget-accordion';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
@@ -4364,7 +4363,7 @@ export function TranslateConsole({
 
   // V2 세팅 아코디언 (PR-B) — idle/setup 전용. live 표면은 감싸지 않는다(회귀 0).
   // active-step 상태 + 프로젝트명 해석(STEP1 done 요약).
-  const setupAccordion = useWidgetAccordion(0);
+  const setupAccordion = useWidgetAccordion();
   const { projects: v2Projects } = useInterviewV2Projects();
 
   // 원어/대상어/입력 모드 + Glossary — idle 센터 보드와 live 상단 고정 바가
@@ -4453,7 +4452,7 @@ export function TranslateConsole({
   // 유스케이스 4-스텝으로 재구성. 필드 컴포넌트(ProjectPicker/LangDualDropdown/
   // CaptureUseCaseCards/GlossaryField)는 그대로 재사용, 스텝 셸만 씌운다.
   // ④ 라이브 인플레이스: live 표면(controlFields active + WidgetOutputRegion)은
-  // 이 아코디언 밖 — 회귀 0. 자동진행: 각 선택 후 다음 스텝 auto-open.
+  // 이 아코디언 밖 — 회귀 0. 펼침: 전체 오픈 기본(미완 펼침, 완료 요약 접힘).
   const langLabelOf = (v: string) =>
     langOptions.find((l) => l.value === v)?.label ?? v;
   const projectName =
@@ -4483,10 +4482,7 @@ export function TranslateConsole({
           <ProjectPicker
             widget="translate"
             value={projectId}
-            onChange={(id) => {
-              handleProjectChange(id);
-              setupAccordion.open(1);
-            }}
+            onChange={handleProjectChange}
           />
         </Field>
       ),
@@ -4501,10 +4497,7 @@ export function TranslateConsole({
           <CaptureUseCaseCards
             ariaLabel={tc('groupAria')}
             value={captureMode}
-            onChange={(id) => {
-              setCaptureMode(id as CaptureMode);
-              setupAccordion.open(2);
-            }}
+            onChange={(id) => setCaptureMode(id as CaptureMode)}
             disabled={busy}
             options={CAPTURE_USECASE_OPTIONS}
           />
@@ -4525,14 +4518,8 @@ export function TranslateConsole({
             langs={langOptions}
             sourceLang={sourceLang}
             targetLang={targetLang}
-            onSelectSource={(v) => {
-              setSourceLang(v);
-              if (v && targetLang) setupAccordion.open(3);
-            }}
-            onSelectTarget={(v) => {
-              setTargetLang(v);
-              if (sourceLang && v) setupAccordion.open(3);
-            }}
+            onSelectSource={setSourceLang}
+            onSelectTarget={setTargetLang}
             placeholder={t('select')}
             inputLabel={t('inputLang')}
             outputLabel={t('outputLang')}
@@ -4563,26 +4550,23 @@ export function TranslateConsole({
     },
   ];
 
-  const setupStateFor = (index: number): AccordionStepState => {
-    const complete =
-      index === 0
-        ? projectId != null
-        : index === 1
-          ? captureMode !== ''
-          : index === 2
-            ? Boolean(sourceLang && targetLang)
-            : glossary.length > 0;
-    return complete ? 'done' : 'todo';
-  };
+  const setupIsComplete = (index: number): boolean =>
+    index === 0
+      ? projectId != null
+      : index === 1
+        ? captureMode !== ''
+        : index === 2
+          ? Boolean(sourceLang && targetLang)
+          : glossary.length > 0;
 
   const setupAccordionEl = (
     <ControlBoardPanel.Region>
       <WidgetAccordion
         steps={setupSteps}
-        activeIndex={setupAccordion.active}
+        isExpanded={setupAccordion.isExpanded}
+        isComplete={setupIsComplete}
         onOpenStep={setupAccordion.open}
-        onCollapse={setupAccordion.collapseAll}
-        stateFor={setupStateFor}
+        onCollapseAll={setupAccordion.collapseAll}
         changeLabel={t('setup.change')}
         optionalLabel={t('setup.optional')}
       />

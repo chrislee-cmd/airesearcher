@@ -19,7 +19,6 @@ import {
   WidgetAccordion,
   useWidgetAccordion,
   type AccordionStepConfig,
-  type AccordionStepState,
 } from '@/components/canvas/shell/widget-accordion';
 import { Field } from '@/components/canvas/shell/field';
 import { SelectMenu } from '@/components/ui/select-menu';
@@ -165,7 +164,7 @@ export function ProbingSetupAccordion({
   const tc = useTranslations('CaptureUseCase');
   const { projects } = useInterviewV2Projects();
   const { selection } = useProjectSelection();
-  const accordion = useWidgetAccordion(0);
+  const accordion = useWidgetAccordion();
 
   // 입력 소스 = 유스케이스 3-카드 (CaptureUseCaseCards, PR-A). control-board 와
   // 동일 매핑 — mic→오프라인 / both→온라인 / tab→참관.
@@ -224,10 +223,7 @@ export function ProbingSetupAccordion({
           <ProjectPicker
             widget="probing"
             value={projectId}
-            onChange={(id) => {
-              onProjectChange(id);
-              accordion.open(1);
-            }}
+            onChange={onProjectChange}
           />
         </Field>
       ),
@@ -242,10 +238,7 @@ export function ProbingSetupAccordion({
           <CaptureUseCaseCards
             ariaLabel={tc('groupAria')}
             value={source}
-            onChange={(id) => {
-              onSourceChange(id as SourceKind);
-              accordion.open(2);
-            }}
+            onChange={(id) => onSourceChange(id as SourceKind)}
             options={SOURCE_USECASE_OPTIONS}
           />
         </Field>
@@ -262,10 +255,7 @@ export function ProbingSetupAccordion({
             aria-label={t('control.outputLangAria')}
             value={outputLang}
             placeholder={t('control.select')}
-            onChange={(next) => {
-              onOutputLangChange(next as ProbingOutputLang);
-              accordion.open(3);
-            }}
+            onChange={(next) => onOutputLangChange(next as ProbingOutputLang)}
             options={OUTPUT_LANG_OPTIONS}
             buttonClassName={CONTROL_TRIGGER_CLASS}
           />
@@ -289,26 +279,24 @@ export function ProbingSetupAccordion({
     },
   ];
 
-  // 완료 판정 (done vs todo) — active 는 WidgetAccordion 이 처리.
-  const stateFor = (index: number): AccordionStepState => {
-    const complete =
-      index === 0
-        ? projectId != null
-        : index === 1
-          ? source !== ''
-          : index === 2
-            ? outputLang !== ''
-            : questions.length > 0;
-    return complete ? 'done' : 'todo';
-  };
+  // 완료 판정 (요약 접힘 vs 펼침 + 노드 색). 첫 미완=active / 나머지 미완=todo
+  // 노드 계산은 WidgetAccordion 이 처리.
+  const isComplete = (index: number): boolean =>
+    index === 0
+      ? projectId != null
+      : index === 1
+        ? source !== ''
+        : index === 2
+          ? outputLang !== ''
+          : questions.length > 0;
 
   return (
     <WidgetAccordion
       steps={steps}
-      activeIndex={accordion.active}
+      isExpanded={accordion.isExpanded}
+      isComplete={isComplete}
       onOpenStep={accordion.open}
-      onCollapse={accordion.collapseAll}
-      stateFor={stateFor}
+      onCollapseAll={accordion.collapseAll}
       changeLabel={t('setup.change')}
       optionalLabel={t('setup.optional')}
     />
