@@ -57,7 +57,6 @@ import {
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
 import { ListenerPanel } from './translate/listener-panel';
-import { EchoOnboarding } from './translate/echo-onboarding';
 import { LangDualDropdown } from './translate/lang-dual-dropdown';
 import { ProjectPicker } from '@/components/project-picker';
 import { useProjectSelection } from '@/components/project-selection-provider';
@@ -4640,21 +4639,13 @@ export function TranslateConsole({
               아래 분기에서 controlFields(평면, disabled) 그대로 (라이브 회귀 0).
               실행 CTA(통역 시작)는 WidgetPrimaryCta (하단 액션 바) 로 통일. */}
           {setupAccordionEl}
-          {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
-              드롭다운 아래 배치(dropdown-first). 비침습(Start 안 막음), "다시
-              안 보기" localStorage 저장. 공유 링크는 세션 시작 후 생성되므로
-              idle 에선 복사 버튼이 안내용 대기. */}
-          <EchoOnboarding
-            audible={outputAudible}
-            onToggleAudible={() => setOutputAudible((v) => !v)}
-            shareUrl={shareUrl}
-            onCopyShareUrl={() => void copyShareUrl()}
-            copied={shareCopied}
-            listenerCount={listeners.length}
-          />
-          {/* WebRTC/연결 오류 배너 — 컨트롤 top 이 아니라 "에코 없이 쓰는법"
-              안내 아래에 노출 (사용자 2026-07-09). errorBanner 는 무오류 시
-              null 이라 클러스터 gap-4 를 소비하지 않아 빈 공간 회귀 없음. */}
+          {/* WebRTC/연결 오류 배너 — 컨트롤(아코디언) 아래 노출. errorBanner 는
+              무오류 시 null 이라 클러스터 gap-4 를 소비하지 않아 빈 공간 회귀 없음.
+              (에코-free 온보딩 박스["에코 없이 쓰는법"]는 Canvas 1c 아코디언 정합
+              declutter 로 idle 셋업에서 제거 — 사용자 2026-07-20. idle 은 재생할
+              통역 오디오가 없어 음성 토글이 교육용일 뿐이었고, 기본 음소거 default
+              + live monitorMute 토글이 실기능을 계속 담당. EchoOnboarding 컴포넌트/
+              i18n(onboarding.*)은 미사용으로 남김.) */}
           {errorBanner}
         </ControlBoardPanel>
       ) : (
