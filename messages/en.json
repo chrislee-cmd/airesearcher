@@ -189,6 +189,30 @@
       "createSession": "Couldn't start the session. Please try again in a moment.",
       "downloadLink": "Couldn't create the download link. Please try again in a moment.",
       "download": "An error occurred during download."
+    },
+    "method": {
+      "sectionLabel": "Test method",
+      "groupAria": "Choose test method",
+      "hostTitle": "Test on my device",
+      "hostLine1": "Start right away, no link",
+      "hostLine2": "Record my own screen & voice",
+      "guestTitle": "Test on participant device",
+      "guestLine1": "Issue a link to the participant",
+      "guestLine2": "Remote watch + post review"
+    },
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step2Short": "Test method",
+      "step2Title": "Choose how to run the test",
+      "step3Short": "Language",
+      "step3Title": "Which language will the participant speak?",
+      "step4Short": "Target",
+      "step4Title": "Enter the target site and task",
+      "change": "Change",
+      "optional": "(optional)"
     }
   },
   "UtParticipant": {

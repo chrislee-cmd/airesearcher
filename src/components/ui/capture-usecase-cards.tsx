@@ -50,6 +50,7 @@ export function CaptureUseCaseCards({
   onChange,
   disabled = false,
   ariaLabel,
+  columns = 3,
 }: {
   options: CaptureUseCaseOption[];
   // 현재 선택된 id. 미선택('')이면 어떤 카드도 활성 표시 안 됨.
@@ -58,12 +59,15 @@ export function CaptureUseCaseCards({
   disabled?: boolean;
   // 라디오 그룹 전체를 설명하는 라벨 (예: "인터뷰 방식").
   ariaLabel: string;
+  // 열 수 — probing/통역 = 3(기본), AI UT 테스트방식 = 2. 정적 리터럴 두 개라
+  // Tailwind JIT 가 둘 다 픽업(동적 클래스 조립 아님).
+  columns?: 2 | 3;
 }) {
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="grid grid-cols-3 gap-[11px]"
+      className={`grid gap-[11px] ${columns === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}
     >
       {options.map((opt) => {
         const selected = value === opt.id;

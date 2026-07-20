@@ -189,6 +189,30 @@
       "createSession": "セッションを開始できませんでした。しばらくしてからもう一度お試しください。",
       "downloadLink": "ダウンロードリンクを作成できませんでした。しばらくしてからもう一度お試しください。",
       "download": "ダウンロード中にエラーが発生しました。"
+    },
+    "method": {
+      "sectionLabel": "テスト方法",
+      "groupAria": "テスト方法を選択",
+      "hostTitle": "自分の端末でテスト",
+      "hostLine1": "リンクなしですぐ開始",
+      "hostLine2": "自分の画面・音声を直接録画",
+      "guestTitle": "参加者の端末でテスト",
+      "guestLine1": "参加者にリンクを発行",
+      "guestLine2": "リモート観覧＋事後レビュー"
+    },
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step2Short": "テスト方法",
+      "step2Title": "テスト方法を選択してください",
+      "step3Short": "想定言語",
+      "step3Title": "参加者が話す言語を選択してください",
+      "step4Short": "対象",
+      "step4Title": "対象サイトと課題を入力してください",
+      "change": "変更",
+      "optional": "（任意）"
     }
   },
   "UtParticipant": {
