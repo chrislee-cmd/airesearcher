@@ -26,9 +26,11 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     const optOutChange = readOptOutParam();
     if (optOutChange === 'optout') {
       posthog.opt_out_capturing();
+      // i18n-allow-korean -- 개발자/사용자용 콘솔 확인 로그, UI 텍스트 아님
       console.info('[analytics] 이 브라우저는 애널리틱스 수집에서 제외됩니다 (opt-out).');
     } else if (optOutChange === 'optin') {
       posthog.opt_in_capturing();
+      // i18n-allow-korean -- 개발자/사용자용 콘솔 확인 로그, UI 텍스트 아님
       console.info('[analytics] 이 브라우저 애널리틱스 수집을 재개합니다 (opt-in).');
     } else if (isDeviceOptedOut()) {
       posthog.opt_out_capturing();
