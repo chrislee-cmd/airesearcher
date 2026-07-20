@@ -18,8 +18,7 @@
        접힘**(개별). 한 번에 하나 아님 — 여러 스텝 동시 펼침 허용.
      - 스텝 완료 → 그 스텝만 요약 접힘(auto). 완료 판정은 호출부(isComplete).
      - 접힌 스텝(완료 요약 / 컬랩스된 미완) 클릭 → 재오픈(onOpenStep).
-     - 빈영역(스텝 사이 gap / 레일 여백) 클릭 → **전체 컬랩스**
-       (target===currentTarget 가드, onCollapseAll).
+     - 펼친 스텝 헤더 클릭 → 개별 접기(onCollapseStep). 캐럿(▸/▾)이 토글 신호.
 
    비주얼 (번호 타임라인 레일):
      - 좌측 세로선(bg-line = ink 12%, 2px) + 스텝별 원형 번호 노드가 레일에
@@ -67,29 +66,20 @@ export type AccordionStepConfig = {
 //
 //   isExpanded(index, complete) = 각 스텝이 body 를 노출할지 여부.
 //     - 수동 override(manual)가 있으면 그 값(재오픈=true / 개별접기=false).
-//     - collapseAll 이 눌렸으면 전부 false.
 //     - 아니면 기본값 = !complete (미완이면 펼침, 완료면 요약 접힘).
 //
-//   open(i)        = 접힌 스텝 재오픈 (수동 override=true).
-//   collapse(i)    = 개별 접기 (수동 override=false).
-//   collapseAll()  = 빈영역 클릭 → 전체 접기 (manual 초기화 + collapsedAll).
+//   open(i)     = 접힌 스텝 재오픈 (수동 override=true).
+//   collapse(i) = 개별 접기 (수동 override=false). 펼친 헤더 클릭 경로.
 export function useWidgetAccordion() {
-  const [{ manual, collapsedAll }, setState] = useState<{
-    manual: Record<number, boolean>;
-    collapsedAll: boolean;
-  }>({ manual: {}, collapsedAll: false });
+  const [manual, setManual] = useState<Record<number, boolean>>({});
 
   return {
     isExpanded: (index: number, complete: boolean): boolean => {
       if (index in manual) return manual[index];
-      if (collapsedAll) return false;
       return !complete;
     },
-    open: (index: number) =>
-      setState((s) => ({ ...s, manual: { ...s.manual, [index]: true } })),
-    collapse: (index: number) =>
-      setState((s) => ({ ...s, manual: { ...s.manual, [index]: false } })),
-    collapseAll: () => setState({ manual: {}, collapsedAll: true }),
+    open: (index: number) => setManual((m) => ({ ...m, [index]: true })),
+    collapse: (index: number) => setManual((m) => ({ ...m, [index]: false })),
   };
 }
 
@@ -272,7 +262,6 @@ export function WidgetAccordion({
   isComplete,
   onOpenStep,
   onCollapseStep,
-  onCollapseAll,
   changeLabel,
   optionalLabel,
 }: {
@@ -283,7 +272,6 @@ export function WidgetAccordion({
   // 펼친 스텝 헤더 클릭 → 개별 접기 (accordion.collapse). 미배선(undefined)이면
   // 헤더 클릭이 no-op — 하위호환. 4위젯은 accordion.collapse 를 배선한다.
   onCollapseStep?: (index: number) => void;
-  onCollapseAll: () => void;
   changeLabel: string;
   optionalLabel: string;
 }) {
@@ -291,15 +279,7 @@ export function WidgetAccordion({
   const firstIncomplete = steps.findIndex((_, index) => !isComplete(index));
 
   return (
-    <div
-      // 빈영역(스텝 사이 gap / 컨테이너 패딩) 클릭 → 전체 컬랩스. 스텝 행 내부
-      // 클릭은 target!==currentTarget 이라 통과 (프로토 pCollapse 가드). 레일선은
-      // pointer-events-none 이라 통과.
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCollapseAll();
-      }}
-      className="relative flex flex-col gap-6"
-    >
+    <div className="relative flex flex-col gap-6">
       {/* 좌측 세로 레일 — 노드 중심(left-3 = 24px 노드 폭의 절반)을 관통하는
           연속선. 노드 배경이 이 선을 덮어 "레일에 매달린 노드" 표현. 첫/마지막
           노드 중심(top-3/bottom-3)에서 시작·종료해 위아래로 삐져나오지 않는다. */}
