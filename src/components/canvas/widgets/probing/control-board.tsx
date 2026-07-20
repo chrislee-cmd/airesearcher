@@ -95,24 +95,21 @@ function ControlFields({
       id: 'mic',
       icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaMic') }),
+      desc: tc('offlineDesc'),
       note: tc('offlineNote'),
     },
     {
       id: 'both',
       icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      desc: tc('onlineDesc'),
       note: tc('onlineNote'),
     },
     {
       id: 'tab',
       icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
-      hostVia: tc('hostVia', { via: tc('viaTab') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      desc: tc('observeDesc'),
     },
   ];
   // 조사 목적 = draft + 명시적 "적용" 버튼 커밋 (research-context.tsx 전체보기와

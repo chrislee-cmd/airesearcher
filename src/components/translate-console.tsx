@@ -731,25 +731,20 @@ export function TranslateConsole({
       id: 'mic-only',
       icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaMic') }),
-      // D4(GEOMETRY.md): 대면 카드는 2줄만(진행자·마이크 / 참석자·마이크).
-      // 3번째 줄(offlineNote "마이크 하나로 방 전체…") 제거.
+      desc: tc('offlineDesc'),
     },
     {
       id: 'both',
       icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      desc: tc('onlineDesc'),
       note: t('captureMode.bothCostHint'),
     },
     {
       id: 'tab-only',
       icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
-      hostVia: tc('hostVia', { via: tc('viaTab') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      desc: tc('observeDesc'),
     },
   ];
 

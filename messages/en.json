@@ -2612,10 +2612,9 @@
     "offlineTitle": "In-person interview",
     "onlineTitle": "Online interview",
     "observeTitle": "Online observation",
-    "hostVia": "Interviewer · {via}",
-    "guestVia": "Participant · {via}",
-    "viaMic": "Microphone",
-    "viaTab": "Tab audio",
+    "offlineDesc": "An interview where you meet and talk in person",
+    "onlineDesc": "An interview where you talk over a video call",
+    "observeDesc": "I only listen in, over a video call",
     "offlineNote": "One device mic captures the whole room · no speaker separation",
     "onlineNote": "Interviewer & participant captured separately · 2× realtime cost"
   }

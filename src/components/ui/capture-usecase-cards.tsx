@@ -35,10 +35,14 @@ export type CaptureUseCaseOption = {
   icon: ReactNode;
   // 카드 제목 — 유스케이스 이름 (예: "오프라인 인터뷰").
   title: string;
-  // 진행자 음성이 어디로 들어오는지 한 줄 (예: "진행자 · 마이크").
-  hostVia: string;
-  // 참석자 음성이 어디로 들어오는지 한 줄 (예: "참석자 · 탭 오디오").
-  guestVia: string;
+  // 카드 설명 한 줄 (예: "만나서 대화하는 인터뷰입니다"). 인터뷰 방식 3-카드가
+  // 사용 — 있으면 이 한 줄만 렌더(hostVia/guestVia 대신). 역할·오디오 표기가
+  // 어렵다는 사용자 리뷰 → 친근한 한 줄로 교체(R15).
+  desc?: string;
+  // (레거시 2줄 표기) 진행자/참석자 음성 라우팅. moderator-ai 테스트 방식
+  // 2-카드(host/guest)가 재사용 — desc 미제공 시에만 렌더.
+  hostVia?: string;
+  guestVia?: string;
   // 선택 시 카드 하단에 노출되는 부가 안내 (선택 사항). 오프라인=화자 구분
   // 없음 정직 카피, 온라인=both 비용 경고 등. 미선택 카드엔 노출 안 함.
   note?: string;
@@ -118,10 +122,16 @@ export function CaptureUseCaseCards({
               {opt.icon}
             </span>
             <span className="text-sm font-medium text-ink">{opt.title}</span>
-            <span className="flex flex-col gap-0.5 text-xs text-mute">
-              <span>{opt.hostVia}</span>
-              <span>{opt.guestVia}</span>
-            </span>
+            {opt.desc ? (
+              // 인터뷰 방식 3-카드 — 친근한 한 줄 설명(R15).
+              <span className="text-xs text-mute">{opt.desc}</span>
+            ) : (
+              // 레거시 2줄 표기(진행자/참석자 라우팅) — moderator-ai 2-카드 재사용.
+              <span className="flex flex-col gap-0.5 text-xs text-mute">
+                <span>{opt.hostVia}</span>
+                <span>{opt.guestVia}</span>
+              </span>
+            )}
             {selected && opt.note && (
               <span className="mt-0.5 text-xs text-mute-soft">{opt.note}</span>
             )}
