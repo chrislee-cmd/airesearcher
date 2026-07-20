@@ -307,7 +307,13 @@ export function UtSessionBody() {
     );
   };
 
-  // 전체보기 subtitle — 활성 엔진/phase 기준.
+  // 리뷰(사후 결과) 표면 — 로컬 결과 또는 원격 review. peach 헤더 + 'AI UT ·
+  // Review' 타이틀 + 'Post-session review' pill 로 Canvas 1c 리뷰 fullview 정합.
+  const isReviewSurface =
+    isResult || (effectiveMode === 'remote' && remote.phase === 'review');
+
+  // 전체보기 subtitle — 활성 엔진/phase 기준. 로컬 리뷰는 N participant · 시간 ·
+  // PREVIEW 메타(self-capture 는 참가자 1명).
   const fullviewSubtitle =
     effectiveMode === 'remote'
       ? remote.phase === 'live'
@@ -318,7 +324,13 @@ export function UtSessionBody() {
       : isLive
         ? t('subtitle.live')
         : isResult
-          ? t('subtitle.result')
+          ? t('fullview.reviewMeta', {
+              count: 1,
+              duration:
+                session.result?.duration_ms != null
+                  ? formatElapsed(session.result.duration_ms)
+                  : '—',
+            })
           : t('subtitle.idle');
 
   return (
@@ -326,9 +338,23 @@ export function UtSessionBody() {
       {/* 카드 본문 — 항상 마운트(세션 엔진 보존). */}
       <div className="flex h-full min-h-0 flex-col">{renderContent('card')}</div>
 
-      {/* 전체보기 — 공유 모달 slot 으로 portal. */}
+      {/* 전체보기 — 공유 모달 slot 으로 portal. 리뷰 표면은 peach 헤더밴드 +
+          'AI UT · Review' display 타이틀 + 'Post-session review' pill 로 정합. */}
       {renderInSlot(
-        <WidgetFullviewPanel title="AI UT" subtitle={fullviewSubtitle} onClose={close}>
+        <WidgetFullviewPanel
+          title={isReviewSurface ? t('fullview.reviewTitle') : 'AI UT'}
+          subtitle={fullviewSubtitle}
+          onClose={close}
+          tone={isReviewSurface ? 'var(--widget-header-bg-peach)' : undefined}
+          titleDisplay={isReviewSurface}
+          badge={
+            isReviewSurface ? (
+              <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs-soft font-semibold uppercase tracking-wider text-mute">
+                {t('fullview.reviewBadge')}
+              </span>
+            ) : undefined
+          }
+        >
           <div className="flex h-full min-h-0 flex-col">
             {renderContent('fullview')}
           </div>

@@ -132,6 +132,11 @@
       "result": "세션 결과",
       "idle": "화면공유 + 보이스 사용성 테스트"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · 리뷰",
+      "reviewBadge": "세션 후 리뷰",
+      "reviewMeta": "참가자 {count}명 · {duration} · PREVIEW"
+    },
     "unsupported": "이 브라우저는 화면 공유 녹화를 지원하지 않아요. 데스크톱 Chrome·Edge 등 최신 브라우저에서 이용해 주세요.",
     "result": {
       "uploading": "녹화를 저장하는 중이에요…",
@@ -141,6 +146,7 @@
       "logPlaceholderTranscribing": "전사가 완료되면 여기에 발화가 표시돼요.",
       "logPlaceholderEmpty": "전사된 발화가 없어요.",
       "showTranscript": "발화 전문 보기",
+      "showTranscriptCount": "발화 전문 보기 · {turns}턴",
       "hideTranscript": "발화 전문 접기",
       "downloadTitle": "다운로드"
     },
