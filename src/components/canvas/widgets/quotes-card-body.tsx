@@ -41,6 +41,7 @@ import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
+import { TranscriptResultFullview } from '@/components/canvas/widgets/transcript-result-fullview';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
@@ -255,6 +256,10 @@ export function QuotesCardBody() {
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
   const { isCurrent, renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
   const [fullviewQuery, setFullviewQuery] = useState('');
+  // 완료 전사 1건의 결과 fullview(좌 turn 스트림 + 우 Export). fullview list 에서
+  // "결과 보기" 클릭 시 이 잡으로 설정 → slot 이 상세 결과뷰로 전환된다. onBack /
+  // fullview close 시 null 로 되돌려 파일 list 로 복귀. 뷰 상태 전용(잡은 DB-backed).
+  const [resultJob, setResultJob] = useState<TranscriptJob | null>(null);
 
   // Analytics — 카드 body mount 시 1회 view.
   useEffect(() => {
@@ -814,6 +819,8 @@ export function QuotesCardBody() {
     // 열림→닫힘 전이에서만 동작 (열림 자체/미변경은 무시).
     if (!wasCurrent || isCurrent) return;
     setSelected(new Set());
+    // 결과 상세 fullview 도 닫으며 파일 list 로 리셋 — 재진입 시 list 부터.
+    setResultJob(null);
     const inflight =
       busyUpload ||
       readyFiles.length > 0 ||
@@ -869,7 +876,10 @@ export function QuotesCardBody() {
   function bulkDownload(ids: string[]) {
     if (ids.length === 0) return;
     const qs = new URLSearchParams({ ids: ids.join(','), format: 'docx' });
-    window.location.href = `/api/transcripts/jobs/bulk-download?${qs.toString()}`;
+    // window.location.assign (not `.href =`) so the React Compiler doesn't flag
+    // a mutation on window.location — this component now compiles cleanly with
+    // the result-fullview state added (credits-bundles/subscription-plans 관례).
+    window.location.assign(`/api/transcripts/jobs/bulk-download?${qs.toString()}`);
     track('quotes_bulk_download_click', { count: ids.length });
   }
 
@@ -1425,6 +1435,13 @@ export function QuotesCardBody() {
           파일명 검색으로. JobRow previewMode="inline" 이라 모달 안에서도
           다운로드/공유/미리보기/삭제 모두 동작. 공유 모달 slot 으로 portal. */}
       {renderInSlot(
+        resultJob ? (
+          <TranscriptResultFullview
+            job={resultJob}
+            onBack={() => setResultJob(null)}
+            onClose={closeFullview}
+          />
+        ) : (
         <WidgetFullviewPanel
           title={tView('fullviewTitle')}
           subtitle={
@@ -1543,6 +1560,11 @@ export function QuotesCardBody() {
                         selectable
                         selected={selected.has(j.id)}
                         onToggleSelect={(on) => toggleSelect(j.id, on)}
+                        onOpenResult={
+                          j.status === 'done'
+                            ? () => setResultJob(j)
+                            : undefined
+                        }
                       />
                     ))}
                   </ul>
@@ -1551,7 +1573,8 @@ export function QuotesCardBody() {
             );
           })()}
         </div>
-        </WidgetFullviewPanel>,
+        </WidgetFullviewPanel>
+        ),
       )}
 
       {/* 일괄 삭제 confirm 모달 — 결정 3. */}
@@ -1730,6 +1753,7 @@ function JobRow({
   selectable = false,
   selected = false,
   onToggleSelect,
+  onOpenResult,
 }: {
   job: TranscriptJob;
   onDelete: () => void;
@@ -1746,8 +1770,12 @@ function JobRow({
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: (on: boolean) => void;
+  // 완료 잡의 "결과 보기" 진입. fullview list 에서만 전달 → 결과 상세 fullview 로.
+  // 미전달(카드 안 목록)이면 버튼 미노출 — 회귀 0.
+  onOpenResult?: () => void;
 }) {
   const tView = useTranslations('Features.transcriptsView');
+  const tResult = useTranslations('Features.transcriptResult');
   const [previewOpen, setPreviewOpen] = useState(false);
   // Default to the cleaned version — preview/download routes also default to
   // 'clean' so behaviour matches when the toggle hasn't been touched.
@@ -1819,6 +1847,16 @@ function JobRow({
         <>
           {job.status === 'done' && (
             <div className="flex items-center gap-2">
+              {onOpenResult && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onOpenResult}
+                  className="uppercase tracking-[0.18em]"
+                >
+                  {tResult('open')}
+                </Button>
+              )}
               <DownloadMenu
                 tone="primary"
                 align="end"

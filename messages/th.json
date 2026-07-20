@@ -998,6 +998,28 @@
       "description": "สร้างสคริปต์อินเทอร์วิวและไกด์ไลน์การสนทนา",
       "cost": "1 เครดิต"
     },
+    "transcriptResult": {
+      "kind": "บทถอดเสียง",
+      "donePill": "เสร็จ",
+      "back": "รายการ",
+      "open": "ดูผลลัพธ์",
+      "minutes": "{min} นาที",
+      "speakers": "ผู้พูด {count} คน",
+      "searchPlaceholder": "ค้นหาบทถอดเสียง…",
+      "bySpeaker": "ตามผู้พูด",
+      "byTimestamp": "เวลา",
+      "exportTitle": "ส่งออก",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "ข้อความ (.txt)",
+      "exportSrt": "คำบรรยาย (.srt)",
+      "loading": "กำลังโหลดบทถอดเสียง…",
+      "error": "ไม่สามารถโหลดบทถอดเสียงได้",
+      "empty": "ยังไม่มีบทสนทนา",
+      "noResults": "ไม่พบผลลัพธ์",
+      "aiSummaryTitle": "สรุปด้วย AI",
+      "keyThemesTitle": "ธีมหลัก",
+      "comingSoon": "เร็ว ๆ นี้ (อัปเดตภายหลัง)"
+    },
     "transcriptsView": {
       "setup": {
         "stepEyebrow": "STEP 0{n} · {label}",
