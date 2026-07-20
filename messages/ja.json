@@ -1617,7 +1617,10 @@
       "placeholder": "1行に1つの用語を入力してください（例：SDK、オンプレミス）",
       "apply": "適用",
       "applyTitle": "入力した用語を今すぐ適用します",
-      "dirtyNotice": "未適用の変更があります。「適用」を押して保存してください"
+      "dirtyNotice": "未適用の変更があります。「適用」を押して保存してください",
+      "add": "追加",
+      "remove": "削除",
+      "addPlaceholder": "用語を入力して追加（例：SDK）"
     },
     "postProcess": {
       "eyebrow": "出力品質の修正（後処理LLM）",

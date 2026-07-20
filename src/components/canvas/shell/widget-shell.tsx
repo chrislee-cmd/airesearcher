@@ -280,9 +280,18 @@ function WidgetShellInner({
   if (content.meta.cardFrame) {
     return (
       <div
-        className="relative flex h-full flex-col overflow-hidden"
+        className="relative flex flex-col overflow-hidden"
         aria-expanded
         style={{
+          // Canvas 1c 확정 지오메트리(GEOMETRY.md ⚑): 카드 = 고정 604×900.
+          // 예전엔 셸이 h-full 로 캔버스 셀(816×950)을 채워 넓어지고(과대폭)
+          // 하단 공백(과대높이)이 났다. 604×900 못박고 셀이 넓으면 좌상단
+          // 정렬(카드가 셀을 채우지 않음) — 캔버스 그리드/pop-락은 바깥 셀
+          // 래퍼(CELL_W×CELL_H) 기준이라 무관, 카드만 실측 규격으로 축소.
+          // 콘텐츠 컬럼(514)은 카드 폭이 604 로 좁아지며 정합된다(풀폭 필드).
+          width: 604,
+          height: 900,
+          maxWidth: '100%',
           background: 'var(--canvas-card-bg)',
           border: '3px solid var(--canvas-card-border)',
           borderRadius: 'var(--widget-card-frame-radius)',

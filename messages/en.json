@@ -1524,7 +1524,10 @@
       "placeholder": "One term per line (e.g. SDK, on-prem)",
       "apply": "Apply",
       "applyTitle": "Apply the terms you entered now",
-      "dirtyNotice": "Unapplied changes — press “Apply” to save"
+      "dirtyNotice": "Unapplied changes — press “Apply” to save",
+      "add": "Add",
+      "remove": "Remove",
+      "addPlaceholder": "Type a term, then add (e.g. SDK)"
     },
     "postProcess": {
       "eyebrow": "Output quality fix (post-process LLM)",

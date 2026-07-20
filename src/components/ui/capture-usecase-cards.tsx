@@ -60,7 +60,7 @@ export function CaptureUseCaseCards({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="grid grid-cols-3 gap-2"
+      className="grid grid-cols-3 gap-[11px]"
     >
       {options.map((opt) => {
         const selected = value === opt.id;
@@ -73,12 +73,17 @@ export function CaptureUseCaseCards({
             disabled={disabled}
             onClick={() => onChange(opt.id)}
             className={[
-              'relative flex flex-col gap-1.5 rounded-sm border bg-paper p-3 text-left',
+              // Canvas 1c method 카드 지오메트리(GEOMETRY.md §3): radius 13 ·
+              // padding 13x11 · border 2 고정(상태 무관 → 선택 시 폭 변화로 인한
+              // 레이아웃 shift 0). 선택 = amore border-2 + soft glow(shadow-select-
+              // glow, R6 proposed) — 기존 memphis 하드 오프셋(shadow-memphis-md-
+              // amore) 대신 은은한 blur 후광.
+              'relative flex flex-col gap-1.5 rounded-[13px] border-2 bg-paper px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
               selected
-                ? 'border-amore shadow-memphis-md-amore'
+                ? 'border-amore shadow-select-glow'
                 : 'border-line shadow-memphis-sm-faint',
             ].join(' ')}
           >
@@ -86,11 +91,11 @@ export function CaptureUseCaseCards({
             {selected && (
               <span
                 aria-hidden
-                className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-amore text-paper"
+                className="absolute right-2 top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-amore text-paper"
               >
                 <svg
                   viewBox="0 0 12 12"
-                  className="h-2.5 w-2.5"
+                  className="h-3 w-3"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
