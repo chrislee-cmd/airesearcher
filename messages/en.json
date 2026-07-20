@@ -275,7 +275,7 @@
       "title": "Share system audio · must be ON",
       "body": "In the screen-share window, turn ON the “Also share system audio” toggle at the bottom-left before you start sharing.",
       "warn": "If the toggle is off, audio won't be saved.",
-      "imgAlt": "Prompt to turn on the Also share system audio toggle in the screen-share window"
+      "imgAlt": "Prompt to pick the Window tab and turn on the Also share system audio toggle in the screen-share window"
     }
   },
   "Landing": {
