@@ -1433,6 +1433,23 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step2Short": "インタビュー方式",
+      "step2Title": "インタビュー方式を選択してください",
+      "step3Short": "通訳言語",
+      "step3Title": "通訳言語を設定してください",
+      "step4Short": "特殊キーワード",
+      "step4Title": "特殊キーワード / 固有名詞があれば追加してください",
+      "glossarySummary": "{count}件のキーワードを追加",
+      "change": "変更",
+      "optional": "（任意）",
+      "readyPending": "通訳言語を設定してください",
+      "readyGo": "準備完了 · 通訳を開始できます"
+    },
     "sourceLang": "原語",
     "targetLang": "翻訳先",
     "project": "プロジェクト",
@@ -2383,6 +2400,27 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step2Short": "インタビュー方式",
+      "step2Title": "インタビュー方式を選択してください",
+      "step3Short": "分析言語",
+      "step3Title": "どの言語で分析しますか？",
+      "step4Short": "質問",
+      "step4Title": "必ず確認したい質問を追加してください",
+      "questionPlaceholder": "必ず聞く質問を入力して Enter",
+      "questionAdd": "追加",
+      "questionRemove": "質問を削除",
+      "questionEmpty": "まだ追加された質問がありません",
+      "questionSummary": "{count}件の質問を追加",
+      "change": "変更",
+      "optional": "（任意）",
+      "readyPending": "入力ソースと言語を選択してください",
+      "readyGo": "準備完了 · 開始できます"
+    },
     "card": {
       "recordingNoAudioTab": "音声がキャプチャされませんでした。タブ共有セッションの場合は、「タブの音声を共有」がオンになっていたかご確認ください。",
       "recordingUnsupported": "このブラウザはセッション録音に対応していません。",

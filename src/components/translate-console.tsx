@@ -49,6 +49,13 @@ import {
 } from './ui/capture-usecase-cards';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
+import {
+  WidgetAccordion,
+  useWidgetAccordion,
+  type AccordionStepConfig,
+  type AccordionStepState,
+} from './canvas/shell/widget-accordion';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
 import { ListenerPanel } from './translate/listener-panel';
 import { EchoOnboarding } from './translate/echo-onboarding';
@@ -4355,6 +4362,11 @@ export function TranslateConsole({
   // 미러). 미선택('')이면 비활성. busy 는 각 CTA 에서 별도 OR.
   const canStart = Boolean(captureMode && sourceLang && targetLang);
 
+  // V2 세팅 아코디언 (PR-B) — idle/setup 전용. live 표면은 감싸지 않는다(회귀 0).
+  // active-step 상태 + 프로젝트명 해석(STEP1 done 요약).
+  const setupAccordion = useWidgetAccordion(0);
+  const { projects: v2Projects } = useInterviewV2Projects();
+
   // 원어/대상어/입력 모드 + Glossary — idle 센터 보드와 live 상단 고정 바가
   // 공유하는 필드 묶음 (probing ControlFields 패턴).
   const controlFields = (
@@ -4437,6 +4449,136 @@ export function TranslateConsole({
     </>
   );
 
+  // V2 세팅 아코디언 (PR-B, idle 전용) — 위 controlFields 의 평면 리스트를
+  // 유스케이스 4-스텝으로 재구성. 필드 컴포넌트(ProjectPicker/LangDualDropdown/
+  // CaptureUseCaseCards/GlossaryField)는 그대로 재사용, 스텝 셸만 씌운다.
+  // ④ 라이브 인플레이스: live 표면(controlFields active + WidgetOutputRegion)은
+  // 이 아코디언 밖 — 회귀 0. 자동진행: 각 선택 후 다음 스텝 auto-open.
+  const langLabelOf = (v: string) =>
+    langOptions.find((l) => l.value === v)?.label ?? v;
+  const projectName =
+    v2Projects.find((p) => p.id === projectId)?.name ??
+    t('setup.step1Selected');
+  const captureTitle =
+    CAPTURE_USECASE_OPTIONS.find((o) => o.id === captureMode)?.title ?? '';
+
+  const setupSteps: AccordionStepConfig[] = [
+    {
+      key: 'project',
+      eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
+      title: t('setup.step1Title'),
+      summary: projectName,
+      body: (
+        <Field label={t('project')}>
+          <ProjectPicker
+            widget="translate"
+            value={projectId}
+            onChange={(id) => {
+              handleProjectChange(id);
+              setupAccordion.open(1);
+            }}
+          />
+        </Field>
+      ),
+    },
+    {
+      key: 'method',
+      eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
+      title: t('setup.step2Title'),
+      summary: captureTitle,
+      body: (
+        <Field label={tc('sectionLabel')}>
+          <CaptureUseCaseCards
+            ariaLabel={tc('groupAria')}
+            value={captureMode}
+            onChange={(id) => {
+              setCaptureMode(id as CaptureMode);
+              setupAccordion.open(2);
+            }}
+            disabled={busy}
+            options={CAPTURE_USECASE_OPTIONS}
+          />
+        </Field>
+      ),
+    },
+    {
+      key: 'language',
+      eyebrow: t('setup.stepEyebrow', { n: 3, label: t('setup.step3Short') }),
+      title: t('setup.step3Title'),
+      summary:
+        sourceLang && targetLang
+          ? `${langLabelOf(sourceLang)} → ${langLabelOf(targetLang)}`
+          : '',
+      body: (
+        <Field label={t('lang')}>
+          <LangDualDropdown
+            langs={langOptions}
+            sourceLang={sourceLang}
+            targetLang={targetLang}
+            onSelectSource={(v) => {
+              setSourceLang(v);
+              if (v && targetLang) setupAccordion.open(3);
+            }}
+            onSelectTarget={(v) => {
+              setTargetLang(v);
+              if (sourceLang && v) setupAccordion.open(3);
+            }}
+            placeholder={t('select')}
+            inputLabel={t('inputLang')}
+            outputLabel={t('outputLang')}
+            triggerLabel={t('lang')}
+            disabled={busy}
+          />
+        </Field>
+      ),
+    },
+    {
+      key: 'glossary',
+      eyebrow: t('setup.stepEyebrow', { n: 4, label: t('setup.step4Short') }),
+      title: t('setup.step4Title'),
+      optional: true,
+      summary: t('setup.glossarySummary', { count: glossary.length }),
+      body: (
+        <GlossaryField
+          values={glossary}
+          onChange={handleGlossaryChange}
+          disabled={busy}
+          ariaLabel={t('glossary.label')}
+          placeholder={t('glossary.placeholder')}
+          applyLabel={t('glossary.apply')}
+          applyTitle={t('glossary.applyTitle')}
+          dirtyNotice={t('glossary.dirtyNotice')}
+        />
+      ),
+    },
+  ];
+
+  const setupStateFor = (index: number): AccordionStepState => {
+    const complete =
+      index === 0
+        ? projectId != null
+        : index === 1
+          ? captureMode !== ''
+          : index === 2
+            ? Boolean(sourceLang && targetLang)
+            : glossary.length > 0;
+    return complete ? 'done' : 'todo';
+  };
+
+  const setupAccordionEl = (
+    <ControlBoardPanel.Region>
+      <WidgetAccordion
+        steps={setupSteps}
+        activeIndex={setupAccordion.active}
+        onOpenStep={setupAccordion.open}
+        onCollapse={setupAccordion.collapseAll}
+        stateFor={setupStateFor}
+        changeLabel={t('setup.change')}
+        optionalLabel={t('setup.optional')}
+      />
+    </ControlBoardPanel.Region>
+  );
+
   const errorBanner = error ? (
     <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
       {t('errorPrefix')} {t.has(`errors.${error}`) ? t(`errors.${error}`) : error}
@@ -4500,9 +4642,10 @@ export function TranslateConsole({
           // 알아서 빈 mb-6 래퍼를 안 그린다 — 프래그먼트 phantom 여백 회귀 없음.
           banners={ttsBlockedBanner ?? undefined}
         >
-          {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
-              이동 — 6 위젯 주 CTA 통일. */}
-          {controlFields}
+          {/* V2 세팅 (PR-B) — idle 은 유스케이스 4-스텝 아코디언. live/ended 는
+              아래 분기에서 controlFields(평면, disabled) 그대로 (라이브 회귀 0).
+              실행 CTA(통역 시작)는 WidgetPrimaryCta (하단 액션 바) 로 통일. */}
+          {setupAccordionEl}
           {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
               드롭다운 아래 배치(dropdown-first). 비침습(Start 안 막음), "다시
               안 보기" localStorage 저장. 공유 링크는 세션 시작 후 생성되므로
@@ -4760,6 +4903,8 @@ export function TranslateConsole({
           busy={busy}
           disabled={busy || !canStart}
           onClick={handleStartClick}
+          // 아코디언 푸터 좌측 상태 라벨 (프로토 D10). ready = 원어+대상어+캡처 선택.
+          statusLabel={canStart ? t('setup.readyGo') : t('setup.readyPending')}
         />
       )}
 

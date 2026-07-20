@@ -1433,6 +1433,23 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "step1Selected": "เลือกแล้ว",
+      "step2Short": "รูปแบบการสัมภาษณ์",
+      "step2Title": "เลือกรูปแบบการสัมภาษณ์",
+      "step3Short": "ภาษาการแปล",
+      "step3Title": "ตั้งค่าภาษาสำหรับการแปล",
+      "step4Short": "คำเฉพาะ",
+      "step4Title": "เพิ่มคำสำคัญหรือคำเฉพาะ (ถ้ามี)",
+      "glossarySummary": "เพิ่มคำแล้ว {count} คำ",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)",
+      "readyPending": "ตั้งค่าภาษาการแปล",
+      "readyGo": "พร้อมแล้ว · เริ่มการแปลได้เลย"
+    },
     "sourceLang": "ภาษาต้นทาง",
     "targetLang": "ภาษาปลายทาง",
     "project": "โปรเจกต์",
@@ -2383,6 +2400,27 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "step1Selected": "เลือกแล้ว",
+      "step2Short": "รูปแบบการสัมภาษณ์",
+      "step2Title": "เลือกรูปแบบการสัมภาษณ์",
+      "step3Short": "ภาษาสำหรับวิเคราะห์",
+      "step3Title": "ต้องการวิเคราะห์เป็นภาษาใด?",
+      "step4Short": "คำถาม",
+      "step4Title": "เพิ่มคำถามที่ต้องถามให้ครบ",
+      "questionPlaceholder": "พิมพ์คำถามที่ต้องถามแล้วกด Enter",
+      "questionAdd": "เพิ่ม",
+      "questionRemove": "ลบคำถาม",
+      "questionEmpty": "ยังไม่มีคำถามที่เพิ่มไว้",
+      "questionSummary": "เพิ่มคำถามแล้ว {count} ข้อ",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)",
+      "readyPending": "เลือกแหล่งเสียงและภาษา",
+      "readyGo": "พร้อมแล้ว · เริ่มได้เลย"
+    },
     "card": {
       "recordingNoAudioTab": "ไม่มีการบันทึกเสียง หากเป็นเซสชันแบบแชร์แท็บ โปรดตรวจสอบว่าได้เปิด \"แชร์เสียงแท็บ\" ไว้แล้ว",
       "recordingUnsupported": "เบราว์เซอร์นี้ไม่รองรับการบันทึกเซสชัน",
