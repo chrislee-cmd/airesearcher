@@ -132,6 +132,11 @@
       "result": "Session result",
       "idle": "Screen-share + voice usability testing"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · Review",
+      "reviewBadge": "Post-session review",
+      "reviewMeta": "{count} participant · {duration} · PREVIEW"
+    },
     "unsupported": "This browser doesn't support screen-share recording. Please use a recent desktop browser such as Chrome or Edge.",
     "result": {
       "uploading": "Saving the recording…",
@@ -141,6 +146,7 @@
       "logPlaceholderTranscribing": "Your speech will appear here once transcription finishes.",
       "logPlaceholderEmpty": "No speech was transcribed.",
       "showTranscript": "Show full transcript",
+      "showTranscriptCount": "Show full transcript · {turns} turns",
       "hideTranscript": "Hide full transcript",
       "downloadTitle": "Downloads"
     },

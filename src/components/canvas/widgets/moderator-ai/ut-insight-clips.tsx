@@ -15,12 +15,16 @@
 import { useCallback, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import {
   useUtInsightClips,
   type InsightClipView,
   type InsightSummary,
 } from './use-ut-insight-clips';
+
+// 섹션 헤더 듀오톤 아이콘 채움 = peach(위젯 톤). 토큰만(하드코딩 hex 0).
+const PEACH_FILL = 'var(--widget-header-bg-peach)';
 
 function mmss(ms: number): string {
   const total = Math.round(ms / 1000);
@@ -32,11 +36,12 @@ const RUNNING = new Set(['indexing', 'searching', 'analyzing', 'reporting']);
 function SeverityBadge({ severity }: { severity?: string }) {
   const t = useTranslations('AiUt');
   if (!severity) return null;
+  // 심각도 태그색(토큰): high=pain(적) · medium=confusion(호박) · low=중립.
   const tone =
     severity === 'high'
-      ? 'border-warning text-warning'
+      ? 'border-tag-pain text-tag-pain'
       : severity === 'medium'
-        ? 'border-line text-ink-2'
+        ? 'border-tag-confusion text-tag-confusion'
         : 'border-line-soft text-mute';
   return (
     <span className={`rounded-full border px-2 py-0.5 text-xs-soft ${tone}`}>
@@ -88,7 +93,7 @@ function ClipCard({ sessionId, clip, index }: { sessionId: string; clip: Insight
       )}
       <div className="flex flex-wrap items-center gap-2">
         {ins?.friction && (
-          <span className="rounded-full border border-warning px-2 py-0.5 text-xs-soft text-warning">
+          <span className="rounded-full border border-tag-pain px-2 py-0.5 text-xs-soft text-tag-pain">
             {ins.friction}
           </span>
         )}
@@ -157,7 +162,7 @@ function Report({ summary, clips }: { summary: InsightSummary; clips: InsightCli
           <ul className="mt-1 flex flex-col gap-1">
             {summary.top_frictions.map((f, i) => (
               <li key={i} className="text-sm text-ink-2">
-                <span className="font-semibold text-warning">{f.title}</span> — {f.detail}
+                <span className="font-semibold text-tag-pain">{f.title}</span> — {f.detail}
                 <span className="text-mute-soft">{ref(f.clip_index)}</span>
               </li>
             ))}
@@ -209,9 +214,12 @@ export function UtInsightClips({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-        {t('insight.title')}
-      </h3>
+      <div className="flex items-center gap-2">
+        <DuotoneIcon name="keywords" size={16} fill={PEACH_FILL} />
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
+          {t('insight.title')}
+        </h3>
+      </div>
 
       {isPending && (
         <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">

@@ -91,6 +91,11 @@
   --raw-signal-am: #fb923c;
   --raw-signal-pm: #6c7aff;
 
+  /* review tag palette — AI UT 인사이트 태그(통증/혼란/긍정) */
+  --raw-tag-pain: #ef4444;
+  --raw-tag-confusion: #e0a83a;
+  --raw-tag-positive: #16a34a;
+
   /* radius scale */
   --raw-radius-2xs: 2px;
   --raw-radius-xs: 4px;
@@ -181,6 +186,11 @@
   --raw-signal-warning-line: #ffd9bf;
   --raw-signal-am: #fb923c;
   --raw-signal-pm: #6c7aff;
+
+  /* review tag palette (동일) */
+  --raw-tag-pain: #ef4444;
+  --raw-tag-confusion: #e0a83a;
+  --raw-tag-positive: #16a34a;
 
   /* radius (동일 스케일) */
   --raw-radius-2xs: 2px;
@@ -279,6 +289,11 @@
   --raw-signal-warning-line: #ff00ff;
   --raw-signal-am: #ff9900;
   --raw-signal-pm: #00ccff;
+
+  /* review tag palette — 형광 대비색 */
+  --raw-tag-pain: #ff0000;
+  --raw-tag-confusion: #ffff00;
+  --raw-tag-positive: #00ff00;
 
   /* radius — 전부 pill 극단(토큰 radius 는 완전히 둥글어지고 rounded-[Npx] 는 그대로) */
   --raw-radius-2xs: 999px;
@@ -466,6 +481,11 @@
   --color-warning: var(--raw-signal-warning);
   --color-warning-bg: var(--raw-signal-warning-bg);
   --color-warning-line: var(--raw-signal-warning-line);
+
+  /* AI UT review tags (insight clip 태그색) */
+  --color-tag-pain: var(--raw-tag-pain);
+  --color-tag-confusion: var(--raw-tag-confusion);
+  --color-tag-positive: var(--raw-tag-positive);
 
   /* Typography */
   --font-sans: var(--raw-font-sans);

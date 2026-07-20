@@ -132,6 +132,11 @@
       "result": "セッション結果",
       "idle": "画面共有＋音声によるユーザビリティテスト"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · レビュー",
+      "reviewBadge": "セッション後レビュー",
+      "reviewMeta": "参加者 {count}名 · {duration} · PREVIEW"
+    },
     "unsupported": "このブラウザは画面共有録画に対応していません。ChromeやEdgeなど最新のデスクトップブラウザをご使用ください。",
     "result": {
       "uploading": "録画を保存しています…",
@@ -141,6 +146,7 @@
       "logPlaceholderTranscribing": "文字起こしが完了すると、ここに発話内容が表示されます。",
       "logPlaceholderEmpty": "文字起こしされた音声はありませんでした。",
       "showTranscript": "発話全文を表示",
+      "showTranscriptCount": "発話全文を表示 · {turns}ターン",
       "hideTranscript": "発話全文を隠す",
       "downloadTitle": "ダウンロード"
     },
