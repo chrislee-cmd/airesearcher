@@ -724,32 +724,25 @@ export function TranslateConsole({
 
   // 캡처모드 3-카드 옵션 + 위젯별 모드 매핑. mic-only→오프라인(진행자·참석자
   // 모두 마이크, 화자 구분 없음), both→온라인(진행자 mic + 응답자 tab 병렬
-  // 캡처 + 화자분리), tab-only→참관(진행자·참석자 모두 탭 오디오). '온라인'
-  // 카드 note = 기존 both 비용경고(bothCostHint) 재사용 — 선택 시에만 노출.
+  // 캡처 + 화자분리), tab-only→참관(진행자·참석자 모두 탭 오디오).
   const CAPTURE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
     {
       id: 'mic-only',
       icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaMic') }),
-      // D4(GEOMETRY.md): 대면 카드는 2줄만(진행자·마이크 / 참석자·마이크).
-      // 3번째 줄(offlineNote "마이크 하나로 방 전체…") 제거.
+      desc: tc('offlineDesc'),
     },
     {
       id: 'both',
       icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
-      note: t('captureMode.bothCostHint'),
+      desc: tc('onlineDesc'),
     },
     {
       id: 'tab-only',
       icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
-      hostVia: tc('hostVia', { via: tc('viaTab') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      desc: tc('observeDesc'),
     },
   ];
 
@@ -4415,9 +4408,7 @@ export function TranslateConsole({
             mic-only/tab-only/both 를 인터뷰 방식 + 화자 라우팅으로 재표현.
             값 매핑: mic-only→오프라인, both→온라인(진행자 mic + 응답자 tab
             화자분리), tab-only→참관. captureMode 값·activeSlots·세션 로직
-            전부 불변. both 비용경고(bothCostHint)는 '온라인' 카드 선택 시
-            note 로 노출(기존 키 재사용). 카드는 넓어 flex 행에서 자기 줄
-            차지하도록 w-full. */}
+            전부 불변. 카드는 넓어 flex 행에서 자기 줄 차지하도록 w-full. */}
         <div className="w-full">
           <Field label={tc('sectionLabel')}>
             <CaptureUseCaseCards

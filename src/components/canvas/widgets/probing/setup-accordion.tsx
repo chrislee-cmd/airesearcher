@@ -174,24 +174,19 @@ export function ProbingSetupAccordion({
       id: 'mic',
       icon: <DuotoneIcon name="offline" size={24} />,
       title: tc('offlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaMic') }),
-      // D4(GEOMETRY.md): 대면 카드는 2줄만 — 3번째 줄(offlineNote) 제거.
+      desc: tc('offlineDesc'),
     },
     {
       id: 'both',
       icon: <DuotoneIcon name="online" size={24} />,
       title: tc('onlineTitle'),
-      hostVia: tc('hostVia', { via: tc('viaMic') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
-      note: tc('onlineNote'),
+      desc: tc('onlineDesc'),
     },
     {
       id: 'tab',
       icon: <DuotoneIcon name="observe" size={24} />,
       title: tc('observeTitle'),
-      hostVia: tc('hostVia', { via: tc('viaTab') }),
-      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      desc: tc('observeDesc'),
     },
   ];
 
