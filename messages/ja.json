@@ -1614,10 +1614,9 @@
     "glossary": {
       "label": "カスタム用語",
       "hint": "名前・ツール・略語の正式な表記を登録します。固有名詞の表記ゆれを防ぎます（後処理／修正時に適用）。",
-      "placeholder": "1行に1つの用語を入力してください（例：SDK、オンプレミス）",
-      "apply": "適用",
-      "applyTitle": "入力した用語を今すぐ適用します",
-      "dirtyNotice": "未適用の変更があります。「適用」を押して保存してください"
+      "placeholderEmpty": "用語を入力して Enter（例：SDK、オンプレミス）",
+      "placeholderAdd": "用語を追加",
+      "remove": "「{term}」を削除"
     },
     "postProcess": {
       "eyebrow": "出力品質の修正（後処理LLM）",

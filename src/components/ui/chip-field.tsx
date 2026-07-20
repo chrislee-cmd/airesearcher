@@ -49,9 +49,20 @@ const CONTAINER_VARIANT: Record<ChipFieldVariant, string> = {
   subtle: 'border border-line',
 };
 
-const CHIP =
-  'inline-flex items-center gap-1 rounded-pill border border-amore ' +
-  'bg-paper px-2.5 py-0.5 text-xs text-amore';
+type ChipTone = 'amore' | 'neutral';
+
+// Chip pill = layout/shape in BASE, color on the tone variant (§7.11). × glyph
+// takes the chip's text color via currentColor, so no per-tone × handling.
+const CHIP_BASE =
+  'inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5 text-xs';
+
+const CHIP_TONE: Record<ChipTone, string> = {
+  // Default — loud amore pill (desk keyword / project-tag / share-invite,
+  // unchanged).
+  amore: 'border border-amore bg-paper text-amore',
+  // Quiet neutral pill — Canvas 1c 프로토(R6/D5) 통역 용어집 키워드.
+  neutral: 'border border-line bg-paper-soft text-ink',
+};
 
 type Props = {
   values: string[];
@@ -66,6 +77,9 @@ type Props = {
   commitOnComma?: boolean;
   disabled?: boolean;
   variant?: ChipFieldVariant;
+  // Chip pill color. Default 'amore' (loud). 'neutral' = quiet border-line /
+  // paper-soft pill for dense keyword lists (Canvas 1c 프로토).
+  chipTone?: ChipTone;
   // aria-label for each chip's remove ×; i18n-owned by the caller. Falls back
   // to a plain English label so the required aria-label is never empty.
   chipRemoveLabel?: (value: string) => string;
@@ -88,6 +102,7 @@ export function ChipField({
   commitOnComma,
   disabled,
   variant = 'bordered',
+  chipTone = 'amore',
   chipRemoveLabel,
   inputType = 'text',
   inputClassName,
@@ -139,7 +154,10 @@ export function ChipField({
   return (
     <div className={containerCls} data-ds-primitive="ChipField">
       {values.map((value, idx) => (
-        <span key={`${idx}-${value}`} className={CHIP}>
+        <span
+          key={`${idx}-${value}`}
+          className={`${CHIP_BASE} ${CHIP_TONE[chipTone]}`}
+        >
           {value}
           <IconButton
             variant="plain"

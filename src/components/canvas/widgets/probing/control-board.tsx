@@ -96,7 +96,8 @@ function ControlFields({
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
-      note: tc('offlineNote'),
+      // R6/D4(사용자 결정): 대면 카드 = 2줄만. offlineNote("화자 구분 없음")는
+      // 프로토(Canvas 1c) 대로 카드에서 제거 (translate-console 와 동일 정합).
     },
     {
       id: 'both',

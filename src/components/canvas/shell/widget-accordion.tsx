@@ -180,7 +180,7 @@ function AccordionStep({
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <span className="flex min-w-0 flex-col">
               <span className="text-xs text-mute">{config.eyebrow}</span>
-              <span className="truncate text-sm font-semibold text-ink">
+              <span className="truncate text-sm font-bold text-ink">
                 {config.summary}
               </span>
             </span>

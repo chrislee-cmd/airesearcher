@@ -1521,10 +1521,9 @@
     "glossary": {
       "label": "Custom Terms",
       "hint": "Canonical spellings of names, tools, and acronyms. Keeps proper nouns consistent (applied in post-process / revise).",
-      "placeholder": "One term per line (e.g. SDK, on-prem)",
-      "apply": "Apply",
-      "applyTitle": "Apply the terms you entered now",
-      "dirtyNotice": "Unapplied changes — press “Apply” to save"
+      "placeholderEmpty": "Type a term, press Enter (e.g. SDK, on-prem)",
+      "placeholderAdd": "Add term",
+      "remove": "Remove {term}"
     },
     "postProcess": {
       "eyebrow": "Output quality fix (post-process LLM)",

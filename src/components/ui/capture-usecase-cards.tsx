@@ -19,9 +19,10 @@
    native <button> (ui/ 는 react/forbid-elements 예외 — 프리미티브 정의
    지점). disabled 면 전체 그룹 비활성 (세션 중 소스 잠금).
 
-   토큰: 선택 = border-amore + shadow-memphis-md-amore + amore 코너 체크.
-   미선택 = border-line + shadow-memphis-sm-faint. rounded-sm / bg-paper.
-   하드코딩 hex/px 없음 (design-system 가드 준수).
+   토큰: 선택 = border-2 border-amore + shadow-select-glow(soft glow) + amore
+   코너 체크. 미선택 = border border-line + shadow-memphis-sm-faint.
+   rounded-sm / bg-paper. 보더 폭(border/border-2)은 §7.11 순서 충돌 회피를
+   위해 base 가 아니라 각 variant 가 소유한다. 하드코딩 hex/px 없음.
    ──────────────────────────────────────────────────────────────────── */
 
 export type CaptureUseCaseOption = {
@@ -73,13 +74,13 @@ export function CaptureUseCaseCards({
             disabled={disabled}
             onClick={() => onChange(opt.id)}
             className={[
-              'relative flex flex-col gap-1.5 rounded-sm border bg-paper p-3 text-left',
+              'relative flex flex-col gap-1.5 rounded-sm bg-paper p-3 text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
               selected
-                ? 'border-amore shadow-memphis-md-amore'
-                : 'border-line shadow-memphis-sm-faint',
+                ? 'border-2 border-amore shadow-select-glow'
+                : 'border border-line shadow-memphis-sm-faint',
             ].join(' ')}
           >
             {/* 코너 체크 — 선택된 카드에만. amore 원형 + ✓ */}

@@ -513,6 +513,13 @@
   --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
+
+  /* Soft-glow 선택 상태 — Canvas 1c 프로토(R6/D3): method 유스케이스 카드가
+     선택되면 하드 offset(shadow-memphis-*) 대신 amore 를 은은하게 퍼뜨리는
+     블러 글로우로 강조한다. memphis offset 어휘와 성격이 달라(0 offset + blur)
+     별도 토큰으로 둔다. rgba 는 amore(#ff5c8a)의 16% — 하드코딩 금지 규칙에
+     따라 사용처가 아니라 이 토큰 정의에만 raw 값을 둔다(sm-faint 선례). */
+  --shadow-select-glow: 0 4px 12px rgba(255, 92, 138, 0.16);
 }
 
 /* =========================================================================

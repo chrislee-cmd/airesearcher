@@ -31,11 +31,10 @@ import { env } from '@/env';
 import { createTtsQueue, type TtsQueue } from '@/lib/translate-tts';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { ChromeButton } from './ui/chrome-button';
-import { Button } from './ui/button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
-import { Textarea } from './ui/textarea';
+import { ChipField } from './ui/chip-field';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import {
@@ -732,7 +731,9 @@ export function TranslateConsole({
       title: tc('offlineTitle'),
       hostVia: tc('hostVia', { via: tc('viaMic') }),
       guestVia: tc('guestVia', { via: tc('viaMic') }),
-      note: tc('offlineNote'),
+      // R6/D4(사용자 결정): 대면 카드 = 2줄만. 3번째 줄("화자 구분 없음"
+      // offlineNote)은 프로토(Canvas 1c) 대로 카드에서 제거. 화자분리 안내가
+      // 필요하면 툴팁/문서 등 카드 밖에서.
     },
     {
       id: 'both',
@@ -4429,19 +4430,17 @@ export function TranslateConsole({
         </div>
       </ControlBoardPanel.Settings>
 
-      {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기. 한 줄에 하나씩
-          입력 후 "적용" 으로 반영(프로빙 조사목적 패턴). 세션 시작 전에만
+      {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기. 인라인 칩 입력
+          (프로토 R6/D5): 용어 입력 후 Enter → 칩, ✕ 로 삭제. 세션 시작 전에만
           편집 (live 중 disabled). 라벨↔컨트롤 간격은 .Input(Field mb-1.5) SSOT. */}
       <ControlBoardPanel.Input label={t('glossary.label')}>
         <GlossaryField
           values={glossary}
           onChange={handleGlossaryChange}
           disabled={busy || live}
-          ariaLabel={t('glossary.label')}
-          placeholder={t('glossary.placeholder')}
-          applyLabel={t('glossary.apply')}
-          applyTitle={t('glossary.applyTitle')}
-          dirtyNotice={t('glossary.dirtyNotice')}
+          placeholderEmpty={t('glossary.placeholderEmpty')}
+          placeholderAdd={t('glossary.placeholderAdd')}
+          removeLabel={(term) => t('glossary.remove', { term })}
         />
       </ControlBoardPanel.Input>
     </>
@@ -4539,11 +4538,9 @@ export function TranslateConsole({
           values={glossary}
           onChange={handleGlossaryChange}
           disabled={busy}
-          ariaLabel={t('glossary.label')}
-          placeholder={t('glossary.placeholder')}
-          applyLabel={t('glossary.apply')}
-          applyTitle={t('glossary.applyTitle')}
-          dirtyNotice={t('glossary.dirtyNotice')}
+          placeholderEmpty={t('glossary.placeholderEmpty')}
+          placeholderAdd={t('glossary.placeholderAdd')}
+          removeLabel={(term) => t('glossary.remove', { term })}
         />
       ),
     },
@@ -5086,97 +5083,46 @@ function RecordingDownloadPanel({
 }
 
 // ── Layer B: glossary editor ──
-// Textarea + 명시적 "적용" 버튼 (프로빙 control-board.tsx 조사목적 패턴 미러).
-// 한 줄 = 용어 1개. 타이핑은 로컬 draft(string) 만 갱신하고, "적용" 클릭
-// 시에만 라인 파싱 → onChange(string[]) 1회 호출(= 영속화). glossary 의
-// 저장/세션 payload 계약은 여전히 string[] — Textarea 는 표현 계층만 담당.
+// 인라인 칩 입력(<ChipField>, 프로토 R6/D5). 용어 1개 = 칩 1개. 칩 추가/삭제가
+// 곧바로 onChange(string[]) 로 반영(per-step Apply 제거). 저장/세션 payload
+// 계약은 여전히 string[] — 칩 컨테이너는 표현 계층만 담당.
 const GLOSSARY_MAX_TERMS = 200;
 const GLOSSARY_MAX_LEN = 200;
-
-// draft(string) → string[]: 라인 분리 → trim → 빈 줄 제거 → 중복 제거
-// (순서 보존) → 각 항목 MAX_LEN slice → 전체 MAX_TERMS 제한.
-function parseGlossary(raw: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const line of raw.split('\n')) {
-    const term = line.trim().slice(0, GLOSSARY_MAX_LEN);
-    if (!term || seen.has(term)) continue;
-    seen.add(term);
-    out.push(term);
-    if (out.length >= GLOSSARY_MAX_TERMS) break;
-  }
-  return out;
-}
 
 function GlossaryField({
   values,
   onChange,
   disabled,
-  ariaLabel,
-  placeholder,
-  applyLabel,
-  applyTitle,
-  dirtyNotice,
+  placeholderEmpty,
+  placeholderAdd,
+  removeLabel,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
-  ariaLabel: string;
-  placeholder: string;
-  applyLabel: string;
-  applyTitle: string;
-  dirtyNotice: string;
+  placeholderEmpty: string;
+  placeholderAdd: string;
+  removeLabel: (term: string) => string;
 }) {
-  // 외부 hydrate(프로젝트 전환/설정 로드)로 values 가 바뀌면 draft 를 재시드.
-  // 프로빙의 draft-vs-synced 리셋 패턴(render 중 감지) 을 준용 — effect 내
-  // 동기 setState 를 막는 design-system lint 룰 회피.
-  const synced = values.join('\n');
-  const [draft, setDraft] = useState(synced);
-  const [syncedSnapshot, setSyncedSnapshot] = useState(synced);
-  if (synced !== syncedSnapshot) {
-    setSyncedSnapshot(synced);
-    setDraft(synced);
-  }
-
-  // 적용해도 저장값이 달라질 때만 dirty(파싱 결과 기준 — 순수 공백/빈 줄
-  // 편집은 no-op 이라 버튼을 켜지 않는다).
-  const dirty = parseGlossary(draft).join('\n') !== synced;
-  const canApply = dirty && !disabled;
-
-  function apply() {
-    if (!canApply) return;
-    const next = parseGlossary(draft);
-    onChange(next);
-    // 정규화된 형태로 draft 재시드 — 후행 공백/중복/빈 줄 정리 반영.
-    setDraft(next.join('\n'));
-  }
-
+  // R6/D5(Canvas 1c 프로토): 기존 textarea + '적용' 버튼 → 인라인 칩 입력.
+  // 칩 추가/삭제가 곧바로 onChange 로 반영돼 per-step Apply 가 사라진다.
+  // 컨테이너/칩/×/IME-safe 커밋(한글 조합 중 Enter 이중입력 가드)은 공유
+  // <ChipField> 프리미티브에 위임 — 중립 pill(chipTone="neutral") = 프로토
+  // radius-pill bg-paper-soft border-line. dedup·maxItems·maxLength 는 예전
+  // parseGlossary 규칙을 ChipField 표준이 그대로 흡수한다.
   return (
-    <div>
-      <Textarea
-        aria-label={ariaLabel}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={3}
-        disabled={disabled}
-        placeholder={placeholder}
-        className="resize-none text-md"
-      />
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="text-xs text-mute" aria-live="polite">
-          {dirty ? dirtyNotice : ''}
-        </p>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={apply}
-          disabled={!canApply}
-          title={applyTitle}
-        >
-          {applyLabel}
-        </Button>
-      </div>
-    </div>
+    <ChipField
+      values={values}
+      onChange={onChange}
+      disabled={disabled}
+      variant="subtle"
+      chipTone="neutral"
+      maxItems={GLOSSARY_MAX_TERMS}
+      maxLength={GLOSSARY_MAX_LEN}
+      placeholderEmpty={placeholderEmpty}
+      placeholderAdd={placeholderAdd}
+      chipRemoveLabel={removeLabel}
+    />
   );
 }
 
