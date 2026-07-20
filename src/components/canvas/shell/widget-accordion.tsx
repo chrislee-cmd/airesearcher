@@ -173,6 +173,10 @@ function AccordionStep({
       <button
         type="button"
         onClick={onOpen}
+        // data-canvas-action — [data-canvas-body] button:not([data-canvas-action])
+        // cascade(globals.css)가 접힌 스텝 <button> 을 검정보더+하드섀도 memphis 카드로
+        // 만들어 레일 표현을 무력화하던 버그 회피. 이 행은 레일 위 요약/타이틀일 뿐.
+        data-canvas-action
         className="relative flex items-center gap-3 text-left"
       >
         <span className="relative z-10">{node}</span>
