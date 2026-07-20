@@ -188,6 +188,7 @@ export function TranscriptSetupAccordion({
       isExpanded={accordion.isExpanded}
       isComplete={isComplete}
       onOpenStep={accordion.open}
+      onCollapseStep={accordion.collapse}
       onCollapseAll={accordion.collapseAll}
       changeLabel={t('setup.change')}
       optionalLabel=""

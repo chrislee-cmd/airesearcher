@@ -4565,6 +4565,7 @@ export function TranslateConsole({
         isExpanded={setupAccordion.isExpanded}
         isComplete={setupIsComplete}
         onOpenStep={setupAccordion.open}
+        onCollapseStep={setupAccordion.collapse}
         onCollapseAll={setupAccordion.collapseAll}
         changeLabel={t('setup.change')}
         optionalLabel={t('setup.optional')}

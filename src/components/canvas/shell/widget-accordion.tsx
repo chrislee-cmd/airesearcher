@@ -135,6 +135,28 @@ function CheckGlyph() {
   );
 }
 
+// 접기/펼치기 토글 표식. 접힘 = ▸(right), 펼침 = ▾(down) — 같은 chevron 을
+// transition-transform 으로 90° 회전시켜 토글 신호를 준다 (이모지 금지, 인라인
+// SVG). stroke 는 접힘=text-mute-soft / 펼침 헤더=text-ink 로 톤 매칭.
+function CaretGlyph({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className={`h-3 w-3 shrink-0 transition-transform ${
+        expanded ? 'rotate-90 text-ink' : 'text-mute-soft'
+      }`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4.5 2.5 8 6l-3.5 3.5" />
+    </svg>
+  );
+}
+
 function AccordionStep({
   index,
   nodeState,
@@ -142,6 +164,7 @@ function AccordionStep({
   complete,
   config,
   onOpen,
+  onCollapse,
   changeLabel,
   optionalLabel,
 }: {
@@ -154,6 +177,8 @@ function AccordionStep({
   complete: boolean;
   config: AccordionStepConfig;
   onOpen: () => void;
+  // 펼친 스텝 헤더 클릭 → 개별 접기 (accordion.collapse).
+  onCollapse: () => void;
   // "변경" 링크 라벨 (완료 요약).
   changeLabel: string;
   // "(선택)" 표식 라벨 (optional 스텝).
@@ -177,7 +202,9 @@ function AccordionStep({
         // cascade(globals.css)가 접힌 스텝 <button> 을 검정보더+하드섀도 memphis 카드로
         // 만들어 레일 표현을 무력화하던 버그 회피. 이 행은 레일 위 요약/타이틀일 뿐.
         data-canvas-action
-        className="relative flex items-center gap-3 text-left"
+        // 클릭 어포던스: cursor-pointer + subtle hover 배경(토큰) + rounded-sm.
+        // memphis cascade 재유입 금지 → 명시적 hover 클래스로만 (data-canvas-action 유지).
+        className="group relative flex cursor-pointer items-center gap-3 rounded-sm text-left transition-colors hover:bg-paper-soft"
       >
         <span className="relative z-10">{node}</span>
         {complete ? (
@@ -188,35 +215,47 @@ function AccordionStep({
                 {config.summary}
               </span>
             </span>
-            <span className="shrink-0 text-xs font-medium text-mute-soft">
+            <span className="shrink-0 text-xs font-medium text-mute-soft transition-colors group-hover:text-ink">
               {changeLabel}
             </span>
           </span>
         ) : (
-          <span className="text-sm font-semibold text-mute-soft">
+          <span className="min-w-0 flex-1 text-sm font-semibold text-mute-soft transition-colors group-hover:text-ink">
             {config.title}
             {config.optional && (
               <span className="ml-1.5 text-xs font-medium">{optionalLabel}</span>
             )}
           </span>
         )}
+        <CaretGlyph expanded={false} />
       </button>
     );
   }
 
-  // 펼침 — 번호 노드 + 타이틀 + body 세로 나열 (레일 우측 들여쓰기).
+  // 펼침 — 번호 노드 + 타이틀 헤더(클릭=개별 접기) + body 세로 나열.
+  // 헤더 행만 버튼(클릭영역), body 는 버튼 밖이라 컨트롤 조작이 접힘을 유발하지 않음.
   return (
     <div className="relative flex items-start gap-3">
       <span className="relative z-10 shrink-0">{node}</span>
       <div className="min-w-0 flex-1">
-        <div className="mb-3 flex min-h-6 items-center gap-2">
-          <span className="text-sm font-bold text-ink">{config.title}</span>
+        {/* eslint-disable-next-line react/forbid-elements -- 펼친 스텝 헤더 = 클릭 시 개별 접기하는 토글 행 (셸 프리미티브) */}
+        <button
+          type="button"
+          onClick={onCollapse}
+          // data-canvas-action — 헤더 버튼도 memphis cascade opt-out (접힌 행과 동일).
+          data-canvas-action
+          className="group mb-3 flex min-h-6 w-full cursor-pointer items-center gap-2 rounded-sm text-left transition-colors hover:bg-paper-soft"
+        >
+          <span className="min-w-0 flex-1 text-sm font-bold text-ink">
+            {config.title}
+          </span>
           {config.optional && (
             <span className="text-xs font-medium text-mute-soft">
               {optionalLabel}
             </span>
           )}
-        </div>
+          <CaretGlyph expanded />
+        </button>
         {config.body}
       </div>
     </div>
@@ -232,6 +271,7 @@ export function WidgetAccordion({
   isExpanded,
   isComplete,
   onOpenStep,
+  onCollapseStep,
   onCollapseAll,
   changeLabel,
   optionalLabel,
@@ -240,6 +280,9 @@ export function WidgetAccordion({
   isExpanded: (index: number, complete: boolean) => boolean;
   isComplete: (index: number) => boolean;
   onOpenStep: (index: number) => void;
+  // 펼친 스텝 헤더 클릭 → 개별 접기 (accordion.collapse). 미배선(undefined)이면
+  // 헤더 클릭이 no-op — 하위호환. 4위젯은 accordion.collapse 를 배선한다.
+  onCollapseStep?: (index: number) => void;
   onCollapseAll: () => void;
   changeLabel: string;
   optionalLabel: string;
@@ -280,6 +323,7 @@ export function WidgetAccordion({
             complete={complete}
             config={config}
             onOpen={() => onOpenStep(index)}
+            onCollapse={() => onCollapseStep?.(index)}
             changeLabel={changeLabel}
             optionalLabel={optionalLabel}
           />
