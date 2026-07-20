@@ -254,13 +254,29 @@
   "Brand": {
     "name": "Research-Canvas"
   },
-  "BrowserAudioNotice": {
-    "title": "브라우저 탭 오디오로 설정하세요",
-    "body": "이 세션은 브라우저 탭의 오디오를 캡처합니다. 회의나 웹사이트를 네이티브 데스크톱 앱(Zoom, Teams 등)이 아니라 브라우저에서 열어야 소리가 캡처됩니다.",
-    "hint": "네이티브 앱 오디오는 캡처되지 않으며, 브라우저 탭 오디오만 잡힙니다.",
-    "dontShowAgain": "다시 보지 않기",
+  "ShareGuide": {
+    "step": "{n}/2",
     "cancel": "취소",
-    "confirm": "계속"
+    "next": "다음 →",
+    "prev": "← 이전",
+    "confirm": "🔊 확인했어요 · 시작",
+    "dontShowAgain": "다시 보지 않기",
+    "sub": {
+      "probing": "참석자 음성을 잡기 위해 필요해요.",
+      "translate": "통역할 원음을 잡기 위해 필요해요."
+    },
+    "step1": {
+      "title": "브라우저로 회의에 참가",
+      "body": "회의 링크를 열 때 앱이 아니라 ‘브라우저에서 계속’을 선택하세요. Zoom·Teams 같은 네이티브 데스크톱 앱으로 열면 탭 오디오가 없어 음성이 잡히지 않습니다.",
+      "warn": "네이티브 앱으로 열면 음성이 캡처되지 않아요.",
+      "imgAlt": "회의 참가 시 앱이 아니라 브라우저를 선택하는 안내 화면"
+    },
+    "step2": {
+      "title": "시스템 오디오 공유 · 반드시 ON",
+      "body": "화면 공유 창 좌측 하단의 ‘시스템 오디오도 공유’ 토글을 반드시 켠 뒤 공유를 시작하세요.",
+      "warn": "토글을 끄면 음성이 저장되지 않아요.",
+      "imgAlt": "화면 공유 창에서 시스템 오디오도 공유 토글을 켜는 안내 화면"
+    }
   },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
