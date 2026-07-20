@@ -43,7 +43,9 @@ import { buildPersonaFilename } from '@/lib/probing-persona-docx';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { WidgetLiveFullviewPrompt } from '@/components/canvas/shell/widget-live-fullview-prompt';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { useWidgetGate } from '@/components/widget-gate-provider';
 import type {
@@ -365,6 +367,11 @@ function ExpandedBody() {
     useFullview('probing');
 
   const isLive = sessionStatus === 'live';
+
+  // 라이브 카드 본문 = "전체보기 유도" 컴팩트 화면 (기본). "Back to setup" 을
+  // 누르면 세팅 뷰로 비파괴 토글 — 세션은 계속 진행(세션 중 입력·언어 변경
+  // 불가 원칙과 일치). 새 세션 시작 시 runStartSession 에서 prompt 로 리셋.
+  const [setupPeek, setSetupPeek] = useState(false);
 
   // 위젯별 동시사용 게이트 (#512) — 세션 start 시 슬롯 획득, 종료 시 반납.
   const gate = useWidgetGate('probing');
@@ -1454,6 +1461,8 @@ function ExpandedBody() {
     // 때까지 여기서 보류된다. 취소/이탈 시 false → 세션 시작 안 함.
     const admitted = await gate.acquire();
     if (!admitted) return;
+    // 새 세션은 항상 "전체보기 유도" 화면에서 시작 (직전 세션의 setup-peek 잔상 리셋).
+    setSetupPeek(false);
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
   }, [gate, startSession, source, outputLang]);
@@ -2173,11 +2182,71 @@ function ExpandedBody() {
             );
           }
 
-          // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(진행 안내 + 질문 기록).
-          // 사고 흐름·제안 질문 팝업은 전체보기(QuestionPane)로 이전 — 위젯뷰는
-          // 컴팩트 진행 안내 + 전체보기 CTA 만 (PR: probing-widgetview-strip).
-          // active 컨트롤도 idle 과 동일한 ControlBoardPanel 프레임 경유 (손코딩
-          // 상단 바 제거) — idle→active 프레임/컨트롤 위치 불변, 본문은 아래 flex-1.
+          // 라이브 — 카드 본문 = "전체보기 유도" 컴팩트 화면 (세팅 폼 + 질문
+          // 기록은 전체보기로 이관). 실제 진행(AI 사고 흐름·제안 질문)은
+          // 전체보기 QuestionPane 에만. footer(좌 Session in progress · 우
+          // End session)는 유지 — 세션/캡처 로직 회귀 0(본문 표시만 교체).
+          if (isLive) {
+            // Back to setup 비파괴 토글 — 세팅 뷰(세션-잠금, 세션 계속). controlPanel
+            // 이 자체 stop 버튼/상태 footer 를 포함하므로 종료 경로 유지. 상단
+            // 얇은 스트립의 "← 전체보기 유도로" 로 다시 prompt 로 토글.
+            if (setupPeek) {
+              return (
+                <>
+                  <div className="flex shrink-0 items-center border-b border-line-soft px-4 py-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setSetupPeek(false)}
+                    >
+                      {t('live.backToPrompt')}
+                    </Button>
+                  </div>
+                  <ControlBoardPanel active gap="field">
+                    {controlPanel}
+                  </ControlBoardPanel>
+                </>
+              );
+            }
+            return (
+              <div className="flex min-h-0 flex-1 flex-col">
+                {isCurrent ? (
+                  // 전체보기 open — 카드는 모달 뒤에 가려짐. 중복 유도 대신 안내.
+                  <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
+                    {t('card.workingInFullview')}
+                  </div>
+                ) : (
+                  <WidgetLiveFullviewPrompt
+                    onFullview={openFullview}
+                    onBackToSetup={() => setSetupPeek(true)}
+                    heading={t('live.fullviewHeading')}
+                    sub={t('live.fullviewSubProbing')}
+                    backLabel={t('live.backToSetup')}
+                  />
+                )}
+                {/* footer — 좌 진행 상태 · 우 세션 종료. 라이브 정상 시
+                    "Session in progress", 30분 cap 재연결(갱신) 중엔 그 힌트를
+                    노출. stop 경로는 handleStopSession 로 controlPanel 과
+                    동일(세션 종료 로직 불변). */}
+                <div className="mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-line-soft px-4 py-3">
+                  <span className="text-xs text-mute">
+                    {sessionRenewing
+                      ? t('card.statusRenewing')
+                      : t('live.sessionInProgress')}
+                  </span>
+                  <ChromeButton
+                    size="lg"
+                    onClick={handleStopSession}
+                    disabled={stopDisabled}
+                  >
+                    {t('live.endSession')}
+                  </ChromeButton>
+                </div>
+              </div>
+            );
+          }
+
+          // 전체보기 open (라이브 아님, idle 프리뷰) — 기존 동작 유지.
           return (
             <>
               <ControlBoardPanel active gap="field">

@@ -1637,6 +1637,13 @@
       "controlHint": "開始・停止・共有はウィジェットカードから操作できます。",
       "backToWidget": "ウィジェットに戻る"
     },
+    "live": {
+      "fullviewHeading": "フルビューをご確認ください",
+      "fullviewSubInterpreter": "セッションが開始されました。フルビューで同時通訳をリアルタイムに確認できます。",
+      "backToSetup": "← 設定に戻る",
+      "backToPrompt": "← フルビュー案内に戻る",
+      "sessionInProgress": "セッション進行中"
+    },
     "speaker": {
       "host": "ホスト",
       "guest": "ゲスト"
@@ -2718,6 +2725,14 @@
       "liveHint": "セッション進行中 · フルビューでAIの推論と提案された質問をご確認ください",
       "startHint": "セッションを開始する",
       "openFullview": "フルビューを開く"
+    },
+    "live": {
+      "fullviewHeading": "フルビューをご確認ください",
+      "fullviewSubProbing": "セッションが開始されました。フルビューでプロービングの進行をリアルタイムに確認できます。",
+      "backToSetup": "← 設定に戻る",
+      "backToPrompt": "← フルビュー案内に戻る",
+      "sessionInProgress": "セッション進行中",
+      "endSession": "セッションを終了"
     }
   },
   "CaptureUseCase": {
