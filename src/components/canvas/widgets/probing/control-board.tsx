@@ -25,6 +25,10 @@ import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
+import {
+  CaptureUseCaseCards,
+  type CaptureUseCaseOption,
+} from '@/components/ui/capture-usecase-cards';
 import { ProjectPicker } from '@/components/project-picker';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
 import { PersonaSectionConfigurator } from './persona-section-configurator';
@@ -78,13 +82,37 @@ function ControlFields({
   onProjectChange: (projectId: string | null) => void;
 }) {
   const t = useTranslations('Probing');
-  // 라벨은 동시통역(#537)과 통일. value(mic/tab)는 STT/분석 분기용이라 유지,
-  // 표시 라벨만 로케일별로.
-  const SOURCE_OPTIONS: { value: SourceKind; label: string }[] = [
-    { value: 'mic', label: t('control.sourceMic') },
-    { value: 'tab', label: t('control.sourceTab') },
-    // both = 진행자(mic) + 응답자(tab) 병렬 캡처 + 화자분리.
-    { value: 'both', label: t('control.sourceBoth') },
+  const tc = useTranslations('CaptureUseCase');
+  // 입력 소스 = 유스케이스 3-카드 (CaptureUseCaseCards 공유 프리미티브). 옛
+  // 추상 드롭다운(mic/tab/both)을 인터뷰 방식 + 화자 라우팅으로 재표현.
+  // 값 매핑: mic→오프라인(진행자·참석자 모두 마이크, 화자 구분 없음),
+  // both→온라인(진행자 mic + 응답자 tab 병렬 캡처 + 화자분리),
+  // tab→참관(진행자·참석자 모두 탭 오디오). SourceKind 값 자체는 불변 —
+  // 카드는 표현만 바꾼다.
+  const SOURCE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
+    {
+      id: 'mic',
+      icon: '🤝',
+      title: tc('offlineTitle'),
+      hostVia: tc('hostVia', { via: tc('viaMic') }),
+      guestVia: tc('guestVia', { via: tc('viaMic') }),
+      note: tc('offlineNote'),
+    },
+    {
+      id: 'both',
+      icon: '💻',
+      title: tc('onlineTitle'),
+      hostVia: tc('hostVia', { via: tc('viaMic') }),
+      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      note: tc('onlineNote'),
+    },
+    {
+      id: 'tab',
+      icon: '👀',
+      title: tc('observeTitle'),
+      hostVia: tc('hostVia', { via: tc('viaTab') }),
+      guestVia: tc('guestVia', { via: tc('viaTab') }),
+    },
   ];
   // 조사 목적 = draft + 명시적 "적용" 버튼 커밋 (research-context.tsx 전체보기와
   // 동일 패턴). 타이핑은 goalDraft 만 갱신하고 (키 입력마다 자동저장하지 않음),
@@ -151,21 +179,21 @@ function ControlFields({
             />
           </div>
         </Field>
-        <Field label={t('control.fieldInputSource')}>
-          {/* min-w: 옛 native select 은 widest-option 고정폭 — 선택 값에 따라
-              trigger 폭이 출렁이지 않도록 하한만 고정 */}
-          <div className="min-w-24">
-            <SelectMenu
-              aria-label={t('control.fieldInputSource')}
+        {/* 입력 소스 = 유스케이스 3-카드. 옛 SelectMenu 드롭다운을 대체.
+            카드는 드롭다운보다 넓어 flex-wrap 행에서 자기 줄을 차지하도록
+            w-full — 프로젝트/언어 드롭다운 아래로 자연 wrap. 위치 이동
+            없음(같은 컨트롤 패널; 아코디언 STEP2 이관은 PR-B). */}
+        <div className="w-full">
+          <Field label={tc('sectionLabel')}>
+            <CaptureUseCaseCards
+              ariaLabel={tc('groupAria')}
               value={source}
-              placeholder={t('control.select')}
-              onChange={(next) => onSourceChange(next as SourceKind)}
-              options={SOURCE_OPTIONS}
+              onChange={(id) => onSourceChange(id as SourceKind)}
               disabled={controlsDisabled}
-              buttonClassName={CONTROL_TRIGGER_CLASS}
+              options={SOURCE_USECASE_OPTIONS}
             />
-          </div>
-        </Field>
+          </Field>
+        </div>
       </ControlBoardPanel.Settings>
       {/* 조사 목적 = 핵심 입력, 드롭다운 아래 배치. 밸런스 튜닝(desk 미러):
           넓어진 클러스터 대비 왜소함을 해소하려 rows 2 → 3 으로 확대 — 데스크

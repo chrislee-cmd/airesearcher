@@ -43,8 +43,10 @@ import {
   isBrowserAudioNoticeSuppressed,
 } from './browser-audio-notice';
 import { FileDropZone } from './ui/file-drop-zone';
-import { DropdownMenu } from './ui/dropdown-menu';
-import { ControlTrigger } from './ui/control-trigger';
+import {
+  CaptureUseCaseCards,
+  type CaptureUseCaseOption,
+} from './ui/capture-usecase-cards';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
@@ -710,7 +712,39 @@ export function TranslateConsole({
 } = {}) {
   const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
+  // 캡처모드 유스케이스 카드 공유 네임스페이스 (probing 과 동일 컴포넌트/카피).
+  const tc = useTranslations('CaptureUseCase');
   const locale = useLocale();
+
+  // 캡처모드 3-카드 옵션 + 위젯별 모드 매핑. mic-only→오프라인(진행자·참석자
+  // 모두 마이크, 화자 구분 없음), both→온라인(진행자 mic + 응답자 tab 병렬
+  // 캡처 + 화자분리), tab-only→참관(진행자·참석자 모두 탭 오디오). '온라인'
+  // 카드 note = 기존 both 비용경고(bothCostHint) 재사용 — 선택 시에만 노출.
+  const CAPTURE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
+    {
+      id: 'mic-only',
+      icon: '🤝',
+      title: tc('offlineTitle'),
+      hostVia: tc('hostVia', { via: tc('viaMic') }),
+      guestVia: tc('guestVia', { via: tc('viaMic') }),
+      note: tc('offlineNote'),
+    },
+    {
+      id: 'both',
+      icon: '💻',
+      title: tc('onlineTitle'),
+      hostVia: tc('hostVia', { via: tc('viaMic') }),
+      guestVia: tc('guestVia', { via: tc('viaTab') }),
+      note: t('captureMode.bothCostHint'),
+    },
+    {
+      id: 'tab-only',
+      icon: '👀',
+      title: tc('observeTitle'),
+      hostVia: tc('hostVia', { via: tc('viaTab') }),
+      guestVia: tc('guestVia', { via: tc('viaTab') }),
+    },
+  ];
 
   const [status, setStatus] = useState<Status>('idle');
 
@@ -4364,44 +4398,25 @@ export function TranslateConsole({
             disabled={busy || live}
           />
         </Field>
-        <Field
-          label={t('captureMode.label')}
-          // both = mic + tab 두 병렬 세션 → OpenAI realtime 비용 2배. 선택 시에만
-          // 안내(다른 모드는 단일 세션이라 무관). bothCostHint 는 이 경고 전용 키.
-          description={captureMode === 'both' ? t('captureMode.bothCostHint') : undefined}
-        >
-          <DropdownMenu
-            items={[
-              { key: 'mic-only', label: t('captureMode.micOnly'), mode: 'mic-only' },
-              { key: 'tab-only', label: t('captureMode.tabOnly'), mode: 'tab-only' },
-              // both(mic=진행자 + tab=응답자, 두 병렬 세션) 재노출 — 브라우저 화상
-              // 인터뷰 양방향 캡처. dormant 였던 코드경로를 picker 로 다시 도달 가능하게.
-              { key: 'both', label: t('captureMode.both'), mode: 'both' },
-            ].map((o) => ({
-              key: o.key,
-              label: o.label,
-              onSelect: () => setCaptureMode(o.mode as CaptureMode),
-            }))}
-            trigger={({ open, onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                data-open={open}
-                onClick={onClick}
-                disabled={busy || live}
-                aria-label={t('captureMode.label')}
-                className="min-w-32"
-              >
-                {captureMode === 'mic-only'
-                  ? t('captureMode.micOnly')
-                  : captureMode === 'tab-only'
-                    ? t('captureMode.tabOnly')
-                    : captureMode === 'both'
-                      ? t('captureMode.both')
-                      : t('select')}
-              </ControlTrigger>
-            )}
-          />
-        </Field>
+        {/* 캡처모드 = 유스케이스 3-카드 (CaptureUseCaseCards 공유 프리미티브,
+            probing 과 동일 컴포넌트). 옛 DropdownMenu 를 대체 — 추상
+            mic-only/tab-only/both 를 인터뷰 방식 + 화자 라우팅으로 재표현.
+            값 매핑: mic-only→오프라인, both→온라인(진행자 mic + 응답자 tab
+            화자분리), tab-only→참관. captureMode 값·activeSlots·세션 로직
+            전부 불변. both 비용경고(bothCostHint)는 '온라인' 카드 선택 시
+            note 로 노출(기존 키 재사용). 카드는 넓어 flex 행에서 자기 줄
+            차지하도록 w-full. */}
+        <div className="w-full">
+          <Field label={tc('sectionLabel')}>
+            <CaptureUseCaseCards
+              ariaLabel={tc('groupAria')}
+              value={captureMode}
+              onChange={(id) => setCaptureMode(id as CaptureMode)}
+              disabled={busy || live}
+              options={CAPTURE_USECASE_OPTIONS}
+            />
+          </Field>
+        </div>
       </ControlBoardPanel.Settings>
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기. 한 줄에 하나씩
