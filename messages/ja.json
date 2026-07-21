@@ -1041,7 +1041,7 @@
         "groupAria": "文字起こし方式の選択",
         "micTitle": "定性インタビュー文字起こし",
         "micSub": "1:1 デプス · 話者分離",
-        "minutesTitle": "議事録の文字起こし",
+        "minutesTitle": "議事録・デブリーフィングの文字起こし",
         "minutesSub": "複数話者の発話 · 要約"
       },
       "transcribingEta": "{elapsed} 経過 · 残り約{remain}（推定）",
@@ -2743,7 +2743,7 @@
     "observeTitle": "オンライン視聴",
     "offlineDesc": "会って話すインタビューです",
     "onlineDesc": "ビデオ通話で話すインタビューです",
-    "observeDesc": "ビデオ通話で私は聞くだけです",
+    "observeDesc": "ビデオ通話で聞くだけです",
     "offlineNote": "1台のマイクで部屋全体を収録 · 話者の区別なし"
   }
 }
