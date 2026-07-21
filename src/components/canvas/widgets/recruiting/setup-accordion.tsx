@@ -24,7 +24,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { BrandLoader } from '@/components/ui/brand-loader';
-import { Field } from '@/components/canvas/shell/field';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { isStandardSectionTitle } from '@/lib/recruiting/standard-blocks';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
@@ -227,29 +226,34 @@ export function RecruitingSetupAccordion({
                 title={t('setup.step2Title')}
               >
                 {criteriaPhase === 'idle' && (
-                  // pre-data = CD .dc.html 그대로 솔리드 예시 칩(§A Rev2).
-                  <ExamplePreview label={t('setup.ghostNote')}>
-                    <div className="flex flex-wrap gap-2">
-                      <CriteriaChip
-                        category={t('setup.ghostCat1')}
-                        label={t('setup.ghostCrit1')}
-                        required
-                        requiredLabel={t('setup.required')}
-                      />
-                      <CriteriaChip
-                        category={t('setup.ghostCat2')}
-                        label={t('setup.ghostCrit2')}
-                        required
-                        requiredLabel={t('setup.required')}
-                      />
-                      <CriteriaChip
-                        category={t('setup.ghostCat3')}
-                        label={t('setup.ghostCrit3')}
-                        required={false}
-                        requiredLabel={t('setup.required')}
-                      />
-                    </div>
-                  </ExamplePreview>
+                  // pre-data = CD .dc.html recruitOpen 그대로 솔리드 예시 4칩
+                  // (라벨 없음 — .dc.html 에 example eyebrow 없음). post-data 로 교체.
+                  <div className="flex flex-wrap gap-2">
+                    <CriteriaChip
+                      category={t('setup.ghostCat1')}
+                      label={t('setup.ghostCrit1')}
+                      required
+                      requiredLabel={t('setup.required')}
+                    />
+                    <CriteriaChip
+                      category={t('setup.ghostCat2')}
+                      label={t('setup.ghostCrit2')}
+                      required
+                      requiredLabel={t('setup.required')}
+                    />
+                    <CriteriaChip
+                      category={t('setup.ghostCat3')}
+                      label={t('setup.ghostCrit3')}
+                      required={false}
+                      requiredLabel={t('setup.required')}
+                    />
+                    <CriteriaChip
+                      category={t('setup.ghostCat4')}
+                      label={t('setup.ghostCrit4')}
+                      required={false}
+                      requiredLabel={t('setup.required')}
+                    />
+                  </div>
                 )}
                 {criteriaPhase === 'generating' && (
                   <GeneratingRow
@@ -296,29 +300,28 @@ export function RecruitingSetupAccordion({
                 title={t('setup.step3Title')}
               >
                 {criteriaPhase !== 'approved' && (
-                  // pre-data = CD .dc.html 그대로 솔리드 예시 설문행(§A Rev2).
-                  <ExamplePreview label={t('setup.ghostNote')}>
-                    <div className="space-y-2">
-                      <SurveySectionRow
-                        title={t('setup.ghostSurvConsent')}
-                        meta={t('setup.ghostSurvConsentMeta')}
-                        locked
-                        lockedLabel={t('setup.surveyLocked')}
-                      />
-                      <SurveySectionRow
-                        title={t('setup.ghostSurvScreen')}
-                        meta={`${t('setup.surveyQuestionMeta', { count: 8 })} · ${t('setup.surveyEditable')}`}
-                        locked={false}
-                        lockedLabel={t('setup.surveyLocked')}
-                      />
-                      <SurveySectionRow
-                        title={t('setup.ghostSurvPersonal')}
-                        meta={t('setup.ghostSurvPersonalMeta')}
-                        locked
-                        lockedLabel={t('setup.surveyLocked')}
-                      />
-                    </div>
-                  </ExamplePreview>
+                  // pre-data = CD .dc.html recruitOpen 그대로 솔리드 예시 설문행
+                  // (라벨 없음). post-data 로 교체.
+                  <div className="space-y-2">
+                    <SurveySectionRow
+                      title={t('setup.ghostSurvConsent')}
+                      meta={t('setup.ghostSurvConsentMeta')}
+                      locked
+                      lockedLabel={t('setup.surveyLocked')}
+                    />
+                    <SurveySectionRow
+                      title={t('setup.ghostSurvScreen')}
+                      meta={`${t('setup.surveyQuestionMeta', { count: 8 })} · ${t('setup.surveyEditable')}`}
+                      locked={false}
+                      lockedLabel={t('setup.surveyLocked')}
+                    />
+                    <SurveySectionRow
+                      title={t('setup.ghostSurvPersonal')}
+                      meta={t('setup.ghostSurvPersonalMeta')}
+                      locked
+                      lockedLabel={t('setup.surveyLocked')}
+                    />
+                  </div>
                 )}
                 {criteriaPhase === 'approved' &&
                   (surveyPhase === 'idle' || surveyPhase === 'generating') && (
@@ -497,8 +500,43 @@ function CriteriaChip({
   );
 }
 
+// 좌측 아이콘 — CD .dc.html: locked=document, editable=minutes(clock). 인라인
+// SVG(외부 라이브러리 없음 — CONTEXT-PACK §2). currentColor=text-mute.
+function SectionIcon({ locked }: { locked: boolean }) {
+  return (
+    <svg
+      className="h-[18px] w-[18px] shrink-0 text-mute"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+    >
+      {locked ? (
+        <path
+          d="M4.5 2.5h6l3 3v10h-9v-13Zm6 0v3h3M6 9h6M6 11.5h6M6 6.5h2.5"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <>
+          <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.3" />
+          <path
+            d="M9 5.5V9l2.5 1.5"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </svg>
+  );
+}
+
 // screening survey section row — locked(🔒)=surface-locked(→paper-soft),
 // editable=paper. recruiting §1: `rounded-chrome border-line`(→rounded-sm).
+// CD: 좌측 아이콘(document/clock) + title/meta + locked pill.
 function SurveySectionRow({
   title,
   meta,
@@ -516,6 +554,7 @@ function SurveySectionRow({
         locked ? 'bg-paper-soft' : 'bg-paper'
       }`}
     >
+      <SectionIcon locked={locked} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-md font-bold text-ink">{title}</div>
         <div className="mt-0.5 text-xs text-mute-soft">{meta}</div>
@@ -525,26 +564,6 @@ function SurveySectionRow({
           {lockedLabel}
         </span>
       )}
-    </div>
-  );
-}
-
-// 예시 프리뷰(§A Rev2) — 데이터 의존 스텝 pre-data 를 CD .dc.html 그대로
-// **솔리드·꽉 찬 예시** 칩/설문행으로 렌더 + `예시` 라벨만. muted·저opacity·
-// grayscale·placeholder 금지(.dc.html 이 외형 SSOT). 비상호작용(예시라 클릭 X).
-function ExamplePreview({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="font-mono text-xs uppercase tracking-wide text-mute-soft">
-        {label}
-      </div>
-      <div className="pointer-events-none select-none">{children}</div>
     </div>
   );
 }
@@ -619,29 +638,28 @@ function SourceInputFields({
   onRemoveFile: (idx: number) => void;
 }) {
   const t = useTranslations('Recruiting');
+  // CD .dc.html criteriaInput: compact 붙여넣기 박스(min-h 50) STACKED 위,
+  // 그 아래 compact 드롭존(pad 16). 필드 라벨 없음(aria-label 만). 옛 wizard
+  // 의 side-by-side h-[140px] + Field 라벨 잔재 제거 — 4스텝이 카드에 맞도록.
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Field label={t('setup.step1PasteLabel')}>
-          <Textarea
-            value={pasted}
-            onChange={(e) => onPasteChange(e.target.value)}
-            disabled={running}
-            placeholder={t('setup.step1Paste')}
-            className="h-[140px] resize-none text-md text-ink-2"
-          />
-        </Field>
-        <Field label={t('setup.step1DropLabel')}>
-          <FileDropZone
-            accept={ACCEPT}
-            multiple
-            onFiles={(f) => onAddFiles(f)}
-            label={t('setup.step1Drop')}
-            helperText={t('setup.step1DropHint')}
-            className="h-[140px] gap-2 px-6"
-          />
-        </Field>
-      </div>
+    <div className="space-y-2.5">
+      <Textarea
+        value={pasted}
+        onChange={(e) => onPasteChange(e.target.value)}
+        disabled={running}
+        placeholder={t('setup.step1Paste')}
+        aria-label={t('setup.step1PasteLabel')}
+        rows={2}
+        className="min-h-[52px] resize-none text-md text-ink-2"
+      />
+      <FileDropZone
+        accept={ACCEPT}
+        multiple
+        onFiles={(f) => onAddFiles(f)}
+        label={t('setup.step1Drop')}
+        helperText={t('setup.step1DropHint')}
+        className="gap-1.5 px-6 py-4"
+      />
 
       {rejected.length > 0 && (
         <div className="text-sm text-warning">

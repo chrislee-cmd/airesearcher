@@ -2532,8 +2532,8 @@
       "ghostCrit1": "연령 25–34",
       "ghostCat2": "직업",
       "ghostCrit2": "직장인",
-      "ghostCat3": "라이프스타일",
-      "ghostCrit3": "합리적 소비 지향",
+      "ghostCat3": "경험",
+      "ghostCrit3": "온라인 쇼핑 주 3회",
       "ghostSurvConsent": "개인정보 수집 동의",
       "ghostSurvConsentMeta": "동의 게이트 · 법적 고지",
       "ghostSurvScreen": "스크리닝 질문",
@@ -2554,7 +2554,9 @@
       "publishDriveHint": "공개(링크 보유자) 권한 부여를 위해 Google 계정을 다시 연결해주세요.",
       "publishDriveReconnect": "재연결",
       "googleAuthErrorPrefix": "Google 연결 오류",
-      "googleAuthClose": "닫기"
+      "googleAuthClose": "닫기",
+      "ghostCat4": "라이프스타일",
+      "ghostCrit4": "합리적 소비 지향"
     }
   }
 }

@@ -2625,8 +2625,8 @@
       "ghostCrit1": "年齢 25–34",
       "ghostCat2": "職業",
       "ghostCrit2": "会社員",
-      "ghostCat3": "ライフスタイル",
-      "ghostCrit3": "堅実な消費志向",
+      "ghostCat3": "経験",
+      "ghostCrit3": "オンライン購入 週3回",
       "ghostSurvConsent": "個人情報の収集同意",
       "ghostSurvConsentMeta": "同意ゲート · 法的文言",
       "ghostSurvScreen": "スクリーニング質問",
@@ -2647,7 +2647,9 @@
       "publishDriveHint": "リンクを知る全員への公開権限のため、Google アカウントを再連携してください。",
       "publishDriveReconnect": "再連携",
       "googleAuthErrorPrefix": "Google 連携エラー",
-      "googleAuthClose": "閉じる"
+      "googleAuthClose": "閉じる",
+      "ghostCat4": "ライフスタイル",
+      "ghostCrit4": "堅実な消費志向"
     }
   }
 }

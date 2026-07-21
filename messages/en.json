@@ -2532,8 +2532,8 @@
       "ghostCrit1": "Age 25–34",
       "ghostCat2": "Occupation",
       "ghostCrit2": "Office worker",
-      "ghostCat3": "Lifestyle",
-      "ghostCrit3": "Values smart spending",
+      "ghostCat3": "Experience",
+      "ghostCrit3": "Shops online 3×/wk",
       "ghostSurvConsent": "Privacy consent",
       "ghostSurvConsentMeta": "Consent gate · legal copy",
       "ghostSurvScreen": "Screening questions",
@@ -2554,7 +2554,9 @@
       "publishDriveHint": "Reconnect your Google account to grant anyone-with-link access.",
       "publishDriveReconnect": "Reconnect",
       "googleAuthErrorPrefix": "Google connection error",
-      "googleAuthClose": "Close"
+      "googleAuthClose": "Close",
+      "ghostCat4": "Lifestyle",
+      "ghostCrit4": "Values smart spending"
     }
   }
 }

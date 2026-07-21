@@ -2625,8 +2625,8 @@
       "ghostCrit1": "อายุ 25–34",
       "ghostCat2": "อาชีพ",
       "ghostCrit2": "พนักงานออฟฟิศ",
-      "ghostCat3": "ไลฟ์สไตล์",
-      "ghostCrit3": "ใส่ใจการใช้จ่ายอย่างชาญฉลาด",
+      "ghostCat3": "ประสบการณ์",
+      "ghostCrit3": "ช้อปออนไลน์ 3 ครั้ง/สัปดาห์",
       "ghostSurvConsent": "ความยินยอมด้านความเป็นส่วนตัว",
       "ghostSurvConsentMeta": "ประตูยินยอม · ข้อความทางกฎหมาย",
       "ghostSurvScreen": "คำถามคัดกรอง",
@@ -2647,7 +2647,9 @@
       "publishDriveHint": "เชื่อมต่อบัญชี Google ใหม่เพื่อให้สิทธิ์เข้าถึงแก่ทุกคนที่มีลิงก์",
       "publishDriveReconnect": "เชื่อมต่อใหม่",
       "googleAuthErrorPrefix": "ข้อผิดพลาดการเชื่อมต่อ Google",
-      "googleAuthClose": "ปิด"
+      "googleAuthClose": "ปิด",
+      "ghostCat4": "ไลฟ์สไตล์",
+      "ghostCrit4": "ใส่ใจการใช้จ่ายอย่างชาญฉลาด"
     }
   }
 }
