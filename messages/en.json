@@ -2585,7 +2585,15 @@
     "bulkConfirmed": "{count} confirmed.",
     "bulkConfirmFailed": "Couldn't confirm.",
     "bulkAssignFailed": "Couldn't move to the group.",
-    "bulkDuplicateInTarget": "The target batch already has a candidate with the same email."
+    "bulkDuplicateInTarget": "The target batch already has a candidate with the same email.",
+    "calendarTitleLabel": "Calendar title",
+    "calendarTitlePlaceholder": "Interview schedule",
+    "confirmedHeading": "Confirmed ({count})",
+    "confirmedEmpty": "No confirmed attendees yet. Confirm candidates from the list.",
+    "confirmedNoSlot": "No slot",
+    "confirmedChatCta": "Chat",
+    "confirmedBroadcastCta": "Broadcast",
+    "chatClose": "Close"
   },
   "SchedulingParticipant": {
     "title": "Your interview schedule",

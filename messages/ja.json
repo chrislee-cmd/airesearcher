@@ -2678,7 +2678,15 @@
     "bulkConfirmed": "{count}名を確定しました。",
     "bulkConfirmFailed": "確定に失敗しました。",
     "bulkAssignFailed": "グループへの移動に失敗しました。",
-    "bulkDuplicateInTarget": "移動先のバッチに同じメールの候補者が既に存在します。"
+    "bulkDuplicateInTarget": "移動先のバッチに同じメールの候補者が既に存在します。",
+    "calendarTitleLabel": "カレンダータイトル",
+    "calendarTitlePlaceholder": "面接スケジュール",
+    "confirmedHeading": "確定者 ({count})",
+    "confirmedEmpty": "まだ確定した候補者がいません。リストから候補者を確定してください。",
+    "confirmedNoSlot": "スロットなし",
+    "confirmedChatCta": "チャット",
+    "confirmedBroadcastCta": "全体連絡",
+    "chatClose": "閉じる"
   },
   "SchedulingParticipant": {
     "title": "面接スケジュール",

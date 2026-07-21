@@ -18,6 +18,7 @@ import {
   type SlotDraft,
 } from '@/components/admin/slot-editor-modal';
 import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
+import { BROADCAST_THREAD_ID } from '@/lib/scheduling/messages';
 import {
   type SchedSlot,
   type SlotStatus,
@@ -53,7 +54,9 @@ type Props = {
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-type ViewTab = 'list' | 'calendar' | 'chat';
+// Chat lives in a right-rail sidebar of the calendar view now (PR-B); the
+// standalone 'chat' tab is gone.
+type ViewTab = 'list' | 'calendar';
 
 // Fixed pixel widths for the three sticky-left columns so their `left` offsets
 // are deterministic (checkbox → name → contact). The rest of the table scrolls
@@ -105,6 +108,18 @@ export function RecruitingSchedulingClient({
   const [calendarView, setCalendarView] = useState<CalendarView>('week');
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<SlotDraft | null>(null);
+
+  // Chat sidebar (unified calendar view). `chatThread` is a candidate id or the
+  // broadcast sentinel; `chatOpen` toggles the right rail. Clicking a confirmed
+  // attendee opens their private thread; the broadcast button opens the shared
+  // announcement thread.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatThread, setChatThread] = useState<string>(BROADCAST_THREAD_ID);
+
+  function openChat(threadId: string) {
+    setChatThread(threadId);
+    setChatOpen(true);
+  }
 
   // Extra (non email/name/phone) columns present across the batch, preserved in
   // `fields`. Union so a candidate missing a key still renders an empty cell.
@@ -393,6 +408,13 @@ export function RecruitingSchedulingClient({
     label: candidateLabel(c),
   }));
 
+  // Confirmed attendees only (spec §2) — the calendar view's inline roster.
+  const confirmedCandidates = candidates.filter(
+    (c) => c.status === 'confirmed',
+  );
+
+  const currentBatch = batches.find((b) => b.id === selectedBatchId) ?? null;
+
   // Existing batches other than the current one, as move targets.
   const assignBatchOptions = [
     { value: '', label: t('bulkChooseBatch') },
@@ -486,19 +508,16 @@ export function RecruitingSchedulingClient({
               items={[
                 { value: 'list', label: t('tabList') },
                 { value: 'calendar', label: t('tabCalendar') },
-                { value: 'chat', label: t('tabChat') },
               ]}
             />
-            {tab !== 'chat' && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => openCreate()}
-                disabled={candidates.length === 0}
-              >
-                {t('slotAdd')}
-              </Button>
-            )}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => openCreate()}
+              disabled={candidates.length === 0}
+            >
+              {t('slotAdd')}
+            </Button>
           </div>
 
           {tab === 'list' ? (
@@ -733,20 +752,132 @@ export function RecruitingSchedulingClient({
                 </table>
               </div>
             </>
-          ) : tab === 'calendar' ? (
-            <SchedulingCalendar
-              slots={slots}
-              candidateName={(id) => candidateNameById.get(id) ?? t('unnamedCandidate')}
-              view={calendarView}
-              onViewChange={setCalendarView}
-              onCreateAt={(start) => openCreate(start)}
-              onEditSlot={openEdit}
-            />
           ) : (
-            <SchedulingChatPanel
-              batchId={selectedBatchId}
-              candidates={candidateOptions}
-            />
+            // Unified calendar view (PR-B): free-text title + calendar +
+            // confirmed-attendee roster on the left; chat opens in the right
+            // rail (inline sidebar on wide screens, overlay drawer on narrow).
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+              <div className="flex min-w-0 flex-1 flex-col gap-4">
+                <BatchTitleField
+                  key={selectedBatchId}
+                  batchId={selectedBatchId}
+                  title={currentBatch?.title ?? ''}
+                  onSaved={() => router.refresh()}
+                />
+
+                <SchedulingCalendar
+                  slots={slots}
+                  candidateName={(id) =>
+                    candidateNameById.get(id) ?? t('unnamedCandidate')
+                  }
+                  view={calendarView}
+                  onViewChange={setCalendarView}
+                  onCreateAt={(start) => openCreate(start)}
+                  onEditSlot={openEdit}
+                />
+
+                {/* Confirmed attendees, inline in the same view (spec §2). */}
+                <div className="flex flex-col gap-2 rounded-sm border border-line p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-ink">
+                      {t('confirmedHeading', {
+                        count: confirmedCandidates.length,
+                      })}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => openChat(BROADCAST_THREAD_ID)}
+                    >
+                      {t('confirmedBroadcastCta')}
+                    </Button>
+                  </div>
+                  {confirmedCandidates.length === 0 ? (
+                    <p className="text-sm text-mute-soft">
+                      {t('confirmedEmpty')}
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col divide-y divide-line-soft">
+                      {confirmedCandidates.map((c) => {
+                        const next = nextSlotForCandidate(c.id, slots, now);
+                        const contact = contactValue(c);
+                        const active = chatOpen && chatThread === c.id;
+                        return (
+                          <li key={c.id}>
+                            {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
+                            <button
+                              type="button"
+                              onClick={() => openChat(c.id)}
+                              className={[
+                                'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
+                                active
+                                  ? 'bg-paper-soft'
+                                  : 'hover:bg-paper-soft',
+                              ].join(' ')}
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm text-ink">
+                                  {candidateLabel(c)}
+                                </span>
+                                {contact && (
+                                  <span className="block truncate text-xs text-mute-soft">
+                                    {contact}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="shrink-0 text-xs text-mute">
+                                {next ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span
+                                      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                                        next.status === 'confirmed'
+                                          ? 'bg-success'
+                                          : next.status === 'cancelled'
+                                            ? 'bg-mute-soft'
+                                            : 'bg-amore'
+                                      }`}
+                                    />
+                                    {slotTimeFmt.format(
+                                      new Date(next.start_at),
+                                    )}
+                                  </span>
+                                ) : (
+                                  t('confirmedNoSlot')
+                                )}
+                              </span>
+                              <span className="shrink-0 text-xs text-amore">
+                                {t('confirmedChatCta')}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Chat rail — inline sidebar (lg+) / overlay drawer (mobile). */}
+              {chatOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-modal bg-ink/20 lg:hidden"
+                    onClick={() => setChatOpen(false)}
+                    aria-hidden
+                  />
+                  <aside className="fixed inset-y-0 right-0 z-modal flex w-full max-w-md flex-col border-l border-line bg-paper lg:static lg:z-auto lg:h-[36rem] lg:w-96 lg:max-w-none lg:shrink-0 lg:rounded-sm lg:border">
+                    <SchedulingChatPanel
+                      batchId={selectedBatchId}
+                      candidates={candidateOptions}
+                      layout="sidebar"
+                      selectedThread={chatThread}
+                      onSelectThread={setChatThread}
+                      onClose={() => setChatOpen(false)}
+                    />
+                  </aside>
+                </>
+              )}
+            </div>
           )}
         </>
       ) : (
@@ -762,6 +893,65 @@ export function RecruitingSchedulingClient({
         onSaved={onSaved}
       />
     </div>
+  );
+}
+
+// Inline free-text calendar title (spec §1). The batch title doubles as the
+// calendar heading; edits save immediately on blur or Enter via PATCH. Keyed on
+// batchId in the parent so a batch switch reseeds the field.
+function BatchTitleField({
+  batchId,
+  title,
+  onSaved,
+}: {
+  batchId: string;
+  title: string;
+  onSaved: () => void;
+}) {
+  const t = useTranslations('RecruitingScheduling');
+  const [value, setValue] = useState(title);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const next = value.trim();
+    // No-op on empty or unchanged — keeps the batch from being blanked out and
+    // avoids a redundant refresh on every blur.
+    if (saving || !next || next === title) {
+      if (!next) setValue(title);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/scheduling/batches/${batchId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: next }),
+      });
+      if (res.ok) onSaved();
+      else setValue(title);
+    } catch {
+      setValue(title);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Input
+      aria-label={t('calendarTitleLabel')}
+      placeholder={t('calendarTitlePlaceholder')}
+      value={value}
+      disabled={saving}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className="font-semibold"
+    />
   );
 }
 

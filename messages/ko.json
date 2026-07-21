@@ -2585,7 +2585,15 @@
     "bulkConfirmed": "{count}명 확정됨.",
     "bulkConfirmFailed": "확정에 실패했습니다.",
     "bulkAssignFailed": "그룹 이동에 실패했습니다.",
-    "bulkDuplicateInTarget": "대상 배치에 같은 이메일의 후보자가 이미 있습니다."
+    "bulkDuplicateInTarget": "대상 배치에 같은 이메일의 후보자가 이미 있습니다.",
+    "calendarTitleLabel": "캘린더 제목",
+    "calendarTitlePlaceholder": "인터뷰 일정",
+    "confirmedHeading": "확정 인원 ({count})",
+    "confirmedEmpty": "아직 확정된 인원이 없습니다. 리스트에서 후보자를 확정하세요.",
+    "confirmedNoSlot": "슬롯 없음",
+    "confirmedChatCta": "채팅",
+    "confirmedBroadcastCta": "전체 공지",
+    "chatClose": "닫기"
   },
   "SchedulingParticipant": {
     "title": "인터뷰 일정",

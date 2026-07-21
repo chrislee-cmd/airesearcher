@@ -2678,7 +2678,15 @@
     "bulkConfirmed": "ยืนยันแล้ว {count} คน",
     "bulkConfirmFailed": "ยืนยันไม่สำเร็จ",
     "bulkAssignFailed": "ย้ายไปยังกลุ่มไม่สำเร็จ",
-    "bulkDuplicateInTarget": "ชุดปลายทางมีผู้สมัครอีเมลเดียวกันอยู่แล้ว"
+    "bulkDuplicateInTarget": "ชุดปลายทางมีผู้สมัครอีเมลเดียวกันอยู่แล้ว",
+    "calendarTitleLabel": "ชื่อปฏิทิน",
+    "calendarTitlePlaceholder": "ตารางสัมภาษณ์",
+    "confirmedHeading": "ยืนยันแล้ว ({count})",
+    "confirmedEmpty": "ยังไม่มีผู้เข้าร่วมที่ยืนยัน ยืนยันผู้สมัครจากรายการ",
+    "confirmedNoSlot": "ไม่มีช่วงเวลา",
+    "confirmedChatCta": "แชท",
+    "confirmedBroadcastCta": "ประกาศทั้งหมด",
+    "chatClose": "ปิด"
   },
   "SchedulingParticipant": {
     "title": "ตารางสัมภาษณ์ของคุณ",
