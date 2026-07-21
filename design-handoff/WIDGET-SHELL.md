@@ -3,6 +3,14 @@
 > **This is the single source of truth for the widget shell.** Every widget (Probing · Interpreter · Recruiting · Transcript · AI UT · Desk) renders inside this identical shell. Each feature's `BUILD-SPEC.md §1` references THIS file for shell/assembly and adds only feature-specific rows. If a feature diverges from the shell, that is drift — fix the feature, not this file.
 > **Consumes:** `CONTEXT-PACK.md` + `tokens.json` (token vocab). **Date:** 2026-07-21.
 
+## AUTHORITY — design-led (greenfield) widgets, CD = visual SSOT
+> The integ widgets (Probing · Interpreter · Recruiting · Transcript · AI UT · Desk) are **net-new CD designs, NOT bound to the pre-existing app design system.** Appearance priority:
+> 1. **CD is the visual source of truth** — the `.dc.html` + BUILD-SPEC define how the widget looks. Reproduce it.
+> 2. Existing DS tokens/classes are a **convenience vocabulary**, used ONLY where they already reproduce the CD value exactly.
+> 3. **On conflict, CD wins.** The gap is a DS gap to fill (add a `proposed-token` / new component) — never a CD value to bend toward a DS default.
+> Do not "reconcile" these widgets into legacy DS components. Realize the CD design; extend the DS to fit it. `hex/px-forbidden` means **promote CD's value to a token**, NOT substitute the nearest existing DS default.
+> **§D Anti-anchoring (build fresh, don't edit legacy UI):** the worker builds the presentation as a **NEW component** per the CD `.dc.html` (e.g. `setup-accordion.tsx`, like Probing did). **Reuse logic/data only** (hooks · API · schema · extract · fit · forms). **Do NOT edit or extend pre-existing UI components** (`recruiting-wizard/wizard.tsx`, `conditions-panel.tsx`, old control panels) — they are **superseded** by the CD design. Only `WIDGET-SHELL.md` is shared. Editing legacy UI = anchoring to the old design system = the exact inversion this handoff forbids.
+
 ## §S0 Why this exists
 The shell must reach the worker **regardless of port order or which feature they open first**. It is a peer of CONTEXT-PACK/tokens.json — never embedded inside one feature. (Root cause of prior drift: shell lived only in Probing's spec and others cross-referenced it, so it didn't propagate → split toolbar, ad-hoc headers.)
 
