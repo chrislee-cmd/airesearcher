@@ -71,3 +71,57 @@ export function verifyViewerCookie(
   if (!Number.isFinite(expMs) || expMs <= Date.now()) return null;
   return email || null;
 }
+
+// ---------------------------------------------------------------------------
+// attendee 바인딩 쿠키 (PR-B) — 뒷자리 게이트 통과 후 발급.
+//
+// 이메일 쿠키가 "이 뷰어는 이 token 에 대해 email 을 증명했다"를 담았다면,
+// attendee 쿠키는 "이 뷰어는 이 token 안에서 attendee_id 로 식별된다"를 담는다.
+// 페이로드는 attendee_id — 뒷자리(약한 시크릿)는 쿠키에 절대 담지 않는다.
+// 이후 열람/발신은 이 attendee 신원으로 스코프된다(PR-C 채팅 격리의 기반).
+//
+// 🔒 신원은 쿠키(서버 서명)에서만 온다. 요청 body 의 attendee 식별자는 신뢰
+// 금지. 서명 입력에 token 을 섞어 다른 링크로 재사용 불가.
+// ---------------------------------------------------------------------------
+
+/**
+ * `${attendeeId}.${expMs}` 를 서명해 `${payload}.${sig}` 로 반환.
+ * 이메일 쿠키와 같은 이름(sv_<token>)을 쓰되 페이로드 첫 세그먼트가 attendee
+ * uuid 라는 점만 다르다 — 두 게이트는 동시에 활성화되지 않으므로 충돌 없음.
+ */
+export function signAttendeeCookie(token: string, attendeeId: string): string {
+  const exp = Date.now() + VIEWER_COOKIE_TTL_MIN * 60 * 1000;
+  const payload = `${attendeeId}.${exp}`;
+  const sig = sign(`${token}.${payload}`);
+  return `${payload}.${sig}`;
+}
+
+/**
+ * attendee 쿠키 검증 — 서명·만료·token 바인딩 확인 후 attendee_id 를 반환.
+ * 무효/만료/변조면 null. 실제 소속(이 attendee 가 이 살아있는 share 의 invite
+ * 인지)은 호출측이 assertViewerAttendeeById 로 다시 확인해야 한다.
+ */
+export function verifyAttendeeCookie(
+  token: string,
+  value: string | undefined,
+): string | null {
+  if (!value) return null;
+  const lastDot = value.lastIndexOf('.');
+  if (lastDot <= 0) return null;
+  const payload = value.slice(0, lastDot);
+  const sig = value.slice(lastDot + 1);
+
+  const expected = sign(`${token}.${payload}`);
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    return null;
+  }
+
+  const sep = payload.lastIndexOf('.');
+  if (sep <= 0) return null;
+  const attendeeId = payload.slice(0, sep);
+  const expMs = Number(payload.slice(sep + 1));
+  if (!Number.isFinite(expMs) || expMs <= Date.now()) return null;
+  return attendeeId || null;
+}

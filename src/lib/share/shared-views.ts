@@ -50,6 +50,27 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** 뒷자리 게이트 입력 길이(자리수). 기본 4(사용자 결정 1). */
+export const PHONE_GATE_DIGITS = 4;
+
+/**
+ * 전화번호 정규화 — 숫자만 남긴다(하이픈·공백·국가코드 접두 `+` 제거).
+ * 저장·비교를 표기 무관하게: `010-1234-5678` / `01012345678` 이 동일 취급.
+ */
+export function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+/**
+ * 정규화된 전화의 마지막 `PHONE_GATE_DIGITS` 자리. 자릿수가 모자라면 null
+ * (게이트 대상에서 제외 — 부분 입력으로 매핑되는 걸 막는다).
+ */
+export function phoneLast4(phone: string): string | null {
+  const digits = normalizePhone(phone);
+  if (digits.length < PHONE_GATE_DIGITS) return null;
+  return digits.slice(-PHONE_GATE_DIGITS);
+}
+
 /** 만료 판정 — expires_at 이 현재 이후면 만료. (컴포넌트 렌더에서 Date.now()
  *  직접 호출을 피하려 lib 로 추출: react-hooks/purity.) */
 export function isShareExpired(expiresAt: string | null): boolean {
@@ -135,4 +156,120 @@ export async function assertInvitedViewer(
       expires_at: share.expires_at,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// 뒷자리 게이트 (PR-B) — 이메일 게이트의 phone-last4 대체.
+//
+// 모델: 링크(token)가 진짜 시크릿, 뒷자리는 token 스코프 안의 attendee 선택자.
+// attendee = shared_view_invites row. 신원은 서버에서만 도출하고, 클라이언트가
+// 보낸 attendee 식별자는 신뢰하지 않는다.
+// ---------------------------------------------------------------------------
+
+type ShareRow = {
+  id: string;
+  resource_type: ShareResourceType;
+  resource_id: string;
+  org_id: string;
+  expires_at: string | null;
+};
+
+/** ok 일 때 통과한 attendee(invite) id 를 함께 돌려준다. */
+export type AttendeeGateResult =
+  | { ok: true; share: ShareRow; attendeeId: string }
+  | {
+      ok: false;
+      status: 401 | 403 | 404;
+      reason: 'not_found' | 'revoked' | 'expired' | 'no_match' | 'ambiguous';
+    };
+
+/** 살아있는 share row 를 돌려주거나(gate 통과) 실패 사유를 반환. */
+async function loadLiveShare(
+  admin: SupabaseClient,
+  token: string,
+): Promise<
+  | { ok: true; share: ShareRow }
+  | { ok: false; status: 403 | 404; reason: 'not_found' | 'revoked' | 'expired' }
+> {
+  const { data: share, error } = await admin
+    .from('shared_views')
+    .select('id, resource_type, resource_id, org_id, expires_at, revoked_at')
+    .eq('token', token)
+    .maybeSingle();
+  if (error || !share) return { ok: false, status: 404, reason: 'not_found' };
+  if (share.revoked_at) return { ok: false, status: 403, reason: 'revoked' };
+  if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
+    return { ok: false, status: 403, reason: 'expired' };
+  }
+  return {
+    ok: true,
+    share: {
+      id: share.id,
+      resource_type: share.resource_type as ShareResourceType,
+      resource_id: share.resource_id,
+      org_id: share.org_id,
+      expires_at: share.expires_at,
+    },
+  };
+}
+
+/**
+ * 뒷자리 게이트 — {token, 뒷자리} 로 attendee(invite) 를 **서버에서만** 도출한다.
+ *
+ *   1) 토큰 존재 · 미폐기 · 미만료
+ *   2) 이 share 의 invite 중 phone_last4 == 입력 뒷자리 인 row 조회
+ *      · 정확히 1건  → 그 invite.id 를 attendee 로 통과
+ *      · 0건         → no_match (enumeration 방지: 존재 여부 미노출)
+ *      · 2건 이상    → ambiguous (뒷자리 충돌: fail-closed. 호스트가 전체번호
+ *                       유일성으로 해소해야 함 — 서버 로그로만 관측)
+ *
+ * 뒷자리는 소유권 증명이 아니라 약한 공유 시크릿이다 — rate-limit/lockout 은
+ * 호출측 라우트가 강제한다.
+ */
+export async function assertViewerAttendeeByLast4(
+  admin: SupabaseClient,
+  token: string,
+  last4: string,
+): Promise<AttendeeGateResult> {
+  const live = await loadLiveShare(admin, token);
+  if (!live.ok) return live;
+
+  const { data: matches } = await admin
+    .from('shared_view_invites')
+    .select('id')
+    .eq('shared_view_id', live.share.id)
+    .eq('phone_last4', last4)
+    .limit(2);
+
+  if (!matches || matches.length === 0) {
+    return { ok: false, status: 401, reason: 'no_match' };
+  }
+  if (matches.length > 1) {
+    // 뒷자리 충돌 — 뒷자리만으로 attendee 를 특정 못 한다. 노출 없이 거부.
+    return { ok: false, status: 401, reason: 'ambiguous' };
+  }
+  return { ok: true, share: live.share, attendeeId: matches[0].id as string };
+}
+
+/**
+ * 재열람 게이트 — 쿠키가 복원한 attendee_id 가 이 살아있는 share 에 여전히
+ * 속하는 invite 인지 서버에서 재확인한다. 위조·타 share 의 attendee 쿠키는
+ * 여기서 걸린다(invite 가 이 share 소속이 아니면 no_match).
+ */
+export async function assertViewerAttendeeById(
+  admin: SupabaseClient,
+  token: string,
+  attendeeId: string,
+): Promise<AttendeeGateResult> {
+  const live = await loadLiveShare(admin, token);
+  if (!live.ok) return live;
+
+  const { data: invite } = await admin
+    .from('shared_view_invites')
+    .select('id')
+    .eq('id', attendeeId)
+    .eq('shared_view_id', live.share.id)
+    .maybeSingle();
+  if (!invite) return { ok: false, status: 401, reason: 'no_match' };
+  return { ok: true, share: live.share, attendeeId: invite.id as string };
 }

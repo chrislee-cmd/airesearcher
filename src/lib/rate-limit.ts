@@ -168,6 +168,15 @@ export const LIMITS = {
   // backstop against enumeration sweeps across many tokens.
   shareOtp: { limit: 3, window: '1 m' as Window },
   shareOtpHourly: { limit: 20, window: '1 h' as Window },
+  // Share-viewer phone-last4 gate (anonymous). The last4 is a low-entropy
+  // (10k combos) secret scoped to a single token, so brute-force is the
+  // primary threat. Requester-scoped key (ip:token): a tight per-window cap
+  // acts as a lockout — after `limit` wrong attempts the caller is blocked
+  // for the window. The per-IP hourly cap backstops enumeration sweeps that
+  // rotate tokens to dodge the per-token counter. Never keyed on last4 so
+  // valid/invalid guesses count identically (no oracle).
+  sharePhoneGate: { limit: 5, window: '10 m' as Window },
+  sharePhoneGateHourly: { limit: 30, window: '1 h' as Window },
   // Authenticated LLM calls per user-minute.
   llmPerUser: { limit: 30, window: '1 m' as Window },
   // Authenticated LLM calls per org-day. Catches a single org running
