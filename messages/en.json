@@ -2537,6 +2537,21 @@
     "slotMissingFields": "Enter a candidate and start/end times.",
     "slotEndBeforeStart": "End time is before start time.",
     "slotSaveFailed": "Failed to save the slot.",
-    "slotDeleteFailed": "Failed to delete the slot."
+    "slotDeleteFailed": "Failed to delete the slot.",
+    "tabChat": "Chat",
+    "chatBroadcast": "Broadcast",
+    "chatBroadcastHint": "Visible to all participants.",
+    "chatPrivateHint": "Visible only to this candidate.",
+    "chatNoCandidates": "Upload candidates to start individual threads.",
+    "chatLoading": "Loading messages…",
+    "chatEmpty": "No messages yet. Send the first one.",
+    "chatSenderAdmin": "Admin",
+    "chatSenderParticipant": "Participant",
+    "chatComposerLabel": "Message",
+    "chatComposerBroadcastPlaceholder": "Write an announcement for all participants…",
+    "chatComposerPrivatePlaceholder": "Write a message to this candidate…",
+    "chatSend": "Send",
+    "chatSending": "Sending…",
+    "chatSendFailed": "Failed to send the message."
   }
 }

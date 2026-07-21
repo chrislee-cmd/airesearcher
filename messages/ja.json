@@ -2630,6 +2630,21 @@
     "slotMissingFields": "候補者と開始・終了時刻を入力してください。",
     "slotEndBeforeStart": "終了時刻が開始時刻より前です。",
     "slotSaveFailed": "スロットの保存に失敗しました。",
-    "slotDeleteFailed": "スロットの削除に失敗しました。"
+    "slotDeleteFailed": "スロットの削除に失敗しました。",
+    "tabChat": "チャット",
+    "chatBroadcast": "一斉通知",
+    "chatBroadcastHint": "すべての参加者に表示されます。",
+    "chatPrivateHint": "この候補者にのみ表示されます。",
+    "chatNoCandidates": "候補者をアップロードすると個別スレッドが作成されます。",
+    "chatLoading": "メッセージを読み込み中…",
+    "chatEmpty": "まだメッセージがありません。最初のメッセージを送信しましょう。",
+    "chatSenderAdmin": "管理者",
+    "chatSenderParticipant": "参加者",
+    "chatComposerLabel": "メッセージ",
+    "chatComposerBroadcastPlaceholder": "すべての参加者への通知を入力してください…",
+    "chatComposerPrivatePlaceholder": "この候補者へのメッセージを入力してください…",
+    "chatSend": "送信",
+    "chatSending": "送信中…",
+    "chatSendFailed": "メッセージの送信に失敗しました。"
   }
 }

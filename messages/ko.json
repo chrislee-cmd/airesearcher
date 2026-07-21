@@ -2537,6 +2537,21 @@
     "slotMissingFields": "후보자와 시작·종료 시간을 입력하세요.",
     "slotEndBeforeStart": "종료 시간이 시작 시간보다 빠릅니다.",
     "slotSaveFailed": "슬롯 저장에 실패했습니다.",
-    "slotDeleteFailed": "슬롯 삭제에 실패했습니다."
+    "slotDeleteFailed": "슬롯 삭제에 실패했습니다.",
+    "tabChat": "채팅",
+    "chatBroadcast": "전체 공지",
+    "chatBroadcastHint": "모든 참여자에게 노출됩니다.",
+    "chatPrivateHint": "이 후보자에게만 노출됩니다.",
+    "chatNoCandidates": "후보자를 업로드하면 개별 스레드가 생깁니다.",
+    "chatLoading": "메시지를 불러오는 중…",
+    "chatEmpty": "아직 메시지가 없습니다. 첫 메시지를 보내보세요.",
+    "chatSenderAdmin": "관리자",
+    "chatSenderParticipant": "참여자",
+    "chatComposerLabel": "메시지 입력",
+    "chatComposerBroadcastPlaceholder": "전체 참여자에게 보낼 공지를 입력하세요…",
+    "chatComposerPrivatePlaceholder": "이 후보자에게 보낼 메시지를 입력하세요…",
+    "chatSend": "보내기",
+    "chatSending": "보내는 중…",
+    "chatSendFailed": "메시지 전송에 실패했습니다."
   }
 }
