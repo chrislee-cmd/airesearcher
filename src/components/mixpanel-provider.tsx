@@ -5,6 +5,8 @@ import mixpanel from 'mixpanel-browser';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/client';
 import { useConsent } from '@/hooks/use-consent';
+import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { isDeviceOptedOut, markDeviceOptedOut, readOptOutParam } from '@/lib/analytics/device-optout';
 
 // Module-level so the wrapped `track()` (callable from anywhere) can short
 // circuit before the user grants analytics consent. Flipped by the
@@ -156,6 +158,19 @@ export function track(event: string, props?: Record<string, unknown>) {
 // 같이 보존해 조인이 필요할 때 활용한다.
 function identifyUser(u: { id: string; email?: string | null }) {
   if (typeof window === 'undefined' || !initialized) return;
+  // Internal (our own) account: tag as internal for the dashboard filter, then
+  // opt this browser out of Mixpanel tracking for good. Mirrors the PostHog
+  // provider. We don't mixpanel.identify() an excluded internal user.
+  if (isSuperAdminEmail(u.email)) {
+    try {
+      mixpanel.people.set({ is_internal: true });
+      mixpanel.opt_out_tracking();
+    } catch {
+      // SDK can throw if localStorage is unavailable — best effort.
+    }
+    markDeviceOptedOut();
+    return;
+  }
   const email = u.email ?? undefined;
   const distinctId = email && email.length > 0 ? email : u.id;
   mixpanel.identify(distinctId);
@@ -210,6 +225,18 @@ export function MixpanelProvider({ children }: { children: React.ReactNode }) {
         mixpanel.opt_in_tracking();
       } catch {
         // see note in revoke branch above
+      }
+      // ...but a device/internal opt-out (manual ?analytics_optout=1 or a prior
+      // internal login) must survive the opt_in above — consent re-grant should
+      // not resurrect internal/manual exclusion. Re-read the URL param (in case
+      // this load is the opt-out bookmark) and re-apply the persisted flag.
+      readOptOutParam();
+      if (isDeviceOptedOut()) {
+        try {
+          mixpanel.opt_out_tracking();
+        } catch {
+          // best effort — see note above
+        }
       }
       initialized = true;
     }
