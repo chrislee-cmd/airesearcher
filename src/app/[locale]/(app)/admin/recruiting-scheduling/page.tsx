@@ -49,10 +49,11 @@ export default async function Page({
   let candidates: SchedCandidate[] = [];
   let slots: SchedSlot[] = [];
   if (selectedBatchId) {
-    // participant_token intentionally NOT selected — not exposed in PR1.
+    // participant_token now surfaced (PR4) so the list can render each
+    // candidate's public share link.
     const { data: candRows } = await admin
       .from('sched_candidates')
-      .select('id, email, name, phone, fields')
+      .select('id, email, name, phone, fields, participant_token')
       .eq('batch_id', selectedBatchId)
       .order('created_at', { ascending: true })
       .limit(2000);

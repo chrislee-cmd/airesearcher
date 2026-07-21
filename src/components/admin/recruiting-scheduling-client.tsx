@@ -30,14 +30,15 @@ export type SchedBatch = {
   created_at: string;
 };
 
-// participant_token is deliberately absent — PR4 surfaces it via the public
-// participant link; the PR1 list never renders it.
+// participant_token drives the public share link (PR4). It is rendered only as
+// a copyable `/schedule/<token>` URL — never shown raw in a data cell.
 export type SchedCandidate = {
   id: string;
   email: string | null;
   name: string | null;
   phone: string | null;
   fields: Record<string, string>;
+  participant_token: string;
 };
 
 type Props = {
@@ -298,8 +299,7 @@ export function RecruitingSchedulingClient({
                       </th>
                     ))}
                     <th className="px-3 py-2 font-medium">{t('colSlot')}</th>
-                    {/* 공유링크 컬럼 자리 — PR4(참여자링크)에서 채움. */}
-                    <th className="px-3 py-2 font-medium text-mute-soft">
+                    <th className="px-3 py-2 font-medium">
                       {t('colShareLink')}
                     </th>
                   </tr>
@@ -362,7 +362,13 @@ export function RecruitingSchedulingClient({
                               </Button>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-mute-soft">—</td>
+                          <td className="px-3 py-2">
+                            <ShareLinkCell
+                              candidateId={c.id}
+                              token={c.participant_token}
+                              onReissued={() => router.refresh()}
+                            />
+                          </td>
                         </tr>
                       );
                     })
@@ -409,4 +415,66 @@ function roundToNextHalfHour(d: Date): Date {
   const m = c.getMinutes();
   c.setMinutes(m < 30 ? 30 : 60);
   return c;
+}
+
+// Copy the candidate's public `/schedule/<token>` link, plus a reissue action
+// that rotates the token (invalidating any previously shared link). The URL is
+// built from window.location.origin at click time so it always matches the
+// deployment the admin is on.
+function ShareLinkCell({
+  candidateId,
+  token,
+  onReissued,
+}: {
+  candidateId: string;
+  token: string;
+  onReissued: () => void;
+}) {
+  const t = useTranslations('RecruitingScheduling');
+  const [copied, setCopied] = useState(false);
+  const [reissuing, setReissuing] = useState(false);
+
+  async function copyLink() {
+    const url = `${window.location.origin}/schedule/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard blocked (insecure context / permission) — no-op; the admin
+      // can still open the page manually.
+    }
+  }
+
+  async function reissue() {
+    if (reissuing) return;
+    if (!window.confirm(t('shareReissueConfirm'))) return;
+    setReissuing(true);
+    try {
+      const res = await fetch(
+        `/api/scheduling/candidates/${candidateId}/reissue-token`,
+        { method: 'POST' },
+      );
+      if (res.ok) onReissued();
+    } finally {
+      setReissuing(false);
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <Button variant="link" size="xs" onClick={copyLink}>
+        {copied ? t('shareCopied') : t('shareCopy')}
+      </Button>
+      <span className="text-mute-soft">·</span>
+      <Button
+        variant="link"
+        size="xs"
+        onClick={reissue}
+        disabled={reissuing}
+      >
+        {reissuing ? t('shareReissuing') : t('shareReissue')}
+      </Button>
+    </span>
+  );
 }

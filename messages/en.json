@@ -2552,6 +2552,35 @@
     "chatComposerPrivatePlaceholder": "Write a message to this candidate…",
     "chatSend": "Send",
     "chatSending": "Sending…",
-    "chatSendFailed": "Failed to send the message."
+    "chatSendFailed": "Failed to send the message.",
+    "shareCopy": "Copy link",
+    "shareCopied": "Copied",
+    "shareReissue": "Reissue",
+    "shareReissuing": "Reissuing…",
+    "shareReissueConfirm": "Reissue this link? The previous link will stop working."
+  },
+  "SchedulingParticipant": {
+    "title": "Your interview schedule",
+    "subtitle": "Your interview times and messages.",
+    "greeting": "Hi {name} — here are your interview times and messages.",
+    "scheduleHeading": "Interview times",
+    "loading": "Loading…",
+    "loadError": "Couldn't load your schedule. Please try again.",
+    "noSlots": "No interview times have been shared yet.",
+    "statusProposed": "Proposed",
+    "statusConfirmed": "Confirmed",
+    "statusCancelled": "Cancelled",
+    "announcementsHeading": "Announcements",
+    "messagesHeading": "Messages",
+    "noMessages": "No messages yet. Send a message to the team.",
+    "senderYou": "You",
+    "senderTeam": "Team",
+    "composerLabel": "Message",
+    "composerPlaceholder": "Write a message to the team…",
+    "send": "Send",
+    "sending": "Sending…",
+    "sendFailed": "Failed to send the message.",
+    "invalidTitle": "This link isn't available",
+    "invalidBody": "The link may be invalid or expired. Please check with the team that shared it."
   }
 }

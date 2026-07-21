@@ -2645,6 +2645,35 @@
     "chatComposerPrivatePlaceholder": "เขียนข้อความถึงผู้สมัครรายนี้…",
     "chatSend": "ส่ง",
     "chatSending": "กำลังส่ง…",
-    "chatSendFailed": "ส่งข้อความไม่สำเร็จ"
+    "chatSendFailed": "ส่งข้อความไม่สำเร็จ",
+    "shareCopy": "คัดลอกลิงก์",
+    "shareCopied": "คัดลอกแล้ว",
+    "shareReissue": "ออกลิงก์ใหม่",
+    "shareReissuing": "กำลังออกลิงก์ใหม่…",
+    "shareReissueConfirm": "ออกลิงก์ใหม่หรือไม่? ลิงก์เดิมจะใช้งานไม่ได้อีกต่อไป"
+  },
+  "SchedulingParticipant": {
+    "title": "ตารางสัมภาษณ์ของคุณ",
+    "subtitle": "เวลาสัมภาษณ์และข้อความของคุณ",
+    "greeting": "สวัสดีคุณ {name} — นี่คือเวลาสัมภาษณ์และข้อความของคุณ",
+    "scheduleHeading": "เวลาสัมภาษณ์",
+    "loading": "กำลังโหลด…",
+    "loadError": "ไม่สามารถโหลดตารางของคุณได้ กรุณาลองอีกครั้ง",
+    "noSlots": "ยังไม่มีการแชร์เวลาสัมภาษณ์",
+    "statusProposed": "เสนอแล้ว",
+    "statusConfirmed": "ยืนยันแล้ว",
+    "statusCancelled": "ยกเลิกแล้ว",
+    "announcementsHeading": "ประกาศ",
+    "messagesHeading": "ข้อความ",
+    "noMessages": "ยังไม่มีข้อความ ส่งข้อความถึงทีมงานได้เลย",
+    "senderYou": "คุณ",
+    "senderTeam": "ทีมงาน",
+    "composerLabel": "ข้อความ",
+    "composerPlaceholder": "เขียนข้อความถึงทีมงาน…",
+    "send": "ส่ง",
+    "sending": "กำลังส่ง…",
+    "sendFailed": "ส่งข้อความไม่สำเร็จ",
+    "invalidTitle": "ลิงก์นี้ไม่พร้อมใช้งาน",
+    "invalidBody": "ลิงก์อาจไม่ถูกต้องหรือหมดอายุ กรุณาตรวจสอบกับทีมงานที่แชร์ลิงก์ให้คุณ"
   }
 }
