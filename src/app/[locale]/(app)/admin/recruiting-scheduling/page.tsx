@@ -53,7 +53,7 @@ export default async function Page({
     // candidate's public share link.
     const { data: candRows } = await admin
       .from('sched_candidates')
-      .select('id, email, name, phone, fields, participant_token')
+      .select('id, email, name, phone, fields, participant_token, status')
       .eq('batch_id', selectedBatchId)
       .order('created_at', { ascending: true })
       .limit(2000);

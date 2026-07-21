@@ -2,11 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
-import {
-  parseCandidateFile,
-  candidateIdentity,
-  type ParsedCandidate,
-} from '@/lib/scheduling/candidates-parse';
+import { parseCandidateFile } from '@/lib/scheduling/candidates-parse';
+import { upsertCandidatesIntoBatch } from '@/lib/scheduling/candidates-upsert';
 
 // Bulk-upload candidates into a batch from a CSV or XLSX file (super-admin
 // only; non-admins get 404). email is optional — candidates merge by
@@ -68,50 +65,17 @@ export async function POST(
     return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
   }
 
-  // Existing rows in this batch, keyed by identity, so a re-upload updates in
-  // place instead of duplicating (only where an identity exists).
-  const { data: existingRows } = await admin
-    .from('sched_candidates')
-    .select('id, email, name, phone, fields')
-    .eq('batch_id', batchId);
-  const existingByIdentity = new Map<string, { id: string; fields: Record<string, string> }>();
-  for (const r of existingRows ?? []) {
-    const key = candidateIdentity(r as ParsedCandidate);
-    if (key != null) {
-      existingByIdentity.set(key, {
-        id: r.id,
-        fields: (r.fields ?? {}) as Record<string, string>,
-      });
-    }
-  }
-
-  const payload = parsed.candidates.map((c) => {
-    const key = candidateIdentity(c);
-    const match = key != null ? existingByIdentity.get(key) : undefined;
-    const base = {
-      batch_id: batchId,
-      email: c.email,
-      name: c.name,
-      phone: c.phone,
-      // Union fields with the existing row so a partial re-upload never drops
-      // columns captured in an earlier upload.
-      fields: match ? { ...match.fields, ...c.fields } : c.fields,
-    };
-    // Include id only for updates — inserts omit it so the DB default mints a
-    // fresh uuid (and participant_token).
-    return match ? { id: match.id, ...base } : base;
-  });
-
-  const { data, error } = await admin
-    .from('sched_candidates')
-    .upsert(payload, { onConflict: 'id' })
-    .select('id');
-  if (error) {
-    return NextResponse.json({ error: 'save_failed' }, { status: 500 });
+  const result = await upsertCandidatesIntoBatch(
+    admin,
+    batchId,
+    parsed.candidates,
+  );
+  if ('error' in result) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
   return NextResponse.json(
-    { upserted: data?.length ?? 0 },
+    { upserted: result.upserted },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

@@ -106,6 +106,18 @@ export async function parseCandidateFile(file: File): Promise<ParseCandidatesRes
     ? parseCsvString(decodeCsvBuffer(buf))
     : await parseXlsxToRows(buf);
 
+  return parseCandidateRows(headers, rows);
+}
+
+// Shared row → candidate mapping used by both the file upload path
+// (parseCandidateFile) and the Google Sheets import path. Given a header list
+// and value rows keyed by header, it applies the same email/name/phone alias
+// mapping + fields capture + identity merge/dedup. Kept separate so a Sheets
+// import (already an array of rows) doesn't have to fake a File.
+export function parseCandidateRows(
+  headers: string[],
+  rows: Record<string, unknown>[],
+): ParseCandidatesResult {
   if (rows.length === 0) return { candidates: [], headers: [] };
 
   const emailKey = findKey(headers, EMAIL_KEYS);
