@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '../globals.css';
 
 // Public participant page for the recruiting-scheduling share link (PR4). Lives
@@ -16,6 +16,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
+// Participants open this share link mostly on phones. `viewportFit: 'cover'`
+// lets the page extend under the iOS notch/home-bar so the `env(safe-area-inset-*)`
+// padding on <body> below can push content clear of them (the insets resolve to
+// 0 on non-notched/desktop, so nothing changes there).
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function ScheduleParticipantLayout({
   children,
 }: {
@@ -31,7 +41,21 @@ export default function ScheduleParticipantLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
         />
       </head>
-      <body className="h-full bg-paper text-ink">{children}</body>
+      {/* Safe-area insets (paired with viewportFit:'cover' above) keep every
+          participant view — schedule, phone-gate, invalid-notice — clear of the
+          iOS notch/home-bar/rounded corners. Each inset is 0 on non-notched and
+          desktop devices, so this is a no-op there. */}
+      <body
+        className="h-full bg-paper text-ink"
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+        }}
+      >
+        {children}
+      </body>
     </html>
   );
 }
