@@ -204,7 +204,7 @@ function CdDropzone({
         border: dragOver ? 'var(--cd-amore-border)' : 'var(--cd-dashed-border)',
         borderRadius: 'var(--raw-radius-sm)',
       }}
-      className={`flex flex-col items-center justify-center gap-1.5 bg-paper-soft px-6 py-7 text-center transition-colors ${
+      className={`flex flex-col items-center justify-center gap-1.5 bg-paper-soft p-4 text-center transition-colors ${
         running ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
       }`}
     >
@@ -222,7 +222,7 @@ function CdDropzone({
         }}
       />
       <UploadGlyph />
-      <div className="text-md font-semibold text-ink">{label}</div>
+      <div className="text-md font-bold text-ink">{label}</div>
       <div className="font-mono text-xs-soft text-mute-soft">{hint}</div>
     </div>
   );
