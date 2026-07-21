@@ -2481,5 +2481,29 @@
       "startHint": "세션을 시작하세요",
       "openFullview": "전체 보기 열기"
     }
+  },
+  "RecruitingScheduling": {
+    "title": "후보자 인터뷰 스케줄링",
+    "subtitle": "배치를 선택하거나 새로 만들고, CSV/XLSX 로 후보자를 업로드하세요.",
+    "batchLabel": "배치",
+    "newBatchLabel": "새 배치",
+    "newBatchPlaceholder": "배치 이름",
+    "create": "생성",
+    "creating": "생성 중…",
+    "createFailed": "배치 생성에 실패했습니다.",
+    "uploadLabel": "후보자 파일 업로드",
+    "uploading": "업로드 중…",
+    "uploadHelper": "CSV 또는 XLSX · 이메일 기준 병합(재업로드 시 갱신)",
+    "fileTooLarge": "파일이 너무 큽니다 (최대 10MB).",
+    "noCandidates": "파일에서 후보자를 찾지 못했습니다.",
+    "uploadFailed": "업로드에 실패했습니다.",
+    "uploaded": "{count}명 반영됨.",
+    "colEmail": "이메일",
+    "colName": "이름",
+    "colPhone": "전화",
+    "colSlot": "슬롯",
+    "colShareLink": "공유링크",
+    "emptyCandidates": "아직 후보자가 없습니다. 파일을 업로드하세요.",
+    "selectBatchFirst": "배치를 먼저 만들면 후보자를 업로드할 수 있습니다."
   }
 }

@@ -2574,5 +2574,29 @@
       "startHint": "セッションを開始する",
       "openFullview": "フルビューを開く"
     }
+  },
+  "RecruitingScheduling": {
+    "title": "候補者インタビューのスケジューリング",
+    "subtitle": "バッチを選択または新規作成し、CSV/XLSX で候補者をアップロードしてください。",
+    "batchLabel": "バッチ",
+    "newBatchLabel": "新規バッチ",
+    "newBatchPlaceholder": "バッチ名",
+    "create": "作成",
+    "creating": "作成中…",
+    "createFailed": "バッチの作成に失敗しました。",
+    "uploadLabel": "候補者ファイルをアップロード",
+    "uploading": "アップロード中…",
+    "uploadHelper": "CSV または XLSX · メールで統合（再アップロードで更新）",
+    "fileTooLarge": "ファイルが大きすぎます（最大10MB）。",
+    "noCandidates": "ファイルに候補者が見つかりませんでした。",
+    "uploadFailed": "アップロードに失敗しました。",
+    "uploaded": "{count}件を反映しました。",
+    "colEmail": "メール",
+    "colName": "氏名",
+    "colPhone": "電話",
+    "colSlot": "スロット",
+    "colShareLink": "共有リンク",
+    "emptyCandidates": "まだ候補者がいません。ファイルをアップロードしてください。",
+    "selectBatchFirst": "先にバッチを作成すると候補者をアップロードできます。"
   }
 }
