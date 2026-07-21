@@ -121,6 +121,9 @@ const eslintConfig = defineConfig([
     // QA 하네스가 생성하는 증거물(비디오/트레이스/HTML 리포트의 번들 JS).
     // 커밋되지 않는 산출물이라 lint 대상에서 제외.
     "e2e/artifacts/**",
+    // CD → worker 디자인 핸드오프. 프로덕션 코드 아님(.md/.dc.html/support.js
+    // = CD DC 런타임 번들). 워커가 참조만 하는 자료라 lint/typecheck 대상 제외.
+    "design-handoff/**",
   ]),
   // Design-system enforcement — split into TWO rules so native controls
   // (warn) and tokenized arbitrary values (error) can carry different
