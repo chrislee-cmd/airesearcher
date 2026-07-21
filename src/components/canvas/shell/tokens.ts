@@ -14,6 +14,7 @@ export const ACCENT_BG: Record<AccentColor, string> = {
   lav: 'bg-lav',
   sun: 'bg-sun',
   rose: 'bg-rose',
+  cyan: 'bg-cyan',
 };
 
 export const ACCENT_ICON: Record<AccentColor, string> = {
@@ -23,6 +24,7 @@ export const ACCENT_ICON: Record<AccentColor, string> = {
   lav: '◇',
   sun: '★',
   rose: '✦',
+  cyan: '◑',
 };
 
 // 상태 라벨은 production 셸의 실제 pill(widget-state-pill.tsx)과 동일하게

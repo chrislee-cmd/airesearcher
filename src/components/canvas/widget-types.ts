@@ -32,7 +32,7 @@ export type WidgetStateInfo =
 
 export type WidgetState = WidgetStateInfo['kind'];
 
-export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose';
+export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose' | 'cyan';
 
 export type WidgetContent = {
   key: string;
@@ -48,6 +48,11 @@ export type WidgetContent = {
     // localized 라벨을 우선 노출하고, 해석 실패 시 label 로 폴백한다.
     labelKey?: string;
     accent: AccentColor;
+    // 옵션(opt-in): true 면 헤더 밴드 기본 배경을 노란 banner 대신 위젯
+    // accent 파스텔(`--widget-header-bg-<accent>`)로 그린다. 사용자 per-widget
+    // 색 선택(color picker)이 있으면 그게 여전히 우선. 미지정 위젯은 기존
+    // 노란 기본값 그대로 — 크로스위젯 회귀 0 (CD 파일럿 #2, Desk cyan 헤더).
+    pastelHeader?: boolean;
     cost?: number;
     // 옵션: cost 의 1-line 표기를 통째로 override. 일반 위젯은 cost 만
     // 두면 셸이 "N 크레딧" / "무료" 자동 그림. 단일 숫자로 표현이 어려운

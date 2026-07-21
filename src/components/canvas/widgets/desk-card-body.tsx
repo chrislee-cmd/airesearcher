@@ -39,16 +39,21 @@ import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BrandLoader } from '@/components/ui/brand-loader';
-import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Button } from '@/components/ui/button';
 import { ModeCardGroup } from '@/components/ui/mode-button';
 import { ChipField } from '@/components/ui/chip-field';
+import { ProjectPicker } from '@/components/project-picker';
+import { useProjectSelection } from '@/components/project-selection-provider';
+import {
+  DeskSetupAccordion,
+  type DeskStepDef,
+} from '@/components/canvas/widgets/desk-setup/setup-accordion';
+import { DeskStartedHandoff } from '@/components/canvas/widgets/desk-setup/started-handoff';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Modal } from '@/components/ui/modal';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
-import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
@@ -132,9 +137,17 @@ export function DeskCardBody() {
   const locale = useLocale();
   const requireAuth = useRequireAuth();
   const { jobs, latestJob, isWorking, cancelJob, hydrateJob } = useDeskJobs();
+  const tProject = useTranslations('ProjectPicker');
   const { notify: notifyDeduction } = useCreditDeduction();
   // 위젯별 동시사용 게이트 (#512) — 잡 실행 시 슬롯 획득, 잡 종료 시 반납.
   const gate = useWidgetGate('desk');
+  // 프로젝트 선택 (CD 파일럿 #2 스텝 1) — 위젯별 독립 선택 store('desk' 슬롯,
+  // probing 과 동일 패턴). 기존 desk 는 project 스텝 없이 active_project 를
+  // 조용히 제출했으므로, 미선택이면 그 active project 로 폴백해 제출 동작 보존.
+  const { getSelection, setSelection } = useProjectSelection();
+  const projectId = getSelection('desk');
+  // 세팅 아코디언 접힘 상태 (all-open ↔ all-collapsed). 기본 all-open.
+  const [setupCollapsed, setSetupCollapsed] = useState(false);
 
   // ─── inputs ──────────────────────────────────────────────────────────────
   // 리서치 목적 mode (데스크 v2). 기본 = 트렌드 — 목적 기반 flow 가 v2 의
@@ -318,7 +331,8 @@ export function DeskCardBody() {
           regions: Array.from(regions),
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
-          project_id: readActiveProjectId(),
+          // 스텝 1 선택 우선, 미선택이면 기존 active project 폴백(동작 보존).
+          project_id: projectId ?? readActiveProjectId(),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -644,115 +658,13 @@ export function DeskCardBody() {
   // 후 재실행 가능 (결정 3).
   const active = submitting || !!pendingJobId || isWorking || !!job;
 
-  // ─── 공정 과정 타임라인 (사용자 결정 R2/R3) ────────────────────────────────
-  // 진행 중(deskRunning)이면 컨트롤+CTA 자리를 멀티-라인 타임라인이 대체하고,
-  // 완료(showResult)면 "완료됐어요! + 전체 보기" 블록이 대체한다. 데스크는
-  // 유일하게 세분화된 progress.phase 를 노출해 단일-잡 타임라인에 잘 맞는다.
+  // ─── started → in-place Handoff (CD 파일럿 #2) ─────────────────────────────
+  // 검색 시작 후(deskRunning) 세팅 아코디언 자리를 Handoff 프롬프트가 대체한다
+  // ("전체 보기에서 확인"). 실제 크롤 진행·리포트는 fullview(PR2) 가 소유 —
+  // CD `desk/HANDOFF.md`: "Started → in-place Handoff (crawling). Report renders
+  // in fullview." 기존 StageFlow 타임드-리빌 hero 는 이 프롬프트로 교체(진행
+  // 로그/타이밍 칩은 아래 산출물 영역에 유지 → PR2 전까지 진행 가시성 보존).
   const deskRunning = submitting || !!pendingJobId || isWorking;
-
-  // ─── phase → 정규 공정 단계(6) 매핑 (사용자 결정 1) ─────────────────────────
-  // 백엔드 8 phase(expanding·scoping·crawling·extracting·drafting·critiquing·
-  // synthesizing·summarizing)를 사용자에게 보일 6개 ordered 단계로 통합한다.
-  // drafting/critiquing/synthesizing 은 사용자 눈엔 하나의 "종합" 공정 —
-  // widget-progress 의 누적 % 구간(65~100)과도 정합. 현재 phase 가 속한 단계 =
-  // active, 앞 = done, 뒤 = pending. 크롤링 단계엔 "N/M" hint 를 얹는다.
-  const DESK_STAGE_DEFS = useMemo(
-    () =>
-      [
-        { id: 'expand', icon: '🔍', phases: ['expanding'] },
-        { id: 'scope', icon: '🎯', phases: ['scoping'] },
-        { id: 'crawl', icon: '🕸️', phases: ['crawling'] },
-        { id: 'extract', icon: '📄', phases: ['extracting'] },
-        {
-          id: 'synthesize',
-          icon: '🧩',
-          phases: ['drafting', 'critiquing', 'synthesizing'],
-        },
-        { id: 'summarize', icon: '📝', phases: ['summarizing'] },
-      ] as const,
-    [],
-  );
-  const stageCount = DESK_STAGE_DEFS.length;
-
-  // ─── 타임드 스테이지 리빌 (UI 전용, 사용자 요청) ──────────────────────────
-  // 백엔드에선 extract/synthesize 가 순식간에 지나가 유저가 단계·설명을 못 본다.
-  // 실제 공정과 무관하게, "표시되는" active 단계를 순서대로 한 번에 하나씩,
-  // 각 최소 STAGE_DWELL_MS(≈5s) 머물게 걸어 올린다. 표시 인덱스는 백엔드 실제
-  // 단계(realActiveIdx)를 앞지르지 않되, 리포트가 준비되면(showResult) 남은
-  // 단계까지 걸어 보여준 뒤 완료 화면으로 넘어간다.
-  const STAGE_DWELL_MS = 5000;
-  const realActiveIdx = useMemo(() => {
-    // phase 미보고(제출 직후/queued)면 첫 단계를 target 으로 — 빈 플로우 회피.
-    const phase = job?.progress?.phase ?? (deskRunning ? 'expanding' : null);
-    return phase
-      ? DESK_STAGE_DEFS.findIndex((s) =>
-          (s.phases as readonly string[]).includes(phase),
-        )
-      : -1;
-  }, [DESK_STAGE_DEFS, deskRunning, job?.progress?.phase]);
-  // 리빌 target: 실행 중엔 백엔드 단계까지만, 완료(결과 준비)면 끝까지.
-  const revealTarget = showResult ? stageCount : Math.max(realActiveIdx, 0);
-
-  const [displayIdx, setDisplayIdx] = useState(0);
-  const stageEnteredAtRef = useRef(0);
-  const revealJobRef = useRef<string | null>(null);
-  // 새 잡(또는 잡 없음)으로 바뀌면 리빌을 0 단계부터 다시 시작.
-  useEffect(() => {
-    const id = job?.id ?? null;
-    if (revealJobRef.current === id) return;
-    revealJobRef.current = id;
-    setDisplayIdx(0);
-    stageEnteredAtRef.current = Date.now();
-  }, [job?.id]);
-  // 한 번에 한 단계씩, 진입 후 최소 STAGE_DWELL_MS 지난 뒤에만 다음 단계로.
-  // 자연히 오래 걸리는 단계(크롤링)는 target 이 안 올라가 그 자리에 머물고,
-  // 순식간에 지나간 단계는 여기서 5s 씩 붙잡혀 노출된다.
-  useEffect(() => {
-    if (displayIdx >= revealTarget) return;
-    const wait = Math.max(
-      0,
-      STAGE_DWELL_MS - (Date.now() - stageEnteredAtRef.current),
-    );
-    const t = setTimeout(() => {
-      stageEnteredAtRef.current = Date.now();
-      setDisplayIdx((i) => i + 1);
-    }, wait);
-    return () => clearTimeout(t);
-  }, [displayIdx, revealTarget]);
-
-  // 리빌이 아직 끝까지 안 걸어갔으면(완료여도) 플로우를 계속 보여준다.
-  const revealFlowActive = deskRunning || (showResult && displayIdx < stageCount);
-
-  const deskStages: Stage[] = useMemo(() => {
-    // status 는 실제 phase 가 아니라 "표시" 인덱스(displayIdx) 기준 — 리빌.
-    const errored = job?.status === 'error';
-    return DESK_STAGE_DEFS.map((s, i) => {
-      let status: Stage['status'];
-      if (i < displayIdx) status = 'done';
-      else if (i === displayIdx) status = errored ? 'error' : 'active';
-      else status = 'pending';
-      return {
-        id: s.id,
-        label: tDesk(`stageFlow.${s.id}` as never),
-        status,
-        icon: s.icon,
-        // "이 단계가 지금 뭘 하는지" 설명 — active 카드에서만 펼쳐짐.
-        description: tDesk(`stageFlowDesc.${s.id}` as never),
-        // 크롤링 active 단계에만 진행 세부(N/M) — StageFlow 가 hint 로 노출.
-        hint:
-          s.id === 'crawl' && status === 'active'
-            ? `${job?.progress?.crawl_done ?? 0}/${job?.progress?.crawl_total ?? 0}`
-            : undefined,
-      };
-    });
-  }, [
-    DESK_STAGE_DEFS,
-    displayIdx,
-    job?.progress?.crawl_done,
-    job?.progress?.crawl_total,
-    job?.status,
-    tDesk,
-  ]);
 
   // 로컬 error state (제출 전/제출 실패) 배너 — phase 무관하게 노출해야
   // idle 로 되돌아간 실패도 사용자가 본다.
@@ -789,48 +701,49 @@ export function DeskCardBody() {
     />
   );
 
-  const controlsForm = (
-    <div className="space-y-5">
-      {/* 세부 옵션 — 지역 / 기간.
-          밸런스 튜닝(desk 예시): 필드 높이를 h-8 → h-10 으로 확대해 넓어진
-          클러스터(max-w-2xl) 대비 왜소함을 해소. SelectMenu/DateRangePopover 는
-          공유 primitive 라 SIZE 맵을 건드리지 않고 buttonClassName 로컬
-          오버라이드로 데스크 안에서만 키운다 (타 위젯 영향 0 = "데스크 단독"
-          제약). 최종 px 는 preview 로 조정 (spec 결정 3). */}
-      <Field label={tDesk('boardOptionsLabel')}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectMenu
-            multi
-            options={DESK_REGIONS.map((r) => ({
-              value: r,
-              label: tDesk(`region.${r}`),
-            }))}
-            value={Array.from(regions)}
-            onChange={(next) => {
-              if (next.length === 0) return; // 최소 1개 보장
-              // region 은 카테고리→소스 가시성만 좁힌다(카테고리 선택은 유지).
-              setRegions(new Set(next as DeskRegion[]));
-            }}
-            placeholder={tDesk('regionLabel')}
-            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
-          />
+  // ── 접힘 요약 값 (CD 파일럿 #2 all-collapsed 상태) ──
+  const regionSummary = Array.from(regions)
+    .map((r) => tDesk(`region.${r}`))
+    .join(', ');
+  const periodSummary =
+    dateFrom || dateTo
+      ? `${dateFrom || '…'} ~ ${dateTo || '…'}`
+      : tDesk('range_all');
 
-          <DateRangePopover
-            value={{ from: dateFrom, to: dateTo }}
-            onChange={(next) => {
-              setDateFrom(next.from);
-              setDateTo(next.to);
-            }}
-            presets={rangePresets}
-            placeholder={tDesk('range_all')}
-            locale={locale}
-            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
-          />
-        </div>
-      </Field>
-
-      {/* 주제 · 키워드 (핵심 입력) */}
-      <Field label={tDesk('boardTopicLabel')}>
+  // ── 4스텝 아코디언 스텝 정의 — 기존 primitive/로직 배선 (신규 백엔드 0) ──
+  // ①프로젝트 ②키워드 ③리서치 목적(2카드 trend/market + market country-scope)
+  // ④범위(region+period+견적). country-scope 배치는 §5 open(step3 vs 4) —
+  // 기존 동작(목적 스텝에 인접) 보존해 step3 에 둠(보수적 해석, PR 본문 기록).
+  const setupSteps: DeskStepDef[] = [
+    {
+      n: 1,
+      title: tDesk('setupStepProject'),
+      summaryLabel: `${tDesk('setupStepShort')} 01 · ${tDesk('setupSummaryProject')}`,
+      summaryValue: projectId ? (
+        tDesk('setupProjectSelected')
+      ) : (
+        <span className="text-mute-soft">{tProject('placeholder')}</span>
+      ),
+      done: !!projectId,
+      children: (
+        <ProjectPicker
+          widget="desk"
+          value={projectId}
+          onChange={(id) => setSelection('desk', id)}
+        />
+      ),
+    },
+    {
+      n: 2,
+      title: tDesk('setupStepKeywords'),
+      summaryLabel: `${tDesk('setupStepShort')} 02 · ${tDesk('setupSummaryKeywords')}`,
+      summaryValue: hasKeywords ? (
+        tDesk('keywordUnit', { count: keywords.length })
+      ) : (
+        <span className="text-mute-soft">{tDesk('setupKeywordsNone')}</span>
+      ),
+      done: hasKeywords,
+      children: (
         <ChipField
           variant="bordered"
           values={keywords}
@@ -840,73 +753,121 @@ export function DeskCardBody() {
           placeholderEmpty={tDesk('keywordPlaceholder')}
           placeholderAdd={tDesk('keywordAddMore')}
         />
-      </Field>
+      ),
+    },
+    {
+      n: 3,
+      title: tDesk('setupStepPurpose'),
+      summaryLabel: `${tDesk('setupStepShort')} 03 · ${tDesk('setupSummaryPurpose')}`,
+      // mode 는 항상 기본값(trend)이 있어 done.
+      summaryValue: tDesk(`modeTitle.${mode}` as never),
+      done: true,
+      children: (
+        <div className="space-y-4">
+          {modeSelector}
+          {/* 국가 범위 — market 보고서 구조 분기용(trend 은 서버 미사용).
+              market 선택 시에만 노출. payload/로직 무변경 (순수 배치). */}
+          {mode === 'market' && (
+            <ModeCardGroup
+              ariaLabel={tDesk('countryScopeLabel')}
+              columns={2}
+              options={[
+                {
+                  key: 'kr',
+                  icon: '🇰🇷',
+                  label: tDesk('countryScopeTitle.kr'),
+                  description: tDesk('countryScopeDesc.kr'),
+                },
+                {
+                  key: 'global',
+                  icon: '🌐',
+                  label: tDesk('countryScopeTitle.global'),
+                  description: tDesk('countryScopeDesc.global'),
+                },
+              ]}
+              value={countryScope}
+              onChange={(key) => setCountryScope(key as DeskCountryScope)}
+            />
+          )}
+        </div>
+      ),
+    },
+    {
+      n: 4,
+      title: tDesk('setupStepScope'),
+      summaryLabel: `${tDesk('setupStepShort')} 04 · ${tDesk('setupSummaryScope')}`,
+      // region 은 최소 1개 보장(기본 KR)이라 항상 done.
+      summaryValue: `${regionSummary} · ${periodSummary}`,
+      done: true,
+      children: (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <SelectMenu
+              multi
+              options={DESK_REGIONS.map((r) => ({
+                value: r,
+                label: tDesk(`region.${r}`),
+              }))}
+              value={Array.from(regions)}
+              onChange={(next) => {
+                if (next.length === 0) return; // 최소 1개 보장
+                setRegions(new Set(next as DeskRegion[]));
+              }}
+              placeholder={tDesk('regionLabel')}
+              buttonClassName={DESK_OPTION_TRIGGER_CLASS}
+            />
+            <DateRangePopover
+              value={{ from: dateFrom, to: dateTo }}
+              onChange={(next) => {
+                setDateFrom(next.from);
+                setDateTo(next.to);
+              }}
+              presets={rangePresets}
+              placeholder={tDesk('range_all')}
+              locale={locale}
+              buttonClassName={DESK_OPTION_TRIGGER_CLASS}
+            />
+          </div>
+          {/* AI 자동 소스 안내 (CD §3 step4). copy 가 trend 특정
+              (통계·공시 제외)이라 trend 에서만 노출 — market 은 서버가 다른
+              소스셋을 선정하므로 이 문구를 그대로 쓰면 부정확(보수적 gating,
+              기존 동작 보존). */}
+          {mode === 'trend' && (
+            <p className="text-xs leading-[1.6] text-mute-soft">
+              {tDesk('modeTrendSourcesHint')}
+            </p>
+          )}
+          {/* 범위 견적 — heavy 면 amore warning. 견적 소스 수가 trend 근사라
+              market 은 비노출(기존 동작 보존). */}
+          {hasKeywords && mode !== 'market' && (
+            <p
+              className={`text-xs leading-[1.6] ${
+                estimateHeavy ? 'text-amore' : 'text-mute-soft'
+              }`}
+            >
+              {tDesk('estimateLabel', {
+                kw: effectiveKwForEstimate,
+                src: Math.max(estimateSourceCount, 1),
+                region: Math.max(regions.size, 1),
+                count: estimatedSearches,
+              })}
+              {' · '}
+              {estimateHeavy ? tDesk('estimateHeavy') : tDesk('estimateOk')}
+            </p>
+          )}
+        </div>
+      ),
+    },
+  ];
 
-      {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
-      <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
-
-      {/* 국가 범위 — 한국 only / 글로벌. 국가 범위는 market 보고서 구조를
-          국내 only ↔ 국내+해외+대비로 가르는 시장조사 전용 값이라, trend 에선
-          서버가 안 쓴다 → market 선택 시에만 노출(trend 은 완전히 숨김).
-          리서치 목적 Field 바로 아래에 두어, 등장/변화해도 위 필드(주제·목적)를
-          밀지 않는다(레이아웃 안정성). scope 값·payload 로직은 무변경 — 순수
-          배치/노출. default = 한국 only(현행 동작 보존). */}
-      {mode === 'market' && (
-        <Field label={tDesk('countryScopeLabel')}>
-          <ModeCardGroup
-            ariaLabel={tDesk('countryScopeLabel')}
-            columns={2}
-            options={[
-              {
-                key: 'kr',
-                icon: '🇰🇷',
-                label: tDesk('countryScopeTitle.kr'),
-                description: tDesk('countryScopeDesc.kr'),
-              },
-              {
-                key: 'global',
-                icon: '🌐',
-                label: tDesk('countryScopeTitle.global'),
-                description: tDesk('countryScopeDesc.global'),
-              },
-            ]}
-            value={countryScope}
-            onChange={(key) => setCountryScope(key as DeskCountryScope)}
-          />
-        </Field>
-      )}
-
-      {/* 수집 소스 — trend / market 모두 서버가 목적 기반으로 자동 선정한다.
-          trend 는 어떤 소스가 쓰이는지 안내 문구만 노출. */}
-      {mode === 'trend' && (
-        <p className="text-xs leading-[1.6] text-mute-soft">
-          {tDesk('modeTrendSourcesHint')}
-        </p>
-      )}
-
-      {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. market 은
-          실행 차단 상태라 견적 비노출. */}
-      {hasKeywords && mode !== 'market' && (
-        <p
-          className={`text-xs leading-[1.6] ${
-            estimateHeavy ? 'text-amore' : 'text-mute-soft'
-          }`}
-        >
-          {tDesk('estimateLabel', {
-            kw: effectiveKwForEstimate,
-            src: Math.max(estimateSourceCount, 1),
-            region: Math.max(regions.size, 1),
-            count: estimatedSearches,
-          })}
-          {' · '}
-          {estimateHeavy ? tDesk('estimateHeavy') : tDesk('estimateOk')}
-        </p>
-      )}
-
-      {/* 실행 CTA 는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로 이동 — 6 위젯
-          주 CTA 통일. body root(relative) 에 anchor 되므로 컨트롤 폼 안에는
-          더 이상 두지 않는다. 라벨은 데스크 리포트 산출이라 "검색" 유지. */}
-    </div>
+  const setupAccordion = (
+    <DeskSetupAccordion
+      steps={setupSteps}
+      collapsed={setupCollapsed}
+      onCollapse={() => setSetupCollapsed(true)}
+      onExpand={() => setSetupCollapsed(false)}
+      changeLabel={tDesk('setupChange')}
+    />
   );
 
   return (
@@ -920,22 +881,17 @@ export function DeskCardBody() {
             idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
         <ControlBoardPanel active={active}>
-          {revealFlowActive ? (
-              // active: 컨트롤+CTA 완전 대체 → StageFlow 공정 플로우차트 hero
-              // (사용자 결정 2). 좁은 카드 대응 vertical. 진행 로그(이벤트)는
-              // 아래 산출물 영역의 "자세히" 접기로 강등한다. 중복 진행 막대
-              // (JobProgress) 는 제거 — 크롤링 노드 hint 로 흡수. 완료 후에도
-              // 리빌이 끝까지 안 걸어갔으면 이 플로우를 계속 보여준다.
-              <div className="flex flex-col items-center gap-5 py-6">
-                <StageFlow
-                  stages={deskStages}
-                  orientation="vertical"
-                  className="w-full max-w-xs"
-                />
-                {/* STOP — 제거된 JobProgress 막대의 취소 버튼을 흡수. 실제
-                    실행 중일 때만(완료 후 리빌 구간에선 숨김). */}
-                {deskRunning &&
-                  job &&
+          {deskRunning ? (
+              // started(CD §3): 세팅 아코디언 자리를 in-place Handoff 프롬프트가
+              // 대체 — "전체 보기에서 확인". 실 크롤 진행/리포트는 fullview(PR2).
+              // 진행 로그/타이밍은 아래 산출물 영역에 유지(PR2 전 가시성 보존).
+              <DeskStartedHandoff
+                title={tDesk('handoffTitle')}
+                subtitle={tDesk('handoffBody')}
+                onFullview={handleDeskFullview}
+                fullviewLabel={tWidgets('viewAll')}
+              >
+                {job &&
                   (job.cancel_requested ? (
                     <span className="text-xs text-mute-soft">
                       {tDesk('stopRequested')}
@@ -949,18 +905,16 @@ export function DeskCardBody() {
                       {tDesk('stop')}
                     </Button>
                   ))}
-              </div>
+              </DeskStartedHandoff>
             ) : showResult && !forceControls ? (
-              // done: StageFlow 완료 hero + "결과 보기" CTA (사용자 결정 3) →
-              // fullview 진입. 재실행용 "새 리서치" 는 hero 아래 secondary 유지.
-              <div className="flex flex-col items-center gap-2 py-2">
-                <StageFlow
-                  stages={deskStages}
-                  complete
-                  completeLabel={tProcess('completeTitle')}
-                  onResult={handleDeskFullview}
-                  resultLabel={tWidgets('viewAll')}
-                />
+              // done: 완료 Handoff → fullview 리포트(PR2) 진입. 재실행용
+              // "새 리서치" 는 secondary 로 유지.
+              <DeskStartedHandoff
+                title={tProcess('completeTitle')}
+                subtitle={tDesk('doneHandoffBody')}
+                onFullview={handleDeskFullview}
+                fullviewLabel={tWidgets('viewAll')}
+              >
                 <Button
                   variant="ghost"
                   size="sm"
@@ -968,10 +922,11 @@ export function DeskCardBody() {
                 >
                   {tProcess('newResearch')}
                 </Button>
-              </div>
+              </DeskStartedHandoff>
             ) : (
+              // 세팅(idle / 재실행): 4스텝 아코디언 (CD 파일럿 #2).
               <>
-                {controlsForm}
+                {setupAccordion}
                 {errorBanner}
               </>
             )}

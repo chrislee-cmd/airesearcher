@@ -196,10 +196,14 @@ function WidgetShellInner({
           paddingTop: 16,
           paddingBottom: 16,
           // 우선순위: 사용자 per-widget 색(headerColor) > 행 색(부모 canvas-board
-          // 이 --widget-header-row-* 로 주입) > 전역 default(노란 banner).
+          // 이 --widget-header-row-* 로 주입) > (opt-in) accent 파스텔 > 전역
+          // default(노란 banner). pastelHeader 미지정 위젯은 기존 노란 fallback
+          // 그대로 — 크로스위젯 회귀 0 (CD 파일럿 #2, Desk cyan 헤더).
           background:
             headerColor ??
-            'var(--widget-header-row-bg, var(--canvas-card-header-bg))',
+            (content.meta.pastelHeader
+              ? `var(--widget-header-row-bg, var(--widget-header-bg-${content.meta.accent}))`
+              : 'var(--widget-header-row-bg, var(--canvas-card-header-bg))'),
           color: 'var(--canvas-card-header-text)',
           fontFamily: 'var(--font-outfit), var(--font-sans)',
           borderBottom:

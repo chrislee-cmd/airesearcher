@@ -82,6 +82,9 @@
   --raw-pastel-sun: #fff1b6;
   --raw-pastel-sky: #cfe6ff;
   --raw-pastel-rose: #ffd0e2;
+  /* cyan — Desk Research 위젯 아이덴티티. Probing sky 와 의도적으로 구분
+     (CD 파일럿 #2, proposed-token surface-widget-header-cyan). */
+  --raw-pastel-cyan: #bfe9ef;
 
   /* signal */
   --raw-signal-success: #16a34a;
@@ -173,6 +176,7 @@
   --raw-pastel-sun: #f8f1d4;
   --raw-pastel-sky: #e0eaf3;
   --raw-pastel-rose: #f5e6ec;
+  --raw-pastel-cyan: #dbeef1;
 
   /* signal (동일) */
   --raw-signal-success: #16a34a;
@@ -271,6 +275,7 @@
   --raw-pastel-sun: #ffff00;
   --raw-pastel-sky: #00ffff;
   --raw-pastel-rose: #ff0099;
+  --raw-pastel-cyan: #00ffcc;
 
   /* signal — 형광 대비색 */
   --raw-signal-success: #00ff00;
@@ -416,6 +421,9 @@
   --widget-header-bg-lav: var(--raw-pastel-lav);
   --widget-header-bg-sun: var(--raw-pastel-sun);
   --widget-header-bg-rose: var(--raw-pastel-rose);
+  /* Desk Research 헤더 밴드 (CD 파일럿 #2, proposed-token
+     surface-widget-header-cyan). pastelHeader opt-in 위젯만 소비. */
+  --widget-header-bg-cyan: var(--raw-pastel-cyan);
 }
 
 /* =========================================================================
@@ -449,6 +457,7 @@
   --color-sun: var(--raw-pastel-sun);
   --color-sky: var(--raw-pastel-sky);
   --color-rose: var(--raw-pastel-rose);
+  --color-cyan: var(--raw-pastel-cyan);
 
   /* AM / PM chart accents (data visualisation only) */
   --color-am-accent: var(--raw-signal-am);
