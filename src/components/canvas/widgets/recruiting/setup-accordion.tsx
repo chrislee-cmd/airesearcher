@@ -38,7 +38,6 @@ import {
   useWidgetAccordion,
   type AccordionStepConfig,
 } from '@/components/canvas/shell/widget-accordion';
-import { Field } from '@/components/canvas/shell/field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -155,6 +154,25 @@ function LockGlyph() {
   );
 }
 
+// 문서 글리프 — 설문 섹션 행 좌측 아이콘 (CD surveySection Icon). 이모지 금지.
+function DocGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-4 shrink-0 stroke-current text-mute"
+      fill="none"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  );
+}
+
 // surveySection — 설문 섹션 요약 행. 잠금(표준)=cream 틴트(paper-soft)+🔒 뱃지 /
 // editable=흰색. (cream #faf6ea 전용 토큰 부재 → paper-soft 로 보수적 매핑.)
 function SurveySectionRow({
@@ -173,6 +191,7 @@ function SurveySectionRow({
         locked ? 'bg-paper-soft' : 'bg-paper'
       }`}
     >
+      <DocGlyph />
       <div className="min-w-0 flex-1">
         <div className="truncate text-md font-semibold text-ink">{title}</div>
         <div className="truncate text-xs text-mute-soft">{meta}</div>
@@ -277,27 +296,23 @@ function SourceStepBody({
   const showExtract = criteriaPhase === 'idle';
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Field label={t('pasteLabel')}>
-          <Textarea
-            value={pasted}
-            onChange={(e) => onPasteChange(e.target.value)}
-            disabled={running}
-            placeholder={t('pastePlaceholder')}
-            className="h-[140px] resize-none text-md text-ink-2"
-          />
-        </Field>
-        <Field label={t('uploadLabel')}>
-          <FileDropZone
-            accept={ACCEPT}
-            multiple
-            onFiles={(f) => onAddFiles(f)}
-            label={t('uploadDrop')}
-            helperText={t('uploadHint')}
-            className="h-[140px] gap-2 px-6"
-          />
-        </Field>
-      </div>
+      {/* CD 스텝1 = paste 박스 위 dropzone 세로 스택(둘 다 풀폭), 필드 라벨 없음. */}
+      <Textarea
+        value={pasted}
+        onChange={(e) => onPasteChange(e.target.value)}
+        disabled={running}
+        placeholder={t('pastePlaceholder')}
+        aria-label={t('pasteLabel')}
+        className="h-[64px] resize-none text-md text-ink-2"
+      />
+      <FileDropZone
+        accept={ACCEPT}
+        multiple
+        onFiles={(f) => onAddFiles(f)}
+        label={t('uploadDrop')}
+        helperText={t('uploadHint')}
+        className="h-[104px] gap-2 px-6"
+      />
 
       {rejected.length > 0 && (
         <ErrorLine label={t('rejected', { names: rejected.join(', ') })} />
@@ -770,7 +785,6 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
   const t = useTranslations('Recruiting.setup');
   const accordion = useWidgetAccordion();
 
-  const hasSource = props.files.length > 0 || props.pasted.trim().length > 0;
   const sourceSummary = (() => {
     const fileN = props.files.length;
     const hasPaste = props.pasted.trim().length > 0;
@@ -882,7 +896,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
   // step 내 ReviewBar 가 담당 — 셸 편집 금지.)
   const isComplete = (index: number): boolean =>
     index === 0
-      ? hasSource
+      ? props.criteriaPhase !== 'idle'
       : index === 1
         ? props.criteriaPhase === 'approved'
         : index === 2
