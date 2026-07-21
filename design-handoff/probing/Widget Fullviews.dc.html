@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:7px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}</style>
+</helmet>
+<div style="min-height:100vh;background:#fffce1;background-image:radial-gradient(#eadf9a 1.1px,transparent 1.1px);background-size:22px 22px;padding:40px;display:flex;flex-direction:column;align-items:center;gap:22px;">
+  <div style="align-self:flex-start;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;letter-spacing:1.5px;color:#1d1b20;border:1.5px solid #1d1b20;background:#fff;border-radius:8px;padding:4px 12px;">Fullview shell · left sidebar (4-widget switch) + right slot</div>
+
+  <div style="width:100%;max-width:1480px;background:rgba(29,27,32,0.34);border-radius:20px;padding:34px;display:flex;justify-content:center;">
+    <div style="width:100%;max-width:1400px;height:840px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:10px 10px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;">
+
+      <!-- ===== SIDEBAR: 4-widget switch nav ===== -->
+      <nav style="width:240px;flex-shrink:0;background:#f7f7f5;border-right:2px solid #1d1b20;display:flex;flex-direction:column;gap:6px;overflow-y:auto;padding:14px 12px;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#a3a7ad;font-weight:700;padding:4px 8px 8px;">Widget fullview</div>
+        <sc-for list="{{ nav }}" as="w" hint-placeholder-count="4">
+          <div onClick="{{ w.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border:2px solid {{ w.borderColor }};border-radius:8px;padding:10px 12px;background:{{ w.bg }};box-shadow:{{ w.shadow }};">
+            <div style="display:flex;align-items:center;gap:9px;min-width:0;flex:1;">
+              <span style="width:10px;height:10px;border-radius:50%;background:{{ w.dot }};flex-shrink:0;border:1.5px solid rgba(29,27,32,0.3);"></span>
+              <span style="font-size:13.5px;font-weight:{{ w.weight }};color:{{ w.textColor }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ w.label }}</span>
+            </div>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-family:ui-monospace,Menlo,monospace;font-size:9px;font-weight:800;letter-spacing:0.06em;border:1.5px solid {{ w.badgeBorder }};background:{{ w.badgeBg }};color:{{ w.badgeColor }};border-radius:6px;padding:2px 6px;flex-shrink:0;">
+              <sc-if value="{{ w.badgePulse }}" hint-placeholder-val="{{ false }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ w.badgeColor }};display:inline-block;"></span></sc-if>{{ w.badge }}
+            </span>
+          </div>
+        </sc-for>
+        <div style="margin-top:auto;border:1.5px solid rgba(29,27,32,0.14);border-radius:10px;background:#fff;padding:10px 12px;">
+          <div style="font-size:11px;color:#8a8693;line-height:1.5;">Switching widgets <b style="color:#1d1b20;">keeps the session alive</b>.</div>
+        </div>
+      </nav>
+
+      <!-- ===== RIGHT SLOT ===== -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;">
+
+        <!-- PROBING -->
+        <sc-if value="{{ a0 }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#cfe6ff;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Probing Assistant</div><div style="font-size:12px;color:#3a5a7a;">Live probing · personas filling in</div></div><div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE 12:04</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;position:relative;">
+              <div class="sc" style="flex:5;min-width:0;overflow-y:auto;border-right:2px solid #1d1b20;padding:18px;">
+                <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:12px;">Participant persona · building live</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <sc-for list="{{ personas }}" as="p" hint-placeholder-count="8">
+                    <div style="border:{{ p.border }};border-radius:11px;background:{{ p.bg }};padding:13px;box-shadow:{{ p.shadow }};min-height:112px;">
+                      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">
+                        <span style="font-size:15px;">{{ p.icon }}</span>
+                        <span style="flex:1;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#8a8693;">{{ p.section }}</span>
+                        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:1px;color:{{ p.dotColor }};">{{ p.dots }}</span>
+                      </div>
+                      <div style="font-size:12.5px;line-height:1.5;color:{{ p.textColor }};font-weight:{{ p.textWeight }};">{{ p.summary }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="flex:3;min-width:0;display:flex;flex-direction:column;background:#fff;">
+                <div style="border-bottom:1px solid rgba(29,27,32,0.1);padding:14px 16px;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;"><span style="width:8px;height:8px;border-radius:50%;background:#ff5c8a;"></span><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">AI thinking stream</span></div>
+                  <div class="sc" style="max-height:116px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;">
+                    <sc-for list="{{ thinking }}" as="th" hint-placeholder-count="3"><div style="font-size:12px;color:#5b5965;line-height:1.45;"><span style="color:#a3a7ad;">›</span> {{ th }}</div></sc-for>
+                  </div>
+                </div>
+                <div style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,0.1);display:flex;align-items:center;gap:8px;background:#fff8e6;">
+                  <span style="font-size:14px;">⚡</span><div style="font-size:12px;color:#8a5a10;line-height:1.4;">High-importance questions appear full-screen as a <b>spotlight</b> →</div>
+                </div>
+                <div class="sc" style="flex:1;overflow-y:auto;padding:12px 16px;">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">Question history</span><span style="font-size:11px;color:#8a8693;">· 6</span><span style="margin-left:auto;font-size:11px;color:#ff5c8a;font-weight:700;">★ 2</span></div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <sc-for list="{{ history }}" as="hr" hint-placeholder-count="4">
+                      <div style="border:1.4px solid rgba(29,27,32,0.12);border-left:{{ hr.leftBorder }};border-radius:10px;padding:9px 11px;">
+                        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:{{ hr.dotColor }};">{{ hr.dots }}</span><span style="font-size:10px;color:#a3a7ad;">{{ hr.tech }} · {{ hr.ago }}</span><span style="margin-left:auto;font-size:11px;color:{{ hr.starColor }};">★</span></div>
+                        <div style="font-size:12px;color:#2a262f;line-height:1.45;">{{ hr.q }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;background:rgba(29,27,32,0.34);display:flex;align-items:center;justify-content:center;padding:40px;z-index:5;">
+                <div style="width:100%;max-width:720px;background:#fff8e6;border:3px solid #e0a83a;border-radius:20px;box-shadow:8px 8px 0 #e0a83a;padding:32px 36px;position:relative;">
+                  <div style="position:absolute;top:16px;right:16px;width:30px;height:30px;border:2px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+                    <span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;letter-spacing:2px;color:#b45309;">●●●</span>
+                    <span style="font-size:13px;font-weight:800;color:#b45309;">Ask this now</span>
+                    <span style="font-size:11px;font-weight:700;color:#5b5965;background:#fff;border:1.4px solid rgba(29,27,32,0.16);border-radius:999px;padding:3px 11px;">Laddering</span>
+                    <span style="font-size:11px;font-weight:700;color:#fff;background:#ff5c8a;border-radius:999px;padding:3px 11px;">◆ Fill pain point</span>
+                  </div>
+                  <div style="font-family:'Outfit',sans-serif;font-size:31px;font-weight:700;line-height:1.4;color:#1d1b20;letter-spacing:-0.5px;margin-bottom:16px;">"You just said it was frustrating — what was the very first thing that went through your mind?"</div>
+                  <div style="border-left:3px solid #ff5c8a;padding-left:13px;font-size:14px;color:#5b5965;line-height:1.55;margin-bottom:24px;">Dig into the root of the emotional reaction to sharpen the pain point — a laddering question to confirm the checkout-abandonment driver.</div>
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="position:relative;width:46px;height:46px;flex-shrink:0;">
+                      <svg width="46" height="46" viewBox="0 0 46 46" style="transform:rotate(-90deg);"><circle cx="23" cy="23" r="20" fill="none" stroke="rgba(29,27,32,0.12)" stroke-width="4"></circle><circle cx="23" cy="23" r="20" fill="none" stroke="#e0a83a" stroke-width="4" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="50.3"></circle></svg>
+                      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;color:#b45309;">12s</div>
+                    </div>
+                    <div style="flex:1;font-size:11.5px;color:#8a8693;">Auto-saves to history after 15s · hover to pause</div>
+                    <div style="display:flex;gap:8px;">
+                      <div style="border:2px solid #1d1b20;border-radius:11px;padding:9px 15px;font-size:13px;font-weight:700;background:#fff;box-shadow:2px 2px 0 #1d1b20;cursor:pointer;">📋 Copy</div>
+                      <div style="border:2px solid #1d1b20;border-radius:11px;padding:9px 15px;font-size:13px;font-weight:700;background:#fff;box-shadow:2px 2px 0 #1d1b20;cursor:pointer;">📌 Pin</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- INTERPRETER -->
+        <sc-if value="{{ a1 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#cdebd9;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Live Interpreter</div><div style="font-size:12px;color:#2f6b4f;">Live translation · manage the session here</div></div><div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;">Korean → English</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;gap:18px;padding:22px;">
+              <div style="flex:1;min-width:0;display:flex;gap:14px;">
+                <div style="flex:1;min-width:0;border:3px solid #1d1b20;border-radius:16px;background:#fff;box-shadow:3px 3px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+                  <div style="display:flex;align-items:center;gap:8px;padding:11px 18px;background:#f7f7f5;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#8a8693;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">INPUT</div><div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:#1d1b20;">Korean</div></div>
+                  <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:26px 24px;display:flex;flex-direction:column;justify-content:flex-end;gap:20px;">
+                    <div style="font-family:'Outfit',sans-serif;font-size:20px;line-height:1.6;color:#a3a7ad;">가격을 미리 보여줬으면 좋았을 것 같아요.</div>
+                    <div style="font-family:'Outfit',sans-serif;font-size:23px;line-height:1.6;color:#1d1b20;">그 시점에 그냥 나가고 싶었어요.<span style="color:#a3a7ad;">…</span></div>
+                  </div>
+                </div>
+                <div style="flex:1;min-width:0;border:3px solid #1d1b20;border-radius:16px;background:#fff;box-shadow:3px 3px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+                  <div style="display:flex;align-items:center;gap:8px;padding:11px 18px;background:#eafaf0;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#2f6b4f;">OUTPUT</div><div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;color:#1d1b20;">English</div></div>
+                  <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:26px 24px;display:flex;flex-direction:column;justify-content:flex-end;gap:20px;">
+                    <div style="font-family:'Outfit',sans-serif;font-size:20px;line-height:1.6;color:#a3a7ad;">It would've been better to show the price upfront.</div>
+                    <div style="font-family:'Outfit',sans-serif;font-size:23px;line-height:1.6;color:#1d1b20;font-weight:600;">I just wanted to leave at that point.<span style="color:#a3a7ad;">…</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;overflow:hidden;">
+
+                <!-- Output audio toggle -->
+                <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:2px 2px 0 #1d1b20;padding:13px 15px;display:flex;align-items:center;gap:11px;">
+                  <span style="font-size:18px;">🔊</span>
+                  <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#1d1b20;">Output audio</div><div style="font-size:10.5px;color:#8a8693;">Spoken interpretation</div></div>
+                  <div style="width:44px;height:26px;border-radius:999px;background:#16a34a;border:2px solid #1d1b20;position:relative;cursor:pointer;flex-shrink:0;"><span style="position:absolute;top:1px;right:1px;width:20px;height:20px;border-radius:50%;background:#fff;border:1.5px solid #1d1b20;"></span></div>
+                </div>
+
+                <!-- Observer share link -->
+                <div style="border:1.5px solid rgba(29,27,32,0.14);border-radius:14px;background:#f7f7f5;padding:13px 15px;display:flex;flex-direction:column;gap:9px;">
+                  <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:14px;">🔗</span><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">Observer link</span></div>
+                  <div style="display:flex;gap:7px;">
+                    <div style="flex:1;min-width:0;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#1d1b20;background:#fff;border:1.5px solid #1d1b20;border-radius:10px;padding:9px 11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">rc.app/listen/9fQ2…</div>
+                    <div style="background:#1d1b20;color:#fff;border-radius:10px;padding:9px 13px;font-weight:700;font-size:12px;cursor:pointer;flex-shrink:0;">Copy</div>
+                  </div>
+                  <div style="font-size:10.5px;color:#8a8693;line-height:1.5;">Observers hear the interpretation live, read-only.</div>
+                </div>
+
+                <!-- Listeners -->
+                <div style="flex:1;min-height:0;border:1.5px solid rgba(29,27,32,0.14);border-radius:14px;background:#f7f7f5;display:flex;flex-direction:column;overflow:hidden;">
+                  <div style="padding:12px 15px;border-bottom:1px solid rgba(29,27,32,0.1);display:flex;align-items:center;gap:7px;"><span style="font-size:13px;">👂</span><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">3 listeners</span></div>
+                  <div class="sc" style="flex:1;overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:7px;">
+                    <sc-for list="{{ listeners }}" as="l" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:9px;background:#fff;border:1.4px solid rgba(29,27,32,0.1);border-radius:10px;padding:9px 11px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;flex-shrink:0;"></span>
+                        <div style="flex:1;min-width:0;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1d1b20;">{{ l.id }}</div><div style="font-size:10.5px;color:#8a8693;">{{ l.agent }}</div></div>
+                        <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#a3a7ad;">{{ l.ago }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <!-- End interpretation -->
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid #c2367a;background:#fff;color:#c2367a;border-radius:14px;padding:12px;font-size:13.5px;font-weight:800;box-shadow:2px 2px 0 #c2367a;cursor:pointer;">
+                  <span style="width:11px;height:11px;background:#c2367a;border-radius:2px;display:inline-block;"></span>End interpretation
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- TRANSCRIPT · file list -->
+        <sc-if value="{{ tList }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#e7defe;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Transcripts</div><div style="font-size:12px;color:#5b4a7a;">{{ project }} · {{ fileCount }} files</div></div><div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:18px 24px;display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ tFiles }}" as="f" hint-placeholder-count="5">
+                <div onClick="{{ f.onOpen }}" style="display:flex;align-items:center;gap:14px;border:2px solid {{ f.border }};border-radius:14px;background:{{ f.bg }};padding:14px 16px;cursor:{{ f.cursor }};box-shadow:{{ f.shadow }};">
+                  <div style="width:40px;height:40px;flex-shrink:0;border-radius:10px;border:2px solid #1d1b20;background:{{ f.iconBg }};display:flex;align-items:center;justify-content:center;font-size:18px;">{{ f.icon }}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-family:ui-monospace,Menlo,monospace;font-size:13.5px;font-weight:700;color:#1d1b20;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ f.name }}</div>
+                    <div style="font-size:11.5px;color:#8a8693;margin-top:2px;">{{ f.meta }}</div>
+                  </div>
+                  <div style="display:inline-flex;align-items:center;gap:5px;border:1.4px solid {{ f.statusBorder }};background:{{ f.statusBg }};border-radius:999px;padding:4px 11px;font-size:11px;font-weight:700;color:{{ f.statusColor }};flex-shrink:0;">{{ f.statusIcon }}{{ f.status }}</div>
+                  <span style="font-size:14px;color:{{ f.chevColor }};flex-shrink:0;">›</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- TRANSCRIPT · detail -->
+        <sc-if value="{{ tDetail }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#e7defe;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">interview_01 · Transcript</div><div style="font-size:12px;color:#5b4a7a;">64 min · 2 speakers · Korean · 2026-07-20</div></div>
+              <div style="display:inline-flex;align-items:center;gap:5px;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;color:#14713a;"><span style="width:15px;height:15px;border-radius:50%;background:#16a34a;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px;">✓</span>Done</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:2px solid #1d1b20;">
+                <div style="display:flex;align-items:center;gap:10px;padding:12px 22px;border-bottom:1px solid rgba(29,27,32,0.1);background:#fff;">
+                  <div onClick="{{ backToList }}" style="width:36px;height:36px;flex-shrink:0;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">‹</div>
+                  <div style="flex:1;display:flex;align-items:center;gap:8px;background:#f7f7f5;border:1.5px solid rgba(29,27,32,0.14);border-radius:999px;padding:8px 14px;"><span style="font-size:13px;color:#8a8693;">🔍</span><span style="font-size:13px;color:#a3a7ad;">Search transcript…</span></div>
+                  <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;border-radius:999px;padding:8px 13px;font-size:12.5px;font-weight:700;color:#1d1b20;cursor:pointer;">🗣️ By speaker</div>
+                  <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,0.14);border-radius:999px;padding:8px 13px;font-size:12.5px;font-weight:600;color:#8a8693;cursor:pointer;">🕐 Timestamp</div>
+                </div>
+                <div class="sc" style="flex:1;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:18px;">
+                  <sc-for list="{{ turns }}" as="t" hint-placeholder-count="6">
+                    <div style="display:flex;gap:13px;">
+                      <div style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:{{ t.avatarBg }};border:2px solid #1d1b20;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:{{ t.avatarColor }};">{{ t.initial }}</div>
+                      <div style="flex:1;min-width:0;"><div style="display:flex;align-items:baseline;gap:9px;margin-bottom:4px;"><div style="font-size:13px;font-weight:800;color:{{ t.nameColor }};">{{ t.speaker }}</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a3a7ad;">{{ t.time }}</div></div><div style="font-size:14px;line-height:1.65;color:#2a262f;">{{ t.text }}</div></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div class="sc" style="width:340px;flex-shrink:0;overflow-y:auto;background:#fff;padding:18px 18px 24px;display:flex;flex-direction:column;gap:18px;">
+                <div>
+                  <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Export</div>
+                  <div style="display:flex;gap:8px;">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid #1d1b20;border-radius:12px;padding:12px 6px;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:18px;">📄</span><span style="font-size:11px;font-weight:700;color:#1d1b20;">.docx</span></div>
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid #1d1b20;border-radius:12px;padding:12px 6px;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:18px;">📝</span><span style="font-size:11px;font-weight:700;color:#1d1b20;">.txt</span></div>
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid #1d1b20;border-radius:12px;padding:12px 6px;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:18px;">🎬</span><span style="font-size:11px;font-weight:700;color:#1d1b20;">.srt</span></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">AI summary</div>
+                  <div style="border:1.5px solid rgba(29,27,32,0.12);border-radius:14px;background:#f6f2ff;padding:14px;"><div style="font-size:13px;line-height:1.6;color:#2a262f;">The participant repeatedly cited <b>drop-off at checkout</b> in the new onboarding flow, calling the late reveal of pricing their biggest complaint.</div></div>
+                </div>
+                <div>
+                  <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Key themes</div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <sc-for list="{{ themes }}" as="k" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;border:1.4px solid rgba(29,27,32,0.12);border-radius:12px;padding:10px 12px;"><span style="font-size:16px;">{{ k.icon }}</span><div style="flex:1;font-size:12.5px;font-weight:600;color:#1d1b20;">{{ k.label }}</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8b5cf6;">{{ k.count }}</div></div></sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- AI UT · live -->
+        <sc-if value="{{ utLive }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#ffd9be;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">AI UT · Live</div><div style="font-size:12px;color:#8a5a35;">1 participant · screen + audio recording</div></div><div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;"></span>REC 08:32</div>
+              <div onClick="{{ endSession }}" style="display:inline-flex;align-items:center;gap:7px;border:2px solid #c2367a;background:#fff;color:#c2367a;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:800;box-shadow:2px 2px 0 #c2367a;cursor:pointer;"><span style="width:10px;height:10px;background:#c2367a;border-radius:2px;display:inline-block;"></span>End session</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;gap:16px;padding:18px 20px;">
+
+              <!-- screen-share monitor -->
+              <div style="flex:1.7;min-width:0;display:flex;flex-direction:column;border:3px solid #1d1b20;border-radius:16px;box-shadow:3px 3px 0 #1d1b20;overflow:hidden;background:#1d1b20;">
+                <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:#2a262f;border-bottom:1.5px solid #000;">
+                  <span style="width:11px;height:11px;border-radius:50%;background:#ff5f57;"></span><span style="width:11px;height:11px;border-radius:50%;background:#febc2e;"></span><span style="width:11px;height:11px;border-radius:50%;background:#28c840;"></span>
+                  <div style="flex:1;margin-left:8px;background:#1d1b20;border-radius:6px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a3a7ad;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">🔒 shop.example.com/checkout</div>
+                  <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#ff9a9a;">● LIVE</span>
+                </div>
+                <div style="flex:1;min-height:0;position:relative;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;">
+                  <div style="width:100%;max-width:340px;border:2px solid rgba(29,27,32,0.12);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:11px;box-shadow:0 6px 20px rgba(29,27,32,0.08);">
+                    <div style="height:12px;width:55%;background:rgba(29,27,32,0.12);border-radius:4px;"></div>
+                    <div style="height:40px;background:rgba(29,27,32,0.05);border-radius:8px;"></div>
+                    <div style="display:flex;justify-content:space-between;"><div style="height:10px;width:30%;background:rgba(29,27,32,0.1);border-radius:4px;"></div><div style="height:10px;width:18%;background:#ff5c8a;border-radius:4px;"></div></div>
+                    <div style="height:38px;background:#1d1b20;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">Place order</div>
+                  </div>
+                  <div style="position:absolute;bottom:70px;right:90px;width:18px;height:18px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#1d1b20" stroke="#fff" stroke-width="1.5"><path d="M4 2l6 16 2.5-6.5L19 9z"/></svg></div>
+                  <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a3a7ad;">Participant screen · mirrored live</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:#2a262f;border-top:1.5px solid #000;">
+                  <span style="display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#ff9a9a;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;"></span>REC 08:32</span>
+                  <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#cdebd9;">🎙️ mic on</span>
+                  <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#cdebd9;">🖱️ cursor tracked</span>
+                </div>
+              </div>
+
+              <!-- right column: task + conversation -->
+              <div style="width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;min-height:0;">
+                <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff7f0;box-shadow:2px 2px 0 #1d1b20;padding:13px 15px;flex-shrink:0;">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;"><span style="font-size:14px;">🎯</span><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">Assigned task</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#8a5a35;">STEP 2 / 3</span></div>
+                  <div style="font-size:13px;font-weight:700;color:#1d1b20;line-height:1.5;margin-bottom:9px;">Add an item to the cart and complete checkout.</div>
+                  <div style="display:flex;flex-direction:column;gap:5px;">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:#5b5965;"><span style="color:#16a34a;font-weight:800;">✓</span>Find a product</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:#1d1b20;font-weight:700;"><span style="width:13px;height:13px;border-radius:50%;border:2px solid #ff5c8a;display:inline-block;"></span>Proceed to checkout</div>
+                    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:#a3a7ad;"><span style="width:13px;height:13px;border-radius:50%;border:2px solid rgba(29,27,32,0.16);display:inline-block;"></span>Complete payment</div>
+                  </div>
+                </div>
+                <div style="flex:1;min-height:0;border:1.5px solid rgba(29,27,32,0.14);border-radius:14px;background:#f7f7f5;display:flex;flex-direction:column;overflow:hidden;">
+                  <div style="padding:11px 14px;border-bottom:1px solid rgba(29,27,32,0.1);display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#ff5c8a;"></span><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">Think-aloud stream</span></div>
+                  <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;">
+                    <sc-for list="{{ utTurns }}" as="u" hint-placeholder-count="4">
+                      <div><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.12em;color:{{ u.tagColor }};margin-bottom:3px;">{{ u.tag }}</div><div style="font-size:13px;line-height:1.55;color:{{ u.textColor }};">{{ u.text }}</div></div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- AI UT · review -->
+        <sc-if value="{{ utReview }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#ffd9be;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">AI UT · Review</div><div style="font-size:12px;color:#8a5a35;">1 participant · 8m 32s · PREVIEW</div></div><div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div onClick="{{ backToLive }}" style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid rgba(29,27,32,0.16);border-radius:999px;padding:5px 12px;font-size:11px;font-weight:700;color:#8a8693;cursor:pointer;">‹ Live</div>
+              <div style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 11px;font-size:11px;font-weight:700;color:#1d1b20;">Post-session review</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px;">
+              <div>
+                <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Insight report</div>
+                <div style="border:1.5px solid rgba(29,27,32,0.14);border-radius:14px;background:#fff7f0;padding:16px;"><div style="font-size:14px;font-weight:700;color:#1d1b20;margin-bottom:6px;">Task: add to cart and complete checkout</div><div style="font-size:13px;line-height:1.6;color:#2a262f;">The participant <b>moved smoothly</b> up to adding items, but at checkout the <b>shipping fee only appeared at the final step</b>, prompting two back-navigations and a near-abandonment. They also struggled to find the coupon field.</div></div>
+              </div>
+              <div>
+                <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Key clips</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;">
+                  <sc-for list="{{ clips }}" as="c" hint-placeholder-count="3">
+                    <div style="border:1.5px solid #1d1b20;border-radius:12px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;">
+                      <div style="height:80px;background:#1d1b20;display:flex;align-items:center;justify-content:center;position:relative;color:#fff;"><span style="font-size:22px;">▶</span><span style="position:absolute;bottom:6px;right:7px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#fff;background:rgba(0,0,0,0.5);border-radius:4px;padding:1px 5px;">{{ c.time }}</span></div>
+                      <div style="padding:9px 10px;"><div style="display:inline-block;font-size:9.5px;font-weight:800;color:#fff;background:{{ c.tagColor }};border-radius:999px;padding:1px 7px;margin-bottom:5px;">{{ c.tag }}</div><div style="font-size:11.5px;line-height:1.4;color:#2a262f;">{{ c.text }}</div></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Behavioral metrics <span style="color:#b3b7bd;">(estimated · 76% confidence)</span></div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:11px;">
+                  <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="6">
+                    <div style="border:1.4px solid rgba(29,27,32,0.12);border-radius:12px;padding:13px;background:#fff;opacity:{{ m.opacity }};">
+                      <div style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#1d1b20;">{{ m.value }}</div>
+                      <div style="font-size:11px;color:#8a8693;margin-top:2px;">{{ m.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;border:1.4px solid rgba(29,27,32,0.12);border-radius:12px;padding:12px 14px;cursor:pointer;background:#fff;">
+                  <span style="font-size:14px;">🗒️</span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;">View full utterance log</span><span style="margin-left:auto;font-size:11px;color:#8a8693;">42 turns ▾</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- RECRUITING -->
+        <sc-if value="{{ a4 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#ffe8a8;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Recruiting · Responses</div><div style="font-size:12px;color:#8a6a1a;">Participant criteria · distribution · fit summary</div></div><div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:#1d1b20;background:#fff;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">↓ CSV</div>
+              <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,0.16);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:#8a8693;background:#fff;cursor:pointer;">↻ Refresh</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;">
+
+              <!-- LEFT: criteria + distribution -->
+              <div class="sc" style="width:400px;flex-shrink:0;overflow-y:auto;border-right:2px solid #1d1b20;padding:16px;display:flex;flex-direction:column;gap:16px;">
+                <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.14);">
+                  <div style="display:flex;align-items:center;gap:8px;border-bottom:1.5px solid rgba(29,27,32,0.12);padding:11px 14px;"><span style="font-size:14px;">🎯</span><span style="font-size:13px;font-weight:700;color:#1d1b20;">Participant criteria</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ criteriaCount }}</span></div>
+                  <div style="padding:13px 14px;">
+                    <div style="font-size:12.5px;line-height:1.6;color:#5b5965;margin-bottom:11px;">Screener for a checkout-UX study: female online shoppers in their late 20s–30s who abandoned a recent purchase.</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                      <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="8">
+                        <div style="display:inline-flex;align-items:center;gap:6px;border:{{ c.border }};border-radius:999px;padding:5px 10px;font-size:11.5px;background:#fff;">
+                          <span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;">{{ c.cat }}</span>
+                          <span style="font-weight:600;color:#1d1b20;">{{ c.label }}</span>
+                          <sc-if value="{{ c.req }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;color:#ff5c8a;font-weight:700;">Required</span></sc-if>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.14);">
+                  <div style="display:flex;align-items:center;gap:8px;border-bottom:1.5px solid rgba(29,27,32,0.12);padding:11px 14px;"><span style="font-size:14px;">📊</span><span style="font-size:13px;font-weight:700;color:#1d1b20;">Distribution</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">total 24</span></div>
+                  <div style="padding:6px 14px 13px;">
+                    <table style="width:100%;border-collapse:collapse;font-family:ui-monospace,Menlo,monospace;font-size:12px;">
+                      <thead><tr>
+                        <th style="text-align:left;padding:6px 4px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;border-bottom:1px solid rgba(29,27,32,0.1);">G \ Age</th>
+                        <sc-for list="{{ distCols }}" as="cl" hint-placeholder-count="3"><th style="text-align:right;padding:6px 8px;font-size:10px;color:#8a8693;border-bottom:1px solid rgba(29,27,32,0.1);">{{ cl }}</th></sc-for>
+                        <th style="text-align:right;padding:6px 4px;font-size:10px;color:#1d1b20;font-weight:800;border-bottom:1px solid rgba(29,27,32,0.1);">Σ</th>
+                      </tr></thead>
+                      <tbody>
+                        <sc-for list="{{ distRows }}" as="r" hint-placeholder-count="2">
+                          <tr style="border-bottom:1px solid rgba(29,27,32,0.07);">
+                            <td style="padding:7px 4px;font-family:'Pretendard';font-size:12.5px;font-weight:600;color:#2a262f;">{{ r.label }}</td>
+                            <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="3"><td style="text-align:right;padding:7px 8px;color:{{ cell.color }};background:{{ cell.bg }};font-weight:{{ cell.weight }};border-radius:{{ cell.radius }};">{{ cell.n }}</td></sc-for>
+                            <td style="text-align:right;padding:7px 4px;font-weight:800;color:#1d1b20;">{{ r.total }}</td>
+                          </tr>
+                        </sc-for>
+                      </tbody>
+                      <tfoot><tr style="border-top:1.5px solid rgba(29,27,32,0.15);">
+                        <td style="padding:7px 4px;font-family:'Pretendard';font-size:12px;font-weight:800;color:#1d1b20;">Σ</td>
+                        <sc-for list="{{ distColTotals }}" as="ct" hint-placeholder-count="3"><td style="text-align:right;padding:7px 8px;font-weight:800;color:#1d1b20;">{{ ct }}</td></sc-for>
+                        <td style="text-align:right;padding:7px 4px;font-weight:800;color:#c2367a;">24</td>
+                      </tr></tfoot>
+                    </table>
+                    <div style="margin-top:9px;font-size:10.5px;color:#a3a7ad;line-height:1.45;">Fixed at 100% of responses — filters highlight cells but never change these counts.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT: form selector + tabs + judged list -->
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid rgba(29,27,32,0.1);background:#fff;">
+                  <div style="display:inline-flex;align-items:center;gap:8px;border:1.5px solid #1d1b20;border-radius:10px;padding:8px 13px;font-size:12.5px;font-weight:700;color:#1d1b20;cursor:pointer;"><span>Checkout-UX screener</span><span style="font-size:10px;color:#8a8693;font-weight:600;">· 07-18</span><span style="font-size:9px;color:#1d1b20;">▼</span></div>
+                  <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+                    <div style="border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;cursor:pointer;">Fit summary</div>
+                    <div style="border-radius:999px;padding:6px 14px;font-size:12px;font-weight:600;background:transparent;color:#8a8693;cursor:pointer;">Raw data</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:11px 20px;border-bottom:1px solid rgba(29,27,32,0.1);">
+                  <sc-for list="{{ fitChips }}" as="fc" hint-placeholder-count="4">
+                    <div style="display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:{{ fc.weight }};border:{{ fc.border }};background:{{ fc.bg }};color:{{ fc.color }};cursor:pointer;">{{ fc.label }} <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">{{ fc.count }}</span></div>
+                  </sc-for>
+                </div>
+
+                <div class="sc" style="flex:1;min-height:0;overflow-y:auto;">
+                  <table style="width:100%;border-collapse:collapse;">
+                    <thead style="position:sticky;top:0;z-index:2;background:#f7f7f5;">
+                      <tr>
+                        <sc-for list="{{ judgedCols }}" as="jc" hint-placeholder-count="5"><th style="text-align:left;padding:9px 16px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;color:#8a8693;font-weight:700;border-bottom:1px solid rgba(29,27,32,0.1);">{{ jc }}</th></sc-for>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <sc-for list="{{ judged }}" as="j" hint-placeholder-count="8">
+                        <tr style="border-bottom:1px solid rgba(29,27,32,0.08);cursor:pointer;">
+                          <td style="padding:11px 16px;vertical-align:top;white-space:nowrap;">
+                            <span style="display:inline-flex;align-items:center;gap:6px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#2a262f;">#{{ j.num }}
+                              <sc-if value="{{ j.hasFlag }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:800;color:#8a5a10;background:#fff8e6;border:1px solid #f0d78a;border-radius:999px;padding:1px 6px;">⚠ {{ j.flagCount }}</span></sc-if>
+                            </span>
+                          </td>
+                          <td style="padding:11px 16px;vertical-align:top;font-size:13px;color:#2a262f;white-space:nowrap;">{{ j.gender }}</td>
+                          <td style="padding:11px 16px;vertical-align:top;font-size:13px;color:#2a262f;white-space:nowrap;">{{ j.age }}</td>
+                          <td style="padding:11px 16px;vertical-align:top;font-size:13px;color:#2a262f;white-space:nowrap;">{{ j.region }}</td>
+                          <td style="padding:11px 16px;vertical-align:top;">
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                              <span style="display:inline-flex;align-items:center;gap:5px;align-self:flex-start;border:1px solid {{ j.fitBorder }};background:{{ j.fitBg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;color:{{ j.fitText }};"><span style="width:6px;height:6px;border-radius:50%;background:{{ j.fitDot }};"></span>{{ j.fitLabel }}</span>
+                              <span style="font-size:12px;line-height:1.5;color:#5b5965;">{{ j.reason }}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </sc-for>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style="flex-shrink:0;border-top:1px solid rgba(29,27,32,0.1);background:#f7f7f5;padding:9px 20px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">24 responses · High 8 · Medium 10 · Low 6 &nbsp;·&nbsp; name & phone excluded from view</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- DESK RESEARCH -->
+        <sc-if value="{{ a5 }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
+            <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:#bfe9ef;padding:13px 24px;flex-shrink:0;">
+              <div style="flex:1;min-width:0;display:flex;align-items:center;gap:14px;"><div style="min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Desk Research · Report</div><div style="font-size:12px;color:#2f6a72;">Trend · checkout UX · 34 sources · 💎 75</div></div>
+              <div style="position:relative;flex-shrink:0;"><div onClick="{{ projToggle }}" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:12px;font-weight:700;color:#1d1b20;max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ project }}</span><span style="font-size:8px;color:#1d1b20;transform:{{ projChevron }};transition:transform .15s;">▼</span></div><sc-if value="{{ projOpen }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:100%;right:0;margin-top:6px;z-index:30;width:230px;background:#fff;border:2px solid #1d1b20;border-radius:12px;box-shadow:3px 3px 0 rgba(29,27,32,0.2);padding:5px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projects }}" as="p" hint-placeholder-count="3"><div onClick="{{ p.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};background:{{ p.bg }};">{{ p.name }} <span style="font-size:11px;color:#16a34a;font-weight:800;">{{ p.tick }}</span></div></sc-for></div></sc-if></div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:10px;padding:6px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:700;color:#1d1b20;cursor:pointer;">Latest research · 07-21 ▾</div>
+              <div style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">✕</div>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;">
+
+              <!-- scroll-spy nav -->
+              <nav style="width:210px;flex-shrink:0;border-right:2px solid #1d1b20;background:#f7f7f5;padding:16px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;">
+                <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#a3a7ad;font-weight:700;padding:2px 8px 8px;">Sections</div>
+                <sc-for list="{{ deskNav }}" as="n" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:8px;cursor:pointer;border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:{{ n.weight }};color:{{ n.color }};background:{{ n.bg }};"><span style="font-size:13px;">{{ n.anchor }}</span><span style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ n.label }}</span></div>
+                </sc-for>
+              </nav>
+
+              <!-- report body -->
+              <div class="sc" style="flex:1;min-width:0;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+
+                <!-- AI judgment log -->
+                <div style="border:1.5px solid rgba(29,27,32,0.14);border-radius:12px;background:#fff;">
+                  <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(29,27,32,0.1);padding:10px 14px;"><span style="font-size:14px;">🧠</span><span style="font-size:12.5px;font-weight:800;color:#1d1b20;">AI judgment log</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ judgmentCount }}</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px;">
+                    <sc-for list="{{ deskJudgment }}" as="j" hint-placeholder-count="4">
+                      <div style="display:flex;gap:8px;font-size:12px;line-height:1.5;color:#2a262f;"><span style="flex-shrink:0;">{{ j.m }}</span><span>{{ j.t }}</span></div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <!-- similar keywords -->
+                <div>
+                  <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:8px;">Expanded keywords</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                    <sc-for list="{{ similarKeywords }}" as="k" hint-placeholder-count="5"><div style="border:1.4px solid rgba(29,27,32,0.16);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:#1d1b20;background:#fff;">{{ k }}</div></sc-for>
+                  </div>
+                </div>
+
+                <!-- section cards -->
+                <sc-for list="{{ deskSections }}" as="s" hint-placeholder-count="5">
+                  <div style="border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:9px;border-bottom:2px solid #1d1b20;background:{{ s.headBg }};padding:11px 15px;">
+                      <span style="width:9px;height:9px;border-radius:50%;background:{{ s.accent }};border:1.5px solid #1d1b20;"></span>
+                      <span style="font-size:15px;">{{ s.icon }}</span>
+                      <span style="flex:1;font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:#1d1b20;">{{ s.label }}</span>
+                      <span style="font-size:12px;color:#8a8693;">{{ s.chevron }}</span>
+                    </div>
+                    <div style="padding:15px;">
+                      <sc-if value="{{ s.hasBody }}" hint-placeholder-val="{{ true }}"><div style="font-size:13.5px;line-height:1.65;color:#2a262f;">{{ s.bodyHtml }}</div></sc-if>
+
+                      <sc-if value="{{ s.isRQ }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;flex-direction:column;gap:12px;">
+                          <sc-for list="{{ deskRQ }}" as="q" hint-placeholder-count="2">
+                            <div style="border:2px solid #1d1b20;border-radius:11px;padding:13px;box-shadow:2px 2px 0 rgba(29,27,32,0.12);">
+                              <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.05em;color:#8a8693;">{{ q.id }} · {{ q.cat }} · importance {{ q.importance }}</span><span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;border:1.4px solid {{ q.confColor }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;color:{{ q.confColor }};">{{ q.confDot }} {{ q.conf }}</span></div>
+                              <div style="font-size:14px;font-weight:700;color:#1d1b20;line-height:1.5;margin-bottom:6px;">{{ q.q }}</div>
+                              <div style="font-size:13px;line-height:1.6;color:#2a262f;margin-bottom:9px;">{{ q.a }}</div>
+                              <div style="display:flex;gap:7px;align-items:flex-start;background:#fff8e6;border:1.3px solid #f0d78a;border-radius:9px;padding:8px 11px;"><span style="font-size:11px;">🔎</span><div style="font-size:11.5px;color:#8a5a10;line-height:1.45;"><b>To explore:</b> {{ q.missing }}</div></div>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ s.isQuant }}" hint-placeholder-val="{{ false }}">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                          <thead><tr>
+                            <th style="text-align:left;padding:7px 8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;color:#8a8693;font-weight:700;border-bottom:1.5px solid rgba(29,27,32,0.14);">Subject</th>
+                            <th style="text-align:right;padding:7px 8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;color:#8a8693;font-weight:700;border-bottom:1.5px solid rgba(29,27,32,0.14);">Value</th>
+                            <th style="text-align:left;padding:7px 8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;color:#8a8693;font-weight:700;border-bottom:1.5px solid rgba(29,27,32,0.14);">Source</th>
+                            <th style="text-align:center;padding:7px 8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;color:#8a8693;font-weight:700;border-bottom:1.5px solid rgba(29,27,32,0.14);">Tier</th>
+                          </tr></thead>
+                          <tbody>
+                            <sc-for list="{{ deskQuant }}" as="r" hint-placeholder-count="4">
+                              <tr style="border-bottom:1px solid rgba(29,27,32,0.08);">
+                                <td style="padding:9px 8px;color:#2a262f;">{{ r.subject }}</td>
+                                <td style="text-align:right;padding:9px 8px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#c2367a;">{{ r.value }}</td>
+                                <td style="padding:9px 8px;color:#5b5965;">{{ r.source }}</td>
+                                <td style="text-align:center;padding:9px 8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:{{ r.tierColor }};">{{ r.tier }}</span></td>
+                              </tr>
+                            </sc-for>
+                          </tbody>
+                        </table>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+
+                <!-- export -->
+                <div style="display:flex;gap:8px;padding-top:4px;">
+                  <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;border-radius:12px;padding:9px 14px;font-size:12.5px;font-weight:700;color:#1d1b20;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">📄 .docx</div>
+                  <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;border-radius:12px;padding:9px 14px;font-size:12.5px;font-weight:700;color:#1d1b20;cursor:pointer;box-shadow:2px 2px 0 #1d1b20;">📝 .md</div>
+                  <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,0.16);border-radius:12px;padding:9px 14px;font-size:12.5px;font-weight:600;color:#8a8693;cursor:pointer;">↗ Google Docs</div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { active: 0, projOpen: false, project: 'Checkout UX study', tView: 'list', utView: 'live' };
+  renderVals() {
+    const active = this.state.active;
+    const st = this.state;
+    const widgets = [
+      { label: 'Probing Assistant', dot: '#cfe6ff', badge: 'LIVE', pulse: true, bc: '#ff5c8a', bg: '#ff5c8a', btext: '#fff' },
+      { label: 'Live Interpreter', dot: '#cdebd9', badge: 'LIVE', pulse: true, bc: '#ff5c8a', bg: '#ff5c8a', btext: '#fff' },
+      { label: 'Transcript', dot: '#e7defe', badge: 'DONE', pulse: false, bc: '#1d1b20', bg: '#cdebd9', btext: '#14713a' },
+      { label: 'AI UT', dot: '#ffd9be', badge: 'LIVE', pulse: true, bc: '#ff5c8a', bg: '#ff5c8a', btext: '#fff' },
+      { label: 'Recruiting', dot: '#ffe8a8', badge: 'LIVE', pulse: true, bc: '#ff5c8a', bg: '#ff5c8a', btext: '#fff' },
+      { label: 'Desk Research', dot: '#bfe9ef', badge: 'DONE', pulse: false, bc: '#1d1b20', bg: '#cdebd9', btext: '#14713a' },
+    ];
+    const nav = widgets.map((w, i) => {
+      const on = active === i;
+      return {
+        label: w.label, dot: w.dot,
+        onSelect: () => this.setState({ active: i, tView: 'list', utView: 'live', projOpen: false }),
+        borderColor: on ? '#1d1b20' : 'transparent',
+        bg: on ? '#fff' : 'transparent',
+        shadow: on ? '2px 2px 0 #1d1b20' : 'none',
+        weight: on ? 800 : 600,
+        textColor: on ? '#1d1b20' : '#8a8693',
+        badge: w.badge, badgePulse: w.pulse,
+        badgeBorder: w.bc, badgeBg: w.bg, badgeColor: w.btext,
+      };
+    });
+
+    const P = (icon, section, summary, dots, filled) => ({
+      icon, section, summary, dots,
+      dotColor: filled === 3 ? '#16a34a' : (filled === 2 ? '#e0a83a' : '#c9ccd2'),
+      border: filled >= 2 ? '2px solid #1d1b20' : '1.6px dashed #c9ccd2',
+      bg: filled >= 2 ? '#fff' : '#fafafa',
+      shadow: filled >= 2 ? '2px 2px 0 rgba(29,27,32,0.1)' : 'none',
+      textColor: filled >= 1 ? '#2a262f' : '#b3b7bd',
+      textWeight: filled >= 2 ? 500 : 400,
+    });
+    const personas = [
+      P('👤', 'Basics', 'Early 30s · office worker · lives in Seoul · shops online 3×/week', '●●●', 3),
+      P('🎯', 'Core need', 'Wants transparent pricing upfront · checks total before paying', '●●●', 3),
+      P('😣', 'Pain point', 'Abandons when shipping is added last · can\'t find coupon field', '●●○', 2),
+      P('💭', 'Motivation', 'Values smart spending · a purchase with no regrets', '●●○', 2),
+      P('🛒', 'Behavior', 'Adds to cart, mulls for days, then buys', '●●○', 2),
+      P('⚖️', 'Decision criteria', 'Price transparency · review credibility', '●○○', 1),
+      P('📱', 'Context', 'Mostly mobile · during commute', '●○○', 1),
+      P('🔮', 'Hopes & fears', 'Collecting…', '○○○', 0),
+    ];
+    const thinking = [
+      'Checkout abandonment keeps coming up — time to ladder into the root cause',
+      'Price transparency is emerging strongly as a core need',
+      'Decision-criteria signal is still thin — candidate for a follow-up',
+    ];
+    const H = (dots, dc, tech, ago, q, star) => ({ dots, dotColor: dc, tech, ago, q, starColor: star ? '#ff5c8a' : '#e4e6ea', leftBorder: dc === '#b45309' ? '3px solid #e0a83a' : '3px solid transparent' });
+    const history = [
+      H('●●●', '#b45309', 'Laddering', 'now', 'What exactly bothered you most at the checkout step?', true),
+      H('●●○', '#e0a83a', 'Contrast', '2m ago', 'How does it compare to the service you used before?', false),
+      H('●●○', '#e0a83a', 'Clarify', '5m ago', 'You said it was "complicated" — could you give an example?', true),
+      H('●○○', '#16a34a', 'Open', '8m ago', 'When do you usually shop online?', false),
+    ];
+
+    const listeners = [
+      { id: 'guest_01', agent: 'Chrome · macOS', ago: 'live' },
+      { id: 'observer_02', agent: 'Safari · iOS', ago: '2s ago' },
+      { id: 'observer_03', agent: 'Chrome · Win', ago: '1s ago' },
+    ];
+
+    const T = (initial, speaker, time, text, host) => ({ initial, speaker, time, text, avatarBg: host ? '#cfe6ff' : '#ffe0ec', avatarColor: '#1d1b20', nameColor: host ? '#2563a8' : '#c2367a' });
+    const turns = [
+      T('M', 'Moderator', '12:03', "Let's chat casually about your online shopping. Have you started to buy something recently but stopped?", true),
+      T('P', 'Participant', '12:14', 'Yeah, the other day I had everything in my cart but quit right before paying.', false),
+      T('M', 'Moderator', '12:22', 'What made you stop?', true),
+      T('P', 'Participant', '12:29', 'The shipping fee suddenly appeared at the last step. It kind of felt like a betrayal.', false),
+      T('M', 'Moderator', '12:41', 'You said betrayal — what was the first thing that went through your mind then?', true),
+      T('P', 'Participant', '12:52', 'I thought, "why not tell me from the start?" It felt like a waste of time.', false),
+    ];
+    const themes = [
+      { icon: '💳', label: 'Checkout drop-off', count: '×7' },
+      { icon: '🏷️', label: 'Price transparency', count: '×5' },
+      { icon: '🎟️', label: 'Coupon discoverability', count: '×3' },
+    ];
+
+    const clips = [
+      { time: '0:41', tag: 'Pain point', tagColor: '#ef4444', text: 'The shipping fee at the end felt like a betrayal' },
+      { time: '2:18', tag: 'Confusion', tagColor: '#e0a83a', text: 'I spent ages looking for the coupon field' },
+      { time: '5:03', tag: 'Positive', tagColor: '#16a34a', text: 'Adding items to the cart was really easy' },
+    ];
+    const M = (value, label, low) => ({ value, label, opacity: low ? 0.5 : 1 });
+    const metrics = [
+      M('8:32', 'Total time', false),
+      M('2', 'Back navigations', false),
+      M('14', 'Clicks', false),
+      M('1', 'Near-abandon', false),
+      M('~3.2s', 'Avg. hesitation', true),
+      M('62%', 'Task success', true),
+    ];
+
+    // ---- Recruiting ----
+    const C = (cat, label, req) => ({ cat, label, req, border: req ? '1.4px solid #ff5c8a' : '1.4px solid rgba(29,27,32,0.14)' });
+    const criteria = [
+      C('Demographics', 'Age 25–34', true),
+      C('Demographics', 'Female', true),
+      C('Occupation', 'Office worker', true),
+      C('Experience', 'Shops online 3×/wk', true),
+      C('Experience', 'Abandoned checkout', false),
+      C('Region', 'Seoul · metro', false),
+      C('Lifestyle', 'Values smart spending', false),
+      C('Device', 'iOS or Android', false),
+    ];
+    const criteriaCount = criteria.length + ' criteria';
+    const distCols = ['20s', '30s', '40s'];
+    const cell = (n, active) => ({ n: n || '·', color: active ? '#c2367a' : (n ? '#2a262f' : '#c9ccd2'), bg: active ? 'rgba(255,92,138,0.12)' : 'transparent', weight: active ? 800 : 500, radius: active ? '6px' : '0' });
+    const distRows = [
+      { label: 'Female', cells: [cell(3), cell(7, true), cell(2)], total: '12' },
+      { label: 'Male', cells: [cell(4), cell(5), cell(3)], total: '12' },
+    ];
+    const distColTotals = ['7', '12', '5'];
+
+    const FIT = {
+      high: { label: 'High', dot: '#16a34a', text: '#16a34a', border: '#16a34a', bg: 'rgba(22,163,74,0.1)' },
+      medium: { label: 'Medium', dot: '#ff5c8a', text: '#c2367a', border: '#ff5c8a', bg: 'rgba(255,92,138,0.1)' },
+      low: { label: 'Low', dot: '#8a8693', text: '#8a8693', border: 'rgba(29,27,32,0.16)', bg: '#f7f7f5' },
+    };
+    const J = (num, gender, age, region, fit, reason, flags) => ({
+      num, gender, age, region, reason,
+      hasFlag: flags > 0, flagCount: flags,
+      fitLabel: FIT[fit].label, fitDot: FIT[fit].dot, fitText: FIT[fit].text, fitBorder: FIT[fit].border, fitBg: FIT[fit].bg,
+    });
+    const judged = [
+      J('3', 'Female', '30s', 'Seoul', 'high', 'Meets all required criteria — 32, office worker, shops online 4×/wk, recently abandoned at checkout.', 0),
+      J('7', 'Female', '20s', 'Gyeonggi', 'high', 'Late-20s female office worker who described a cart-abandonment over shipping cost — strong fit.', 0),
+      J('1', 'Female', '30s', 'Seoul', 'high', 'Required demographics met; values price transparency, matches the persona intent.', 0),
+      J('12', 'Male', '30s', 'Busan', 'medium', 'Male (screener prefers female) but otherwise a strong online-shopper profile; partial fit.', 0),
+      J('5', 'Female', '40s', 'Seoul', 'medium', 'Age slightly above the target band; shopping behavior otherwise matches.', 0),
+      J('9', 'Female', '20s', 'Incheon', 'medium', 'Meets most criteria but no clear checkout-abandonment signal in the answers.', 1),
+      J('2', 'Male', '40s', 'Daegu', 'low', 'Outside target age and gender; shops online only occasionally.', 0),
+      J('11', 'Female', '20s', '—', 'low', 'Answers are short and partly contradictory — likely low-effort response.', 2),
+    ];
+    const fitChips = [
+      { key: 'all', label: 'All', count: '24', active: true },
+      { key: 'high', label: 'High', count: '8', active: false },
+      { key: 'medium', label: 'Medium', count: '10', active: false },
+      { key: 'low', label: 'Low', count: '6', active: false },
+    ].map((c) => ({
+      label: c.label, count: c.count,
+      weight: c.active ? 700 : 600,
+      border: c.active ? '1.5px solid #1d1b20' : '1.5px solid rgba(29,27,32,0.14)',
+      bg: c.active ? '#1d1b20' : '#fff',
+      color: c.active ? '#fff' : '#5b5965',
+    }));
+    const judgedCols = ['Respondent', 'Gender', 'Age', 'Region', 'Fit · reason'];
+
+    // ---- Transcript files ----
+    const openFile = () => this.setState({ tView: 'detail' });
+    const F = (icon, name, meta, status) => {
+      const done = status === 'done';
+      const proc = status === 'processing';
+      return {
+        icon, name, meta,
+        onOpen: done ? openFile : (() => {}),
+        cursor: done ? 'pointer' : 'default',
+        border: done ? '#1d1b20' : 'rgba(29,27,32,0.14)',
+        bg: done ? '#fff' : '#faf7ff',
+        shadow: done ? '2px 2px 0 rgba(29,27,32,0.12)' : 'none',
+        iconBg: done ? '#e7defe' : '#f0ebfa',
+        status: proc ? 'Transcribing' : (status === 'failed' ? 'Failed' : 'Done'),
+        statusIcon: proc ? '' : (status === 'failed' ? '' : '✓ '),
+        statusBorder: proc ? '#c9b6ef' : (status === 'failed' ? '#f0c0c0' : '#cdeed8'),
+        statusBg: proc ? '#f0ebfa' : (status === 'failed' ? '#fdf0f0' : '#f4fbf6'),
+        statusColor: proc ? '#6b4aa0' : (status === 'failed' ? '#b4443f' : '#14713a'),
+        chevColor: done ? '#1d1b20' : '#c9ccd2',
+      };
+    };
+    const tFiles = [
+      F('🎙️', 'interview_01.m4a', '64 min · 2 speakers · Korean · 2026-07-20', 'done'),
+      F('🎙️', 'interview_02.m4a', '48 min · 2 speakers · Korean · 2026-07-19', 'done'),
+      F('🎬', 'focus_group_A.mp4', '92 min · 5 speakers · Korean · 2026-07-18', 'done'),
+      F('🎙️', 'interview_03.m4a', 'Separating speakers · 72%', 'processing'),
+      F('📄', 'kickoff_meeting.mp3', '35 min · 4 speakers · Korean · 2026-07-15', 'done'),
+    ];
+
+    // ---- Desk Research (trend report) ----
+    const similarKeywords = ['express checkout', 'one-page checkout', 'shipping cost surprise', 'cart abandonment', 'guest checkout'];
+    const deskSecDefs = [
+      { id: 'exec', icon: '📌', accent: '#ff5c8a', headBg: '#ffeef4', label: 'Executive summary', body: 'Checkout abandonment across KR mobile commerce is driven primarily by <b>late-surfaced shipping cost</b> and <b>forced account creation</b>. Guest-checkout and upfront total display are the two highest-leverage fixes cited across 34 sources.' },
+      { id: 'find', icon: '🔍', accent: '#16a34a', headBg: '#edf9f0', label: 'Findings', body: 'Three recurring themes dominate the corpus: (1) price opacity at the final step, (2) coupon/field discoverability, (3) trust friction on first purchase. T1 sources converge on shipping-cost timing as the single biggest driver.' },
+      { id: 'quant', icon: '📊', accent: '#e0a83a', headBg: '#fdf6e6', label: 'Quantitative snapshot', quant: true },
+      { id: 'rq', icon: '❓', accent: '#8b5cf6', headBg: '#f3eefe', label: 'Research questions', rq: true },
+      { id: 'appx', icon: '🗂️', accent: '#8a8693', headBg: '#f2f2f3', label: 'Appendix · collected articles', body: '34 articles across news, community, and academic sources. Tiered T1–T3 by domain credibility.', collapsed: true },
+    ];
+    const deskSections = deskSecDefs.map((s) => ({
+      id: s.id, icon: s.icon, accent: s.accent, headBg: s.headBg, label: s.label,
+      chevron: s.collapsed ? '▸' : '▾',
+      hasBody: !!s.body,
+      bodyHtml: s.body ? React.createElement('span', { dangerouslySetInnerHTML: { __html: s.body } }) : null,
+      isRQ: !!s.rq, isQuant: !!s.quant,
+    }));
+    const deskNav = deskSecDefs.map((s, i) => ({
+      label: s.label, anchor: s.icon,
+      weight: i === 0 ? 800 : 600,
+      color: i === 0 ? '#1d1b20' : '#8a8693',
+      bg: i === 0 ? '#bfe9ef' : 'transparent',
+    }));
+    const deskRQ = [
+      { id: 'RQ1', cat: 'user_signals', importance: '5/5', conf: 'high', confDot: '🟢', confColor: '#16a34a', q: 'What most often causes checkout abandonment on mobile?', a: 'Late-surfaced shipping cost at the final step is the dominant driver, cited in 21 of 34 sources — ahead of forced sign-up and payment friction.', missing: 'Segment split by first-time vs returning buyers.' },
+      { id: 'RQ2', cat: 'competition', importance: '4/5', conf: 'medium', confDot: '🟡', confColor: '#e0a83a', q: 'Which checkout patterns best reduce drop-off?', a: 'Guest checkout + upfront total display show the strongest reported lift; one-tap wallets help returning users but require prior enrollment.', missing: 'Controlled A/B magnitudes for KR mid-market.' },
+    ];
+    const deskQuant = [
+      { subject: 'Mobile cart abandonment rate (KR)', value: '68%', source: 'Statista', tier: 'T1' },
+      { subject: 'Lift from guest checkout', value: '+11%p', source: 'Baymard', tier: 'T1' },
+      { subject: 'Users citing shipping surprise', value: '62%', source: 'Survey (n=1.2k)', tier: 'T2' },
+      { subject: 'One-tap wallet penetration', value: '41%', source: 'Community thread', tier: 'T3' },
+    ].map((r) => ({ ...r, tierColor: r.tier === 'T1' ? '#16a34a' : (r.tier === 'T2' ? '#e0a83a' : '#8a8693') }));
+    const deskJudgment = [
+      { m: '🎯', t: 'Scoped 8 keywords → 3 source classes (news, stats, academic).' },
+      { m: '📰', t: 'Prioritized T1 wire/press over community for the abandonment claim.' },
+      { m: '🚫', t: 'Dropped 2 low-signal blog posts (thin, contradictory).' },
+      { m: '🧠', t: 'Cross-checked shipping-cost claim across 4 independent T1 sources.' },
+    ];
+
+    const utTurns = [
+      { tag: 'PARTICIPANT', tagColor: '#ff5c8a', textColor: '#1d1b20', text: 'Okay, I found the item I want… adding it to the cart now.' },
+      { tag: 'PARTICIPANT', tagColor: '#ff5c8a', textColor: '#1d1b20', text: 'Now where\'s the checkout button… oh, top right.' },
+      { tag: 'MODERATOR', tagColor: '#8a8693', textColor: '#5b5965', text: 'Go ahead and tell me what you\'re thinking as you go.' },
+      { tag: 'PARTICIPANT', tagColor: '#ff5c8a', textColor: '#1d1b20', text: 'Wait — there\'s a shipping fee now? It wasn\'t showing before…' },
+    ];
+
+    return {
+      nav,
+      a0: active === 0, a1: active === 1, a2: active === 2, a3: active === 3, a4: active === 4, a5: active === 5,
+      utLive: active === 3 && st.utView === 'live',
+      utReview: active === 3 && st.utView === 'review',
+      endSession: () => this.setState({ utView: 'review' }),
+      backToLive: () => this.setState({ utView: 'live' }),
+      tList: active === 2 && st.tView === 'list',
+      tDetail: active === 2 && st.tView === 'detail',
+      backToList: () => this.setState({ tView: 'list' }),
+      project: st.project,
+      projOpen: st.projOpen,
+      projChevron: st.projOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+      projToggle: () => this.setState((s) => ({ projOpen: !s.projOpen })),
+      projects: ['Checkout UX study', 'Onboarding research', 'Pricing perception'].map((name) => ({
+        name, onSelect: () => this.setState({ project: name, projOpen: false }),
+        weight: st.project === name ? 800 : 600,
+        color: st.project === name ? '#1d1b20' : '#5b5965',
+        bg: st.project === name ? '#f7f7f5' : 'transparent',
+        tick: st.project === name ? '✓' : '',
+      })),
+      fileCount: tFiles.length,
+      tFiles, utTurns,
+      deskNav, deskSections, deskRQ, deskQuant, deskJudgment, similarKeywords, judgmentCount: deskJudgment.length + ' judgments',
+      personas, thinking, history, listeners, turns, themes, clips, metrics,
+      criteria, criteriaCount, distCols, distRows, distColTotals, judged, fitChips, judgedCols,
+    };
+  }
+}
+</script>
+</body>
+</html>
