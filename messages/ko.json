@@ -2581,6 +2581,13 @@
     "sending": "보내는 중…",
     "sendFailed": "메시지 전송에 실패했습니다.",
     "invalidTitle": "이 링크를 열 수 없습니다",
-    "invalidBody": "링크가 유효하지 않거나 만료되었을 수 있습니다. 링크를 공유한 담당자에게 확인해 주세요."
+    "invalidBody": "링크가 유효하지 않거나 만료되었을 수 있습니다. 링크를 공유한 담당자에게 확인해 주세요.",
+    "gateTitle": "본인 확인",
+    "gateBody": "일정을 확인하려면 전화번호 뒤 {n}자리를 입력해 주세요.",
+    "gateInputLabel": "전화번호 뒤 {n}자리",
+    "gateSubmit": "계속",
+    "gateVerifying": "확인 중…",
+    "gateError": "일치하지 않습니다. 다시 확인해 주세요.",
+    "gateRateLimited": "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."
   }
 }

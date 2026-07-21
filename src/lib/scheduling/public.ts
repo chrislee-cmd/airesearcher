@@ -16,6 +16,10 @@ export type SchedPublicCandidate = {
   batch_id: string;
   name: string | null;
   email: string | null;
+  // phone is resolved for the server-side entry gate (phone-tail check) only.
+  // It MUST never be returned to the client — every public route projects only
+  // `candidate.name` outward.
+  phone: string | null;
 };
 
 export type SchedTokenResolve =
@@ -36,7 +40,7 @@ export async function resolveSchedToken(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('sched_candidates')
-    .select('id, batch_id, name, email')
+    .select('id, batch_id, name, email, phone')
     .eq('participant_token', token)
     .maybeSingle();
   if (error) return { error: 'resolve_failed', status: 500 };

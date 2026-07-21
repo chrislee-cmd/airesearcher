@@ -2581,6 +2581,13 @@
     "sending": "Sending…",
     "sendFailed": "Failed to send the message.",
     "invalidTitle": "This link isn't available",
-    "invalidBody": "The link may be invalid or expired. Please check with the team that shared it."
+    "invalidBody": "The link may be invalid or expired. Please check with the team that shared it.",
+    "gateTitle": "Verify it's you",
+    "gateBody": "Enter the last {n} digits of your phone number to view your schedule.",
+    "gateInputLabel": "Last {n} digits of your phone",
+    "gateSubmit": "Continue",
+    "gateVerifying": "Verifying…",
+    "gateError": "That doesn't match. Please check and try again.",
+    "gateRateLimited": "Too many attempts. Please try again later."
   }
 }

@@ -8,11 +8,16 @@
 // body (IDOR / privilege defense). Mirrors the admin POST guards
 // (empty/too-long body) so both sides reject the same inputs.
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { resolveSchedToken } from '@/lib/scheduling/public';
 import {
   MAX_MESSAGE_LENGTH,
   SCHED_MESSAGE_COLUMNS,
 } from '@/lib/scheduling/messages';
+import {
+  participantGateStatus,
+  participantGateCookieName,
+} from '@/lib/scheduling/participant-gate';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +31,13 @@ export async function POST(
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
   const { admin, candidate } = gate;
+
+  // Same phone-tail gate as the read route — a leaked link can't post either.
+  const cookieStore = await cookies();
+  const cookieValue = cookieStore.get(participantGateCookieName(token))?.value;
+  if (participantGateStatus(candidate.phone, token, cookieValue) === 'required') {
+    return NextResponse.json({ error: 'gate_required' }, { status: 401 });
+  }
 
   let body: unknown;
   try {

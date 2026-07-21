@@ -1,8 +1,14 @@
+import type { ReactNode } from 'react';
 import { headers, cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { routing } from '@/i18n/routing';
 import { resolveSchedToken } from '@/lib/scheduling/public';
+import {
+  participantGateStatus,
+  participantGateCookieName,
+} from '@/lib/scheduling/participant-gate';
 import { ParticipantSchedule } from '@/components/scheduling/participant-schedule';
+import { ParticipantPhoneGate } from '@/components/scheduling/participant-phone-gate';
 import { ParticipantScheduleNotice } from '@/components/scheduling/participant-schedule-notice';
 import enMessages from '../../../../messages/en.json';
 
@@ -74,15 +80,29 @@ export default async function Page({
 
   const gate = await resolveSchedToken(token);
 
-  const body =
-    'error' in gate ? (
-      <ParticipantScheduleNotice />
-    ) : (
-      <ParticipantSchedule
-        token={token}
-        candidateName={gate.candidate.name}
-      />
+  // Phone-tail entry gate. A candidate with a phone on file must prove the tail
+  // before their schedule/chat renders (a leaked link alone isn't enough). No
+  // phone on file → gate skipped, token scope stays the only protection. The
+  // gate screen is deliberately generic — it never reveals whose link this is
+  // (mirrors the invalid-notice's no-leak stance) until identity is proven.
+  const cookieStore = await cookies();
+  const gateCookie =
+    'error' in gate
+      ? undefined
+      : cookieStore.get(participantGateCookieName(token))?.value;
+
+  let body: ReactNode;
+  if ('error' in gate) {
+    body = <ParticipantScheduleNotice />;
+  } else if (
+    participantGateStatus(gate.candidate.phone, token, gateCookie) === 'required'
+  ) {
+    body = <ParticipantPhoneGate token={token} />;
+  } else {
+    body = (
+      <ParticipantSchedule token={token} candidateName={gate.candidate.name} />
     );
+  }
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
