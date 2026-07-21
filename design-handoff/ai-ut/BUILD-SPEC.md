@@ -8,7 +8,7 @@
 ---
 
 ## §1 Class mapping (Conformance-first)
-> Card shell / header / toolbar / step node / rail / field / CTA rows = **identical to Probing §1**. AI-UT-specific rows below.
+> **Shell + assembly = `../WIDGET-SHELL.md` (SSOT, §S1 class map + §S2 assembly + §S3 identity). Build the shell from there regardless of port order.** Rows below are feature-specific only.
 
 | Element | Measured (proto) | Utility class / token |
 |---|---|---|
@@ -72,3 +72,16 @@ Proto interactions (picker, End session, back-to-live, canned monitor/captions) 
 
 ## §6 Open items
 - `PREVIEW` credit confirm. · "Test on my device" local-run branch (no link) detail. · Clip thumbnail source. · i18n ko/en/ja/th parity.
+
+
+---
+
+## §3b Initial state — ghost preview (defect-A fix, all data-dependent steps)
+> **Decision (2026-07-21): (c) hybrid.** A step whose input isn't ready yet renders a **ghost preview**, never a one-line placeholder bar.
+- **Ghost preview** = the REAL populated component (chips / rows / table) rendered **muted** (low opacity, neutral fill — the actual component, not a skeleton bar) + a thin label `Auto-generated after extraction` / `Example`.
+- **post-data** = the same component with real data (canonical — worker MUST build it).
+- The gated behavior (empty until data) is correct and stays; only the empty *rendering* changes from placeholder → ghost.
+- `demo-only` applies to **behavior only**, never to rendered content (§4).
+
+## §7 Strings — i18n keys only (canonical locale, EN = reference)
+> **Root fix for language drift:** render every string from the feature's existing **i18n namespace key**, never hardcode. The EN copy in this spec is **reference only** — do NOT ship it verbatim. App locale (currently `/en` default w/ Korean banner) then resolves automatically. Requirement: **0 hardcoded strings**, ko/en/ja/th parity.

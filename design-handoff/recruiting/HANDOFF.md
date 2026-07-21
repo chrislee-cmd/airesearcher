@@ -32,7 +32,9 @@
 - **Respondent drawer** (full Q→A + PII lock) — static/deferred.
 
 ## Done when
-- [ ] All §3 states render (open · collapsed · ready · published · extracting · error · empty · disabled).
+- [ ] All §3 states render — and each step's **post-data (populated) UI is built** (criteria chips, survey rows), not replaced by a placeholder bar.
+- [ ] **§1b assembly** holds: header toolbar is ONE pill `[💎│●│🎨│⤢]` (not detached boxes); rail threads all 4 steps.
+- [ ] **§7 strings**: ships Korean (canonical), no mixed EN/KO; ko/en/ja/th parity.
 - [ ] Every visual matches a §1 class / measured value.
 - [ ] `proposed-token:` (§2) mapped or raised (incl. `surface-locked`, `signal-warning-*`, `fg-amore-deep`).
 - [ ] Every `⚠️ contract-change:` (§5) resolved with the writer.
