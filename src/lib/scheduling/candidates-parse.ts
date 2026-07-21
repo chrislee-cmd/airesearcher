@@ -86,7 +86,9 @@ function findKeyContains(
 
 // Strong, unambiguous substrings that reliably denote a contact NUMBER / email —
 // deliberately excludes bare 핸드폰/휴대폰 (match device-model decoy columns).
+// i18n-allow-korean -- 업로드 스프레드시트 헤더 부분매칭 토큰(UI 아님)
 const PHONE_CONTAINS = ['전화번호', '연락처', '연락가능', '전화', 'phonenumber'];
+// i18n-allow-korean -- 업로드 스프레드시트 헤더 부분매칭 토큰(UI 아님)
 const EMAIL_CONTAINS = ['이메일', '메일', 'email'];
 
 function decodeCsvBuffer(buf: ArrayBuffer): string {
