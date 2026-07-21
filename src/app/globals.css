@@ -416,6 +416,51 @@
   --widget-header-bg-lav: var(--raw-pastel-lav);
   --widget-header-bg-sun: var(--raw-pastel-sun);
   --widget-header-bg-rose: var(--raw-pastel-rose);
+
+  /* =======================================================================
+     V2 Unified Widget Canvas — 전용 셸 토큰 (design-handoff SSOT).
+     CD `Widgets Canvas 1c.dc.html` 의 절대값을 **전용 토큰으로 승격**한다.
+     generic DS 토큰(radius-sm=14·surface-banner=#ffd53d)으로 폴백 금지 —
+     그게 #1 드리프트 원인(권위 역전)이라 SSOT §AUTHORITY 가 dedicated 강제.
+     hex 리터럴은 오직 이 CSS 파일에만 존재(check:design 스캔 대상 밖) →
+     TSX 는 var(--widget-*) 만 참조. 6위젯 공유 셸(recruiting 최초, desk-v3 재사용).
+     ======================================================================= */
+  /* 프레임 (절대값) */
+  --widget-card-radius: 20px;
+  --widget-card-border: #1d1b20;         /* ink 3px */
+  --widget-card-shadow: 4px 4px 0 #1d1b20;
+  --widget-header-divider: #1d1b20;      /* border-b 2px */
+  /* per-widget 헤더 파스텔 (CD 정확값 — raw-pastel-* 와 다름, 폴백 금지) */
+  --widget-header-sun: #ffe8a8;          /* recruiting */
+  --widget-header-sky: #cfe6ff;          /* probing */
+  --widget-header-mint: #cdebd9;         /* interpreter */
+  --widget-header-lav: #e7defe;          /* transcript */
+  --widget-header-peach: #ffd9be;        /* ai ut */
+  --widget-header-aqua: #bfe9ef;         /* desk */
+  /* 팔레트 (셸 + 레일 primitives) */
+  --widget-ink: #1d1b20;
+  --widget-amore: #ff5c8a;
+  --widget-green: #16a34a;
+  --widget-purple: #8b5cf6;
+  --widget-muted: #5b5965;               /* secondary */
+  --widget-muted-2: #8a8693;             /* tertiary */
+  --widget-placeholder: #a3a7ad;
+  --widget-surface-card: #fff;
+  --widget-surface-subtle: #f7f7f5;
+  --widget-surface-locked: #faf6ea;      /* locked survey row */
+  --widget-cta-disabled-bg: #eceef1;
+  --widget-badge-setup: #5b5965;
+  /* 반투명 라인/보더 (ink 알파) */
+  --widget-rail-line: rgba(29, 27, 32, 0.12);
+  --widget-border-soft: rgba(29, 27, 32, 0.14);
+  --widget-border-hair: rgba(29, 27, 32, 0.1);
+  --widget-border-dash: rgba(29, 27, 32, 0.18);
+  --widget-border-dash-strong: rgba(29, 27, 32, 0.22);
+  --widget-footer-divider: rgba(29, 27, 32, 0.08);
+  --widget-cta-shadow: 2px 2px 0 rgba(29, 27, 32, 0.15);
+  --widget-cta-disabled-border: rgba(29, 27, 32, 0.1);
+  --widget-toolbar-shadow: 2px 2px 0 #1d1b20;
+  --widget-card-selected-glow: 0 4px 12px rgba(255, 92, 138, 0.16);
 }
 
 /* =========================================================================

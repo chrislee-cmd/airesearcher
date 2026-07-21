@@ -28,6 +28,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
+import { RecruitingSetupCard } from '@/components/canvas/widgets/recruiting-v3/recruiting-setup-card';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
 import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
@@ -1115,13 +1116,10 @@ export function CanvasBoard({
                     진입이 가능해야 하므로. wrapper 만 감싸므로 카드가
                     활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
                 <div className={w.dimmed ? 'h-full opacity-50' : 'h-full'}>
-                <WidgetShell
-                  content={w}
-                  dashboardMode
-                  onFullview={() => openFullview(w.key)}
-                  dragHandleProps={{
+                {(() => {
+                  const dragHandleProps = {
                     draggable: true,
-                    onDragStart: (e) => {
+                    onDragStart: (e: ReactDragEvent<HTMLElement>) => {
                       // 스페이스바 hold 면 헤더 drag 중단 → 캔버스 pan 우선
                       // (Figma/Miro 표준). HTML5 dragstart 는 mouseDown 과
                       // 별개 fire 가능하므로 preventDefault 로 차단.
@@ -1132,14 +1130,32 @@ export function CanvasBoard({
                       onHandleDragStart(w.key)(e);
                     },
                     onDragEnd: onHandleDragEnd,
-                    onMouseDown: (e) => {
+                    onMouseDown: (e: ReactMouseEvent<HTMLElement>) => {
                       // 스페이스바 hold 면 stopPropagation 생략 → 이벤트가
                       // 상위 캔버스로 버블링되어 pan 이 시작.
                       if (isSpaceHeldRef.current) return;
                       e.stopPropagation();
                     },
-                  }}
-                />
+                  };
+                  const onFullview = () => openFullview(w.key);
+                  // recruiting = V3 통합 SSOT fresh 셸 (WidgetSetupShell +
+                  // 4스텝). 나머지 5위젯은 기존 WidgetShell (회귀 0) — desk-v3
+                  // 가 같은 fresh 셸로 후속 이관.
+                  return w.key === 'recruiting' ? (
+                    <RecruitingSetupCard
+                      content={w}
+                      dragHandleProps={dragHandleProps}
+                      onFullview={onFullview}
+                    />
+                  ) : (
+                    <WidgetShell
+                      content={w}
+                      dashboardMode
+                      onFullview={onFullview}
+                      dragHandleProps={dragHandleProps}
+                    />
+                  );
+                })()}
                 </div>
                 {/* click-to-focus 오버레이 — scale < FOCUS_THRESHOLD (탐색
                     모드) 에서만 활성. 위젯 표면 전체를 덮어 (1) 내부 컴포넌트로
