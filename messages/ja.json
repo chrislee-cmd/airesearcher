@@ -799,7 +799,8 @@
     "adminWritingSystem": "ライティングシステム（管理者）",
     "adminAnalytics": "アナリティクス（管理者）",
     "adminQaFeedback": "QAフィードバック（管理者）",
-    "adminRecruitingInvitations": "リクルーティングリクエスト（管理者）"
+    "adminRecruitingInvitations": "リクルーティングリクエスト（管理者）",
+    "adminRecruitingScheduling": "候補者スケジューリング（管理者）"
   },
   "SidebarGroups": {
     "design": "リサーチ設計",

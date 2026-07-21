@@ -709,7 +709,8 @@
     "adminWritingSystem": "라이팅 시스템 (관리자)",
     "adminAnalytics": "분석 대시보드 (관리자)",
     "adminQaFeedback": "QA 피드백 (관리자)",
-    "adminRecruitingInvitations": "리크루팅 요청 (관리자)"
+    "adminRecruitingInvitations": "리크루팅 요청 (관리자)",
+    "adminRecruitingScheduling": "후보자 스케줄링 (관리자)"
   },
   "SidebarGroups": {
     "design": "조사 설계",
