@@ -124,6 +124,7 @@ export function UtSetupAccordion({
             widget="moderator_ai"
             value={projectId}
             onChange={onProjectChange}
+            fullWidth
           />
         </Field>
       ),

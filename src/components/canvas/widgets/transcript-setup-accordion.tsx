@@ -107,6 +107,7 @@ export function TranscriptSetupAccordion({
             widget="quotes"
             value={projectId}
             onChange={onProjectChange}
+            fullWidth
           />
         </Field>
       ),

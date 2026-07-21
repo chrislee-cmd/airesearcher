@@ -4487,6 +4487,7 @@ export function TranslateConsole({
             widget="translate"
             value={projectId}
             onChange={handleProjectChange}
+            fullWidth
           />
         </Field>
       ),

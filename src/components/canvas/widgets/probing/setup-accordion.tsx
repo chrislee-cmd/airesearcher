@@ -220,6 +220,7 @@ export function ProbingSetupAccordion({
             widget="probing"
             value={projectId}
             onChange={onProjectChange}
+            fullWidth
           />
         </Field>
       ),
