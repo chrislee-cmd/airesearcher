@@ -31,7 +31,7 @@
    전부 부모(recruiting-card 의 RecruitingSetupFlow)가 소유하고 props 로 내려온다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   WidgetAccordion,
@@ -784,6 +784,19 @@ export type RecruitingSetupAccordionProps = {
 export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
   const t = useTranslations('Recruiting.setup');
   const accordion = useWidgetAccordion();
+
+  // 승인 즉시 해당 스텝을 접는다 — 승인 후 요약행으로 컬랩스해 스크롤 절감
+  // (사용자 요청). 사용자가 다시 펼치면(onOpenStep) manual override 로 유지되고,
+  // phase 가 그대로 approved 면 이 effect 는 재발화하지 않아 강제로 안 닫는다.
+  const { collapse } = accordion;
+  useEffect(() => {
+    if (props.criteriaPhase === 'approved') collapse(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.criteriaPhase]);
+  useEffect(() => {
+    if (props.surveyPhase === 'approved') collapse(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.surveyPhase]);
 
   const sourceSummary = (() => {
     const fileN = props.files.length;
