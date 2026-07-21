@@ -799,7 +799,8 @@
     "adminWritingSystem": "ระบบการเขียน (แอดมิน)",
     "adminAnalytics": "การวิเคราะห์ (แอดมิน)",
     "adminQaFeedback": "QA feedback (แอดมิน)",
-    "adminRecruitingInvitations": "คำขอสรรหาผู้เข้าร่วม (แอดมิน)"
+    "adminRecruitingInvitations": "คำขอสรรหาผู้เข้าร่วม (แอดมิน)",
+    "adminRecruitingScheduling": "การนัดหมายผู้สมัคร (แอดมิน)"
   },
   "SidebarGroups": {
     "design": "ออกแบบงานวิจัย",

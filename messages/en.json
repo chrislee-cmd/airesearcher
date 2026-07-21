@@ -709,7 +709,8 @@
     "adminWritingSystem": "Writing system (admin)",
     "adminAnalytics": "Analytics (admin)",
     "adminQaFeedback": "QA feedback (admin)",
-    "adminRecruitingInvitations": "Recruiting requests (admin)"
+    "adminRecruitingInvitations": "Recruiting requests (admin)",
+    "adminRecruitingScheduling": "Recruiting scheduling (admin)"
   },
   "SidebarGroups": {
     "design": "Research Design",
