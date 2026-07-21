@@ -19,7 +19,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { ChromeButton } from '@/components/ui/chrome-button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
@@ -379,8 +378,11 @@ export function RecruitingSetupAccordion({
                 isLast
               >
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 rounded-sm border border-line bg-paper-soft px-3.5 py-3 text-md text-mute">
-                    {t('setup.publishInfo')}
+                  {/* §H — publish info = surface-elevated(paper-soft) + link
+                      아이콘 + rounded-chrome(12). */}
+                  <div className="flex items-center gap-2 rounded-chrome border border-line bg-paper-soft px-3.5 py-3 text-md text-mute">
+                    <LinkIcon />
+                    <span>{t('setup.publishInfo')}</span>
                   </div>
                   {surveyPhase === 'approved' && (
                     <PublishPanel
@@ -462,7 +464,9 @@ function SetupStep({
       >
         {nodeState === 'done' ? '✓' : index}
       </span>
-      <h3 className="text-xl font-semibold text-ink">{title}</h3>
+      {/* §S1a 스텝 타이틀 = 14.5px/700(❌ text-xl semibold). rem arbitrary
+          (0.906rem=14.5px) — px 토큰 없음, 셸 §S1 절대값. */}
+      <h3 className="text-[0.906rem] font-bold text-ink">{title}</h3>
       <div className="mt-3 mb-6">{children}</div>
     </div>
   );
@@ -497,6 +501,26 @@ function CriteriaChip({
         <span className="text-xs font-bold text-amore">{requiredLabel}</span>
       )}
     </span>
+  );
+}
+
+// link 아이콘 — CD publish info 좌측. 인라인 SVG(외부 라이브러리 없음).
+function LinkIcon() {
+  return (
+    <svg
+      className="h-[18px] w-[18px] shrink-0 text-mute"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M7.5 10.5a2.5 2.5 0 0 0 3.5 0l2-2a2.5 2.5 0 0 0-3.5-3.5l-1 1M10.5 7.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.5 2.5 0 0 0 3.5 3.5l1-1"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -548,10 +572,12 @@ function SurveySectionRow({
   locked: boolean;
   lockedLabel: string;
 }) {
+  // §H — radius rounded-chrome(12, ❌ rounded-sm) · locked bg surface-locked
+  // (#faf6ea, ❌ paper-soft).
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-sm border border-line px-3 py-2.5 ${
-        locked ? 'bg-paper-soft' : 'bg-paper'
+      className={`flex items-center gap-2.5 rounded-chrome border border-line px-3 py-2.5 ${
+        locked ? 'bg-surface-locked' : 'bg-paper'
       }`}
     >
       <SectionIcon locked={locked} />
@@ -895,14 +921,17 @@ function SetupFooterCta({
     disabled = !canExtract;
   }
 
+  // §S1/§G CTA — active = ink 필 pill(Button primary=bg-ink, size cta=rounded-pill).
+  // ❌ ChromeButton primary(amore·각진). idle/disabled = surface-disabled+mute-soft.
   return (
-    <ChromeButton
+    <Button
       variant="primary"
-      size="lg"
+      size="cta"
       onClick={onClick}
       disabled={disabled || busy}
+      className="disabled:border-line disabled:bg-surface-disabled disabled:text-mute-soft disabled:shadow-none"
     >
       {label}
-    </ChromeButton>
+    </Button>
   );
 }

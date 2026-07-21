@@ -358,6 +358,9 @@
   --canvas-card-border-width: var(--component-card-border-width);
   --canvas-card-radius: var(--component-card-radius);
   --canvas-card-shadow: var(--component-card-shadow);
+  /* WIDGET-SHELL §S1a — 위젯 카드 프레임 전용 radius 토큰(CD 절대값 20px).
+     ❌ radius-sm(14)·canvas-card-radius 재사용 금지(프레임 drift #20 근본원인). */
+  --widget-card-radius: 20px;
   --canvas-card-header-bg: var(--surface-banner);
   --canvas-card-header-divider: var(--border-strong);
   --canvas-card-header-text: var(--fg-primary);
@@ -414,7 +417,9 @@
   --widget-header-bg-peach: var(--raw-pastel-peach);
   --widget-header-bg-mint: var(--raw-pastel-mint);
   --widget-header-bg-lav: var(--raw-pastel-lav);
-  --widget-header-bg-sun: var(--raw-pastel-sun);
+  /* WIDGET-SHELL §S3 — recruiting sun 헤더톤 = CD 절대값 #ffe8a8 (DS
+     raw-pastel-sun #fff1b6 재사용 금지 — AUTHORITY, CD 값을 굽히지 않음). */
+  --widget-header-bg-sun: #ffe8a8;
   --widget-header-bg-rose: var(--raw-pastel-rose);
 }
 
@@ -470,6 +475,13 @@
   --radius-sm: var(--raw-radius-sm);
   --radius-md: var(--raw-radius-md);
   --radius-pill: var(--raw-radius-pill);
+  /* WIDGET-SHELL §S1/§H — chrome radius 12px (toolbar pill·survey row·publish
+     info). CD 절대값 전용 토큰(rounded-sm=14 재사용 금지 — 권위역전 #20). */
+  --radius-chrome: 12px;
+
+  /* WIDGET-SHELL §H proposed-token — locked/disabled surface (CD 절대값). */
+  --color-surface-locked: #faf6ea;
+  --color-surface-disabled: #eceef1;
 
   /* Font-size scale (B-1, option C — conservative consolidation).
      Bucket boundaries derived from frequency audit of 781 text-[Npx]

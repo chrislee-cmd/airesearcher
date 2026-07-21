@@ -227,8 +227,10 @@ function WidgetShellInner({
       style={{
         background: 'var(--canvas-card-bg)',
         border: 'var(--canvas-card-border-width) solid var(--canvas-card-border)',
-        borderRadius: 'var(--canvas-card-radius)',
-        boxShadow: 'var(--canvas-card-shadow)',
+        // WIDGET-SHELL §S1a — 프레임 radius = 전용 토큰 20px(❌ canvas-card-radius=14).
+        borderRadius: 'var(--widget-card-radius)',
+        // §S1a — 프레임 shadow = memphis-md(❌ canvas-card-shadow=6px6px0 pop).
+        boxShadow: 'var(--shadow-memphis-md)',
       }}
     >
       <div
@@ -241,10 +243,15 @@ function WidgetShellInner({
           paddingTop: 16,
           paddingBottom: 16,
           // 우선순위: 사용자 per-widget 색(headerColor) > 행 색(부모 canvas-board
-          // 이 --widget-header-row-* 로 주입) > 전역 default(노란 banner).
+          // 이 --widget-header-row-* 로 주입) > per-widget 파스텔(§S1a/§S3 accent
+          // — ❌ 제네릭 banner yellow 폴백 금지). accent 없는 위젯만 banner 유지.
           background:
             headerColor ??
-            'var(--widget-header-row-bg, var(--canvas-card-header-bg))',
+            `var(--widget-header-row-bg, ${
+              content.meta.accent
+                ? `var(--widget-header-bg-${content.meta.accent}, var(--canvas-card-header-bg))`
+                : 'var(--canvas-card-header-bg)'
+            })`,
           color: 'var(--canvas-card-header-text)',
           fontFamily: 'var(--font-outfit), var(--font-sans)',
           borderBottom:
@@ -269,9 +276,10 @@ function WidgetShellInner({
         <div
           className="truncate"
           style={{
-            fontSize: 32,
+            // WIDGET-SHELL §S1a — 타이틀 Outfit 800 · 29px · ls -0.9(❌ 32px).
+            fontSize: 29,
             fontWeight: 800,
-            letterSpacing: '-0.02em',
+            letterSpacing: '-0.9px',
             lineHeight: 1.05,
             color: 'var(--canvas-card-header-text)',
           }}
