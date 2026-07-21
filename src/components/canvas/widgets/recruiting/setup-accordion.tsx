@@ -9,8 +9,9 @@
    schema)에서만 받고, 이 파일은 DOM/클래스(프레젠테이션)만 소유한다.
 
    4-step all-open 아코디언(소스·criteria·설문·발행) — 스텝노드+세로 레일,
-   데이터 의존 스텝의 pre-data = 고스트 프리뷰(muted 실 컴포넌트 + 라벨),
-   post-data = 실데이터(canonical), 하단 footNote + 단일 phase CTA. 접기 시
+   데이터 의존 스텝의 pre-data = CD .dc.html 그대로 솔리드 예시 칩/설문행 +
+   `예시` 라벨(§A Rev2 — muted 고스트 폐기), post-data = 실데이터로 교체,
+   하단 footNote + 단일 phase CTA. 접기 시
    요약 4행. published 핸드오프는 카드-레벨 WidgetStatusFooter(onPublishedChange).
    문자열 전부 `Recruiting.setup` i18n(하드코딩 0, canonical ko).
    ──────────────────────────────────────────────────────────────────── */
@@ -226,8 +227,8 @@ export function RecruitingSetupAccordion({
                 title={t('setup.step2Title')}
               >
                 {criteriaPhase === 'idle' && (
-                  // 👻 pre-data 고스트 프리뷰 — 실 CriteriaChip muted + 라벨.
-                  <GhostPreview label={t('setup.ghostNote')}>
+                  // pre-data = CD .dc.html 그대로 솔리드 예시 칩(§A Rev2).
+                  <ExamplePreview label={t('setup.ghostNote')}>
                     <div className="flex flex-wrap gap-2">
                       <CriteriaChip
                         category={t('setup.ghostCat1')}
@@ -248,7 +249,7 @@ export function RecruitingSetupAccordion({
                         requiredLabel={t('setup.required')}
                       />
                     </div>
-                  </GhostPreview>
+                  </ExamplePreview>
                 )}
                 {criteriaPhase === 'generating' && (
                   <GeneratingRow
@@ -295,8 +296,8 @@ export function RecruitingSetupAccordion({
                 title={t('setup.step3Title')}
               >
                 {criteriaPhase !== 'approved' && (
-                  // 👻 pre-data 고스트 프리뷰 — 실 SurveySectionRow muted + 라벨.
-                  <GhostPreview label={t('setup.ghostNote')}>
+                  // pre-data = CD .dc.html 그대로 솔리드 예시 설문행(§A Rev2).
+                  <ExamplePreview label={t('setup.ghostNote')}>
                     <div className="space-y-2">
                       <SurveySectionRow
                         title={t('setup.ghostSurvConsent')}
@@ -317,7 +318,7 @@ export function RecruitingSetupAccordion({
                         lockedLabel={t('setup.surveyLocked')}
                       />
                     </div>
-                  </GhostPreview>
+                  </ExamplePreview>
                 )}
                 {criteriaPhase === 'approved' &&
                   (surveyPhase === 'idle' || surveyPhase === 'generating') && (
@@ -528,9 +529,10 @@ function SurveySectionRow({
   );
 }
 
-// 👻 고스트 프리뷰(§3 c-hybrid) — 데이터 의존 스텝 pre-data 를 실 컴포넌트로
-// muted(opacity-40 grayscale) 렌더 + 얇은 라벨. placeholder 바 금지.
-function GhostPreview({
+// 예시 프리뷰(§A Rev2) — 데이터 의존 스텝 pre-data 를 CD .dc.html 그대로
+// **솔리드·꽉 찬 예시** 칩/설문행으로 렌더 + `예시` 라벨만. muted·저opacity·
+// grayscale·placeholder 금지(.dc.html 이 외형 SSOT). 비상호작용(예시라 클릭 X).
+function ExamplePreview({
   label,
   children,
 }: {
@@ -542,12 +544,7 @@ function GhostPreview({
       <div className="font-mono text-xs uppercase tracking-wide text-mute-soft">
         {label}
       </div>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none select-none opacity-40 grayscale"
-      >
-        {children}
-      </div>
+      <div className="pointer-events-none select-none">{children}</div>
     </div>
   );
 }

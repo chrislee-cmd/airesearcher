@@ -2527,7 +2527,7 @@
       "summaryCriteria": "{count}개 조건",
       "summarySurvey": "{sections}개 섹션 · {questions}개 질문",
       "summaryPublish": "Google Form",
-      "ghostNote": "추출 후 자동 생성 · 예시",
+      "ghostNote": "예시",
       "ghostCat1": "인구통계",
       "ghostCrit1": "연령 25–34",
       "ghostCat2": "직업",

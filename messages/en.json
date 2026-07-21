@@ -2527,7 +2527,7 @@
       "summaryCriteria": "{count} criteria",
       "summarySurvey": "{sections} sections · {questions} questions",
       "summaryPublish": "Google Form",
-      "ghostNote": "Auto-generated after extraction · example",
+      "ghostNote": "Example",
       "ghostCat1": "Demographics",
       "ghostCrit1": "Age 25–34",
       "ghostCat2": "Occupation",
