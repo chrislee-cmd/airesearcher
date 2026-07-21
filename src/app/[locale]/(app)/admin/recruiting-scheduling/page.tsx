@@ -9,6 +9,7 @@ import {
   type SchedBatch,
   type SchedCandidate,
 } from '@/components/admin/recruiting-scheduling-client';
+import type { SchedSlot } from '@/lib/scheduling/slots';
 
 // Super-admin-only shell for the recruiting-scheduling stack base (PR1). Same
 // gate as /admin/recruiting-invitations — getCurrentUser + isSuperAdminEmail +
@@ -46,6 +47,7 @@ export default async function Page({
       : (batches[0]?.id ?? null);
 
   let candidates: SchedCandidate[] = [];
+  let slots: SchedSlot[] = [];
   if (selectedBatchId) {
     // participant_token intentionally NOT selected — not exposed in PR1.
     const { data: candRows } = await admin
@@ -55,6 +57,21 @@ export default async function Page({
       .order('created_at', { ascending: true })
       .limit(2000);
     candidates = (candRows ?? []) as SchedCandidate[];
+
+    // Slots for this batch = slots whose candidate_id is in the batch. Fetched
+    // as a 2-step .in() query rather than a PostgREST embed — sched_slots and
+    // sched_batches have no direct FK, and a transitive embed would silently
+    // return 0 rows (PROJECT.md §7.10).
+    const candidateIds = candidates.map((c) => c.id);
+    if (candidateIds.length > 0) {
+      const { data: slotRows } = await admin
+        .from('sched_slots')
+        .select('id, candidate_id, start_at, end_at, status, location, note')
+        .in('candidate_id', candidateIds)
+        .order('start_at', { ascending: true })
+        .limit(5000);
+      slots = (slotRows ?? []) as SchedSlot[];
+    }
   }
 
   return (
@@ -62,6 +79,7 @@ export default async function Page({
       batches={batches}
       selectedBatchId={selectedBatchId}
       candidates={candidates}
+      slots={slots}
     />
   );
 }
