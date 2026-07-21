@@ -30,7 +30,6 @@ import {
 } from '@/components/desk-job-provider';
 import { DeskResultView } from '@/components/canvas/widgets/desk-result';
 import {
-  TREND_SOURCE_IDS,
   type DeskMode,
   type DeskCountryScope,
 } from '@/lib/desk-orchestrator/types';
@@ -41,15 +40,11 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { BrandLoader } from '@/components/ui/brand-loader';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Button } from '@/components/ui/button';
-import { ModeCardGroup } from '@/components/ui/mode-button';
-import { ChipField } from '@/components/ui/chip-field';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Modal } from '@/components/ui/modal';
-import { DateRangePopover } from '@/components/ui/date-range-popover';
-import { SelectMenu } from '@/components/ui/select-menu';
-import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
-import { Field } from '@/components/canvas/shell/field';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { DeskSetupAccordion } from './desk/setup-accordion';
+import { useProjectSelection } from '@/components/project-selection-provider';
 import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -60,28 +55,7 @@ import { Banner } from '@/components/canvas/shell/banner';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { buildArtifactBaseName } from '@/lib/filename';
 import { prefillKey } from '@/lib/workspace';
-import {
-  DESK_REGIONS,
-  type DeskRegion,
-} from '@/lib/desk-sources';
-
-type RangePreset =
-  | 'all'
-  | 'week'
-  | 'month'
-  | 'quarter'
-  | 'year'
-  | 'three_years'
-  | 'custom';
-const RANGE_PRESETS: { id: RangePreset; days: number | null }[] = [
-  { id: 'all', days: null },
-  { id: 'week', days: 7 },
-  { id: 'month', days: 30 },
-  { id: 'quarter', days: 90 },
-  { id: 'year', days: 365 },
-  { id: 'three_years', days: 1095 },
-  { id: 'custom', days: null },
-];
+import { type DeskRegion } from '@/lib/desk-sources';
 
 function splitKeywords(raw: string): string[] {
   return raw
@@ -90,15 +64,8 @@ function splitKeywords(raw: string): string[] {
     .filter(Boolean);
 }
 
-// 데스크 세부 옵션 trigger (지역 SelectMenu · 기간 DateRangePopover) 공유 규격
-// — 밸런스 튜닝 h-10 확정값을 한 곳에서 소유해 두 trigger 가 같은 행에서
-// 높이·보더·폰트 완전 동일하도록 정합. 공유 primitive
-// (ui/select-menu) 의 SIZE 맵을 건드리지 않고 로컬 상수로 두는 이유 = "데스크
-// 단독" 제약(타 위젯 영향 0). 세 곳 복붙 대신 이 상수를 buttonClassName /
-// trigger className 으로 공유한다. 규격 자체는 위젯 전역 공용 primitive
-// (ui/control-trigger 의 CONTROL_TRIGGER_CLASS) 로 승격 — 전사록/리크루팅/통역
-// DropdownMenu trigger 와도 h-10/보더/chevron 완전 정합 (드롭다운 통일 spec).
-const DESK_OPTION_TRIGGER_CLASS = CONTROL_TRIGGER_CLASS;
+// 지역/기간/목적/견적 컨트롤은 DeskSetupAccordion(desk/setup-accordion) 이
+// 4-스텝으로 소유한다 — 옛 평면 controlsForm 은 probing 셸 미러로 승격됨.
 
 // Fullview 상단 "이전 산출물" 드롭다운의 option 라벨 — 리크루팅 응답
 // fullview 의 selectorLabel(제목 (날짜)) 패턴에 status 접미사만 추가.
@@ -135,6 +102,10 @@ export function DeskCardBody() {
   const { notify: notifyDeduction } = useCreditDeduction();
   // 위젯별 동시사용 게이트 (#512) — 잡 실행 시 슬롯 획득, 잡 종료 시 반납.
   const gate = useWidgetGate('desk');
+  // 프로젝트 선택 — STEP1 ProjectPicker 의 위젯별 독립 슬롯('desk'). 미선택이면
+  // null → doSubmit 에서 localStorage active project 로 폴백(회귀 0).
+  const { getSelection, setSelection } = useProjectSelection();
+  const projectId = getSelection('desk');
 
   // ─── inputs ──────────────────────────────────────────────────────────────
   // 리서치 목적 mode (데스크 v2). 기본 = 트렌드 — 목적 기반 flow 가 v2 의
@@ -318,7 +289,7 @@ export function DeskCardBody() {
           regions: Array.from(regions),
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
-          project_id: readActiveProjectId(),
+          project_id: projectId ?? readActiveProjectId(),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -521,23 +492,8 @@ export function DeskCardBody() {
   // trend / market 모두 서버가 소스를 자동 선정하므로 키워드만 있으면 실행 가능.
   const canRun =
     !submitting && !pendingJobId && !isWorking && hasKeywords;
-  // ── Input-time scope estimate (spec-down §F) ──────────────────────────────
-  // Rough "약 N회 검색" so the user can shrink scope before a heavy run that
-  // would only yield a raw-data dump. A single keyword expands to +4 similar
-  // server-side, so treat 1 keyword as 5. The product (kw × sources × regions)
-  // is an upper bound — region-only-aware sources don't truly multiply by
-  // regions — but it tracks the crawl cap math closely enough for guidance.
-  const kwCountForEstimate = keywords.length;
-  const effectiveKwForEstimate = kwCountForEstimate <= 1 ? 5 : kwCountForEstimate;
-  // trend / market 은 서버 자동 선정 소스 수 기준 (trend 의 부정 filter 나
-  // market 의 소스 세트 차이는 소량이라 견적에선 trend 소스 수로 근사).
-  const estimateSourceCount = TREND_SOURCE_IDS.length;
-  const estimatedSearches = hasKeywords
-    ? effectiveKwForEstimate *
-      Math.max(estimateSourceCount, 1) *
-      Math.max(regions.size, 1)
-    : 0;
-  const estimateHeavy = estimatedSearches >= 60;
+  // 입력 시점 범위 견적("약 N회 검색")은 STEP4 안에서 DeskSetupAccordion 이
+  // 소유·렌더한다(keywords + regions 로 자체 계산 — 옛 controlsForm 과 동일 식).
   const showResult = !!(job?.status === 'done' && job.output);
 
   // 헤더 pill 로 push 할 live state. 우선순위:
@@ -625,16 +581,6 @@ export function DeskCardBody() {
       });
     }
   }, [job, gate]);
-
-  // 수집 기간 quick-pick — RANGE_PRESETS 를 popover preset 형태로 매핑.
-  // 'custom' 은 캘린더 직접 선택이라 quick-pick 에서 제외. 'all' 은 days=null
-  // (범위 해제) 로.
-  const rangePresets = RANGE_PRESETS.filter((p) => p.id !== 'custom').map(
-    (p) => ({
-      label: tDesk(`range_${p.id}` as const),
-      days: p.id === 'all' ? null : p.days,
-    }),
-  );
 
   // ─── active (산출물 영역 노출 여부) ────────────────────────────────────────
   // 컨트롤 패널은 phase 무관 항상 노출된다. `active` 는 그 아래 산출물 영역
@@ -762,151 +708,31 @@ export function DeskCardBody() {
     </Banner>
   ) : null;
 
-  // 컨트롤 폼 — idle 보드 + active slim bar 확장 시 공유. 순서는 위→아래로
-  // 세부 옵션(지역/기간) → 주제·키워드 입력 → 리서치 목적 mode. 범위 견적,
-  // 실행 CTA 가 그 아래 따른다.
-  // 리서치 목적 2 mode 카드 — 라디오 2개 모두 enabled + 실행 가능. `soon`
-  // 배지는 아직 미구현 mode 를 위한 자리로 남겨 두되, 현재 2 mode 는 모두
-  // 라이브라 아무도 켜지 않는다. (custom mode 는 제거됨.)
-  // 카드 UI 는 ModeCardGroup primitive (ui/mode-button.tsx) — 시각 무변경.
-  const MODE_OPTIONS: { key: DeskMode; icon: string; soon?: boolean }[] = [
-    { key: 'trend', icon: '🔥' },
-    { key: 'market', icon: '📊' },
-  ];
-  const modeSelector = (
-    <ModeCardGroup
-      ariaLabel={tDesk('modeLabel')}
-      options={MODE_OPTIONS.map((opt) => ({
-        key: opt.key,
-        icon: opt.icon,
-        label: tDesk(`modeTitle.${opt.key}` as never),
-        description: tDesk(`modeDesc.${opt.key}` as never),
-        soon: opt.soon,
-        soonLabel: tDesk('modeSoonBadge'),
-      }))}
-      value={mode}
-      onChange={(key) => setMode(key as DeskMode)}
-    />
-  );
-
+  // 컨트롤 폼 — probing/interpreter 와 동일한 공유 셸 미러: 유스케이스 4-스텝
+  // 아코디언(DeskSetupAccordion)이 프로젝트 → 주제·키워드 → 리서치 목적 →
+  // 수집 범위(+견적)를 소유한다. 잡 생성·mode·scope 값은 여기 상태를 그대로
+  // 배선(회귀 0). 실행 CTA 는 아래 WidgetPrimaryCta(우측 중앙 고정 앵커).
   const controlsForm = (
-    <div className="space-y-5">
-      {/* 세부 옵션 — 지역 / 기간.
-          밸런스 튜닝(desk 예시): 필드 높이를 h-8 → h-10 으로 확대해 넓어진
-          클러스터(max-w-2xl) 대비 왜소함을 해소. SelectMenu/DateRangePopover 는
-          공유 primitive 라 SIZE 맵을 건드리지 않고 buttonClassName 로컬
-          오버라이드로 데스크 안에서만 키운다 (타 위젯 영향 0 = "데스크 단독"
-          제약). 최종 px 는 preview 로 조정 (spec 결정 3). */}
-      <Field label={tDesk('boardOptionsLabel')}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectMenu
-            multi
-            options={DESK_REGIONS.map((r) => ({
-              value: r,
-              label: tDesk(`region.${r}`),
-            }))}
-            value={Array.from(regions)}
-            onChange={(next) => {
-              if (next.length === 0) return; // 최소 1개 보장
-              // region 은 카테고리→소스 가시성만 좁힌다(카테고리 선택은 유지).
-              setRegions(new Set(next as DeskRegion[]));
-            }}
-            placeholder={tDesk('regionLabel')}
-            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
-          />
-
-          <DateRangePopover
-            value={{ from: dateFrom, to: dateTo }}
-            onChange={(next) => {
-              setDateFrom(next.from);
-              setDateTo(next.to);
-            }}
-            presets={rangePresets}
-            placeholder={tDesk('range_all')}
-            locale={locale}
-            buttonClassName={DESK_OPTION_TRIGGER_CLASS}
-          />
-        </div>
-      </Field>
-
-      {/* 주제 · 키워드 (핵심 입력) */}
-      <Field label={tDesk('boardTopicLabel')}>
-        <ChipField
-          variant="bordered"
-          values={keywords}
-          onChange={setKeywords}
-          maxItems={10}
-          commitOnComma
-          placeholderEmpty={tDesk('keywordPlaceholder')}
-          placeholderAdd={tDesk('keywordAddMore')}
-        />
-      </Field>
-
-      {/* 리서치 목적 — 3 mode selector (데스크 v2) */}
-      <Field label={tDesk('modeLabel')}>{modeSelector}</Field>
-
-      {/* 국가 범위 — 한국 only / 글로벌. 국가 범위는 market 보고서 구조를
-          국내 only ↔ 국내+해외+대비로 가르는 시장조사 전용 값이라, trend 에선
-          서버가 안 쓴다 → market 선택 시에만 노출(trend 은 완전히 숨김).
-          리서치 목적 Field 바로 아래에 두어, 등장/변화해도 위 필드(주제·목적)를
-          밀지 않는다(레이아웃 안정성). scope 값·payload 로직은 무변경 — 순수
-          배치/노출. default = 한국 only(현행 동작 보존). */}
-      {mode === 'market' && (
-        <Field label={tDesk('countryScopeLabel')}>
-          <ModeCardGroup
-            ariaLabel={tDesk('countryScopeLabel')}
-            columns={2}
-            options={[
-              {
-                key: 'kr',
-                icon: '🇰🇷',
-                label: tDesk('countryScopeTitle.kr'),
-                description: tDesk('countryScopeDesc.kr'),
-              },
-              {
-                key: 'global',
-                icon: '🌐',
-                label: tDesk('countryScopeTitle.global'),
-                description: tDesk('countryScopeDesc.global'),
-              },
-            ]}
-            value={countryScope}
-            onChange={(key) => setCountryScope(key as DeskCountryScope)}
-          />
-        </Field>
-      )}
-
-      {/* 수집 소스 — trend / market 모두 서버가 목적 기반으로 자동 선정한다.
-          trend 는 어떤 소스가 쓰이는지 안내 문구만 노출. */}
-      {mode === 'trend' && (
-        <p className="text-xs leading-[1.6] text-mute-soft">
-          {tDesk('modeTrendSourcesHint')}
-        </p>
-      )}
-
-      {/* Scope estimate — heavy 범위면 warning 톤 + 줄이기 유도. market 은
-          실행 차단 상태라 견적 비노출. */}
-      {hasKeywords && mode !== 'market' && (
-        <p
-          className={`text-xs leading-[1.6] ${
-            estimateHeavy ? 'text-amore' : 'text-mute-soft'
-          }`}
-        >
-          {tDesk('estimateLabel', {
-            kw: effectiveKwForEstimate,
-            src: Math.max(estimateSourceCount, 1),
-            region: Math.max(regions.size, 1),
-            count: estimatedSearches,
-          })}
-          {' · '}
-          {estimateHeavy ? tDesk('estimateHeavy') : tDesk('estimateOk')}
-        </p>
-      )}
-
-      {/* 실행 CTA 는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로 이동 — 6 위젯
-          주 CTA 통일. body root(relative) 에 anchor 되므로 컨트롤 폼 안에는
-          더 이상 두지 않는다. 라벨은 데스크 리포트 산출이라 "검색" 유지. */}
-    </div>
+    <ControlBoardPanel.Region>
+      <DeskSetupAccordion
+        projectId={projectId}
+        onProjectChange={(id) => setSelection('desk', id)}
+        keywords={keywords}
+        onKeywordsChange={setKeywords}
+        mode={mode}
+        onModeChange={setMode}
+        countryScope={countryScope}
+        onCountryScopeChange={setCountryScope}
+        regions={regions}
+        onRegionsChange={setRegions}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateRangeChange={(next) => {
+          setDateFrom(next.from);
+          setDateTo(next.to);
+        }}
+      />
+    </ControlBoardPanel.Region>
   );
 
   return (

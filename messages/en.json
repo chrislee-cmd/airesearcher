@@ -1292,6 +1292,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
+      "fieldProject": "Project",
+      "step2Short": "Topics & keywords",
+      "step2Title": "Enter the topics and keywords to research",
+      "step2Summary": "{count} keyword(s)",
+      "step3Short": "Research purpose",
+      "step3Title": "Choose the research purpose",
+      "step4Short": "Scope",
+      "step4Title": "Set the collection scope",
+      "change": "Change",
+      "optional": "(optional)"
+    },
     "keywordLabel": "Keywords",
     "keywordPlaceholder": "Type a keyword and press Enter",
     "keywordAddMore": "Add another…",

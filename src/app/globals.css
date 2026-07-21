@@ -82,6 +82,8 @@
   --raw-pastel-sun: #fff1b6;
   --raw-pastel-sky: #cfe6ff;
   --raw-pastel-rose: #ffd0e2;
+  /* desk 위젯 헤더 파스텔 (Canvas 1c) — CD 지정 절대값. sky 와 형제 톤. */
+  --raw-pastel-cyan: #bfe9ef;
 
   /* signal */
   --raw-signal-success: #16a34a;
@@ -181,6 +183,7 @@
   --raw-pastel-sun: #f8f1d4;
   --raw-pastel-sky: #e0eaf3;
   --raw-pastel-rose: #f5e6ec;
+  --raw-pastel-cyan: #dfeced;
 
   /* signal (동일) */
   --raw-signal-success: #16a34a;
@@ -437,6 +440,7 @@
   --widget-header-bg-lav: var(--raw-pastel-lav);
   --widget-header-bg-sun: var(--raw-pastel-sun);
   --widget-header-bg-rose: var(--raw-pastel-rose);
+  --widget-header-bg-cyan: var(--raw-pastel-cyan);
 
   /* widget 카드 프레임(Canvas 1c) — probing·interpreter 세팅 표면 셸의 구조
      radius. 카드 셸(20)·통합 툴바 pill(10). 파스텔 헤더밴드 색은 위
@@ -477,6 +481,7 @@
   --color-sun: var(--raw-pastel-sun);
   --color-sky: var(--raw-pastel-sky);
   --color-rose: var(--raw-pastel-rose);
+  --color-cyan: var(--raw-pastel-cyan);
 
   /* AM / PM chart accents (data visualisation only) */
   --color-am-accent: var(--raw-signal-am);

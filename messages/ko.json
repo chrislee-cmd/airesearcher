@@ -1292,6 +1292,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "프로젝트",
+      "step1Title": "작업중인 프로젝트를 선택해주세요",
+      "step1Selected": "선택 완료",
+      "step1BulkTag": "일괄",
+      "fieldProject": "프로젝트",
+      "step2Short": "주제·키워드",
+      "step2Title": "조사할 주제·키워드를 입력해주세요",
+      "step2Summary": "{count}개 키워드",
+      "step3Short": "리서치 목적",
+      "step3Title": "리서치 목적을 선택해주세요",
+      "step4Short": "수집 범위",
+      "step4Title": "수집 범위를 설정해주세요",
+      "change": "변경",
+      "optional": "(선택)"
+    },
     "keywordLabel": "키워드",
     "keywordPlaceholder": "키워드 입력 후 Enter",
     "keywordAddMore": "키워드 추가…",

@@ -1382,6 +1382,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "step1Selected": "เลือกแล้ว",
+      "step1BulkTag": "ทั้งหมด",
+      "fieldProject": "โปรเจกต์",
+      "step2Short": "หัวข้อ·คีย์เวิร์ด",
+      "step2Title": "กรอกหัวข้อและคีย์เวิร์ดที่ต้องการค้นคว้า",
+      "step2Summary": "{count} คีย์เวิร์ด",
+      "step3Short": "วัตถุประสงค์การวิจัย",
+      "step3Title": "เลือกวัตถุประสงค์การวิจัย",
+      "step4Short": "ขอบเขต",
+      "step4Title": "ตั้งค่าขอบเขตการเก็บข้อมูล",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)"
+    },
     "keywordLabel": "คีย์เวิร์ด",
     "keywordPlaceholder": "พิมพ์คีย์เวิร์ดแล้วกด Enter",
     "keywordAddMore": "เพิ่มอีก…",
