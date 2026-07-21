@@ -4,6 +4,14 @@
 >
 > **How this reaches the worker.** CD cannot write to this repo. Flow: CD updates the package → human commits it under `design-handoff/` → Claude Code reads it by repo path. There is no other channel; the repo is the single source of exchange.
 
+## AUTHORITY — design-led (greenfield) widgets, CD = visual SSOT
+> The integ widgets (Probing · Interpreter · Recruiting · Transcript · AI UT · Desk) are **net-new CD designs, NOT bound to the pre-existing app design system.** Appearance priority:
+> 1. **CD is the visual source of truth** — the `.dc.html` + BUILD-SPEC define how the widget looks. Reproduce it.
+> 2. Existing DS tokens/classes are a **convenience vocabulary**, used ONLY where they already reproduce the CD value exactly.
+> 3. **On conflict, CD wins.** The gap is a DS gap to fill (add a `proposed-token` / new component) — never a CD value to bend toward a DS default.
+> Do not "reconcile" these widgets into legacy DS components. Realize the CD design; extend the DS to fit it. `hex/px-forbidden` means **promote CD's value to a token**, NOT substitute the nearest existing DS default.
+> **§D Anti-anchoring (build fresh, don't edit legacy UI):** the worker builds the presentation as a **NEW component** per the CD `.dc.html` (e.g. `setup-accordion.tsx`, like Probing did). **Reuse logic/data only** (hooks · API · schema · extract · fit · forms). **Do NOT edit or extend pre-existing UI components** (`recruiting-wizard/wizard.tsx`, `conditions-panel.tsx`, old control panels) — they are **superseded** by the CD design. Only `WIDGET-SHELL.md` is shared. Editing legacy UI = anchoring to the old design system = the exact inversion this handoff forbids.
+
 ## How the worker consumes a feature
 1. Open `design-handoff/<feature>/HANDOFF.md` first — it is the entry point (read order, file roles, porting steps, done-when checklist).
 2. Read `BUILD-SPEC.md` — the contract (identity, §1 class map, §2 proposed-tokens, §3 state matrix, §4 interaction disclaimer, §5 contract-change, §6 open items).
