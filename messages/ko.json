@@ -2692,7 +2692,7 @@
       "step1Short": "소스",
       "step1Title": "모집 소스 자료를 올려주세요 (RFP · 브리프 · 이메일)",
       "pasteLabel": "텍스트 붙여넣기",
-      "pastePlaceholder": "RFP · 브리프 · 이메일 텍스트를 그대로 붙여넣으세요.",
+      "pastePlaceholder": "RFP · 브리프 · 모집 이메일을 붙여넣으세요…",
       "uploadLabel": "파일 업로드",
       "uploadHint": "pdf · docx · xlsx · csv · txt · 최대 10개",
       "uploadDrop": "끌어다 놓거나 클릭해 업로드",
