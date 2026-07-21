@@ -32,7 +32,7 @@ export type WidgetStateInfo =
 
 export type WidgetState = WidgetStateInfo['kind'];
 
-export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose';
+export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose' | 'cyan';
 
 export type WidgetContent = {
   key: string;
@@ -48,6 +48,12 @@ export type WidgetContent = {
     // localized 라벨을 우선 노출하고, 해석 실패 시 label 로 폴백한다.
     labelKey?: string;
     accent: AccentColor;
+    // 옵션(opt-in): 'v3' 면 canvas-board 가 이 위젯을 WIDGET-SHELL Frame spec
+    // 셸(widget-shell-v3 — radius 20·3px border·cyan 헤더·단일 툴바 pill·ink
+    // CTA)로 렌더한다. 미지정 위젯은 기존 production 셸(140px 밴드) 그대로 —
+    // 크로스위젯 회귀 0. greenfield v3 위젯(Desk·recruiting)이 공유 (통합 SSOT
+    // #1114, AUTHORITY §D fresh 신규 빌드). 헤더 파스텔은 accent(cyan)로 결정.
+    frame?: 'v3';
     cost?: number;
     // 옵션: cost 의 1-line 표기를 통째로 override. 일반 위젯은 cost 만
     // 두면 셸이 "N 크레딧" / "무료" 자동 그림. 단일 숫자로 표현이 어려운

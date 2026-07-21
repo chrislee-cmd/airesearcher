@@ -82,9 +82,15 @@
   --raw-pastel-sun: #fff1b6;
   --raw-pastel-sky: #cfe6ff;
   --raw-pastel-rose: #ffd0e2;
+  /* cyan — Desk Research 위젯 아이덴티티 (README pastel #bfe9ef). Probing
+     sky 와 의도적으로 구분 (통합 SSOT #1114, WIDGET-SHELL Frame spec). */
+  --raw-pastel-cyan: #bfe9ef;
 
   /* signal */
   --raw-signal-success: #16a34a;
+  /* collapsed 요약 행 tint (통합 SSOT — 스텝 레일 접힘 상태). */
+  --raw-signal-success-bg: #f4fbf6;
+  --raw-signal-success-line: #cdeed8;
   --raw-signal-warning: #fb923c;
   --raw-signal-warning-bg: #fff1e6;
   --raw-signal-warning-line: #ffd9bf;
@@ -173,9 +179,12 @@
   --raw-pastel-sun: #f8f1d4;
   --raw-pastel-sky: #e0eaf3;
   --raw-pastel-rose: #f5e6ec;
+  --raw-pastel-cyan: #dbeef1;
 
   /* signal (동일) */
   --raw-signal-success: #16a34a;
+  --raw-signal-success-bg: #eef5f0;
+  --raw-signal-success-line: #d8e6dd;
   --raw-signal-warning: #fb923c;
   --raw-signal-warning-bg: #fff1e6;
   --raw-signal-warning-line: #ffd9bf;
@@ -271,9 +280,12 @@
   --raw-pastel-sun: #ffff00;
   --raw-pastel-sky: #00ffff;
   --raw-pastel-rose: #ff0099;
+  --raw-pastel-cyan: #00ffcc;
 
   /* signal — 형광 대비색 */
   --raw-signal-success: #00ff00;
+  --raw-signal-success-bg: #00ff00;
+  --raw-signal-success-line: #00cc00;
   --raw-signal-warning: #ff9900;
   --raw-signal-warning-bg: #00ffff;
   --raw-signal-warning-line: #ff00ff;
@@ -416,6 +428,12 @@
   --widget-header-bg-lav: var(--raw-pastel-lav);
   --widget-header-bg-sun: var(--raw-pastel-sun);
   --widget-header-bg-rose: var(--raw-pastel-rose);
+  --widget-header-bg-cyan: var(--raw-pastel-cyan);
+
+  /* WIDGET-SHELL Frame spec — Desk Research 헤더 밴드 전용 토큰 (통합 SSOT
+     #1114). CD 절대값을 전용 토큰으로 승격 — 일반 banner yellow 로 폴백 금지
+     (권위 역전 방지). v3 셸이 소비. */
+  --widget-header-cyan: var(--raw-pastel-cyan);
 }
 
 /* =========================================================================
@@ -449,6 +467,7 @@
   --color-sun: var(--raw-pastel-sun);
   --color-sky: var(--raw-pastel-sky);
   --color-rose: var(--raw-pastel-rose);
+  --color-cyan: var(--raw-pastel-cyan);
 
   /* AM / PM chart accents (data visualisation only) */
   --color-am-accent: var(--raw-signal-am);
@@ -456,6 +475,8 @@
 
   /* Signal */
   --color-success: var(--raw-signal-success);
+  --color-signal-success-bg: var(--raw-signal-success-bg);
+  --color-signal-success-line: var(--raw-signal-success-line);
   --color-warning: var(--raw-signal-warning);
   --color-warning-bg: var(--raw-signal-warning-bg);
   --color-warning-line: var(--raw-signal-warning-line);
@@ -470,6 +491,12 @@
   --radius-sm: var(--raw-radius-sm);
   --radius-md: var(--raw-radius-md);
   --radius-pill: var(--raw-radius-pill);
+  /* chrome(12px) — 스텝 레일 요약/hint 박스. rounded-chrome 유틸. */
+  --radius-chrome: var(--raw-radius-chrome);
+  /* WIDGET-SHELL Frame spec — 카드 radius 절대값 20px (통합 SSOT #1114).
+     테마 무관 절대값(README "radius stays absolute regardless of size"):
+     generic radius-sm(14) 로 폴백 금지 = 권위 역전 방지. rounded-widget-card. */
+  --radius-widget-card: 20px;
 
   /* Font-size scale (B-1, option C — conservative consolidation).
      Bucket boundaries derived from frequency audit of 781 text-[Npx]
@@ -506,6 +533,11 @@
   --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
+
+  /* WIDGET-SHELL Frame spec 전용 그림자 (통합 SSOT #1114) — CD 절대값 승격.
+     card = 4px 4px 0 ink · toolbar pill / CTA = 2px 2px 0 ink. shadow-widget-*. */
+  --shadow-widget-card: var(--raw-memphis-lg) 0 var(--color-ink);
+  --shadow-widget-pill: var(--raw-memphis-sm) 0 var(--color-ink);
 }
 
 /* =========================================================================

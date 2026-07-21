@@ -28,6 +28,9 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
+// 통합 SSOT #1114 — frame:'v3' 위젯(Desk·recruiting greenfield)은 새 Frame
+// spec 셸로 렌더. 나머지는 기존 production 셸 그대로 (크로스위젯 회귀 0).
+import { WidgetShellV3 } from '@/components/canvas/shell/widget-shell-v3';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
 import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
@@ -1086,6 +1089,10 @@ export function CanvasBoard({
             // 행별 헤더 톤 — 실제 시각적 행(pos.row) 기준. 위젯을 다른 행으로
             // 드래그하면 새 행 색을 따라간다 (위젯 정체성이 아니라 위치 기준).
             const tone = ROW_HEADER_TONE[pos.row] ?? ROW_HEADER_TONE[0];
+            // 통합 SSOT #1114 — frame:'v3' 위젯은 새 Frame spec 셸. v3 셸은 행
+            // 톤(--widget-header-row-bg)을 무시하고 위젯 accent 파스텔로 헤더를
+            // 그린다(위젯이 헤더 소유). 미지정 위젯은 기존 셸 + 행 톤 그대로.
+            const Shell = w.meta.frame === 'v3' ? WidgetShellV3 : WidgetShell;
             return (
               <div
                 key={w.key}
@@ -1115,7 +1122,7 @@ export function CanvasBoard({
                     진입이 가능해야 하므로. wrapper 만 감싸므로 카드가
                     활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
                 <div className={w.dimmed ? 'h-full opacity-50' : 'h-full'}>
-                <WidgetShell
+                <Shell
                   content={w}
                   dashboardMode
                   onFullview={() => openFullview(w.key)}

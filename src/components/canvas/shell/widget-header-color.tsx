@@ -25,7 +25,11 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
+import {
+  IconButton,
+  type IconButtonSize,
+  type IconButtonVariant,
+} from '@/components/ui/icon-button';
 
 const STORAGE_PREFIX = 'widget-header-color:';
 
@@ -87,9 +91,16 @@ const POPOVER_WIDTH = 220;
 export function WidgetHeaderColorPicker({
   value,
   onChange,
+  // 트리거 외형 — 기본은 production 셸의 ghost/sm 박스(회귀 0). v3 툴바
+  // pill 세그먼트는 bare glyph 를 원하므로 plain/compact 를 주입한다
+  // (WIDGET-SHELL Frame spec — 단일 pill 안 15px stroke 팔레트 아이콘).
+  triggerVariant = 'ghost',
+  triggerSize = 'sm',
 }: {
   value: string | null;
   onChange: (color: string | null) => void;
+  triggerVariant?: IconButtonVariant;
+  triggerSize?: IconButtonSize;
 }) {
   const t = useTranslations('Shell');
   const [open, setOpen] = useState(false);
@@ -150,8 +161,8 @@ export function WidgetHeaderColorPicker({
       <IconButton
         ref={triggerRef}
         aria-label={t('headerColorSelect')}
-        variant="ghost"
-        size="sm"
+        variant={triggerVariant}
+        size={triggerSize}
         // 트리거 자체가 dnd 핸들 안에 있어 mousedown 이 헤더 drag 를 시작
         // 시킬 수 있음 — stopPropagation 으로 차단 (popover 는 portal 이라
         // DOM 상 헤더 밖이라 별도 보호 불필요).
