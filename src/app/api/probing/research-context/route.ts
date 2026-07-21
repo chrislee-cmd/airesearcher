@@ -21,6 +21,9 @@ export const maxDuration = 15;
 // 입력 한도 — server-side cap. UI 도 같은 한도를 채택.
 const GOAL_MAX = 2_000;
 const KRQ_MAX = 2_000;
+// 주입 질문 (STEP4, 결정 ②) — 질문당/개수 상한. UI 도 같은 한도.
+const QUESTION_MAX = 500;
+const QUESTIONS_MAX_COUNT = 30;
 
 // hypotheses 는 은퇴됨 (PR: probing-hypotheses-retire-ghost-injection). GET 은
 // 노출하지 않고 PUT 은 받아도 무시한다 (옛 클라가 보내도 zod 가 unknown key 로
@@ -29,6 +32,12 @@ const KRQ_MAX = 2_000;
 const PutBody = z.object({
   research_goal: z.string().max(GOAL_MAX),
   key_research_question: z.string().max(KRQ_MAX),
+  // 주입 질문 리스트 (STEP4, 결정 ②). 옛 클라(미전송)는 undefined → 빈 배열로
+  // 흡수 (컬럼 default '{}' 유지, 기존 저장분 unset X). 각 질문 trim + 상한 clamp.
+  injected_questions: z
+    .array(z.string().max(QUESTION_MAX))
+    .max(QUESTIONS_MAX_COUNT)
+    .optional(),
 });
 
 export async function GET() {
@@ -45,17 +54,19 @@ export async function GET() {
     .from('probing_sessions')
     // id 포함 — 공유 링크(#477)의 resource_id(probing_persona). 미저장이면 null.
     // hypotheses 는 은퇴 — select 하지 않는다 (유령 재수화 근절).
-    .select('id, research_goal, key_research_question, updated_at')
+    // injected_questions (STEP4 결정②) — 컬럼 미적용 preview 는 아래 error catch 로 흡수.
+    .select('id, research_goal, key_research_question, injected_questions, updated_at')
     .maybeSingle();
   if (error) {
-    // probing_sessions 마이그가 아직 prod 미적용인 prod-preview 차이 등을
-    // 흡수 — 위젯이 빈 컨텍스트로 fallback 한다.
+    // probing_sessions 마이그(injected_questions 포함)가 아직 prod 미적용인
+    // prod-preview 차이 등을 흡수 — 위젯이 빈 컨텍스트로 fallback 한다.
     console.error('[probing/research-context] get failed (graceful empty)', error);
     return NextResponse.json({
       row: {
         id: null,
         research_goal: '',
         key_research_question: '',
+        injected_questions: [],
         updated_at: null,
       },
     });
@@ -65,6 +76,7 @@ export async function GET() {
       id: null,
       research_goal: '',
       key_research_question: '',
+      injected_questions: [],
       updated_at: null,
     },
   });
@@ -87,24 +99,44 @@ export async function PUT(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
-  const { research_goal, key_research_question } = parsed.data;
+  const { research_goal, key_research_question, injected_questions } =
+    parsed.data;
+  // 질문 정규화 — trim + 공백 제거 + 상한 clamp (zod 가 max 는 이미 검증).
+  const questions = (injected_questions ?? [])
+    .map((q) => q.trim())
+    .filter((q) => q.length > 0)
+    .slice(0, QUESTIONS_MAX_COUNT);
 
   // hypotheses 는 은퇴 — upsert 객체에 넣지 않는다. 기존 row 의 hypotheses
   // 컬럼은 dormant 로 그대로 남는다 (upsert 는 제공된 컬럼만 갱신).
-  const { data, error } = await supabase
+  const baseRow = {
+    org_id: org.org_id,
+    user_id: user.id,
+    research_goal: research_goal.trim(),
+    key_research_question: key_research_question.trim(),
+  };
+  const selectCols =
+    'id, research_goal, key_research_question, injected_questions, updated_at';
+  let { data, error } = await supabase
     .from('probing_sessions')
-    .upsert(
-      {
-        org_id: org.org_id,
-        user_id: user.id,
-        research_goal: research_goal.trim(),
-        key_research_question: key_research_question.trim(),
-      },
-      { onConflict: 'user_id' },
-    )
+    .upsert({ ...baseRow, injected_questions: questions }, {
+      onConflict: 'user_id',
+    })
     // id 포함 — 저장 직후 클라이언트가 공유 링크(#477) resource_id 를 얻는다.
-    .select('id, research_goal, key_research_question, updated_at')
+    .select(selectCols)
     .single();
+  // preview 마이그 drift (injected_questions 컬럼 미적용) 흡수 — 컬럼 없이 재시도.
+  // 42703 = undefined_column / PGRST204 = schema cache 미갱신. goal/KRQ 저장은 유지.
+  if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+    console.warn(
+      '[probing/research-context] injected_questions column missing — degrading (apply migration)',
+    );
+    ({ data, error } = await supabase
+      .from('probing_sessions')
+      .upsert(baseRow, { onConflict: 'user_id' })
+      .select('id, research_goal, key_research_question, updated_at')
+      .single());
+  }
   if (error || !data) {
     console.error('[probing/research-context] upsert failed', error);
     return NextResponse.json({ error: 'upsert_failed' }, { status: 500 });

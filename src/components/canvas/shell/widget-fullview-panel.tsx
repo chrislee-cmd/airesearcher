@@ -24,6 +24,19 @@ type WidgetFullviewPanelProps = {
   closeLabel?: string;
   /** 헤더 우측, 닫기 × 왼쪽에 놓이는 액션 (예: 내보내기 버튼). optional. */
   headerAction?: ReactNode;
+  /**
+   * 헤더밴드 배경 톤 — CSS 값(예: 'var(--widget-header-bg-peach)'). 미지정 시
+   * 기본 흰 헤더(bg-paper 상속) 유지 → 기존 소비자 회귀 0. Canvas 1c 위젯이
+   * 카드 톤과 매칭된 fullview 헤더를 원할 때만 지정한다.
+   */
+  tone?: string;
+  /**
+   * 타이틀을 Canvas 1c 카드 헤더처럼 Outfit 800 display 로 렌더. 기본 false
+   * (text-2xl semibold). tone 과 짝지어 카드 헤더밴드와 톤/타이포를 정합.
+   */
+  titleDisplay?: boolean;
+  /** 타이틀 옆에 놓이는 pill/badge (예: 'Post-session review'). optional. */
+  badge?: ReactNode;
 };
 
 export function WidgetFullviewPanel({
@@ -34,6 +47,9 @@ export function WidgetFullviewPanel({
   children,
   closeLabel,
   headerAction,
+  tone,
+  titleDisplay,
+  badge,
 }: WidgetFullviewPanelProps) {
   // 리스트 뷰(풀페이지 셸)에서는 닫을 모달이 없으므로 닫기 × 를 감춘다.
   // 캔버스 뷰의 전체보기 모달('modal', 기본) 은 그대로 × 노출 → 회귀 0.
@@ -42,14 +58,35 @@ export function WidgetFullviewPanel({
   const chrome = useFullviewChrome();
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-paper">
-      <header className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3">
-        <div className="min-w-0">
-          <h2 className="truncate text-2xl font-semibold tracking-[-0.01em] text-ink-2">
-            {title}
-          </h2>
-          {subtitle ? (
-            <p className="mt-0.5 truncate text-md text-mute">{subtitle}</p>
-          ) : null}
+      <header
+        className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3"
+        style={tone ? { background: tone } : undefined}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="min-w-0">
+            {titleDisplay ? (
+              <h2
+                className="truncate text-ink-2"
+                style={{
+                  fontFamily: 'var(--font-outfit), var(--font-sans)',
+                  fontSize: 22,
+                  fontWeight: 800,
+                  letterSpacing: '-0.5px',
+                  lineHeight: 1.1,
+                }}
+              >
+                {title}
+              </h2>
+            ) : (
+              <h2 className="truncate text-2xl font-semibold tracking-[-0.01em] text-ink-2">
+                {title}
+              </h2>
+            )}
+            {subtitle ? (
+              <p className="mt-0.5 truncate text-md text-mute">{subtitle}</p>
+            ) : null}
+          </div>
+          {badge ? <div className="shrink-0">{badge}</div> : null}
         </div>
         <div className="ml-4 flex shrink-0 items-center gap-2">
           {headerAction}

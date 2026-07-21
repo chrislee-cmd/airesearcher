@@ -106,16 +106,20 @@
     },
     "url": {
       "label": "テスト対象サイトのURL",
-      "description": "テストしたいサイトのURLを入力してください。セッション開始時に新しいタブで開きます。"
+      "description": "テストしたいサイトのURLを入力してください。セッション開始時に新しいタブで開きます。",
+      "add": "追加",
+      "remove": "削除"
     },
     "language": {
       "label": "参加者の想定言語",
       "description": "正確な文字起こしのため、参加者が話す言語を選択してください。セッションを開始するには選択が必要です。",
       "placeholder": "言語を選択"
     },
-    "siteAudio": {
-      "label": "サイトの音声も録音する",
-      "description": "マイクとサイトの音声の両方を動画に含めます。画面共有ダイアログで「タブの音声を共有」をオンにしてください。（デフォルト：マイクのみ）"
+    "host": {
+      "task": {
+        "label": "テストタスク",
+        "placeholder": "例：新しいアカウントを作成し、商品をカートに追加してください。"
+      }
     },
     "cta": {
       "start": "セッションを開始",
@@ -132,6 +136,11 @@
       "result": "セッション結果",
       "idle": "画面共有＋音声によるユーザビリティテスト"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · レビュー",
+      "reviewBadge": "セッション後レビュー",
+      "reviewMeta": "参加者 {count}名 · {duration} · PREVIEW"
+    },
     "unsupported": "このブラウザは画面共有録画に対応していません。ChromeやEdgeなど最新のデスクトップブラウザをご使用ください。",
     "result": {
       "uploading": "録画を保存しています…",
@@ -141,6 +150,7 @@
       "logPlaceholderTranscribing": "文字起こしが完了すると、ここに発話内容が表示されます。",
       "logPlaceholderEmpty": "文字起こしされた音声はありませんでした。",
       "showTranscript": "発話全文を表示",
+      "showTranscriptCount": "発話全文を表示 · {turns}ターン",
       "hideTranscript": "発話全文を隠す",
       "downloadTitle": "ダウンロード"
     },
@@ -191,6 +201,26 @@
       "createSession": "セッションを開始できませんでした。しばらくしてからもう一度お試しください。",
       "downloadLink": "ダウンロードリンクを作成できませんでした。しばらくしてからもう一度お試しください。",
       "download": "ダウンロード中にエラーが発生しました。"
+    },
+    "method": {
+      "sectionLabel": "テスト方法",
+      "groupAria": "テスト方法を選択",
+      "hostTitle": "自分の端末でテスト",
+      "guestTitle": "参加者の端末でテスト"
+    },
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step2Short": "テスト方法",
+      "step2Title": "テスト方法を選択してください",
+      "step3Short": "想定言語",
+      "step3Title": "参加者が話す言語を選択してください",
+      "step4Short": "対象",
+      "step4Title": "対象サイトと課題を入力してください",
+      "change": "変更",
+      "optional": "（任意）"
     }
   },
   "UtParticipant": {
@@ -256,13 +286,32 @@
   "Brand": {
     "name": "Research-Canvas"
   },
-  "BrowserAudioNotice": {
-    "title": "ブラウザのタブ音声を使用してください",
-    "body": "このセッションはブラウザのタブ音声をキャプチャします。会議やウェブサイトをネイティブのデスクトップアプリ（Zoom、Teams など）ではなくブラウザで開くと、その音声をキャプチャできます。",
-    "hint": "ネイティブアプリの音声はキャプチャできず、ブラウザのタブ音声のみ取得されます。",
-    "dontShowAgain": "今後表示しない",
+  "ShareGuide": {
+    "step": "{n}/2",
     "cancel": "キャンセル",
-    "confirm": "続行"
+    "next": "次へ →",
+    "prev": "← 戻る",
+    "confirm": "🔊 確認しました · 開始",
+    "dontShowAgain": "今後表示しない",
+    "sub": {
+      "probing": "参加者の音声を取得するために必要です。",
+      "translate": "通訳する元音声を取得するために必要です。"
+    },
+    "step1": {
+      "title": "ブラウザで会議に参加",
+      "body": "会議リンクを開くときは、アプリではなく「ブラウザで続行」を選んでください。Zoom や Teams などのネイティブアプリで開くとタブ音声がなく、声がキャプチャされません。",
+      "warn": "ネイティブアプリで開くと音声をキャプチャできません。",
+      "imgAlt": "会議参加時にアプリではなくブラウザを選ぶ案内画面",
+      "frameLabel": "会議参加画面"
+    },
+    "step2": {
+      "title": "システム音声を共有 · 必ずON",
+      "body": "画面共有ウィンドウ左下の「システム音声も共有」トグルを必ずONにしてから共有を開始してください。",
+      "warn": "トグルをOFFにすると音声が保存されません。",
+      "imgAlt": "画面共有ウィンドウで「ウィンドウ」タブを選び、システム音声も共有トグルをONにする案内画面",
+      "frameLabel": "画面共有ダイアログ",
+      "badge": "システム音声 ON"
+    }
   },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
@@ -862,6 +911,12 @@
     "placeholder": "プロジェクトを選択",
     "newProject": "+ 新規プロジェクト",
     "applyToAll": "すべてのウィジェットに適用",
+    "applyToAllHint": "☑ チェックすると全ウィジェットに一括適用 · 未チェックはこのウィジェットのみ",
+    "createPlaceholder": "新規プロジェクト名",
+    "createConfirm": "作成",
+    "creating": "作成中…",
+    "createCancel": "キャンセル",
+    "createFailed": "プロジェクトの作成に失敗しました",
     "menu": "プロジェクトメニュー"
   },
   "ComingSoon": {
@@ -941,7 +996,52 @@
       "description": "インタビュースクリプトとディスカッションガイドを生成します。",
       "cost": "1クレジット"
     },
+    "transcriptResult": {
+      "kind": "文字起こし",
+      "donePill": "完了",
+      "back": "一覧",
+      "open": "結果を見る",
+      "minutes": "{min}分",
+      "speakers": "話者{count}名",
+      "searchPlaceholder": "文字起こしを検索…",
+      "bySpeaker": "話者別",
+      "byTimestamp": "タイムスタンプ",
+      "exportTitle": "エクスポート",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "テキスト (.txt)",
+      "exportSrt": "字幕 (.srt)",
+      "loading": "文字起こしを読み込み中…",
+      "error": "文字起こしを読み込めませんでした。",
+      "empty": "表示する発話がありません。",
+      "noResults": "一致する結果がありません。",
+      "aiSummaryTitle": "AI要約",
+      "keyThemesTitle": "主要テーマ",
+      "comingSoon": "近日公開（今後のアップデート）。"
+    },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "プロジェクト",
+        "step1Title": "作業中のプロジェクトを選択してください",
+        "step1Selected": "選択済み",
+        "step2Short": "文字起こし方式",
+        "step2Title": "文字起こしの方式を選択してください",
+        "step3Short": "分析言語",
+        "step3Title": "どの言語で分析しますか？",
+        "step3Field": "元の音声の言語",
+        "step4Short": "音声",
+        "step4Title": "文字起こしする音声をアップロードまたは録音してください",
+        "orDivider": "または",
+        "change": "変更"
+      },
+      "method": {
+        "sectionLabel": "文字起こし方式",
+        "groupAria": "文字起こし方式の選択",
+        "micTitle": "定性インタビュー文字起こし",
+        "micSub": "1:1 デプス · 話者分離",
+        "minutesTitle": "議事録・デブリーフィングの文字起こし",
+        "minutesSub": "複数話者の発話 · 要約"
+      },
       "transcribingEta": "{elapsed} 経過 · 残り約{remain}（推定）",
       "languageConfirm": {
         "title": "この言語で文字起こししますか？",
@@ -1282,6 +1382,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step1BulkTag": "一括",
+      "fieldProject": "プロジェクト",
+      "step2Short": "トピック・キーワード",
+      "step2Title": "調査するトピック・キーワードを入力してください",
+      "step2Summary": "{count}件のキーワード",
+      "step3Short": "リサーチ目的",
+      "step3Title": "リサーチ目的を選択してください",
+      "step4Short": "収集範囲",
+      "step4Title": "収集範囲を設定してください",
+      "change": "変更",
+      "optional": "（任意）"
+    },
     "keywordLabel": "キーワード",
     "keywordPlaceholder": "キーワードを入力してEnterを押してください",
     "keywordAddMore": "さらに追加…",
@@ -1435,6 +1552,24 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step1BulkTag": "一括",
+      "step2Short": "インタビュー方式",
+      "step2Title": "インタビュー方式を選択してください",
+      "step3Short": "通訳言語",
+      "step3Title": "通訳言語を設定してください",
+      "step4Short": "特殊キーワード",
+      "step4Title": "特殊キーワード / 固有名詞があれば追加してください",
+      "glossarySummary": "{count}件のキーワードを追加",
+      "change": "変更",
+      "optional": "（任意）",
+      "readyPending": "通訳言語を設定してください",
+      "readyGo": "準備完了 · 通訳を開始できます"
+    },
     "sourceLang": "原語",
     "targetLang": "翻訳先",
     "project": "プロジェクト",
@@ -1454,7 +1589,6 @@
       "micOnly": "デバイスマイク",
       "tabOnly": "ブラウザ音声入力",
       "tabHint": "共有ダイアログでタブを選択し、「タブの音声を共有」にチェックを入れてください。Chrome デスクトップ版のみ対応しています。",
-      "bothCostHint": "両側同時 = OpenAI リアルタイムコスト2倍（マイクとタブは別々のセッションで動作します）",
       "shortBoth": "マイク＋タブ",
       "shortMic": "マイク",
       "shortTab": "タブ"
@@ -1518,6 +1652,13 @@
       "controlHint": "開始・停止・共有はウィジェットカードから操作できます。",
       "backToWidget": "ウィジェットに戻る"
     },
+    "live": {
+      "fullviewHeading": "フルビューをご確認ください",
+      "fullviewSubInterpreter": "セッションが開始されました。フルビューで同時通訳をリアルタイムに確認できます。",
+      "backToSetup": "← 設定に戻る",
+      "backToPrompt": "← フルビュー案内に戻る",
+      "sessionInProgress": "セッション進行中"
+    },
     "speaker": {
       "host": "ホスト",
       "guest": "ゲスト"
@@ -1579,7 +1720,10 @@
       "placeholder": "1行に1つの用語を入力してください（例：SDK、オンプレミス）",
       "apply": "適用",
       "applyTitle": "入力した用語を今すぐ適用します",
-      "dirtyNotice": "未適用の変更があります。「適用」を押して保存してください"
+      "dirtyNotice": "未適用の変更があります。「適用」を押して保存してください",
+      "add": "追加",
+      "remove": "削除",
+      "addPlaceholder": "用語を入力して追加（例：SDK）"
     },
     "postProcess": {
       "eyebrow": "出力品質の修正（後処理LLM）",
@@ -1686,6 +1830,7 @@
     "viewAll": "すべて見る →",
     "transcriptRunning": "文字起こし中",
     "transcriptDone": "文字起こし完了",
+    "transcriptReadyTitle": "文字起こしの準備ができました！",
     "transcriptStageUpload": "アップロード",
     "transcriptStageTranscribe": "文字起こし",
     "transcriptStageMd": "ドキュメント",
@@ -2385,6 +2530,28 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step1BulkTag": "一括",
+      "step2Short": "インタビュー方式",
+      "step2Title": "インタビュー方式を選択してください",
+      "step3Short": "分析言語",
+      "step3Title": "どの言語で分析しますか？",
+      "step4Short": "質問",
+      "step4Title": "必ず確認したい質問を追加してください",
+      "questionPlaceholder": "必ず聞く質問を入力して Enter",
+      "questionAdd": "追加",
+      "questionRemove": "質問を削除",
+      "questionEmpty": "まだ追加された質問がありません",
+      "questionSummary": "{count}件の質問を追加",
+      "change": "変更",
+      "optional": "（任意）",
+      "readyPending": "入力ソースと言語を選択してください",
+      "readyGo": "準備完了 · 開始できます"
+    },
     "card": {
       "recordingNoAudioTab": "音声がキャプチャされませんでした。タブ共有セッションの場合は、「タブの音声を共有」がオンになっていたかご確認ください。",
       "recordingUnsupported": "このブラウザはセッション録音に対応していません。",
@@ -2573,6 +2740,110 @@
       "liveHint": "セッション進行中 · フルビューでAIの推論と提案された質問をご確認ください",
       "startHint": "セッションを開始する",
       "openFullview": "フルビューを開く"
+    },
+    "live": {
+      "fullviewHeading": "フルビューをご確認ください",
+      "fullviewSubProbing": "セッションが開始されました。フルビューでプロービングの進行をリアルタイムに確認できます。",
+      "backToSetup": "← 設定に戻る",
+      "backToPrompt": "← フルビュー案内に戻る",
+      "sessionInProgress": "セッション進行中",
+      "endSession": "セッションを終了"
+    }
+  },
+  "CaptureUseCase": {
+    "sectionLabel": "インタビュー方式",
+    "groupAria": "インタビュー方式を選択",
+    "offlineTitle": "対面インタビュー",
+    "onlineTitle": "オンラインインタビュー",
+    "observeTitle": "オンライン視聴",
+    "offlineDesc": "会って話すインタビューです",
+    "onlineDesc": "ビデオ通話で話すインタビューです",
+    "observeDesc": "ビデオ通話で聞くだけです",
+    "offlineNote": "1台のマイクで部屋全体を収録 · 話者の区別なし"
+  },
+  "Recruiting": {
+    "setup": {
+      "chipRequired": "必須",
+      "standardBadge": "標準",
+      "extractCta": "条件を抽出 →",
+      "criteriaReviewNote": "RFP から<b>条件 {count}件</b>を抽出しました。プレビュー・編集のうえ承認してください。",
+      "preview": "プレビュー",
+      "edit": "編集",
+      "approveCriteria": "条件を承認",
+      "surveyReviewNote": "<b>{sections}セクション · {questions}問</b>を生成しました。標準ブロックはロックされ、ドメイン質問のみ編集できます。",
+      "approveSurvey": "アンケートを承認",
+      "surveyUntitledSection": "無題のセクション",
+      "surveySectionLocked": "{count}問 · 標準",
+      "surveySectionEditable": "{count}問 · 編集可",
+      "publishAutoSub": "承認後に自動で進みます",
+      "pubFormCreated": "Google フォーム作成済み",
+      "pubLinkingSheet": "回答シートを連携中…",
+      "pubShare": "リンクを知っている全員に共有",
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "change": "変更",
+      "optional": "(任意)",
+      "step1Short": "ソース",
+      "step1Title": "募集ソース資料をアップロード（RFP · ブリーフ · メール）",
+      "pasteLabel": "テキストを貼り付け",
+      "pastePlaceholder": "RFP · ブリーフ · メールのテキストをそのまま貼り付けてください。",
+      "uploadLabel": "ファイルをアップロード",
+      "uploadHint": "pdf · docx · xlsx · csv · txt · 最大10件",
+      "uploadDrop": "ドラッグ＆ドロップまたはクリックしてアップロード",
+      "rejected": "対応していない形式: {names}",
+      "fileRemove": "削除",
+      "sourceEmpty": "貼り付けまたはファイルをアップロード",
+      "sourceSummaryFiles": "ファイル{count}件",
+      "sourceSummaryPaste": "貼り付けテキスト",
+      "sourceSummaryBoth": "ファイル{count}件 · 貼り付け",
+      "step2Short": "参加者条件",
+      "step2Title": "参加者条件を確認してください",
+      "criteriaWaiting": "ソースを追加すると条件が抽出されます",
+      "criteriaGenerating": "条件を抽出中…",
+      "criteriaGeneratingCount": "{count}件の条件を抽出中…",
+      "criteriaEmpty": "抽出された条件がありません",
+      "criteriaSummary": "{count}件の条件",
+      "criteriaEditToggle": "編集",
+      "criteriaPreviewToggle": "プレビュー",
+      "criteriaError": "抽出エラー: {message}",
+      "criteriaRestart": "やり直す",
+      "step3Short": "審査アンケート",
+      "step3Title": "審査アンケートを確認してください",
+      "surveyWaiting": "条件の確認後にアンケートが生成されます",
+      "surveyGenerating": "条件に合わせてアンケートを生成中…",
+      "surveySummary": "{sections}セクション · {questions}問",
+      "surveyEmpty": "生成されたアンケートがありません",
+      "surveyError": "アンケートエラー: {message}",
+      "surveyRegenerate": "再生成",
+      "step4Short": "発行",
+      "step4Title": "Googleフォームに発行します",
+      "publishSummaryPending": "発行待ち",
+      "publishSummaryDone": "発行済み",
+      "googleChecking": "Google接続を確認中…",
+      "googleConnectHint": "Googleアカウントを連携すると、アンケートが自動で発行されます。",
+      "googleConnect": "Googleアカウントを連携",
+      "publishInfo": "発行するとGoogleフォームと回答シートが自動で作成されます。",
+      "publishing": "発行中…",
+      "responderLabel": "参加者用リンク",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "publishErrorLabel": "発行エラー: {message}",
+      "retry": "再試行",
+      "reauthHint": "Googleトークンが失効/取り消されたようです。再連携で復旧してください。",
+      "reconnect": "Googleを再連携",
+      "driveHint": "公開リンク権限のためGoogleアカウントを再連携してください。",
+      "reconnectShort": "再連携",
+      "authErrorLabel": "Google接続エラー: {message}",
+      "close": "閉じる",
+      "streamTruncated": "AIの応答が途切れました。入力をもう少し具体的にして再試行してください。",
+      "publishTimeout": "45秒以内に応答がありませんでした。再試行してください。",
+      "publishStage1": "Google接続を確認中…",
+      "publishStage2": "Googleフォームを作成中…",
+      "publishStage3": "回答シートを連携中…",
+      "publishStage4": "発行を仕上げ中…",
+      "ctaPrepare": "アンケート準備",
+      "ctaPreparing": "準備中…",
+      "ctaPublish": "フォームを発行 →",
+      "ctaPublishing": "発行中…"
     }
   }
 }
