@@ -24,9 +24,9 @@
 | Probing Assistant | `probing/` | ✓ | live (persona/spotlight) | ready for port |
 | Live Interpreter | `interpreter/` | ✓ | live control (dual caption) | ready for port |
 | Recruiting | `recruiting/` | ✓ | responses (crosstab/fit) | ready for port |
-| Transcript | `transcript/` | ✓ | list→detail | spec pending |
-| AI UT | `ai-ut/` | ✓ | live→review | spec pending |
-| Desk Research | `desk/` | ✓ | report | spec pending |
+| Transcript | `transcript/` | ✓ | list→detail | ready for port |
+| AI UT | `ai-ut/` | ✓ | live→review | ready for port |
+| Desk Research | `desk/` | ✓ | report (trend/market) | ready for port |
 
 ## Package contents (per feature)
 ```
