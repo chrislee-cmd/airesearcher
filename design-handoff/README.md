@@ -7,7 +7,8 @@
 ## How the worker consumes a feature
 1. Open `design-handoff/<feature>/HANDOFF.md` first — it is the entry point (read order, file roles, porting steps, done-when checklist).
 2. Read `BUILD-SPEC.md` — the contract (identity, §1 class map, §2 proposed-tokens, §3 state matrix, §4 interaction disclaimer, §5 contract-change, §6 open items).
-3. Open the `.dc.html` for the live visual reference (renders in any browser). Treat inline hex/px as **rendering only** — the diff-target is BUILD-SPEC §1's class map, not the inline styles.
+3. Read `../WIDGET-SHELL.md` — the global shell every widget shares (frame · unified toolbar pill · rail · footer). A feature spec's §1 only adds feature-specific rows on top of it.
+4. Open the `.dc.html` for the live visual reference (renders in any browser). Treat inline hex/px as **rendering only** — the diff-target is BUILD-SPEC §1's class map, not the inline styles.
 4. Resolve every `⚠️ contract-change:` (§5) with the writer BEFORE porting logic — these are needs beyond the current typed contract.
 
 ## Conventions (all specs follow these)
@@ -40,4 +41,4 @@
 ```
 > The two `.dc.html` files are multi-widget canvases; read only the section for `<feature>`. They are duplicated per folder deliberately (self-contained rule).
 
-**Shared, repo-level (not per feature):** `design-handoff/CONTEXT-PACK.md` · `design-handoff/tokens.json`.
+**Shared, repo-level (not per feature):** `design-handoff/WIDGET-SHELL.md` (global widget shell + assembly — every widget renders inside it) · `design-handoff/CONTEXT-PACK.md` · `design-handoff/tokens.json`.

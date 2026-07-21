@@ -8,7 +8,8 @@
 ---
 
 ## §1 Class mapping (Conformance-first)
-> `.dc.html` renders with inline hex/px (DC runtime can't render utility classes). This table is the diff-target: every visual = an explicit utility class / measured value the worker can compare against.
+> **Shell + assembly now live in `../WIDGET-SHELL.md` (SSOT). The shell rows below are a mirror for convenience — if they disagree, WIDGET-SHELL wins.**
+> `.dc.html` renders inline hex/px (DC runtime can't render classes). This table is the diff-target: every visual = an explicit class / measured value.
 
 | Element | Measured (proto) | Utility class / token |
 |---|---|---|
@@ -67,3 +68,16 @@ Prototype interactions (project picker toggle, step open/collapse, spotlight) ar
 
 ## §6 Open items
 - Credit 25 confirm. · i18n ko/en/ja/th parity for all new strings. · Spotlight ring duration source of truth.
+
+
+---
+
+## §3b Initial state — ghost preview (defect-A fix, all data-dependent steps)
+> **Decision (2026-07-21): (c) hybrid.** A step whose input isn't ready yet renders a **ghost preview**, never a one-line placeholder bar.
+- **Ghost preview** = the REAL populated component (chips / rows / table) rendered **muted** (low opacity, neutral fill — the actual component, not a skeleton bar) + a thin label `Auto-generated after extraction` / `Example`.
+- **post-data** = the same component with real data (canonical — worker MUST build it).
+- The gated behavior (empty until data) is correct and stays; only the empty *rendering* changes from placeholder → ghost.
+- `demo-only` applies to **behavior only**, never to rendered content (§4).
+
+## §7 Strings — i18n keys only (canonical locale, EN = reference)
+> **Root fix for language drift:** render every string from the feature's existing **i18n namespace key**, never hardcode. The EN copy in this spec is **reference only** — do NOT ship it verbatim. App locale (currently `/en` default w/ Korean banner) then resolves automatically. Requirement: **0 hardcoded strings**, ko/en/ja/th parity.
