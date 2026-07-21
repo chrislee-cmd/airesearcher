@@ -104,15 +104,15 @@ export async function ShareViewerFrame({
   // 프로빙은 뷰어가 질문을 주입할 수 있으므로 "읽기 전용" 대신 협업 힌트를 쓴다.
   return (
     <main
-      className={`mx-auto w-full flex-1 px-5 pb-16 pt-10 ${
+      className={`mx-auto w-full flex-1 pb-12 pt-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:pb-16 sm:pt-10 sm:pl-[max(1.25rem,env(safe-area-inset-left))] sm:pr-[max(1.25rem,env(safe-area-inset-right))] ${
         isProbing ? 'max-w-[1400px]' : 'max-w-[860px]'
       }`}
     >
-      <header className="mb-8 border-b border-line-soft pb-5">
+      <header className="mb-6 border-b border-line-soft pb-5 sm:mb-8">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-mute-soft">
           {t('eyebrow')}
         </span>
-        <h1 className="mt-1.5 text-2xl font-bold tracking-[-0.01em] text-ink">
+        <h1 className="mt-1.5 text-xl font-bold tracking-[-0.01em] text-ink sm:text-2xl">
           {title}
         </h1>
         <p className="mt-1 text-sm text-mute">
@@ -121,7 +121,7 @@ export async function ShareViewerFrame({
       </header>
 
       {resource.type === 'interview_topline' ? (
-        <div className="border border-line bg-paper p-6 rounded-sm md:p-8">
+        <div className="border border-line bg-paper p-4 rounded-sm sm:p-6 md:p-8">
           {resource.blocks.length > 0 ? (
             <ReadonlyToplineBlocks blocks={resource.blocks as ToplineBlock[]} />
           ) : (

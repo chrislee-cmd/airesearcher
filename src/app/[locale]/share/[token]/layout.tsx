@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 // 공유 뷰어 라우트 — (app) 셸 밖 독립 read-only 프레임(결정 1).
 //
@@ -10,6 +10,15 @@ import type { Metadata } from 'next';
 // 🔒 outward-facing: 검색엔진 인덱싱·캐시 방지.
 export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
+};
+
+// 📱 모바일 뷰어 — 참석자는 대부분 폰 링크로 진입한다. viewport-fit=cover 로
+// iOS notch/홈바 영역까지 캔버스를 확장해야 프레임의 env(safe-area-inset-*)
+// 패딩이 실제 인셋값으로 해석된다(share 라우트 스코프 전용 — 앱 셸 미영향).
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function ShareViewerLayout({
