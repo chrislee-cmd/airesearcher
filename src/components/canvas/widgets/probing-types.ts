@@ -63,11 +63,6 @@ export type ProbingQuestionRow = {
 export type ResearchContext = {
   research_goal: string;
   key_research_question: string;
-  // 주입 질문 리스트 (V2 STEP4, 결정 ②) — 세션 전 "반드시 확인하고 싶은 질문".
-  // research_goal(freetext) 을 대체하는 UI. research_goal 은 think/PDF 계약을 위해
-  // dormant 로 남고 (KRQ·hypotheses 은퇴 패턴과 동일), 신규 세션은 이 배열만 채운다.
-  // 영속화 = /api/probing/research-context (probing_sessions.injected_questions).
-  injected_questions: string[];
 };
 
 // 사용자 정의 custom 페르소나 섹션 (PR: probing-custom-section-ui).

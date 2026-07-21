@@ -75,13 +75,6 @@ export type WidgetContent = {
     // 3: 세 셀 높이 (2496 = 800 + 48 + 800 + 48 + 800) — autocontents
     //    같이 본문 분량이 많은 도구
     expandedRows?: 1 | 2 | 3;
-    // 옵션: 세팅 표면을 Canvas 1c 카드 프레임(파스텔 헤더밴드 + 통합 툴바
-    // pill[💎 크레딧 │ ● 상태 │ ⤢ 풀뷰] + 푸터 CTA)로 렌더. 미지정(기본) 이면
-    // 옐로 banner-top chrome(pop-락). 현재 probing·interpreter 만 opt-in —
-    // 크레딧/상태/풀뷰가 chrome 에서 사라지고 통합 툴바로 이동한다. 파스텔은
-    // `accent`(sky/mint) → `--widget-header-bg-{accent}` 로 매핑. 다른 위젯의
-    // banner-top 은 불변(회귀 0).
-    cardFrame?: boolean;
   };
   state: WidgetState;
   ExpandedBody: FC;

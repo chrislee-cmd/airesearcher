@@ -17,12 +17,8 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import type { UtEvent, UtEventType } from '@/lib/ut-vision/schema';
 import type { BehaviorMetrics } from '@/lib/ut-vision/metrics';
-
-// 섹션 헤더 듀오톤 아이콘 채움 = peach(위젯 톤). 토큰만(하드코딩 hex 0).
-const PEACH_FILL = 'var(--widget-header-bg-peach)';
 
 type Props = {
   metrics: BehaviorMetrics | null;
@@ -160,12 +156,9 @@ export function UtBehaviorView({
       {/* 헤더 + 추정 고지 */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <DuotoneIcon name="observe" size={16} fill={PEACH_FILL} />
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-              {t('behavior.title')}
-            </h3>
-          </div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
+            {t('behavior.title')}
+          </h3>
           <span className="text-xs-soft text-mute-soft">
             {t('behavior.confidenceLabel', { pct: Math.round(metrics.avg_confidence * 100) })}
           </span>

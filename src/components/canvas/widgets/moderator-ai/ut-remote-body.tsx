@@ -3,33 +3,35 @@
 /* ────────────────────────────────────────────────────────────────────
    UtRemoteBody — AI UT 원격 모드(리서처 오케스트레이션/모니터) 표면.
 
-   흐름(세팅·생성은 상위 세팅 아코디언·CTA 가 담당 — V2 U1): 세션 생성 후
-   participant_url 발급 + 참가자 대기(waiting, 공유 인플레이스) → 참가자 화면
-   라이브 관전(live) → 참가자 종료 후 사후 리뷰(review, 녹화·전사 다운로드는
-   로컬과 동일 UtResultView 재사용). idle/생성 폼은 이 컴포넌트에 없다 —
-   부모(UtSessionBody)의 UtSetupAccordion 이 소유.
+   흐름: 과제 입력(idle) → 세션 생성 → participant_url 발급 + 참가자 대기
+   (waiting) → 참가자 화면 라이브 관전(live) → 참가자 종료 후 사후 리뷰(review,
+   녹화·전사 다운로드는 로컬과 동일 UtResultView 재사용).
 
    프레임은 ControlBoardPanel 슬롯 계약 — 색/radius 는 design-system 토큰만,
    임의 layout 클래스 금지. 라이브 관전 <video> 는 현재 보이는 단일 표면에만
    렌더(스트림 단일 부착) — 로컬 프리뷰와 동형.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { ChromeInput } from '@/components/ui/chrome-input';
-import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { SelectMenu } from '@/components/ui/select-menu';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
+import { UtLanguageSelect } from './ut-language-select';
 import { UtResultView } from './ut-result';
-import type { UseUtRemoteSession } from './use-ut-remote-session';
+import type {
+  UseUtRemoteSession,
+  UtSessionKind,
+} from './use-ut-remote-session';
 import type {
   UtCaptionLine,
   UtLiveCaptionStatus,
 } from './use-ut-live-caption';
-
-// 듀오톤 아이콘 채움 = peach(스펙 §4) — 세팅/공유 톤 통일. 하드코딩 hex 0.
-const PEACH_FILL = 'var(--widget-header-bg-peach)';
 
 type Props = {
   remote: UseUtRemoteSession;
@@ -38,7 +40,19 @@ type Props = {
   // 모든 `remote.*` 접근을 render-중-ref-접근으로 잘못 잡는다(prop 경유 hook
   // 반환의 한계). 직접 hook 을 호출하는 부모에서 넘겨주면 그 오인이 사라진다.
   attachMonitor: (el: HTMLVideoElement | null) => void;
+  surface: 'card' | 'fullview';
   isActiveSurface: boolean;
+  // 상단 모드 토글(로컬/원격) — idle 에서만 노출. 부모가 소유.
+  topSlot: ReactNode;
+  taskGoal: string;
+  onTaskGoal: (v: string) => void;
+  targetUrl: string;
+  onTargetUrl: (v: string) => void;
+  sessionKind: UtSessionKind;
+  onSessionKind: (v: UtSessionKind) => void;
+  // 예상 참여자 언어 — 미선택('')이면 생성 불가(강제 선택). 부모 소유.
+  inputLanguage: string;
+  onInputLanguage: (v: string) => void;
 };
 
 // 라이브 캡션(634) — 모더 관전 중 참여자 발화 실시간 자막. 화면 <video> 와 동시
@@ -92,7 +106,17 @@ function UtLiveCaptions({
 export function UtRemoteBody({
   remote,
   attachMonitor,
+  surface,
   isActiveSurface,
+  topSlot,
+  taskGoal,
+  onTaskGoal,
+  targetUrl,
+  onTargetUrl,
+  sessionKind,
+  onSessionKind,
+  inputLanguage,
+  onInputLanguage,
 }: Props) {
   const t = useTranslations('AiUt');
   const [copied, setCopied] = useState(false);
@@ -267,8 +291,10 @@ export function UtRemoteBody({
         <ControlBoardPanel gap="section">
           {shareRegion}
           <ControlBoardPanel.Region>
-            <div className="flex items-center gap-2 rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
-              <DuotoneIcon name="waiting" size={18} fill={PEACH_FILL} />
+            <div className="rounded-xs border border-line-soft bg-paper-soft px-3 py-2 text-sm text-mute">
+              <span className="mr-1" aria-hidden>
+                ⏳
+              </span>
               {t('remote.waiting.status')}
             </div>
           </ControlBoardPanel.Region>
@@ -282,7 +308,100 @@ export function UtRemoteBody({
     );
   }
 
-  // 도달 불가(idle/creating/error 는 상위 세팅 아코디언·CTA 가 소유). 타입
-  // exhaustiveness 를 위한 폴백 — 렌더 없음.
-  return null;
+  // ── idle / creating — 과제 입력 + 세션 생성 ─────────────────────────
+  const isCreating = remote.phase === 'creating';
+  // 언어 미선택('')이면 생성 불가 — 서버 400 가드의 클라 짝(강제 선택).
+  const startDisabled =
+    isCreating || taskGoal.trim().length === 0 || inputLanguage.length === 0;
+  const idleError = remote.phase === 'error' && remote.error && (
+    <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+      {remote.error}
+    </div>
+  );
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <ControlBoardPanel gap="section" banners={idleError || undefined}>
+        <ControlBoardPanel.Region>{topSlot}</ControlBoardPanel.Region>
+        <ControlBoardPanel.Input
+          label={t('remote.task.label')}
+          description={t('remote.task.description')}
+          htmlFor={`ut-task-${surface}`}
+        >
+          <Textarea
+            id={`ut-task-${surface}`}
+            value={taskGoal}
+            onChange={(e) => onTaskGoal(e.target.value)}
+            placeholder={t('remote.task.placeholder')}
+            rows={3}
+            disabled={isCreating}
+          />
+        </ControlBoardPanel.Input>
+        <ControlBoardPanel.Input
+          label={t('remote.url.label')}
+          description={t('remote.url.description')}
+          htmlFor={`ut-remote-url-${surface}`}
+        >
+          <Input
+            id={`ut-remote-url-${surface}`}
+            value={targetUrl}
+            onChange={(e) => onTargetUrl(e.target.value)}
+            placeholder="https://example.com"
+            inputMode="url"
+            autoComplete="off"
+            disabled={isCreating}
+          />
+        </ControlBoardPanel.Input>
+        <ControlBoardPanel.Input
+          label={t('language.label')}
+          description={t('language.description')}
+          required
+        >
+          <UtLanguageSelect
+            value={inputLanguage}
+            onChange={onInputLanguage}
+            disabled={isCreating}
+          />
+        </ControlBoardPanel.Input>
+        <ControlBoardPanel.Settings>
+          <div className="min-w-[180px]">
+            <p className="mb-1.5 text-xs uppercase tracking-[0.22em] text-mute-soft">
+              {t('remote.kind.label')}
+            </p>
+            <SelectMenu
+              value={sessionKind}
+              onChange={(v) => onSessionKind(v as UtSessionKind)}
+              disabled={isCreating}
+              aria-label={t('remote.kind.label')}
+              options={[
+                {
+                  value: 'moderated',
+                  label: t('remote.kind.moderated'),
+                },
+                {
+                  value: 'unmoderated',
+                  label: t('remote.kind.unmoderated'),
+                },
+              ]}
+            />
+          </div>
+        </ControlBoardPanel.Settings>
+      </ControlBoardPanel>
+      <WidgetPrimaryCta
+        label={t('remote.cta.create')}
+        busy={isCreating}
+        busyLabel={t('remote.cta.creating')}
+        disabled={startDisabled}
+        icon="🔗"
+        onClick={() =>
+          void remote.create({
+            taskGoal,
+            rawTargetUrl: targetUrl,
+            sessionKind,
+            inputLanguage,
+          })
+        }
+      />
+    </div>
+  );
 }
