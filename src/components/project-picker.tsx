@@ -33,6 +33,7 @@ export function ProjectPicker({
   value,
   onChange,
   className,
+  fullWidth = false,
 }: {
   // 이 피커가 제어하는 위젯 키('probing' | 'translate' | ...). "전체 위젯에 적용"
   // 은 위젯 무관 전역 동작이라 이 값과 독립이지만, 향후 라벨/분석에 쓰이므로 받음.
@@ -40,6 +41,11 @@ export function ProjectPicker({
   value: string | null;
   onChange: (projectId: string | null) => void;
   className?: string;
+  // 세팅 아코디언 STEP1 에서 트리거를 컬럼 풀폭으로 렌더(언어 SelectMenu·질문
+  // Input 과 정렬). DropdownMenu 기본 래퍼는 inline-block(내용폭)이라 그 안의
+  // ControlTrigger w-full 이 내용폭이 됨 — fullWidth 로 래퍼를 block w-full 화.
+  // 라이브 컨트롤보드(가로 배치)는 미지정 → 기존 내용폭 유지(회귀 0).
+  fullWidth?: boolean;
 }) {
   const t = useTranslations('ProjectPicker');
   const { projects, isLoading, create } = useInterviewV2Projects();
@@ -125,6 +131,7 @@ export function ProjectPicker({
       <DropdownMenu
         items={items}
         footer={t('applyToAllHint')}
+        fullWidth={fullWidth}
         trigger={({ onClick, ...aria }) => (
           <ControlTrigger {...aria} onClick={onClick} disabled={isLoading}>
             {label}

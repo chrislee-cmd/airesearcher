@@ -4487,6 +4487,7 @@ export function TranslateConsole({
             widget="translate"
             value={projectId}
             onChange={handleProjectChange}
+            fullWidth
           />
         </Field>
       ),
@@ -4529,6 +4530,7 @@ export function TranslateConsole({
             outputLabel={t('outputLang')}
             triggerLabel={t('lang')}
             disabled={busy}
+            fullWidth
           />
         </Field>
       ),

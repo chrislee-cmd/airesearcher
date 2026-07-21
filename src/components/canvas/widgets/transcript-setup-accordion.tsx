@@ -107,6 +107,7 @@ export function TranscriptSetupAccordion({
             widget="quotes"
             value={projectId}
             onChange={onProjectChange}
+            fullWidth
           />
         </Field>
       ),
@@ -134,21 +135,20 @@ export function TranscriptSetupAccordion({
       summary: currentLanguageLabel,
       body: (
         <Field label={t('setup.step3Field')}>
-          <div className="min-w-24">
-            <DropdownMenu
-              items={languageItems}
-              trigger={({ open, onClick, ...aria }) => (
-                <ControlTrigger
-                  {...aria}
-                  data-open={open}
-                  onClick={onClick}
-                  aria-label={t('setup.step3Field')}
-                >
-                  {currentLanguageLabel}
-                </ControlTrigger>
-              )}
-            />
-          </div>
+          <DropdownMenu
+            items={languageItems}
+            fullWidth
+            trigger={({ open, onClick, ...aria }) => (
+              <ControlTrigger
+                {...aria}
+                data-open={open}
+                onClick={onClick}
+                aria-label={t('setup.step3Field')}
+              >
+                {currentLanguageLabel}
+              </ControlTrigger>
+            )}
+          />
         </Field>
       ),
     },
