@@ -2552,6 +2552,35 @@
     "chatComposerPrivatePlaceholder": "이 후보자에게 보낼 메시지를 입력하세요…",
     "chatSend": "보내기",
     "chatSending": "보내는 중…",
-    "chatSendFailed": "메시지 전송에 실패했습니다."
+    "chatSendFailed": "메시지 전송에 실패했습니다.",
+    "shareCopy": "링크 복사",
+    "shareCopied": "복사됨",
+    "shareReissue": "재발급",
+    "shareReissuing": "재발급 중…",
+    "shareReissueConfirm": "링크를 재발급할까요? 기존 링크는 더 이상 작동하지 않습니다."
+  },
+  "SchedulingParticipant": {
+    "title": "인터뷰 일정",
+    "subtitle": "인터뷰 시간과 메시지입니다.",
+    "greeting": "{name}님, 인터뷰 시간과 메시지입니다.",
+    "scheduleHeading": "인터뷰 시간",
+    "loading": "불러오는 중…",
+    "loadError": "일정을 불러오지 못했습니다. 다시 시도해 주세요.",
+    "noSlots": "아직 공유된 인터뷰 시간이 없습니다.",
+    "statusProposed": "제안됨",
+    "statusConfirmed": "확정됨",
+    "statusCancelled": "취소됨",
+    "announcementsHeading": "공지",
+    "messagesHeading": "메시지",
+    "noMessages": "아직 메시지가 없습니다. 담당자에게 메시지를 보내보세요.",
+    "senderYou": "나",
+    "senderTeam": "담당자",
+    "composerLabel": "메시지",
+    "composerPlaceholder": "담당자에게 메시지를 입력하세요…",
+    "send": "보내기",
+    "sending": "보내는 중…",
+    "sendFailed": "메시지 전송에 실패했습니다.",
+    "invalidTitle": "이 링크를 열 수 없습니다",
+    "invalidBody": "링크가 유효하지 않거나 만료되었을 수 있습니다. 링크를 공유한 담당자에게 확인해 주세요."
   }
 }

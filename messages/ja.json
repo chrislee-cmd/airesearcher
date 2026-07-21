@@ -2645,6 +2645,35 @@
     "chatComposerPrivatePlaceholder": "この候補者へのメッセージを入力してください…",
     "chatSend": "送信",
     "chatSending": "送信中…",
-    "chatSendFailed": "メッセージの送信に失敗しました。"
+    "chatSendFailed": "メッセージの送信に失敗しました。",
+    "shareCopy": "リンクをコピー",
+    "shareCopied": "コピーしました",
+    "shareReissue": "再発行",
+    "shareReissuing": "再発行中…",
+    "shareReissueConfirm": "リンクを再発行しますか？以前のリンクは無効になります。"
+  },
+  "SchedulingParticipant": {
+    "title": "面接スケジュール",
+    "subtitle": "面接の日時とメッセージです。",
+    "greeting": "{name}さん、面接の日時とメッセージです。",
+    "scheduleHeading": "面接日時",
+    "loading": "読み込み中…",
+    "loadError": "スケジュールを読み込めませんでした。もう一度お試しください。",
+    "noSlots": "まだ共有された面接日時はありません。",
+    "statusProposed": "提案済み",
+    "statusConfirmed": "確定済み",
+    "statusCancelled": "キャンセル済み",
+    "announcementsHeading": "お知らせ",
+    "messagesHeading": "メッセージ",
+    "noMessages": "まだメッセージはありません。担当者にメッセージを送ってみましょう。",
+    "senderYou": "あなた",
+    "senderTeam": "担当者",
+    "composerLabel": "メッセージ",
+    "composerPlaceholder": "担当者へのメッセージを入力…",
+    "send": "送信",
+    "sending": "送信中…",
+    "sendFailed": "メッセージの送信に失敗しました。",
+    "invalidTitle": "このリンクは利用できません",
+    "invalidBody": "リンクが無効か期限切れの可能性があります。リンクを共有した担当者にご確認ください。"
   }
 }

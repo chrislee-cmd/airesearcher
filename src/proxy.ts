@@ -143,8 +143,9 @@ export async function proxy(request: NextRequest) {
   }
 
   // Routes under /auth (OAuth callback, sign-out, etc.), /live (the anonymous
-  // live-interpretation viewer), and /ut-live (the anonymous AI-UT participant
-  // capture page, 624) live outside the `[locale]` segment and must NOT be
+  // live-interpretation viewer), /ut-live (the anonymous AI-UT participant
+  // capture page, 624), and /schedule (the anonymous recruiting-scheduling
+  // participant page, PR4) live outside the `[locale]` segment and must NOT be
   // prefixed. Without this guard next-intl rewrites `/live/abc` to
   // `/ko/live/abc` (or `/ut-live/abc` to `/ko/ut-live/abc`), which 404s.
   //
@@ -157,7 +158,8 @@ export async function proxy(request: NextRequest) {
   if (
     !pathname.startsWith('/auth/') &&
     !pathname.startsWith('/live/') &&
-    !pathname.startsWith('/ut-live/')
+    !pathname.startsWith('/ut-live/') &&
+    !pathname.startsWith('/schedule/')
   ) {
     // Neutralize Accept-Language only when the user hasn't made an explicit
     // choice yet (no NEXT_LOCALE cookie) — see the note above.
