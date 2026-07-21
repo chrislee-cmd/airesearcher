@@ -1292,6 +1292,8 @@
     "setupProjectSelected": "Selected",
     "setupKeywordsNone": "Add keywords",
     "setupChange": "Change",
+    "setupReady": "Ready · you can search",
+    "setupAddKeywords": "Add keywords to search",
     "handoffTitle": "Please check the full view",
     "handoffBody": "Desk research is running. Track the crawl and read the report in the full view.",
     "doneHandoffBody": "Research is complete. Read the full report in the full view.",

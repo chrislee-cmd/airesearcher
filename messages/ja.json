@@ -1385,6 +1385,8 @@
     "setupProjectSelected": "選択済み",
     "setupKeywordsNone": "キーワードを追加",
     "setupChange": "変更",
+    "setupReady": "準備完了 · 検索できます",
+    "setupAddKeywords": "検索するキーワードを追加してください",
     "handoffTitle": "全体ビューで確認してください",
     "handoffBody": "デスクリサーチを実行中です。全体ビューで進捗とレポートを確認できます。",
     "doneHandoffBody": "リサーチが完了しました。全体ビューでレポートを確認してください。",

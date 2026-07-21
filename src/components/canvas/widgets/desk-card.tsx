@@ -1,7 +1,9 @@
 'use client';
 
 import type { WidgetContent } from '../widget-types';
-import { DeskCardBody } from './desk-card-body';
+// CD 파일럿 #2 (§AUTHORITY §D) — 프레젠테이션 fresh 신규 빌드. 옛
+// desk-card-body 는 superseded(삭제). 새 CD 프레젠테이션 = desk/desk-setup-body.
+import { DeskSetupBody } from './desk/desk-setup-body';
 
 export const deskCard: WidgetContent = {
   key: 'desk',
@@ -17,5 +19,5 @@ export const deskCard: WidgetContent = {
     expandedCols: 3,
   },
   state: 'idle',
-  ExpandedBody: DeskCardBody,
+  ExpandedBody: DeskSetupBody,
 };

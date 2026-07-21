@@ -86,6 +86,12 @@
      (CD 파일럿 #2, proposed-token surface-widget-header-cyan). */
   --raw-pastel-cyan: #bfe9ef;
 
+  /* CD 파일럿 #2 proposed-tokens (greenfield 위젯 — CD 값 승격, DS 기본 대체 X).
+     surface-disabled = idle CTA · signal-success-bg/-line = collapsed 요약 tint. */
+  --raw-surface-disabled: #eceef1;
+  --raw-signal-success-bg: #f4fbf6;
+  --raw-signal-success-line: #cdeed8;
+
   /* signal */
   --raw-signal-success: #16a34a;
   --raw-signal-warning: #fb923c;
@@ -177,6 +183,9 @@
   --raw-pastel-sky: #e0eaf3;
   --raw-pastel-rose: #f5e6ec;
   --raw-pastel-cyan: #dbeef1;
+  --raw-surface-disabled: #eceef1;
+  --raw-signal-success-bg: #eef5f0;
+  --raw-signal-success-line: #d8e6dd;
 
   /* signal (동일) */
   --raw-signal-success: #16a34a;
@@ -276,6 +285,9 @@
   --raw-pastel-sky: #00ffff;
   --raw-pastel-rose: #ff0099;
   --raw-pastel-cyan: #00ffcc;
+  --raw-surface-disabled: #888888;
+  --raw-signal-success-bg: #00ff00;
+  --raw-signal-success-line: #00cc00;
 
   /* signal — 형광 대비색 */
   --raw-signal-success: #00ff00;
@@ -459,6 +471,11 @@
   --color-rose: var(--raw-pastel-rose);
   --color-cyan: var(--raw-pastel-cyan);
 
+  /* CD 파일럿 #2 proposed-tokens (greenfield 위젯) */
+  --color-surface-disabled: var(--raw-surface-disabled);
+  --color-signal-success-bg: var(--raw-signal-success-bg);
+  --color-signal-success-line: var(--raw-signal-success-line);
+
   /* AM / PM chart accents (data visualisation only) */
   --color-am-accent: var(--raw-signal-am);
   --color-pm-accent: var(--raw-signal-pm);
@@ -479,6 +496,8 @@
   --radius-sm: var(--raw-radius-sm);
   --radius-md: var(--raw-radius-md);
   --radius-pill: var(--raw-radius-pill);
+  /* CD 파일럿 #2 — chrome radius(12px, estimate/hint 박스). rounded-chrome 유틸. */
+  --radius-chrome: var(--raw-radius-chrome);
 
   /* Font-size scale (B-1, option C — conservative consolidation).
      Bucket boundaries derived from frequency audit of 781 text-[Npx]
@@ -515,6 +534,9 @@
   --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
+  /* CD 파일럿 #2 — 선택된 mode 카드 soft amore glow (CD .dc.html 실측값 승격).
+     memphis(hard offset) 계열이 아닌 blur glow — CD 디자인 의도 그대로. */
+  --shadow-card-selected: 0 4px 12px rgba(255, 92, 138, 0.16);
 }
 
 /* =========================================================================
