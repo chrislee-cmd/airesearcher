@@ -48,9 +48,17 @@ export async function upsertCandidatesIntoBatch(
     return match ? { id: match.id, ...base } : base;
   });
 
+  // defaultToNull: false is load-bearing. When a re-upload mixes UPDATE rows
+  // (carry `id`) with INSERT rows (omit `id`), PostgREST unions the column set
+  // and, by default, fills every absent cell with NULL — so an insert row's
+  // missing `id` becomes NULL and violates the PK NOT NULL (23502). With
+  // missing=default, absent keys take the column DEFAULT instead: `id` →
+  // gen_random_uuid(), `participant_token` → its default, `status` → 'pending'.
+  // Explicitly-set nulls (email/name/phone on a row that has the key) are
+  // unaffected — they're present, not missing.
   const { data, error } = await admin
     .from('sched_candidates')
-    .upsert(payload, { onConflict: 'id' })
+    .upsert(payload, { onConflict: 'id', defaultToNull: false })
     .select('id');
   if (error) return { error: 'save_failed' };
 
