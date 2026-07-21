@@ -2,12 +2,28 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { parsePartialJson } from 'ai';
 import type { WidgetContent } from '../widget-types';
 import { track as trackEvent } from '@/lib/analytics/events';
+import { track as mixpanelTrack } from '@/components/mixpanel-provider';
+import { useRequireAuth } from '@/components/auth-provider';
+import { useGenerationJobs } from '@/components/generation-job-provider';
+import { useWorkspace } from '@/components/workspace-provider';
+import { useWidgetGate } from '@/components/widget-gate-provider';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
-import { RecruitingWizard } from '@/components/recruiting-wizard';
+import { ControlBoardPanel } from '../shell/control-board-panel';
+import { WidgetPrimaryCta } from '../shell/widget-primary-cta';
+import { useWidgetState } from '../shell/widget-state-context';
+import {
+  RecruitingSetupAccordion,
+  type RecruitingGoogleStatus,
+  type RecruitingPublishedForm,
+} from './recruiting/setup-accordion';
+import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
+import type { RecruitingBrief } from '@/lib/recruiting-schema';
+import type { Survey } from '@/lib/survey-schema';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
@@ -20,7 +36,14 @@ import {
 import { JudgedListTable } from './recruiting/judged-list-table';
 import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
 import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
-import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
+import {
+  clearDraft,
+  loadDraft,
+  persistDraft,
+  settleStreamingPhase,
+  type EditableBrief,
+  type Phase,
+} from '@/components/recruiting-wizard/draft-storage';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import { triggerBlobDownload } from '@/lib/export/download';
 import { csvFilename, responsesToCsv } from '@/lib/recruiting/responses-csv';
@@ -30,10 +53,10 @@ import {
   type RecruitingFilter,
 } from '@/lib/recruiting/distribution';
 
-// 카드 본문 = RecruitingWizard (3-step: 조건 → 설문 → Google Form 발행).
-// 이전엔 위젯 바닥에 발행된 폼 목록 "최근 산출물" 영역이 있었지만, prod
-// 마이그 lag 로 인한 forms/list 500/401 폭주 + UX 정리 차원에서 제거.
-// 발행 결과 링크는 wizard 의 Card 3 발행 완료 패널에서 바로 노출.
+// 카드 본문 = RecruitingSetupFlow (V3: 소스 → 조건 → 설문 → Google Form
+// 발행을 공유 셸 + 4-스텝 아코디언으로). 이전엔 위젯 바닥에 발행된 폼 목록
+// "최근 산출물" 영역이 있었지만, prod 마이그 lag 로 인한 forms/list 500/401
+// 폭주 + UX 정리 차원에서 제거. 발행 결과 링크는 발행 스텝 완료 패널에서 바로 노출.
 //
 // 전체보기 (fullview) = 발행된 설문의 **응답 spreadsheet** 만 노출
 // (사용자 명시 2026-07-01: "리크루팅은 설문 참여 제출한 스프레드시트
@@ -190,11 +213,12 @@ function ExpandedBody() {
   };
   return (
     <div className="flex h-full flex-col">
-      {/* wizard = 컨트롤 (조건 → 설문 → 발행). 서브헤더 slim bar 폐기 —
-          phase 무관 항상 노출되어 발행 후에도 재발행/조건 조정이 가능하다.
-          fullview·진행 state 보존을 위해 항상 마운트. */}
+      {/* 세팅 = 공유 셸(ControlBoardPanel) + 4-스텝 아코디언 (probing/전사록
+          미러). 소스 → 조건 → 설문 → 발행. phase 무관 항상 노출되어 발행
+          후에도 재발행/조건 조정이 가능하다. fullview·진행 state 보존을 위해
+          항상 마운트. */}
       <div className="flex min-h-0 flex-1 flex-col">
-        <RecruitingWizard
+        <RecruitingSetupFlow
           onPublishedChange={setIsPublished}
           onConditionsChange={setConditionsBrief}
         />
@@ -380,19 +404,707 @@ function ExpandedBody() {
   );
 }
 
-// 리크루팅 canvas widget — 3-step 카드 wizard (조건 → 설문 → Google Form)
-// 를 widget body 에 마운트. PREVIEW_FEATURES 에 속해 canvas/page.tsx 의
-// server-side preview gate 가 일반 유저에게 자동 숨김.
+// ── 세팅 플로우 (로직 홀더) ─────────────────────────────────────────────
+// V3: 옛 RecruitingWizard(3-카드 + 서브헤더)를 대체. extract·survey 생성·
+// Google 발행 로직/상태/API 는 그대로 재사용하되(회귀 0), 표현만 공유 셸
+// (ControlBoardPanel) + 4-스텝 아코디언(RecruitingSetupAccordion, probing/
+// 전사록 미러)으로 올린다. 발행 CTA 는 셸 WidgetPrimaryCta 로 하단 고정.
+//
+// 로직은 recruiting-wizard/wizard.tsx 에서 포팅 — API 엔드포인트(/api/
+// recruiting/extract · /survey · /google/*)·standard-blocks·draft 영속은 불변.
+
+type Criterion = RecruitingBrief['criteria'][number];
+
+const RECRUITING_ACCEPT_RE = /\.(pdf|docx|xlsx|xls|csv|txt)$/i;
+const RECRUITING_MAX_FILES = 10;
+
+// 발행 체인 진행 라벨 인덱스 → i18n 키. 실제 per-stage 신호가 없어 타임드
+// UX 큐 (wizard PUBLISH_STAGES 미러). afterMs 는 아래 effect 가 소유.
+const PUBLISH_STAGE_AFTER_MS = [0, 1200, 4500, 8000];
+
+// Google refresh token 만료/취소 → 재-OAuth 만이 복구. 서버가 문자열로
+// 표면화하는 패턴을 substring 매칭.
+function isReauthError(msg: string | null): boolean {
+  if (!msg) return false;
+  return /token_refresh_failed|invalid_grant|unauthorized|google_not_connected/i.test(
+    msg,
+  );
+}
+
+async function reconnectGoogle() {
+  try {
+    await fetch('/api/recruiting/google/disconnect', { method: 'POST' });
+  } catch {
+    // best-effort — /google/start 가 어차피 토큰 row 를 덮어씀.
+  }
+  if (typeof window !== 'undefined') {
+    window.location.href = '/api/recruiting/google/start';
+  }
+}
+
+// LLM 스트림이 잘린/빈 버퍼로 끝나면 strict parse 가 터진다. strict → 부분
+// 파서 순으로 시도하고, 필요한 배열이 있을 때만 수용. truncatedMsg 는 호출부가
+// i18n 으로 넘긴다 (모듈 함수라 hook 접근 불가).
+async function coerceBrief(
+  buffer: string,
+  truncatedMsg: string,
+): Promise<RecruitingBrief> {
+  if (!buffer.trim()) throw new Error(truncatedMsg);
+  try {
+    return JSON.parse(buffer) as RecruitingBrief;
+  } catch {
+    // fall through to partial parse
+  }
+  const parsed = await parsePartialJson(buffer);
+  const obj =
+    parsed.value && typeof parsed.value === 'object'
+      ? (parsed.value as Record<string, unknown>)
+      : null;
+  if (obj && Array.isArray(obj.criteria) && Array.isArray(obj.schedule)) {
+    return {
+      summary: typeof obj.summary === 'string' ? obj.summary : '',
+      criteria: obj.criteria as RecruitingBrief['criteria'],
+      schedule: obj.schedule as RecruitingBrief['schedule'],
+    };
+  }
+  throw new Error(truncatedMsg);
+}
+
+async function coerceSurvey(
+  buffer: string,
+  truncatedMsg: string,
+): Promise<Survey> {
+  if (!buffer.trim()) throw new Error(truncatedMsg);
+  try {
+    return JSON.parse(buffer) as Survey;
+  } catch {
+    // fall through
+  }
+  const parsed = await parsePartialJson(buffer);
+  const obj =
+    parsed.value && typeof parsed.value === 'object'
+      ? (parsed.value as Record<string, unknown>)
+      : null;
+  if (obj && Array.isArray(obj.sections)) {
+    return {
+      title: typeof obj.title === 'string' ? obj.title : '',
+      description: typeof obj.description === 'string' ? obj.description : '',
+      sections: obj.sections as Survey['sections'],
+    };
+  }
+  throw new Error(truncatedMsg);
+}
+
+function RecruitingSetupFlow({
+  onPublishedChange,
+  onConditionsChange,
+}: {
+  onPublishedChange?: (published: boolean) => void;
+  onConditionsChange?: (brief: EditableBrief | null) => void;
+}) {
+  const t = useTranslations('Recruiting.setup');
+  const requireAuth = useRequireAuth();
+  const jobs = useGenerationJobs();
+  const workspace = useWorkspace();
+  const gate = useWidgetGate('recruiting');
+  const { setState: setWidgetState } = useWidgetState();
+
+  // Draft rehydration — 한 번만 읽고 아래 effect 에서 clear.
+  const [hydrationDraft] = useState(() => loadDraft());
+
+  // ── 조건 ──────────────────────────────────────────────────────────
+  const [files, setFiles] = useState<File[]>([]);
+  const [pasted, setPasted] = useState(() => hydrationDraft?.pasted ?? '');
+  const [rejected, setRejected] = useState<string[]>([]);
+  const [criteriaPhase, setCriteriaPhase] = useState<Phase>(() =>
+    hydrationDraft ? settleStreamingPhase(hydrationDraft.criteriaPhase) : 'idle',
+  );
+  const [criteriaError, setCriteriaError] = useState<string | null>(null);
+  const [partialBrief, setPartialBrief] = useState<
+    Partial<RecruitingBrief> | null
+  >(() => hydrationDraft?.partialBrief ?? null);
+  const [editedBrief, setEditedBrief] = useState<EditableBrief | null>(
+    () => hydrationDraft?.editedBrief ?? null,
+  );
+
+  // ── 설문 ──────────────────────────────────────────────────────────
+  const [surveyPhase, setSurveyPhase] = useState<Phase>(() =>
+    hydrationDraft ? settleStreamingPhase(hydrationDraft.surveyPhase) : 'idle',
+  );
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+  const [survey, setSurvey] = useState<Survey | null>(
+    () => hydrationDraft?.survey ?? null,
+  );
+
+  // ── Google Form ───────────────────────────────────────────────────
+  const [google, setGoogle] = useState<RecruitingGoogleStatus | null>(null);
+  const [googleAuthError, setGoogleAuthError] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get('google');
+    if (!g || g === 'connected') return null;
+    return g;
+  });
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [published, setPublished] = useState<RecruitingPublishedForm | null>(
+    null,
+  );
+  const [publishStageIdx, setPublishStageIdx] = useState(0);
+
+  useEffect(() => {
+    onPublishedChange?.(!!published);
+  }, [published, onPublishedChange]);
+  useEffect(() => {
+    onConditionsChange?.(editedBrief);
+  }, [editedBrief, onConditionsChange]);
+
+  // Google 연결 상태.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/recruiting/google/status')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!cancelled && j) {
+          setGoogle({
+            connected: !!j.connected,
+            email: j.email ?? null,
+            hasDrive: !!j.hasDrive,
+            adminProxy: !!j.adminProxy,
+          });
+        }
+      })
+      .catch(() => {});
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('google')) {
+        params.delete('google');
+        const next =
+          window.location.pathname +
+          (params.toString() ? `?${params.toString()}` : '');
+        window.history.replaceState(null, '', next);
+      }
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 시드 후 draft 제거 (idempotent — strict-mode 이중 마운트 무해).
+  useEffect(() => {
+    if (hydrationDraft) clearDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function captureDraft() {
+    persistDraft({
+      pasted,
+      partialBrief,
+      editedBrief,
+      survey,
+      criteriaPhase,
+      surveyPhase,
+    });
+  }
+
+  // 추출 done → editable brief 시드 (source result 아이덴티티로 재시드 방지).
+  const job = jobs.get('recruiting');
+  const jobRunning = job.status === 'running';
+  const jobResult =
+    job.status === 'done' ? (job.result as RecruitingBrief | null) : null;
+  const [seededFor, setSeededFor] = useState<RecruitingBrief | null>(null);
+  if (jobResult && jobResult !== seededFor) {
+    setSeededFor(jobResult);
+    setEditedBrief({
+      summary: jobResult.summary ?? '',
+      criteria: jobResult.criteria.map((c) => ({ ...c })),
+      schedule: jobResult.schedule.map((p) => ({ ...p })),
+    });
+    setCriteriaPhase('review');
+  }
+
+  function addFiles(incoming: FileList | File[]) {
+    const accepted: File[] = [];
+    const rejectedNames: string[] = [];
+    for (const f of Array.from(incoming)) {
+      if (RECRUITING_ACCEPT_RE.test(f.name)) accepted.push(f);
+      else rejectedNames.push(f.name);
+    }
+    setFiles((prev) => {
+      const seen = new Set(prev.map((p) => `${p.name}::${p.size}`));
+      const next = [...prev];
+      for (const f of accepted) {
+        const key = `${f.name}::${f.size}`;
+        if (!seen.has(key) && next.length < RECRUITING_MAX_FILES) {
+          next.push(f);
+          seen.add(key);
+        }
+      }
+      return next;
+    });
+    setRejected(rejectedNames);
+  }
+
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function startExtract() {
+    requireAuth(() => void doExtract());
+  }
+
+  async function doExtract() {
+    if (files.length === 0 && !pasted.trim()) return;
+    const admitted = await gate.acquire();
+    if (!admitted) return;
+    mixpanelTrack('recruiting_extract_click', {
+      feature: 'recruiting',
+      file_count: files.length,
+      pasted_chars: pasted.length,
+    });
+    const submittedFiles = files;
+    const submittedPaste = pasted;
+
+    setCriteriaError(null);
+    setPartialBrief(null);
+    setEditedBrief(null);
+    setSeededFor(null);
+    setSurveyPhase('idle');
+    setSurvey(null);
+    setSurveyError(null);
+    setPublished(null);
+    setPublishError(null);
+    setCriteriaPhase('generating');
+
+    const truncatedMsg = t('streamTruncated');
+    try {
+      await jobs.start<RecruitingBrief>('recruiting', {
+        input: { count: submittedFiles.length },
+        run: async () => {
+          const fd = new FormData();
+          for (const f of submittedFiles) fd.append('files', f);
+          if (submittedPaste.trim()) fd.append('pasted', submittedPaste);
+
+          const res = await fetch('/api/recruiting/extract', {
+            method: 'POST',
+            body: fd,
+          });
+          if (!res.ok || !res.body) {
+            const j = await res.json().catch(() => ({}));
+            throw new Error(j.error ?? `extract_failed: ${res.statusText}`);
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const parsed = await parsePartialJson(buffer);
+            if (parsed.value && typeof parsed.value === 'object') {
+              setPartialBrief(parsed.value as Partial<RecruitingBrief>);
+            }
+          }
+
+          const finalParsed = await coerceBrief(buffer, truncatedMsg);
+          setPartialBrief(finalParsed);
+          mixpanelTrack('recruiting_extract_success', { feature: 'recruiting' });
+          return finalParsed;
+        },
+      });
+    } finally {
+      gate.release();
+    }
+  }
+
+  // job-level error 흡수 (seededFor 패턴).
+  const currentJobError =
+    job.status === 'error' ? (job.error ?? 'extract_failed') : null;
+  const [absorbedJobError, setAbsorbedJobError] = useState<string | null>(null);
+  if (currentJobError !== absorbedJobError) {
+    setAbsorbedJobError(currentJobError);
+    if (currentJobError) {
+      setCriteriaPhase('idle');
+      setCriteriaError(currentJobError);
+    }
+  }
+
+  function approveCriteria() {
+    if (!editedBrief) return;
+    setCriteriaPhase('approved');
+    void doGenerateSurvey(editedBrief);
+  }
+
+  function restartCriteria() {
+    setCriteriaPhase('idle');
+    setPartialBrief(null);
+    setEditedBrief(null);
+    setSeededFor(null);
+    setCriteriaError(null);
+    setSurveyPhase('idle');
+    setSurvey(null);
+    setSurveyError(null);
+    setPublished(null);
+    setPublishError(null);
+  }
+
+  const surveyAbortRef = useRef<AbortController | null>(null);
+
+  async function doGenerateSurvey(brief: EditableBrief) {
+    surveyAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    surveyAbortRef.current = ctrl;
+
+    setSurveyPhase('generating');
+    setSurveyError(null);
+    setSurvey(null);
+    setPublished(null);
+    setPublishError(null);
+    mixpanelTrack('recruiting_survey_generate_click', {
+      feature: 'recruiting_survey',
+    });
+    trackEvent('job_started', {
+      widget: 'recruiting',
+      job_type: 'form_generate',
+    });
+    const generateStartedAt = Date.now();
+    const truncatedMsg = t('streamTruncated');
+
+    try {
+      const briefForApi: RecruitingBrief = {
+        summary: brief.summary,
+        criteria: brief.criteria,
+        schedule: brief.schedule,
+      };
+      const res = await fetch('/api/recruiting/survey', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ brief: briefForApi }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `survey_failed: ${res.statusText}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+      }
+      if (ctrl.signal.aborted) return;
+      const rawSurvey = await coerceSurvey(buffer, truncatedMsg);
+      // 표준 블록(인적사항 + 전화번호 + 개인정보 동의)은 post-LLM 주입 —
+      // 사용자가 승인 전에 *완전한* 설문을 보게. publish route 가 동일
+      // idempotent post-process 를 재적용 (defense in depth).
+      const finalSurvey = applyStandardBlocks(rawSurvey);
+      setSurvey(finalSurvey);
+      setSurveyPhase('review');
+      mixpanelTrack('recruiting_survey_generate_success', {
+        feature: 'recruiting_survey',
+      });
+      trackEvent('job_completed', {
+        widget: 'recruiting',
+        job_type: 'form_generate',
+        duration_ms: Math.max(0, Date.now() - generateStartedAt),
+      });
+    } catch (e) {
+      if (ctrl.signal.aborted) return;
+      trackEvent('job_failed', {
+        widget: 'recruiting',
+        job_type: 'form_generate',
+        error: e instanceof Error ? e.message : 'survey_failed',
+      });
+      setSurveyError(e instanceof Error ? e.message : 'survey_failed');
+      setSurveyPhase('idle');
+    } finally {
+      if (surveyAbortRef.current === ctrl) surveyAbortRef.current = null;
+    }
+  }
+
+  function approveSurvey() {
+    if (!survey) return;
+    setSurveyPhase('approved');
+    // 발행 체인은 아래 effect 가 (surveyPhase==='approved' && google.connected
+    // && !published) 조건에서 한 번 fire — OAuth 왕복 재개 경로도 커버. 여기선
+    // 이전 에러만 클리어; 미연결이면 먼저 OAuth 로 보낸다.
+    setPublishError(null);
+    if (google && !google.connected && !google.adminProxy) {
+      captureDraft();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/api/recruiting/google/start';
+      }
+    }
+  }
+
+  function regenerateSurvey() {
+    if (!editedBrief) return;
+    void doGenerateSurvey(editedBrief);
+  }
+
+  async function autoPublish() {
+    if (!survey) return;
+    setPublishing(true);
+    setPublishStageIdx(0);
+    setPublishError(null);
+    try {
+      const res = await fetch('/api/recruiting/google/forms/create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          survey,
+          criteria: editedBrief?.criteria,
+          summary: editedBrief?.summary,
+        }),
+        signal: AbortSignal.timeout(45_000),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(j.error ?? `publish_failed: ${res.statusText}`);
+      }
+      const pub: RecruitingPublishedForm = {
+        formId: j.formId ?? j.form_id,
+        responderUri: j.responderUri,
+        sheetUrl: j.sheetUrl ?? null,
+      };
+      setPublished(pub);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('recruiting:published'));
+      }
+      mixpanelTrack('recruiting_publish_success', {
+        feature: 'recruiting_publish',
+      });
+      trackEvent('widget_action', {
+        widget: 'recruiting',
+        action: 'recruiting_form_published',
+        metadata: { form_id: pub.formId },
+      });
+      if (pub.formId) {
+        const md = [
+          `# ${survey.title || 'Recruiting form'}`,
+          '',
+          `- ${t('responderLabel')}: ${pub.responderUri ?? ''}`,
+          '',
+          ...survey.sections.flatMap((s) => [
+            `## ${s.title || ''}`,
+            ...s.questions.map((q, i) => `${i + 1}. ${q.title}`),
+            '',
+          ]),
+        ].join('\n');
+        let activeProjectId: string | null = null;
+        try {
+          const raw = window.localStorage.getItem('active_project:v1');
+          if (raw) {
+            const parsed = JSON.parse(raw) as { id?: string } | null;
+            activeProjectId = parsed?.id ?? null;
+          }
+        } catch {}
+        workspace.addArtifact({
+          id: `recruiting_${pub.formId}`,
+          featureKey: 'recruiting',
+          title: `${survey.title || 'recruiting'}.md`,
+          content: md,
+          dbFeature: 'recruiting',
+          dbId: pub.formId,
+          projectId: activeProjectId,
+        });
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'TimeoutError') {
+        setPublishError(t('publishTimeout'));
+      } else {
+        setPublishError(e instanceof Error ? e.message : 'publish_failed');
+      }
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  // 자동 발행 트리거 — 승인 + Google 연결 + 미발행 시 1회. OAuth 왕복 재개도 커버.
+  const triggeredForRef = useRef<Survey | null>(null);
+  useEffect(() => {
+    if (surveyPhase !== 'approved') return;
+    if (!survey) return;
+    if (published || publishing) return;
+    if (publishError) return;
+    if (!google) return;
+    if (!google.connected) return;
+    if (triggeredForRef.current === survey) return;
+    triggeredForRef.current = survey;
+    void autoPublish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surveyPhase, survey, published, publishing, publishError, google]);
+
+  // 발행 진행 라벨 스테이지 타이머.
+  useEffect(() => {
+    if (!publishing) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    PUBLISH_STAGE_AFTER_MS.forEach((afterMs, idx) => {
+      if (idx === 0) return;
+      timers.push(setTimeout(() => setPublishStageIdx(idx), afterMs));
+    });
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [publishing]);
+
+  // 헤더 state pill sync — phase 진행을 헤더로 broadcast (라벨 없이 running).
+  useEffect(() => {
+    if (publishError || criteriaError || surveyError) {
+      const message = publishError ?? criteriaError ?? surveyError ?? undefined;
+      setWidgetState({ kind: 'error', message });
+      return;
+    }
+    if (publishing || surveyPhase === 'generating' || criteriaPhase === 'generating') {
+      setWidgetState({ kind: 'running' });
+      return;
+    }
+    if (published) {
+      setWidgetState({ kind: 'done' });
+      return;
+    }
+    setWidgetState({ kind: 'idle' });
+  }, [
+    setWidgetState,
+    publishing,
+    surveyPhase,
+    criteriaPhase,
+    publishError,
+    criteriaError,
+    surveyError,
+    published,
+  ]);
+
+  // ── Derived ────────────────────────────────────────────────────────
+  const partialCriteria: Criterion[] = editedBrief
+    ? editedBrief.criteria
+    : ((partialBrief?.criteria ?? []).filter(
+        (c): c is Criterion =>
+          typeof c?.category === 'string' &&
+          typeof c?.label === 'string' &&
+          typeof c?.detail === 'string' &&
+          typeof c?.required === 'boolean',
+      ) as Criterion[]);
+  const canExtract =
+    (files.length > 0 || pasted.trim().length > 0) && !jobRunning;
+  const surveyReady =
+    !!survey && (surveyPhase === 'review' || surveyPhase === 'approved');
+  const generating =
+    criteriaPhase === 'generating' || surveyPhase === 'generating';
+
+  const publishStageLabel =
+    [
+      t('publishStage1'),
+      t('publishStage2'),
+      t('publishStage3'),
+      t('publishStage4'),
+    ][publishStageIdx] ?? t('publishing');
+  const needsReauth = isReauthError(publishError) && !google?.adminProxy;
+
+  // 하단 CTA — phase-adaptive 단일 forward 액션 (spec: "Publish form →").
+  // 준비 단계(설문 미완)에선 파이프라인 전진, 설문 준비되면 발행.
+  const ctaPublishMode = surveyReady && !published;
+  const ctaBusy = publishing || generating;
+  const ctaLabel = ctaPublishMode ? t('ctaPublish') : t('ctaPrepare');
+  const ctaBusyLabel = ctaPublishMode ? t('ctaPublishing') : t('ctaPreparing');
+  const ctaDisabled = ctaPublishMode
+    ? false
+    : editedBrief
+      ? false
+      : !canExtract;
+
+  function handleCta() {
+    if (ctaPublishMode) {
+      requireAuth(() => approveSurvey());
+      return;
+    }
+    if (editedBrief) {
+      approveCriteria();
+      return;
+    }
+    startExtract();
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <ControlBoardPanel gap="none">
+        <ControlBoardPanel.Region>
+          <RecruitingSetupAccordion
+            files={files}
+            pasted={pasted}
+            rejected={rejected}
+            running={jobRunning}
+            onPasteChange={setPasted}
+            onAddFiles={addFiles}
+            onRemoveFile={removeFile}
+            criteriaPhase={criteriaPhase}
+            editedBrief={editedBrief}
+            partialCount={partialCriteria.length}
+            criteriaError={criteriaError}
+            onEditedBriefChange={setEditedBrief}
+            onRestart={restartCriteria}
+            surveyPhase={surveyPhase}
+            survey={survey}
+            surveyError={surveyError}
+            onSurveyChange={setSurvey}
+            onRegenerateSurvey={regenerateSurvey}
+            google={google}
+            googleAuthError={googleAuthError}
+            publishing={publishing}
+            publishStageLabel={publishStageLabel}
+            published={published}
+            publishError={publishError}
+            needsReauth={needsReauth}
+            onConnect={() => {
+              if (typeof window !== 'undefined') {
+                captureDraft();
+                window.location.href = '/api/recruiting/google/start';
+              }
+            }}
+            onReconnect={() => {
+              captureDraft();
+              void reconnectGoogle();
+            }}
+            onRetry={() => requireAuth(() => void autoPublish())}
+            onClearAuthError={() => setGoogleAuthError(null)}
+          />
+        </ControlBoardPanel.Region>
+      </ControlBoardPanel>
+
+      {!published && (
+        <WidgetPrimaryCta
+          label={ctaLabel}
+          busyLabel={ctaBusyLabel}
+          busy={ctaBusy}
+          disabled={ctaDisabled}
+          onClick={handleCta}
+        />
+      )}
+    </div>
+  );
+}
+
+// 리크루팅 canvas widget — 세팅(소스 → 조건 → 설문 → Google Form 발행)을
+// 공유 셸 + 4-스텝 아코디언으로 widget body 에 마운트. PREVIEW_FEATURES 에
+// 속해 canvas/page.tsx 의 server-side preview gate 가 일반 유저에게 자동 숨김.
 export const recruitingCard: WidgetContent = {
   key: 'recruiting',
   meta: {
+    // labelKey 미해석 시 폴백 (blank 원천 차단). 헤더밴드 타이틀은 labelKey 로.
     label: '리크루팅',
+    labelKey: 'Features.recruiting.title',
     accent: 'sun',
     cost: 10,
     thumbnail: '/thumbnail/recruiting.png',
     description:
       '리서치 목적·페르소나·문항 초안을 LLM 으로 한 번에 생성합니다.',
     expandedCols: 3,
+    // Canvas 1c 카드 프레임 opt-in — 604×900 카드 + sun 파스텔 헤더밴드 +
+    // 통합 툴바(💎10). probing·전사록·통역·UT 와 동일 프레임 상속.
+    cardFrame: true,
   },
   state: 'idle',
   ExpandedBody,
