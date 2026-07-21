@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +66,14 @@ const STICKY_LEFT = {
 };
 // Max width for scrollable data cells — nowrap + ellipsis past this.
 const DATA_CELL_MAX = 240;
+
+// Sticky column cells must be pinned to an EXACT width (min = max = width) so
+// the next sticky column's `left` offset lines up perfectly — otherwise an
+// auto-sized column grows past its width hint and the following frozen column
+// overlaps it, leaving a gap where scrolling content bleeds through.
+function stickyStyle(left: number, w: number): CSSProperties {
+  return { left, width: w, minWidth: w, maxWidth: w };
+}
 
 export function RecruitingSchedulingClient({
   batches,
@@ -555,12 +563,17 @@ export function RecruitingSchedulingClient({
               )}
 
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse whitespace-nowrap text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-mute">
+                {/* border-separate (not collapse): under border-collapse, z-index
+                    on sticky <td> is ignored in Chrome so scrolling columns
+                    bleed through the frozen ones. Row borders move onto the
+                    cells via thead/tbody variants since <tr> borders don't
+                    paint in separate mode. */}
+                <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
+                  <thead className="[&_th]:border-b [&_th]:border-line">
+                    <tr className="text-left text-mute">
                       <th
                         className="sticky z-table-cell-sticky bg-paper px-3 py-2"
-                        style={{ left: STICKY_LEFT.check, width: STICKY_W.check }}
+                        style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
                       >
                         <Checkbox
                           aria-label={t('selectAll')}
@@ -570,16 +583,13 @@ export function RecruitingSchedulingClient({
                       </th>
                       <th
                         className="sticky z-table-cell-sticky bg-paper px-3 py-2 font-medium"
-                        style={{ left: STICKY_LEFT.name, width: STICKY_W.name }}
+                        style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
                       >
                         {t('colName')}
                       </th>
                       <th
                         className="sticky z-table-cell-sticky border-r border-line bg-paper px-3 py-2 font-medium"
-                        style={{
-                          left: STICKY_LEFT.contact,
-                          width: STICKY_W.contact,
-                        }}
+                        style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
                       >
                         {t('colContact')}
                       </th>
@@ -595,7 +605,7 @@ export function RecruitingSchedulingClient({
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="[&_td]:border-b [&_td]:border-line-soft">
                     {candidates.length === 0 ? (
                       <tr>
                         <td
@@ -611,13 +621,10 @@ export function RecruitingSchedulingClient({
                         const checked = selected.has(c.id);
                         const contact = contactValue(c);
                         return (
-                          <tr key={c.id} className="border-b border-line-soft">
+                          <tr key={c.id}>
                             <td
                               className="sticky z-table-cell-sticky bg-paper px-3 py-2"
-                              style={{
-                                left: STICKY_LEFT.check,
-                                width: STICKY_W.check,
-                              }}
+                              style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
                             >
                               <Checkbox
                                 aria-label={t('selectRow')}
@@ -627,10 +634,7 @@ export function RecruitingSchedulingClient({
                             </td>
                             <td
                               className="sticky z-table-cell-sticky bg-paper px-3 py-2 text-ink"
-                              style={{
-                                left: STICKY_LEFT.name,
-                                width: STICKY_W.name,
-                              }}
+                              style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
                             >
                               <div className="flex items-center gap-1.5">
                                 <span
@@ -648,10 +652,7 @@ export function RecruitingSchedulingClient({
                             </td>
                             <td
                               className="sticky z-table-cell-sticky border-r border-line bg-paper px-3 py-2 text-ink"
-                              style={{
-                                left: STICKY_LEFT.contact,
-                                width: STICKY_W.contact,
-                              }}
+                              style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
                             >
                               <div
                                 className="truncate"
