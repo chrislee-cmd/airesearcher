@@ -951,7 +951,7 @@
         "groupAria": "Select the transcription method",
         "micTitle": "Qualitative interview transcription",
         "micSub": "1:1 in-depth · speaker separation",
-        "minutesTitle": "Meeting minutes transcription",
+        "minutesTitle": "Meeting minutes / debriefing transcription",
         "minutesSub": "Multi-party speech · summary"
       },
       "transcribingEta": "{elapsed} elapsed · ~{remain} remaining (est.)",
@@ -2648,9 +2648,9 @@
     "offlineTitle": "In-person interview",
     "onlineTitle": "Online interview",
     "observeTitle": "Online observation",
-    "offlineDesc": "An interview where you meet and talk in person",
-    "onlineDesc": "An interview where you talk over a video call",
-    "observeDesc": "I only listen in, over a video call",
+    "offlineDesc": "An in-person, face-to-face interview",
+    "onlineDesc": "An interview held over a video call",
+    "observeDesc": "Listen-only, over a video call",
     "offlineNote": "One device mic captures the whole room · no speaker separation"
   }
 }
