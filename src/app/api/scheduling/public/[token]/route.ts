@@ -9,8 +9,13 @@
 // (a withdrawn time only confuses the participant). Mirrors the shape the admin
 // panel consumes so the participant components can reuse the same helpers.
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { resolveSchedToken } from '@/lib/scheduling/public';
 import { SCHED_MESSAGE_COLUMNS } from '@/lib/scheduling/messages';
+import {
+  participantGateStatus,
+  participantGateCookieName,
+} from '@/lib/scheduling/participant-gate';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +31,15 @@ export async function GET(
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
   const { admin, candidate } = gate;
+
+  // Phone-tail gate: a candidate with a phone on file must have proved the tail
+  // (valid signed cookie). Without it we refuse — a leaked link alone can't read
+  // the schedule/chat. (No phone on file → gate skipped; token scope remains.)
+  const cookieStore = await cookies();
+  const cookieValue = cookieStore.get(participantGateCookieName(token))?.value;
+  if (participantGateStatus(candidate.phone, token, cookieValue) === 'required') {
+    return NextResponse.json({ error: 'gate_required' }, { status: 401 });
+  }
 
   // Own slots only, cancelled withheld. Scoped by the resolved candidate id.
   const { data: slots, error: slotErr } = await admin
