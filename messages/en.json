@@ -2481,5 +2481,47 @@
       "startHint": "Start a session",
       "openFullview": "Open full view"
     }
+  },
+  "Recruiting": {
+    "setup": {
+      "step1Title": "Upload the source material (RFP · brief · email)",
+      "step2Title": "Review the participant criteria",
+      "step3Title": "Review the screening survey",
+      "step4Title": "Publish to a Google Form",
+      "required": "Required",
+      "criteriaEmpty": "Upload source to extract criteria",
+      "extracting": "Extracting criteria…",
+      "extractingCount": "Extracting {count} criteria…",
+      "surveyEmpty": "Approve criteria to generate the survey",
+      "generatingSurvey": "Generating the screening survey…",
+      "surveyQuestionMeta": "{count} questions",
+      "surveyEditable": "editable",
+      "surveyLocked": "🔒 Standard",
+      "surveyErrorPrefix": "Survey generation error",
+      "errorPrefix": "Error",
+      "publishInfo": "Creates a Google Form + linked Sheet, shared with anyone-with-link.",
+      "publishing": "Publishing…",
+      "preview": "Preview",
+      "edit": "Edit",
+      "restartCriteria": "Start over",
+      "regenerateSurvey": "Regenerate survey",
+      "footNoteError": "Check the error and try again",
+      "footNotePublished": "Published · collecting responses",
+      "footNoteReady": "Ready to publish",
+      "footNoteOpen": "Upload source to extract criteria",
+      "ctaExtract": "Extract criteria",
+      "ctaExtracting": "Extracting…",
+      "ctaApproveCriteria": "Approve criteria",
+      "ctaGeneratingSurvey": "Generating survey…",
+      "ctaApproveSurvey": "Approve survey",
+      "ctaConnectGoogle": "Connect Google",
+      "ctaPublishing": "Publishing…",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "summarySource": "{count} files",
+      "summaryCriteria": "{count} criteria",
+      "summarySurvey": "{sections} sections · {questions} questions",
+      "summaryPublish": "Google Form"
+    }
   }
 }

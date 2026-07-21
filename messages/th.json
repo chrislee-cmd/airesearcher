@@ -2574,5 +2574,47 @@
       "startHint": "เริ่มเซสชัน",
       "openFullview": "เปิดมุมมองเต็มหน้าจอ"
     }
+  },
+  "Recruiting": {
+    "setup": {
+      "step1Title": "อัปโหลดเอกสารต้นทาง (RFP · บรีฟ · อีเมล)",
+      "step2Title": "ตรวจสอบเกณฑ์ผู้เข้าร่วม",
+      "step3Title": "ตรวจสอบแบบสอบถามคัดกรอง",
+      "step4Title": "เผยแพร่เป็น Google Form",
+      "required": "จำเป็น",
+      "criteriaEmpty": "อัปโหลดต้นทางเพื่อดึงเกณฑ์",
+      "extracting": "กำลังดึงเกณฑ์…",
+      "extractingCount": "กำลังดึงเกณฑ์ {count} รายการ…",
+      "surveyEmpty": "อนุมัติเกณฑ์เพื่อสร้างแบบสอบถาม",
+      "generatingSurvey": "กำลังสร้างแบบสอบถามคัดกรอง…",
+      "surveyQuestionMeta": "{count} คำถาม",
+      "surveyEditable": "แก้ไขได้",
+      "surveyLocked": "🔒 มาตรฐาน",
+      "surveyErrorPrefix": "เกิดข้อผิดพลาดในการสร้างแบบสอบถาม",
+      "errorPrefix": "ข้อผิดพลาด",
+      "publishInfo": "สร้าง Google Form พร้อมชีตที่เชื่อมโยง แชร์ให้ทุกคนที่มีลิงก์",
+      "publishing": "กำลังเผยแพร่…",
+      "preview": "ดูตัวอย่าง",
+      "edit": "แก้ไข",
+      "restartCriteria": "เริ่มใหม่",
+      "regenerateSurvey": "สร้างแบบสอบถามใหม่",
+      "footNoteError": "ตรวจสอบข้อผิดพลาดแล้วลองอีกครั้ง",
+      "footNotePublished": "เผยแพร่แล้ว · กำลังเก็บคำตอบ",
+      "footNoteReady": "พร้อมเผยแพร่",
+      "footNoteOpen": "อัปโหลดต้นทางเพื่อดึงเกณฑ์",
+      "ctaExtract": "ดึงเกณฑ์",
+      "ctaExtracting": "กำลังดึง…",
+      "ctaApproveCriteria": "อนุมัติเกณฑ์",
+      "ctaGeneratingSurvey": "กำลังสร้างแบบสอบถาม…",
+      "ctaApproveSurvey": "อนุมัติแบบสอบถาม",
+      "ctaConnectGoogle": "เชื่อมต่อ Google",
+      "ctaPublishing": "กำลังเผยแพร่…",
+      "collapse": "ย่อ",
+      "expand": "ขยาย",
+      "summarySource": "{count} ไฟล์",
+      "summaryCriteria": "{count} เกณฑ์",
+      "summarySurvey": "{sections} ส่วน · {questions} คำถาม",
+      "summaryPublish": "Google Form"
+    }
   }
 }

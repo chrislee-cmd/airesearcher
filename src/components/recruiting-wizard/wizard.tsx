@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { parsePartialJson } from 'ai';
 import { track } from '@/components/mixpanel-provider';
 import { track as trackEvent } from '@/lib/analytics/events';
@@ -10,19 +11,17 @@ import { useWorkspace } from '@/components/workspace-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
 import { Button } from '@/components/ui/button';
 import { ChromeButton } from '@/components/ui/chrome-button';
-import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { BrandLoader } from '@/components/ui/brand-loader';
-import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
-import { WidgetUploadButton } from '@/components/canvas/shell/widget-upload-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { Field } from '@/components/canvas/shell/field';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
 import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
+import { isStandardSectionTitle } from '@/lib/recruiting/standard-blocks';
 import {
   CriteriaEditor,
   CriteriaPreview,
@@ -80,6 +79,9 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+// 푸터 primary CTA 의 no-op onClick(진행중/비활성) 은 안정 참조.
+const NOOP = () => {};
+
 export function RecruitingWizard({
   onPublishedChange,
   onConditionsChange,
@@ -95,6 +97,7 @@ export function RecruitingWizard({
   onConditionsChange?: (brief: EditableBrief | null) => void;
 } = {}) {
   const requireAuth = useRequireAuth();
+  const t = useTranslations('Recruiting');
   const jobs = useGenerationJobs();
   const workspace = useWorkspace();
   // 위젯별 동시사용 게이트 (#512) — 추출 시작 시 슬롯 획득, 종료 시 반납.
@@ -162,10 +165,8 @@ export function RecruitingWizard({
     | { open: true; card: 'criteria' | 'survey'; mode: 'preview' | 'editor' };
   const [modal, setModal] = useState<ModalState>({ open: false });
 
-  // 대상자 조건 입력 모달 (옛 Card 1 입력 필드 — 붙여넣기 + 파일 dropzone).
-  // 서브헤더 좌측 "대상자 조건 입력" 버튼으로 열고, 모달 footer "입력" 으로
-  // 닫는다 (입력값은 state 에 보존, 우측 "조건 검토" 로 추출).
-  const [inputModalOpen, setInputModalOpen] = useState(false);
+  // 4-step 아코디언 접기(§3 collapsed) — all-open ↔ 요약 4행 토글.
+  const [collapsed, setCollapsed] = useState(false);
 
   // ── Effects ─────────────────────────────────────────────────────────
   // Google connection status — needed for Card 3 affordance.
@@ -671,33 +672,120 @@ export function RecruitingWizard({
       ) as Criterion[]);
   const canExtract =
     (files.length > 0 || pasted.trim().length > 0) && !jobRunning;
-  const summaryForCard =
-    editedBrief?.summary?.trim() || partialBrief?.summary?.trim() || '';
 
-  // ── idle = 컨트롤 보드 (서브헤더 폐기) ────────────────────────────────
-  // 첫 진입 화면. 옛 컴팩트 서브헤더(대상자 조건 입력 버튼 + "조건 검토" CTA)
-  // 는 입력을 모달 뒤에 숨겨 "컨트롤 보드" 로 보이지 않았다. idle 에선 입력
-  // (조사 목적·대상자 브리프 텍스트 + 파일)을 본문에 직접 펼치고, 하단 전면-폭
-  // "폼 발행" CTA 로 wizard flow(추출 → 설문 → Google Form 발행)에 진입한다.
-  // 추출이 시작(criteriaPhase !== 'idle')되면 아래 기존 서브헤더 + 카드 flow
-  // 로 넘어간다 (working flow 회귀 0).
-  if (criteriaPhase === 'idle') {
-    return (
-      // 컨트롤(대상자 조건 입력) = 카드 상단 launcher (데스크/프로빙 밸런스
-      // 규격 — 위젯 메인 패널 통일 follow-up). 옛 하단 고정 bg-paper-soft CTA
-      // bar 는 회색 wrapper 제거 규칙에 따라 폐기 — CTA 는 컨트롤 아래 같은
-      // 컬럼에서 좌측 status slot + 우측 auto-width (justify-between, 데스크/
-      // 프로빙 동일 pattern).
-      // 밸런스 튜닝(desk 미러, PR #758/#762): 정중앙(justify-center) 은 짧은
-      // 폼 위/아래로 큰 빈 띠를 남겼다. justify-start + pt-10 pb-6 으로 상단부터
-      // 자연스럽게 시작해 세로 whitespace 를 대폭 축소하고, 넓어진 클러스터
-      // (max-w-2xl)가 좌우를 채운다 (데스크/프로빙 justify-start + pt-10 pb-6
-      // + max-w-2xl + space-y-5 와 동일 규격).
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* 콘텐츠 영역 — flex-1 + 자체 스크롤. 컨트롤이 위에서 끝나고 CTA 는
-            아래 액션 바로 분리 (겹침 구조적 해소). */}
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto px-5 pt-10 pb-6">
-          <div className="w-full max-w-2xl space-y-5">
+  // ── §3 상태 파생 — 4-step 아코디언 node 상태 + footNote/CTA ──────────
+  // CD recruiting BUILD-SPEC §3: 4-step all-open 아코디언. 각 스텝 node 는
+  // done(✓ success) / active(ink) / todo(dim). 기존 phase state machine 을
+  // 그대로 읽어 매핑만 한다 (로직 회귀 0).
+  const stepNode = (i: 1 | 2 | 3 | 4): 'done' | 'active' | 'todo' => {
+    if (i === 1) return criteriaPhase === 'idle' ? 'active' : 'done';
+    if (i === 2) {
+      if (criteriaPhase === 'approved') return 'done';
+      if (criteriaPhase === 'generating' || criteriaPhase === 'review')
+        return 'active';
+      return 'todo';
+    }
+    if (i === 3) {
+      if (surveyPhase === 'approved') return 'done';
+      if (
+        criteriaPhase === 'approved' &&
+        (surveyPhase === 'generating' || surveyPhase === 'review')
+      )
+        return 'active';
+      return 'todo';
+    }
+    if (published) return 'done';
+    if (surveyPhase === 'approved') return 'active';
+    return 'todo';
+  };
+
+  const anyError = publishError ?? criteriaError ?? surveyError ?? null;
+
+  // footNote — §3 상태별 카드 하단 안내. error > published > ready > open.
+  const footNote = anyError
+    ? t('setup.footNoteError')
+    : published
+      ? t('setup.footNotePublished')
+      : surveyPhase === 'approved'
+        ? t('setup.footNoteReady')
+        : t('setup.footNoteOpen');
+
+  // Google 미연결 상태에서 발행 진입 — approveSurvey 의 OAuth 분기와 동일.
+  function connectGoogle() {
+    captureDraft();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/api/recruiting/google/start';
+    }
+  }
+
+  // 단일 primary CTA (푸터 우측) — phase 별 "다음 행동". 진행은 이 CTA 로만
+  // 구동(스텝 내부 승인 버튼 중복 제거). published 는 카드-레벨 WidgetStatusFooter
+  // 가 응답 보기 핸드오프를 담당한다. CTA 분기는 자식 컴포넌트(SetupFooterCta)로
+  // 위임 — 부모 render 에서 객체를 만들지 않아 react-compiler 정합.
+  const needsGoogleConnect =
+    !!google && !google.connected && !google.adminProxy;
+
+  // ── Render — CD 4-step all-open 아코디언 (recruiting BUILD-SPEC §1/§3) ──
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* 콘텐츠 영역 — 콘텐츠 컬럼 max-w 514 (GEOMETRY §3), 4-step 아코디언. */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+        <div className="mx-auto w-full max-w-[514px]">
+          {/* 접기/펼치기 토글 — §3 open ↔ collapsed. */}
+          <div className="mb-4 flex justify-end">
+            <Button
+              variant="link"
+              size="xs"
+              onClick={() => setCollapsed((c) => !c)}
+            >
+              {collapsed ? t('setup.expand') : t('setup.collapse')}
+            </Button>
+          </div>
+
+          {collapsed ? (
+            <div className="space-y-2">
+              <SummaryRow
+                index={1}
+                nodeState={stepNode(1)}
+                label={t('setup.step1Title')}
+                value={t('setup.summarySource', { count: files.length })}
+              />
+              <SummaryRow
+                index={2}
+                nodeState={stepNode(2)}
+                label={t('setup.step2Title')}
+                value={t('setup.summaryCriteria', {
+                  count: editedBrief?.criteria.length ?? 0,
+                })}
+              />
+              <SummaryRow
+                index={3}
+                nodeState={stepNode(3)}
+                label={t('setup.step3Title')}
+                value={t('setup.summarySurvey', {
+                  sections: survey?.sections.length ?? 0,
+                  questions:
+                    survey?.sections.reduce(
+                      (n, s) => n + s.questions.length,
+                      0,
+                    ) ?? 0,
+                })}
+              />
+              <SummaryRow
+                index={4}
+                nodeState={stepNode(4)}
+                label={t('setup.step4Title')}
+                value={t('setup.summaryPublish')}
+              />
+            </div>
+          ) : (
+          <>
+          {/* STEP 1 — 소스 업로드 (RFP · brief · email) */}
+          <SetupStep
+            index={1}
+            nodeState={stepNode(1)}
+            title={t('setup.step1Title')}
+          >
             <CriteriaInputFields
               files={files}
               pasted={pasted}
@@ -708,205 +796,197 @@ export function RecruitingWizard({
               onRemoveFile={removeFile}
             />
             {criteriaError && (
-              <div className="text-sm text-warning">오류: {criteriaError}</div>
+              <div className="mt-3">
+                <ErrorBlock>
+                  {t('setup.errorPrefix')}: {criteriaError}
+                </ErrorBlock>
+              </div>
             )}
-          </div>
+          </SetupStep>
+
+          {/* STEP 2 — 참여자 조건 (criteria chips: required=amore / nice=line) */}
+          <SetupStep
+            index={2}
+            nodeState={stepNode(2)}
+            title={t('setup.step2Title')}
+          >
+            {criteriaPhase === 'idle' && (
+              <EmptyHint>{t('setup.criteriaEmpty')}</EmptyHint>
+            )}
+            {criteriaPhase === 'generating' && (
+              <GeneratingRow
+                label={
+                  partialCriteria.length > 0
+                    ? t('setup.extractingCount', {
+                        count: partialCriteria.length,
+                      })
+                    : t('setup.extracting')
+                }
+              />
+            )}
+            {(criteriaPhase === 'review' || criteriaPhase === 'approved') &&
+              editedBrief && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {editedBrief.criteria.map((c, i) => (
+                      <CriteriaChip
+                        key={`${c.category}-${c.label}-${i}`}
+                        category={c.category}
+                        label={c.label}
+                        required={c.required}
+                        requiredLabel={t('setup.required')}
+                      />
+                    ))}
+                  </div>
+                  <StepLinks
+                    onPreview={() =>
+                      setModal({ open: true, card: 'criteria', mode: 'preview' })
+                    }
+                    onEdit={
+                      criteriaPhase === 'approved'
+                        ? undefined
+                        : () =>
+                            setModal({
+                              open: true,
+                              card: 'criteria',
+                              mode: 'editor',
+                            })
+                    }
+                    onRestart={restartCriteria}
+                    previewLabel={t('setup.preview')}
+                    editLabel={t('setup.edit')}
+                    restartLabel={t('setup.restartCriteria')}
+                  />
+                </div>
+              )}
+          </SetupStep>
+
+          {/* STEP 3 — 스크리닝 설문 (🔒 locked standard blocks + editable) */}
+          <SetupStep
+            index={3}
+            nodeState={stepNode(3)}
+            title={t('setup.step3Title')}
+          >
+            {stepNode(3) === 'todo' && (
+              <EmptyHint>{t('setup.surveyEmpty')}</EmptyHint>
+            )}
+            {criteriaPhase === 'approved' &&
+              (surveyPhase === 'idle' || surveyPhase === 'generating') && (
+                <GeneratingRow label={t('setup.generatingSurvey')} />
+              )}
+            {(surveyPhase === 'review' || surveyPhase === 'approved') &&
+              survey && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    {survey.sections.map((s, i) => {
+                      const locked = isStandardSectionTitle(s.title);
+                      const meta = t('setup.surveyQuestionMeta', {
+                        count: s.questions.length,
+                      });
+                      return (
+                        <SurveySectionRow
+                          key={`${s.title}-${i}`}
+                          title={s.title}
+                          meta={
+                            locked
+                              ? meta
+                              : `${meta} · ${t('setup.surveyEditable')}`
+                          }
+                          locked={locked}
+                          lockedLabel={t('setup.surveyLocked')}
+                        />
+                      );
+                    })}
+                  </div>
+                  <StepLinks
+                    onPreview={() =>
+                      setModal({ open: true, card: 'survey', mode: 'preview' })
+                    }
+                    onEdit={
+                      surveyPhase === 'approved'
+                        ? undefined
+                        : () =>
+                            setModal({
+                              open: true,
+                              card: 'survey',
+                              mode: 'editor',
+                            })
+                    }
+                    onRestart={regenerateSurvey}
+                    previewLabel={t('setup.preview')}
+                    editLabel={t('setup.edit')}
+                    restartLabel={t('setup.regenerateSurvey')}
+                  />
+                </div>
+              )}
+            {surveyError && (
+              <div className="mt-3">
+                <ErrorBlock>
+                  {t('setup.surveyErrorPrefix')}: {surveyError}
+                </ErrorBlock>
+              </div>
+            )}
+          </SetupStep>
+
+          {/* STEP 4 — Google Form 발행 (info card + 연결/발행/링크) */}
+          <SetupStep
+            index={4}
+            nodeState={stepNode(4)}
+            title={t('setup.step4Title')}
+            isLast
+          >
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-sm border border-line bg-paper-soft px-3.5 py-3 text-md text-mute">
+                {t('setup.publishInfo')}
+              </div>
+              {surveyPhase === 'approved' && (
+                <AttendeeReviewPanel
+                  google={google}
+                  googleAuthError={googleAuthError}
+                  publishing={publishing}
+                  publishStageLabel={
+                    PUBLISH_STAGES[publishStageIdx]?.label ??
+                    t('setup.publishing')
+                  }
+                  published={published}
+                  publishError={publishError}
+                  onRetry={() => requireAuth(() => void autoPublish())}
+                  onConnect={connectGoogle}
+                  onReconnect={() => {
+                    captureDraft();
+                    void reconnectGoogle();
+                  }}
+                  onClearAuthError={() => setGoogleAuthError(null)}
+                />
+              )}
+            </div>
+          </SetupStep>
+          </>
+          )}
         </div>
-        {/* 주 CTA(폼 발행) — 바디 최하단 고정 액션 바 (6 위젯 통일). */}
-        <WidgetPrimaryCta
-          label="폼 발행"
-          busyLabel="발행 준비 중…"
-          busy={jobRunning}
-          disabled={!canExtract}
-          onClick={startExtract}
-        />
-      </div>
-    );
-  }
-
-  // ── Render (flow: 추출 시작 후) ───────────────────────────────────────
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* 통일 서브헤더 (컴팩트) — 좌: 대상자 조건 입력 (팝업 모달 열기),
-          우: 조건 검토 (옛 "추출" — 붙여넣기/파일에서 LLM 조건 추출 트리거).
-          옛 Card 1 상시 입력 필드는 입력 모달로 이동 → 카드 본문 height ↓. */}
-      <WidgetSubHeader
-        compact
-        inputs={
-          <WidgetUploadButton
-            onClick={() => setInputModalOpen(true)}
-            label="대상자 조건 입력"
-            count={files.length}
-          />
-        }
-        actions={
-          <ChromeButton
-            variant="primary"
-            size="lg"
-            onClick={startExtract}
-            disabled={!canExtract}
-          >
-            {jobRunning ? '검토 중…' : '조건 검토'}
-          </ChromeButton>
-        }
-        hint={
-          criteriaError ? (
-            <span className="text-warning">오류: {criteriaError}</span>
-          ) : undefined
-        }
-      />
-
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
-      {/* CARD 1 — 대상자 조건. idle 은 위 컨트롤 보드에서 early-return 되므로
-          이 지점의 criteriaPhase 는 generating/review/approved 중 하나. */}
-      <WizardCard
-        index={1}
-        title="대상자 조건"
-        phase={criteriaPhase}
-        accentColor="amore"
-        collapseOnApprove
-      >
-        {criteriaPhase === 'generating' && (
-          <GeneratingRow
-            label={
-              partialCriteria.length > 0
-                ? `${partialCriteria.length}개 조건 추출 중…`
-                : '조건 추출 중…'
-            }
-          />
-        )}
-
-        {(criteriaPhase === 'review' || criteriaPhase === 'approved') &&
-          editedBrief && (
-            <ReviewRow
-              title={summaryForCard || '추출 완료'}
-              meta={`${editedBrief.criteria.length}개 조건`}
-              phase={criteriaPhase}
-              onPreview={() =>
-                setModal({ open: true, card: 'criteria', mode: 'preview' })
-              }
-              onEdit={() =>
-                setModal({ open: true, card: 'criteria', mode: 'editor' })
-              }
-              onApprove={approveCriteria}
-              onRestart={restartCriteria}
-              restartLabel="처음부터 다시"
-            />
-          )}
-      </WizardCard>
-
-      {/* CARD 2 — 심사 설문. Card 1 승인 전에는 아예 렌더하지 않음 — 단계가
-          진행되면서 카드가 하나씩 순차로 나타나도록. restartCriteria 가
-          criteriaPhase 를 'idle' 로 되돌리면 자동으로 다시 사라짐. */}
-      {criteriaPhase === 'approved' && (
-        <WizardCard
-          index={2}
-          title="심사 설문"
-          phase={surveyPhase}
-          accentColor="amore"
-          collapseOnApprove
-        >
-          {surveyPhase === 'idle' && (
-            <GeneratingRow label="설문 생성 대기 중…" />
-          )}
-
-          {surveyPhase === 'generating' && (
-            <GeneratingRow label="조건에 맞춘 설문 생성 중…" />
-          )}
-
-          {(surveyPhase === 'review' || surveyPhase === 'approved') && survey && (
-            <ReviewRow
-              title={survey.title || '설문 생성 완료'}
-              meta={`${survey.sections.length}개 섹션 · ${survey.sections.reduce(
-                (n, s) => n + s.questions.length,
-                0,
-              )}개 질문`}
-              phase={surveyPhase}
-              onPreview={() =>
-                setModal({ open: true, card: 'survey', mode: 'preview' })
-              }
-              onEdit={() =>
-                setModal({ open: true, card: 'survey', mode: 'editor' })
-              }
-              onApprove={approveSurvey}
-              onRestart={regenerateSurvey}
-              restartLabel="설문 다시 생성"
-            />
-          )}
-
-          {surveyError && (
-            <ErrorBlock>설문 생성 오류: {surveyError}</ErrorBlock>
-          )}
-        </WizardCard>
-      )}
-
-      {/* CARD 3 — 모집 현황. Step 2 승인 직후 자동 Google 발행이 돌고,
-          끝나면 참석자 응답을 풀스크린 모달에서 확인. Card 2 승인 전에는
-          렌더 X. */}
-      {surveyPhase === 'approved' && (
-        <WizardCard
-          index={3}
-          title="모집 현황"
-          phase={published ? 'approved' : 'review'}
-          accentColor="amore"
-        >
-          <AttendeeReviewPanel
-            google={google}
-            googleAuthError={googleAuthError}
-            publishing={publishing}
-            publishStageLabel={
-              PUBLISH_STAGES[publishStageIdx]?.label ?? '발행 중…'
-            }
-            published={published}
-            publishError={publishError}
-            onRetry={() => requireAuth(() => void autoPublish())}
-            onConnect={() => {
-              if (typeof window !== 'undefined') {
-                captureDraft();
-                window.location.href = '/api/recruiting/google/start';
-              }
-            }}
-            onReconnect={() => {
-              captureDraft();
-              void reconnectGoogle();
-            }}
-            onClearAuthError={() => setGoogleAuthError(null)}
-          />
-        </WizardCard>
-      )}
-
       </div>
 
-      {/* 대상자 조건 입력 모달 — 옛 Card 1 입력 필드 (붙여넣기 + 파일
-          dropzone). footer "입력" = 닫기 (입력값은 state 에 보존, 우측
-          "조건 검토" 로 추출). */}
-      <Modal
-        open={inputModalOpen}
-        onClose={() => setInputModalOpen(false)}
-        title="대상자 조건 입력"
-        size="md"
-        footer={
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setInputModalOpen(false)}
-          >
-            입력
-          </Button>
-        }
-      >
-        <CriteriaInputFields
-          files={files}
-          pasted={pasted}
-          rejected={rejected}
-          running={jobRunning}
-          onPasteChange={setPasted}
-          onAddFiles={addFiles}
-          onRemoveFile={removeFile}
+      {/* 푸터 — footNote(좌, mono) + primary CTA(우, pill). recruiting §1 footer.
+          published 는 카드-레벨 WidgetStatusFooter 가 응답 보기 핸드오프 담당. */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line-soft px-6 py-3">
+        <span className="font-mono text-xs text-mute">{footNote}</span>
+        <SetupFooterCta
+          published={!!published}
+          publishing={publishing}
+          criteriaPhase={criteriaPhase}
+          surveyPhase={surveyPhase}
+          hasSurvey={!!survey}
+          hasEditedBrief={!!editedBrief}
+          needsGoogleConnect={needsGoogleConnect}
+          canExtract={canExtract}
+          onExtract={startExtract}
+          onApproveCriteria={approveCriteria}
+          onApproveSurvey={approveSurvey}
+          onConnectGoogle={connectGoogle}
         />
-      </Modal>
+      </div>
 
-      {/* Approval modal — shared across cards 1 & 2 */}
+      {/* Approval modal — shared across steps 2 & 3 (프리뷰/편집) */}
       <ReviewModal
         state={modal}
         onClose={() => setModal({ open: false })}
@@ -931,87 +1011,271 @@ export function RecruitingWizard({
 
 // ── Subcomponents ──────────────────────────────────────────────────────
 
-function WizardCard({
+// 푸터 primary CTA — phase 별 "다음 행동" 단일 버튼. 부모 render 에서 객체를
+// 만들지 않고 여기서 primitive 로 분기(react-compiler 정합). published 는 카드
+// 레벨 WidgetStatusFooter 가 응답 보기 핸드오프를 담당하므로 여기선 null.
+function SetupFooterCta({
+  published,
+  publishing,
+  criteriaPhase,
+  surveyPhase,
+  hasSurvey,
+  hasEditedBrief,
+  needsGoogleConnect,
+  canExtract,
+  onExtract,
+  onApproveCriteria,
+  onApproveSurvey,
+  onConnectGoogle,
+}: {
+  published: boolean;
+  publishing: boolean;
+  criteriaPhase: Phase;
+  surveyPhase: Phase;
+  hasSurvey: boolean;
+  hasEditedBrief: boolean;
+  needsGoogleConnect: boolean;
+  canExtract: boolean;
+  onExtract: () => void;
+  onApproveCriteria: () => void;
+  onApproveSurvey: () => void;
+  onConnectGoogle: () => void;
+}) {
+  const t = useTranslations('Recruiting');
+  if (published) return null;
+
+  let label: string;
+  let onClick: () => void = NOOP;
+  let disabled = false;
+  let busy = false;
+  if (publishing) {
+    label = t('setup.ctaPublishing');
+    busy = true;
+  } else if (surveyPhase === 'approved') {
+    // 승인 후 자동 발행. Google 미연결(비 admin-proxy)이면 연결 CTA.
+    if (needsGoogleConnect) {
+      label = t('setup.ctaConnectGoogle');
+      onClick = onConnectGoogle;
+    } else {
+      label = t('setup.ctaPublishing');
+      busy = true;
+    }
+  } else if (surveyPhase === 'generating') {
+    label = t('setup.ctaGeneratingSurvey');
+    busy = true;
+  } else if (criteriaPhase === 'approved' && surveyPhase === 'review' && hasSurvey) {
+    label = t('setup.ctaApproveSurvey');
+    onClick = onApproveSurvey;
+  } else if (criteriaPhase === 'review' && hasEditedBrief) {
+    label = t('setup.ctaApproveCriteria');
+    onClick = onApproveCriteria;
+  } else if (criteriaPhase === 'generating') {
+    label = t('setup.ctaExtracting');
+    busy = true;
+  } else {
+    label = t('setup.ctaExtract');
+    onClick = onExtract;
+    disabled = !canExtract;
+  }
+
+  return (
+    <ChromeButton
+      variant="primary"
+      size="lg"
+      onClick={onClick}
+      disabled={disabled || busy}
+    >
+      {label}
+    </ChromeButton>
+  );
+}
+
+// ── CD 4-step 아코디언 셸 (recruiting BUILD-SPEC §1 · GEOMETRY §3) ────────
+// 스텝 노드(26px 원) + 세로 레일 + 스텝 타이틀 + 콘텐츠. Probing §1 셸 행과
+// 동일 규격(node 26·rail 2px ink/10·title 14.5). node 상태: done(✓ success) /
+// active(ink) / todo(dim). 색은 전부 토큰(bg-success/bg-ink/bg-ink 투명도),
+// px 는 레이아웃 arbitrary(check:design 제외 대상).
+type StepNodeState = 'done' | 'active' | 'todo';
+
+function SetupStep({
   index,
+  nodeState,
   title,
-  phase,
-  accentColor,
-  collapseOnApprove = false,
+  isLast = false,
   children,
 }: {
   index: number;
+  nodeState: StepNodeState;
   title: string;
-  phase: Phase;
-  accentColor: 'amore';
-  collapseOnApprove?: boolean;
+  isLast?: boolean;
   children?: ReactNode;
 }) {
-  void accentColor;
-  // Auto-collapse when the user approves so the wizard's focus shifts to
-  // the next active card. Header stays clickable for manual expand/collapse.
-  // Sync via render-conditional setState (the codebase's `seededFor` pattern)
-  // rather than useEffect, which the react-hooks/set-state-in-effect rule
-  // forbids.
-  const [collapsed, setCollapsed] = useState(false);
-  const [trackedPhase, setTrackedPhase] = useState<Phase>(phase);
-  if (collapseOnApprove && phase !== trackedPhase) {
-    setTrackedPhase(phase);
-    setCollapsed(phase === 'approved');
-  }
-
-  const toggle = collapseOnApprove
-    ? () => setCollapsed((c) => !c)
-    : undefined;
-
+  const nodeClass =
+    nodeState === 'done'
+      ? 'bg-success text-paper'
+      : nodeState === 'active'
+        ? 'bg-ink text-paper'
+        : 'bg-ink/5 text-mute';
   return (
-    <section className="border border-line bg-paper rounded-sm transition-opacity">
-      <header
-        className={[
-          'flex items-center gap-3 px-4 py-3',
-          collapsed ? '' : 'border-b border-line-soft',
-          toggle ? 'cursor-pointer select-none' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        role={toggle ? 'button' : undefined}
-        tabIndex={toggle ? 0 : undefined}
-        aria-expanded={toggle ? !collapsed : undefined}
-        onClick={toggle}
-        onKeyDown={
-          toggle
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  toggle();
-                }
-              }
-            : undefined
-        }
-      >
+    <div className={`relative pl-[38px] ${isLast ? '' : 'pb-1'}`}>
+      {/* 레일 세로선 — 노드 아래에서 다음 스텝까지. 마지막 스텝은 생략. */}
+      {!isLast && (
         <span
-          className={
-            phase === 'approved'
-              ? 'inline-flex h-6 w-6 items-center justify-center border border-amore bg-amore text-paper text-xs font-semibold rounded-full'
-              : 'inline-flex h-6 w-6 items-center justify-center border border-ink text-ink text-xs font-semibold rounded-full'
-          }
-        >
-          {phase === 'approved' ? '✓' : index}
+          aria-hidden="true"
+          className="absolute left-[12px] top-[26px] bottom-0 w-[2px] bg-ink/10"
+        />
+      )}
+      {/* 번호 노드 26×26. */}
+      <span
+        aria-hidden="true"
+        className={`absolute left-0 top-0 inline-flex h-[26px] w-[26px] items-center justify-center rounded-full text-sm font-semibold ${nodeClass}`}
+      >
+        {nodeState === 'done' ? '✓' : index}
+      </span>
+      <h3 className="text-xl font-semibold text-ink">{title}</h3>
+      <div className="mt-3 mb-6">{children}</div>
+    </div>
+  );
+}
+
+// collapsed 요약 행 (§3 collapsed) — 노드 + 라벨 + 요약값.
+function SummaryRow({
+  index,
+  nodeState,
+  label,
+  value,
+}: {
+  index: number;
+  nodeState: StepNodeState;
+  label: string;
+  value: string;
+}) {
+  const nodeClass =
+    nodeState === 'done'
+      ? 'bg-success text-paper'
+      : nodeState === 'active'
+        ? 'bg-ink text-paper'
+        : 'bg-ink/5 text-mute';
+  return (
+    <div className="flex items-center gap-3 rounded-sm border border-line bg-paper px-3 py-2.5">
+      <span
+        aria-hidden="true"
+        className={`inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-sm font-semibold ${nodeClass}`}
+      >
+        {nodeState === 'done' ? '✓' : index}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-md font-semibold text-ink">
+        {label}
+      </span>
+      <span className="shrink-0 font-mono text-xs text-mute-soft">{value}</span>
+    </div>
+  );
+}
+
+// criteria chip — required=amore border, nice-to-have=line border, category
+// eyebrow(mono). recruiting §1: `rounded-pill border-amore` / `border-line`.
+function CriteriaChip({
+  category,
+  label,
+  required,
+  requiredLabel,
+}: {
+  category: string;
+  label: string;
+  required: boolean;
+  requiredLabel: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-pill border bg-paper px-3 py-1.5 text-md ${
+        required ? 'border-amore' : 'border-line'
+      }`}
+    >
+      {category && (
+        <span className="font-mono text-xs uppercase tracking-wide text-mute-soft">
+          {category}
         </span>
-        <h3 className="text-md font-semibold text-ink-2">{title}</h3>
-        {phase === 'approved' && (
-          <span className="text-sm text-amore">승인됨</span>
-        )}
-        {toggle && (
-          <span
-            className="ml-auto text-sm text-mute-soft"
-            aria-hidden="true"
-          >
-            {collapsed ? '▸' : '▾'}
-          </span>
-        )}
-      </header>
-      {!collapsed && <div className="px-4 py-4">{children}</div>}
-    </section>
+      )}
+      <span className="font-semibold text-ink">{label}</span>
+      {required && (
+        <span className="text-xs font-bold text-amore">{requiredLabel}</span>
+      )}
+    </span>
+  );
+}
+
+// screening survey section row — locked(🔒 Standard)=paper-soft tint, editable=
+// paper. recruiting §1: `rounded-chrome border-line`(→rounded-sm) / locked=
+// proposed:surface-locked(→bg-paper-soft, 보수 매핑 — 토큰-PR defer).
+function SurveySectionRow({
+  title,
+  meta,
+  locked,
+  lockedLabel,
+}: {
+  title: string;
+  meta: string;
+  locked: boolean;
+  lockedLabel: string;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2.5 rounded-sm border border-line px-3 py-2.5 ${
+        locked ? 'bg-paper-soft' : 'bg-paper'
+      }`}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-md font-bold text-ink">{title}</div>
+        <div className="mt-0.5 text-xs text-mute-soft">{meta}</div>
+      </div>
+      {locked && (
+        <span className="shrink-0 rounded-pill border border-line px-2 py-0.5 font-mono text-xs text-mute-soft">
+          {lockedLabel}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// 스텝 상단 안내(todo/empty 상태) — dashed 안내 박스.
+function EmptyHint({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-sm border border-dashed border-line bg-paper-soft px-3 py-3 text-md text-mute-soft">
+      {children}
+    </div>
+  );
+}
+
+// 완료된 스텝의 보조 링크(프리뷰/편집/다시). 진행은 푸터 primary CTA 가 구동.
+function StepLinks({
+  onPreview,
+  onEdit,
+  onRestart,
+  previewLabel,
+  editLabel,
+  restartLabel,
+}: {
+  onPreview: () => void;
+  onEdit?: () => void;
+  onRestart: () => void;
+  previewLabel: string;
+  editLabel: string;
+  restartLabel: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button variant="ghost" size="sm" onClick={onPreview}>
+        {previewLabel}
+      </Button>
+      {onEdit && (
+        <Button variant="ghost" size="sm" onClick={onEdit}>
+          {editLabel}
+        </Button>
+      )}
+      <Button variant="link" size="xs" onClick={onRestart}>
+        {restartLabel}
+      </Button>
+    </div>
   );
 }
 
@@ -1103,55 +1367,6 @@ function GeneratingRow({ label }: { label: string }) {
     <div className="flex items-center gap-3">
       <BrandLoader size={28} />
       <span className="text-md text-mute">{label}</span>
-    </div>
-  );
-}
-
-function ReviewRow({
-  title,
-  meta,
-  phase,
-  onPreview,
-  onEdit,
-  onApprove,
-  onRestart,
-  restartLabel,
-}: {
-  title: string;
-  meta?: string;
-  phase: Phase;
-  onPreview: () => void;
-  onEdit: () => void;
-  onApprove: () => void;
-  onRestart: () => void;
-  restartLabel: string;
-}) {
-  const approved = phase === 'approved';
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-semibold text-ink">{title}</div>
-        {meta && <div className="mt-0.5 text-sm text-mute-soft">{meta}</div>}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={onPreview}>
-          프리뷰
-        </Button>
-        {!approved && (
-          <Button variant="ghost" size="sm" onClick={onEdit}>
-            편집
-          </Button>
-        )}
-        {!approved ? (
-          <Button variant="primary" size="sm" onClick={onApprove}>
-            승인
-          </Button>
-        ) : (
-          <Button variant="link" size="xs" onClick={onRestart}>
-            {restartLabel}
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

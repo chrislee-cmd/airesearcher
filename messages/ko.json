@@ -2481,5 +2481,47 @@
       "startHint": "세션을 시작하세요",
       "openFullview": "전체 보기 열기"
     }
+  },
+  "Recruiting": {
+    "setup": {
+      "step1Title": "소스 자료를 업로드하세요 (RFP · 브리프 · 이메일)",
+      "step2Title": "참여자 조건을 검토하세요",
+      "step3Title": "스크리닝 설문을 검토하세요",
+      "step4Title": "Google Form 으로 발행하세요",
+      "required": "필수",
+      "criteriaEmpty": "소스를 업로드하면 조건이 추출됩니다",
+      "extracting": "조건 추출 중…",
+      "extractingCount": "{count}개 조건 추출 중…",
+      "surveyEmpty": "조건을 승인하면 설문이 생성됩니다",
+      "generatingSurvey": "조건에 맞춘 설문 생성 중…",
+      "surveyQuestionMeta": "질문 {count}개",
+      "surveyEditable": "편집 가능",
+      "surveyLocked": "🔒 표준",
+      "surveyErrorPrefix": "설문 생성 오류",
+      "errorPrefix": "오류",
+      "publishInfo": "Google Form 과 연결된 시트를 생성하고 링크가 있는 모두에게 공유합니다.",
+      "publishing": "발행 중…",
+      "preview": "프리뷰",
+      "edit": "편집",
+      "restartCriteria": "처음부터 다시",
+      "regenerateSurvey": "설문 다시 생성",
+      "footNoteError": "오류를 확인하고 다시 시도하세요",
+      "footNotePublished": "발행됨 · 응답 수집 중",
+      "footNoteReady": "발행 준비 완료",
+      "footNoteOpen": "소스를 업로드해 조건을 추출하세요",
+      "ctaExtract": "조건 추출",
+      "ctaExtracting": "추출 중…",
+      "ctaApproveCriteria": "조건 승인",
+      "ctaGeneratingSurvey": "설문 생성 중…",
+      "ctaApproveSurvey": "설문 승인",
+      "ctaConnectGoogle": "Google 연결",
+      "ctaPublishing": "발행 중…",
+      "collapse": "접기",
+      "expand": "펼치기",
+      "summarySource": "{count}개 파일",
+      "summaryCriteria": "{count}개 조건",
+      "summarySurvey": "{sections}개 섹션 · {questions}개 질문",
+      "summaryPublish": "Google Form"
+    }
   }
 }

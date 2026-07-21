@@ -2574,5 +2574,47 @@
       "startHint": "セッションを開始する",
       "openFullview": "フルビューを開く"
     }
+  },
+  "Recruiting": {
+    "setup": {
+      "step1Title": "ソース資料をアップロード (RFP・ブリーフ・メール)",
+      "step2Title": "参加者条件を確認",
+      "step3Title": "スクリーニング調査を確認",
+      "step4Title": "Google フォームに公開",
+      "required": "必須",
+      "criteriaEmpty": "ソースをアップロードすると条件が抽出されます",
+      "extracting": "条件を抽出中…",
+      "extractingCount": "{count}件の条件を抽出中…",
+      "surveyEmpty": "条件を承認すると調査が生成されます",
+      "generatingSurvey": "条件に合わせた調査を生成中…",
+      "surveyQuestionMeta": "質問{count}件",
+      "surveyEditable": "編集可能",
+      "surveyLocked": "🔒 標準",
+      "surveyErrorPrefix": "調査生成エラー",
+      "errorPrefix": "エラー",
+      "publishInfo": "Google フォームとリンクされたシートを作成し、リンクを知る全員に共有します。",
+      "publishing": "公開中…",
+      "preview": "プレビュー",
+      "edit": "編集",
+      "restartCriteria": "最初からやり直す",
+      "regenerateSurvey": "調査を再生成",
+      "footNoteError": "エラーを確認して再試行してください",
+      "footNotePublished": "公開済み · 回答収集中",
+      "footNoteReady": "公開の準備完了",
+      "footNoteOpen": "ソースをアップロードして条件を抽出",
+      "ctaExtract": "条件を抽出",
+      "ctaExtracting": "抽出中…",
+      "ctaApproveCriteria": "条件を承認",
+      "ctaGeneratingSurvey": "調査を生成中…",
+      "ctaApproveSurvey": "調査を承認",
+      "ctaConnectGoogle": "Google を連携",
+      "ctaPublishing": "公開中…",
+      "collapse": "折りたたむ",
+      "expand": "展開",
+      "summarySource": "ファイル{count}件",
+      "summaryCriteria": "条件{count}件",
+      "summarySurvey": "{sections}セクション · 質問{questions}件",
+      "summaryPublish": "Google フォーム"
+    }
   }
 }
