@@ -1093,13 +1093,18 @@ function RecruitingSetupFlow({
 export const recruitingCard: WidgetContent = {
   key: 'recruiting',
   meta: {
+    // labelKey 미해석 시 폴백 (blank 원천 차단). 헤더밴드 타이틀은 labelKey 로.
     label: '리크루팅',
+    labelKey: 'Features.recruiting.title',
     accent: 'sun',
     cost: 10,
     thumbnail: '/thumbnail/recruiting.png',
     description:
       '리서치 목적·페르소나·문항 초안을 LLM 으로 한 번에 생성합니다.',
     expandedCols: 3,
+    // Canvas 1c 카드 프레임 opt-in — 604×900 카드 + sun 파스텔 헤더밴드 +
+    // 통합 툴바(💎10). probing·전사록·통역·UT 와 동일 프레임 상속.
+    cardFrame: true,
   },
   state: 'idle',
   ExpandedBody,
