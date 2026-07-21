@@ -16,6 +16,7 @@ import {
   SlotEditorModal,
   type SlotDraft,
 } from '@/components/admin/slot-editor-modal';
+import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
 import {
   type SchedSlot,
   type SlotStatus,
@@ -48,7 +49,7 @@ type Props = {
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-type ViewTab = 'list' | 'calendar';
+type ViewTab = 'list' | 'calendar' | 'chat';
 
 export function RecruitingSchedulingClient({
   batches,
@@ -268,16 +269,19 @@ export function RecruitingSchedulingClient({
               items={[
                 { value: 'list', label: t('tabList') },
                 { value: 'calendar', label: t('tabCalendar') },
+                { value: 'chat', label: t('tabChat') },
               ]}
             />
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => openCreate()}
-              disabled={candidates.length === 0}
-            >
-              {t('slotAdd')}
-            </Button>
+            {tab !== 'chat' && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => openCreate()}
+                disabled={candidates.length === 0}
+              >
+                {t('slotAdd')}
+              </Button>
+            )}
           </div>
 
           {tab === 'list' ? (
@@ -366,7 +370,7 @@ export function RecruitingSchedulingClient({
                 </tbody>
               </table>
             </div>
-          ) : (
+          ) : tab === 'calendar' ? (
             <SchedulingCalendar
               slots={slots}
               candidateName={(id) => candidateNameById.get(id) ?? t('unnamedCandidate')}
@@ -374,6 +378,11 @@ export function RecruitingSchedulingClient({
               onViewChange={setCalendarView}
               onCreateAt={(start) => openCreate(start)}
               onEditSlot={openEdit}
+            />
+          ) : (
+            <SchedulingChatPanel
+              batchId={selectedBatchId}
+              candidates={candidateOptions}
             />
           )}
         </>

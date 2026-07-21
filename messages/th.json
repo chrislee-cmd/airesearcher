@@ -2630,6 +2630,21 @@
     "slotMissingFields": "กรอกผู้สมัครและเวลาเริ่ม/สิ้นสุด",
     "slotEndBeforeStart": "เวลาสิ้นสุดอยู่ก่อนเวลาเริ่ม",
     "slotSaveFailed": "บันทึกช่วงเวลาไม่สำเร็จ",
-    "slotDeleteFailed": "ลบช่วงเวลาไม่สำเร็จ"
+    "slotDeleteFailed": "ลบช่วงเวลาไม่สำเร็จ",
+    "tabChat": "แชท",
+    "chatBroadcast": "ประกาศทั้งหมด",
+    "chatBroadcastHint": "แสดงต่อผู้เข้าร่วมทุกคน",
+    "chatPrivateHint": "แสดงต่อผู้สมัครรายนี้เท่านั้น",
+    "chatNoCandidates": "อัปโหลดผู้สมัครเพื่อเริ่มเธรดรายบุคคล",
+    "chatLoading": "กำลังโหลดข้อความ…",
+    "chatEmpty": "ยังไม่มีข้อความ ส่งข้อความแรกได้เลย",
+    "chatSenderAdmin": "ผู้ดูแลระบบ",
+    "chatSenderParticipant": "ผู้เข้าร่วม",
+    "chatComposerLabel": "ข้อความ",
+    "chatComposerBroadcastPlaceholder": "เขียนประกาศถึงผู้เข้าร่วมทั้งหมด…",
+    "chatComposerPrivatePlaceholder": "เขียนข้อความถึงผู้สมัครรายนี้…",
+    "chatSend": "ส่ง",
+    "chatSending": "กำลังส่ง…",
+    "chatSendFailed": "ส่งข้อความไม่สำเร็จ"
   }
 }
