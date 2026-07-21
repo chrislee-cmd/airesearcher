@@ -4530,6 +4530,7 @@ export function TranslateConsole({
             outputLabel={t('outputLang')}
             triggerLabel={t('lang')}
             disabled={busy}
+            fullWidth
           />
         </Field>
       ),
