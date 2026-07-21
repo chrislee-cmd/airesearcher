@@ -115,9 +115,11 @@
       "description": "Pick the language the participant will speak so the transcript is accurate. Required to start the session.",
       "placeholder": "Select a language"
     },
-    "siteAudio": {
-      "label": "Also record site audio",
-      "description": "Includes both your microphone and the site's audio in the video. Turn on \"Share tab audio\" in the screen-share dialog. (Default: microphone only.)"
+    "host": {
+      "task": {
+        "label": "Test task",
+        "placeholder": "e.g. Sign up for a new account and add an item to the cart."
+      }
     },
     "cta": {
       "start": "Start session",
@@ -204,11 +206,7 @@
       "sectionLabel": "Test method",
       "groupAria": "Choose test method",
       "hostTitle": "Test on my device",
-      "hostLine1": "Start right away, no link",
-      "hostLine2": "Record my own screen & voice",
-      "guestTitle": "Test on participant device",
-      "guestLine1": "Issue a link to the participant",
-      "guestLine2": "Remote watch + post review"
+      "guestTitle": "Test on participant device"
     },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",

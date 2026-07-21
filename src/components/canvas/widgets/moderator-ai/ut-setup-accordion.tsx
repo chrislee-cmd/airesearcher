@@ -27,7 +27,6 @@ import { useState } from 'react';
 import { Field } from '@/components/canvas/shell/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { ProjectPicker } from '@/components/project-picker';
@@ -60,8 +59,6 @@ export function UtSetupAccordion({
   onTargetUrl,
   taskGoal,
   onTaskGoal,
-  includeSiteAudio,
-  onIncludeSiteAudio,
   supported,
 }: {
   // card/fullview — input id 유일성 확보(양 표면 동시 마운트).
@@ -76,8 +73,6 @@ export function UtSetupAccordion({
   onTargetUrl: (next: string) => void;
   taskGoal: string;
   onTaskGoal: (next: string) => void;
-  includeSiteAudio: boolean;
-  onIncludeSiteAudio: (next: boolean) => void;
   // 로컬 화면공유 지원 여부 — 미지원이면 host 입력 disabled(기존 가드).
   supported: boolean;
 }) {
@@ -86,20 +81,17 @@ export function UtSetupAccordion({
   const accordion = useWidgetAccordion();
 
   // 테스트 방식 2-카드 — host/guest 두 옵션(CaptureUseCaseOption 슬롯 재사용).
+  // 서브텍스트(hostVia/guestVia) 미전달 → 카드 = 제목 1라인(규격 통일).
   const METHOD_OPTIONS: CaptureUseCaseOption[] = [
     {
       id: 'host',
       icon: <DuotoneIcon name="host" size={24} fill={PEACH_FILL} />,
       title: t('method.hostTitle'),
-      hostVia: t('method.hostLine1'),
-      guestVia: t('method.hostLine2'),
     },
     {
       id: 'guest',
       icon: <DuotoneIcon name="guest" size={24} fill={PEACH_FILL} />,
       title: t('method.guestTitle'),
-      hostVia: t('method.guestLine1'),
-      guestVia: t('method.guestLine2'),
     },
   ];
 
@@ -189,25 +181,18 @@ export function UtSetupAccordion({
             removeLabel={t('url.remove')}
             ariaLabel={isGuest ? t('remote.url.label') : t('url.label')}
           />
+          {/* host STEP4 — URL 하단 과제 입력(옵셔널, 분석 컨텍스트). 시작 게이트는
+              URL·언어만 필수 — 과제는 비어도 시작 가능. */}
           {!isGuest && (
-            <label className="flex items-start gap-2 text-sm text-mute">
-              <Checkbox
-                checked={includeSiteAudio}
-                onChange={(e) => onIncludeSiteAudio(e.target.checked)}
-                disabled={!supported}
-                className="mt-[3px]"
-                aria-label={t('siteAudio.label')}
+            <Field label={t('host.task.label')}>
+              <Textarea
+                id={`ut-host-task-${surface}`}
+                value={taskGoal}
+                onChange={(e) => onTaskGoal(e.target.value)}
+                placeholder={t('host.task.placeholder')}
+                rows={3}
               />
-              <span>
-                <span className="font-semibold text-ink-2">
-                  {t('siteAudio.label')}
-                </span>
-                <br />
-                <span className="text-xs-soft text-mute-soft">
-                  {t('siteAudio.description')}
-                </span>
-              </span>
-            </label>
+            </Field>
           )}
         </div>
       ),

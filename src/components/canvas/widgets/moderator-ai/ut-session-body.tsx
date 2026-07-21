@@ -58,7 +58,6 @@ export function UtSessionBody() {
   const [method, setMethod] = useState<UtMethod | ''>('');
   const [targetUrl, setTargetUrl] = useState('');
   const [taskGoal, setTaskGoal] = useState('');
-  const [includeSiteAudio, setIncludeSiteAudio] = useState(false);
   // 예상 참여자 언어 — 미선택('')이면 시작/생성 불가(서버 400 가드의 클라 짝).
   const [inputLanguage, setInputLanguage] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
@@ -165,7 +164,14 @@ export function UtSessionBody() {
   const handleStartClick = () => setConsentOpen(true);
   const handleConsent = () => {
     setConsentOpen(false);
-    void session.start(targetUrl, { includeSiteAudio, inputLanguage });
+    // 사이트(탭) 소리 항상 녹음 기본 — includeSiteAudio 고정 true(토글 제거).
+    // 실제 캡처는 화면공유 창의 "탭 오디오 공유" 체크에 의존(ShareGuide 안내 유지).
+    // taskGoal 은 옵셔널(분석 컨텍스트) — 비면 서버에서 null.
+    void session.start(targetUrl, {
+      includeSiteAudio: true,
+      inputLanguage,
+      taskGoal,
+    });
   };
   const handleCreate = () => {
     void remote.create({
@@ -281,8 +287,6 @@ export function UtSessionBody() {
               onTargetUrl={setTargetUrl}
               taskGoal={taskGoal}
               onTaskGoal={setTaskGoal}
-              includeSiteAudio={includeSiteAudio}
-              onIncludeSiteAudio={setIncludeSiteAudio}
               supported={session.isSupported}
             />
           </ControlBoardPanel.Region>

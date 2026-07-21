@@ -132,7 +132,11 @@ export type UseUtSession = {
   attachPreview: (el: HTMLVideoElement | null) => void;
   start: (
     rawTargetUrl: string,
-    opts?: { includeSiteAudio?: boolean; inputLanguage?: string },
+    opts?: {
+      includeSiteAudio?: boolean;
+      inputLanguage?: string;
+      taskGoal?: string;
+    },
   ) => Promise<void>;
   stop: () => void;
   retryUpload: () => void;
@@ -461,7 +465,11 @@ export function useUtSession(): UseUtSession {
   const start = useCallback(
     async (
       rawTargetUrl: string,
-      opts?: { includeSiteAudio?: boolean; inputLanguage?: string },
+      opts?: {
+        includeSiteAudio?: boolean;
+        inputLanguage?: string;
+        taskGoal?: string;
+      },
     ) => {
       if (phaseRef.current !== 'idle') return;
       setError(null);
@@ -469,6 +477,7 @@ export function useUtSession(): UseUtSession {
 
       const includeSiteAudio = opts?.includeSiteAudio ?? false;
       const inputLanguage = opts?.inputLanguage;
+      const taskGoal = opts?.taskGoal?.trim();
       const targetUrl = normalizeTargetUrl(rawTargetUrl);
 
       // 1) 화면 공유 — 유저가 공유할 탭/창을 고른다. 취소하면 조용히 종료.
@@ -513,6 +522,7 @@ export function useUtSession(): UseUtSession {
           body: JSON.stringify({
             ...(targetUrl ? { target_url: targetUrl } : {}),
             ...(inputLanguage ? { input_language: inputLanguage } : {}),
+            ...(taskGoal ? { task_goal: taskGoal } : {}),
           }),
         });
         if (!res.ok) throw new Error(`create_${res.status}`);
