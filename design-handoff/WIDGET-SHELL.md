@@ -14,6 +14,22 @@
 ## §S0 Why this exists
 The shell must reach the worker **regardless of port order or which feature they open first**. It is a peer of CONTEXT-PACK/tokens.json — never embedded inside one feature. (Root cause of prior drift: shell lived only in Probing's spec and others cross-referenced it, so it didn't propagate → split toolbar, ad-hoc headers.)
 
+## §S1a Frame spec — DEDICATED tokens, no DS fallback (⚠️ read before wiring the shell)
+> **Root cause of frame drift (#20):** the worker bound the card to a generic DS token (`radius-sm` = 14px), so CD's 20px silently became 14px; the header fell back to the generic banner yellow `#ffd53d` instead of `sun`. This is authority-inversion at the **token layer** — the worker must NOT bind these to the nearest existing DS token.
+>
+> **Rule:** the shell ships CD's exact values as **dedicated widget tokens**. Never reuse `radius-sm`/`canvas-card-*`/`surface-banner` for these.
+>
+> | Frame property | CD value (absolute — MUST match) | Do NOT reuse |
+> |---|---|---|
+> | corner radius | **20px** → new token `--widget-card-radius: 20px` | ✗ `radius-sm` (14) / `canvas-card-radius` |
+> | border | **3px ink** → `--widget-card-border: 3px` | ✗ generic card border |
+> | shadow | **4px 4px 0 ink** → `shadow-memphis-md` | ✗ `canvas-card-shadow` |
+> | header tone | **per-widget pastel** (§S3) → `bg-widget-header-<tone>` (new) | ✗ `surface-banner` #ffd53d |
+> | title | **Outfit 800 · 29px · ls -0.9** | ✗ 32px generic heading |
+> | step title | **14.5px · 700** | ✗ `text-xl` |
+>
+> **Container-owned (NOT absolute — canvas may resize):** outer **width×height**. CD's `604×900` is the proto frame, not a hard product constraint — the app canvas grid owns final W/H; keep the **proportions/among-parts spacing**, but the outer box may be responsive. Everything in the table above is intrinsic widget styling and stays absolute regardless of container size.
+
 ## §S1 Shell class map (identical across all widgets)
 | Element | Measured | Utility class / token |
 |---|---|---|
