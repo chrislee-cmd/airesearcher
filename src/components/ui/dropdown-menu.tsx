@@ -59,10 +59,6 @@ type Props = {
   minWidth?: number;
   /** Optional small label above the items. */
   label?: ReactNode;
-  /** Optional info footer below the items (non-interactive hint, e.g. the
-   *  ProjectPicker "체크 = 일괄 적용" guidance). Rendered inside the menu so it
-   *  stays anchored to the item list. */
-  footer?: ReactNode;
 };
 
 export function DropdownMenu({
@@ -72,7 +68,6 @@ export function DropdownMenu({
   side = 'bottom',
   minWidth = 160,
   label,
-  footer,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -252,11 +247,6 @@ export function DropdownMenu({
                   </div>
                 );
               })}
-              {footer ? (
-                <div className="mt-1 border-t border-line-soft px-3 pb-1 pt-1.5 text-xs-soft leading-snug text-mute-soft">
-                  {footer}
-                </div>
-              ) : null}
             </div>,
             portalTarget,
           )

@@ -19,7 +19,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
@@ -34,9 +33,8 @@ import {
   WidgetStateProvider,
   useWidgetState,
 } from './widget-state-context';
-import { WidgetStatePill, widgetStatePillLabel } from './widget-state-pill';
+import { WidgetStatePill } from './widget-state-pill';
 import { WidgetCreditBadge } from './widget-credit-badge';
-import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import {
   useCreditDeductionEvent,
   type CreditDeductionEvent,
@@ -133,116 +131,6 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
-// ── Canvas 1c 카드 프레임 — 통합 툴바 (💎크레딧 │ ●상태 │ ⤢풀뷰) ──────────
-// banner-top chrome 에 분리돼 있던 크레딧 배지·상태 pill·풀뷰 진입을 헤더밴드
-// 안 단일 pill 로 병합. probing·interpreter(cardFrame) 세팅 표면 전용.
-
-// 세그 디바이더 — 1.5px ink 세로선.
-function ToolbarDivider() {
-  return (
-    <span
-      aria-hidden
-      className="shrink-0 self-stretch"
-      style={{ width: 1.5, background: 'var(--canvas-card-border)' }}
-    />
-  );
-}
-
-// 상태 세그 — WidgetStateContext 구독(PopStatePill 과 동일 소스), 툴바용 컴팩트
-// 표현(● 도트 + 라벨). ready = success(초록)/READY · 라이브 = amore(핑크)/LIVE.
-function ToolbarStatusSegment() {
-  const { state } = useWidgetState();
-  const live = state.kind === 'running';
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 font-bold uppercase tabular-nums tracking-wider"
-      style={{ padding: '6px 10px', fontSize: 11, color: 'var(--canvas-card-header-text)' }}
-      aria-live={live ? 'polite' : undefined}
-      title={state.kind === 'error' && state.message ? state.message : undefined}
-    >
-      <span
-        aria-hidden
-        className={live ? 'animate-pulse' : undefined}
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: 'var(--radius-pill)',
-          background: live ? 'var(--color-amore)' : 'var(--color-success)',
-        }}
-      />
-      {widgetStatePillLabel(state)}
-    </span>
-  );
-}
-
-// 통합 툴바 pill — chrome(1.5px ink border · radius 10 · memphis-sm · bg-paper).
-// 세그 순서(좌→우 고정): 💎 크레딧 │ ● 상태 │ 🎨 색상 변경 │ ⤢ 풀뷰.
-// 🎨 = 기존 WidgetHeaderColorPicker 재배치 (신규 구현 아님) — 645 툴바 재작성
-// 때 cardFrame 에서 빠진 색상 커스텀을 position #3 에 복원. 팔레트 글리프는
-// 듀오톤(fill var(--widget-tone))이라 현재 헤더 톤으로 채워져 상태를 표시.
-function WidgetToolbar({
-  cost,
-  costLabel,
-  headerColor,
-  onHeaderColorChange,
-  onFullview,
-  fullviewLabel,
-}: {
-  cost: number | undefined;
-  costLabel: string | undefined;
-  headerColor: string | null;
-  onHeaderColorChange: (color: string | null) => void;
-  onFullview?: () => void;
-  fullviewLabel: string;
-}) {
-  const hasCredit = costLabel != null || typeof cost === 'number';
-  return (
-    <span
-      className="inline-flex shrink-0 items-center"
-      style={{
-        background: 'var(--canvas-card-bg)',
-        border: '1.5px solid var(--canvas-card-border)',
-        borderRadius: 'var(--widget-card-frame-toolbar-radius)',
-        boxShadow: 'var(--shadow-memphis-sm)',
-        overflow: 'hidden',
-      }}
-    >
-      {hasCredit && (
-        <span
-          className="inline-flex items-center gap-1 font-bold tabular-nums"
-          style={{ padding: '6px 10px', fontSize: 11, color: 'var(--canvas-card-header-text)' }}
-        >
-          <DuotoneIcon name="diamond" size={14} />
-          <span>{costLabel ?? cost}</span>
-        </span>
-      )}
-      {hasCredit && <ToolbarDivider />}
-      <ToolbarStatusSegment />
-      <ToolbarDivider />
-      <WidgetHeaderColorPicker
-        value={headerColor}
-        onChange={onHeaderColorChange}
-        variant="segment"
-      />
-      {onFullview && (
-        <>
-          <ToolbarDivider />
-          {/* eslint-disable-next-line react/forbid-elements -- 툴바 세그 아이콘 버튼(⤢). ui/ IconButton 의 memphis chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — 셸 카드 프레임 정의 지점의 bare 세그 버튼. */}
-          <button
-            type="button"
-            onClick={onFullview}
-            aria-label={fullviewLabel}
-            className="inline-flex items-center justify-center"
-            style={{ padding: '6px 10px', color: 'var(--canvas-card-header-text)' }}
-          >
-            <DuotoneIcon name="fullview" size={16} />
-          </button>
-        </>
-      )}
-    </span>
-  );
-}
-
 export function WidgetShell({
   content,
   dragHandleProps,
@@ -286,96 +174,6 @@ function WidgetShellInner({
   const [headerColor, setHeaderColor] = useWidgetHeaderColor(content.key);
   const tWidgets = useTranslations('Widgets');
   const tRoot = useTranslations();
-
-  // ── Canvas 1c 카드 프레임 variant (probing·interpreter) ────────────────
-  // 옐로 banner-top chrome 대신 파스텔 헤더밴드 + 통합 툴바 + (위젯 바디의
-  // 기존) 푸터 CTA. 카드 셸 = border 3px ink · radius 20 · shadow-memphis-md.
-  // 바디는 overflow-hidden — 내부 ControlBoardPanel(flex-1 overflow-y-auto)이
-  // 스크롤 주체, 위젯의 기존 shrink-0 CTA 는 스크롤 밖 형제로 pinned(바디
-  // 마크업 무변경, 회귀 0). 크레딧/상태/풀뷰는 chrome 에서 사라지고 툴바로 이동.
-  if (content.meta.cardFrame) {
-    return (
-      <div
-        className="relative flex flex-col overflow-hidden"
-        aria-expanded
-        style={{
-          // Canvas 1c 확정 지오메트리(GEOMETRY.md ⚑): 카드 = 고정 604×900.
-          // 예전엔 셸이 h-full 로 캔버스 셀(816×950)을 채워 넓어지고(과대폭)
-          // 하단 공백(과대높이)이 났다. 604×900 못박고 셀이 넓으면 좌상단
-          // 정렬(카드가 셀을 채우지 않음) — 캔버스 그리드/pop-락은 바깥 셀
-          // 래퍼(CELL_W×CELL_H) 기준이라 무관, 카드만 실측 규격으로 축소.
-          // 콘텐츠 컬럼(514)은 카드 폭이 604 로 좁아지며 정합된다(풀폭 필드).
-          width: 604,
-          height: 900,
-          maxWidth: '100%',
-          background: 'var(--canvas-card-bg)',
-          border: '3px solid var(--canvas-card-border)',
-          borderRadius: 'var(--widget-card-frame-radius)',
-          boxShadow: 'var(--shadow-memphis-md)',
-          // ── 헤더↔아이콘 톤 매칭 단일 소스 (R7/D1) ────────────────────────
-          // 해상된 헤더 톤을 CSS 변수 하나로 카드 하위 전체에 노출한다:
-          //   유저 per-widget 색(headerColor) > accent 파스텔 > 전역 default.
-          // 헤더밴드 bg · DuotoneIcon fill · 팔레트글리프 fill 이 모두 이 var 를
-          // 읽어 → 🎨 로 색을 바꾸면 헤더+카드내 아이콘+🎨 글리프가 동시 리틴트.
-          '--widget-tone':
-            headerColor ??
-            `var(--widget-header-bg-${content.meta.accent}, var(--canvas-card-header-bg))`,
-        } as CSSProperties}
-      >
-        {/* 헤더밴드 — 파스텔(accent) bg · 2px ink bottom border · Outfit 800 29px
-            타이틀 + 통합 툴바. 헤더 영역 = drag handle. */}
-        <div
-          className={`relative flex shrink-0 items-center justify-between gap-3 ${
-            isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
-          }`}
-          {...dragHandleProps}
-          style={{
-            // 헤더밴드 bg = var(--widget-tone) (매칭 불변식 단일 소스). 🎨 변경
-            // 시 아이콘·팔레트글리프와 동시에 리틴트된다.
-            background: 'var(--widget-tone)',
-            color: 'var(--canvas-card-header-text)',
-            fontFamily: 'var(--font-outfit), var(--font-sans)',
-            borderBottom: '2px solid var(--canvas-card-border)',
-            padding: '18px 22px',
-          }}
-        >
-          <span
-            className="min-w-0 truncate"
-            style={{
-              fontSize: 29,
-              fontWeight: 800,
-              letterSpacing: '-0.9px',
-              lineHeight: 1.05,
-              color: 'var(--canvas-card-header-text)',
-            }}
-          >
-            {resolveWidgetLabel(tRoot, content.meta)}
-          </span>
-          <WidgetToolbar
-            cost={content.meta.cost}
-            costLabel={content.meta.costLabel}
-            headerColor={headerColor}
-            onHeaderColorChange={setHeaderColor}
-            onFullview={onFullview}
-            fullviewLabel={tWidgets('fullview')}
-          />
-          <CostFlyUpOverlay featureKey={content.key} />
-        </div>
-        {/* 바디 — overflow-hidden(내부 ControlBoardPanel 이 스크롤). framed inner
-            frame 없음(카드 프레임이 셸을 대체). data-canvas-body 유지 →
-            Memphis bold/display scoped CSS 가 아코디언 button/input 에 적용. */}
-        <div
-          className="min-h-0 flex-1 overflow-hidden"
-          style={{ background: 'var(--canvas-card-bg)' }}
-        >
-          <div data-canvas-body className="flex h-full min-h-0 flex-col">
-            <ExpandedBody />
-          </div>
-        </div>
-        <WidgetGateOverlay widget={content.key} />
-      </div>
-    );
-  }
 
   return (
     <div

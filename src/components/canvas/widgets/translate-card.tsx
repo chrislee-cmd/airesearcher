@@ -83,8 +83,6 @@ export const translateCard: WidgetContent = {
     cost: 50,
     thumbnail: '/thumbnail/interpreter.png',
     expandedCols: 3,
-    // Canvas 1c 카드 프레임 opt-in — mint 파스텔 헤더밴드 + 통합 툴바(💎50).
-    cardFrame: true,
   },
   state: 'idle',
   ExpandedBody,

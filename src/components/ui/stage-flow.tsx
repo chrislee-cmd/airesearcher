@@ -38,16 +38,10 @@ export type Stage = {
   description?: ReactNode;
 };
 
-// active 노드 펄스 톤 — 'ink'(기본, 기존 소비자 회귀 0) | 'progress'(signal-
-// progress 바이올렛 proposed 토큰, 전사록 V2 opt-in).
-export type StageActiveTone = 'ink' | 'progress';
-
 export type StageFlowProps = {
   stages: Stage[];
   // 기본 horizontal. 좁은 카드는 호출부가 vertical 을 주입(반응형).
   orientation?: 'horizontal' | 'vertical';
-  // active 노드 펄스/보더 톤. 기본 'ink' — desk 등 기존 소비자 무변경.
-  activeTone?: StageActiveTone;
   // 전 단계 done → 완료 hero 로 전환.
   complete?: boolean;
   completeLabel?: string;
@@ -68,18 +62,7 @@ const NODE_TONE: Record<StageStatus, string> = {
   error: 'border-warning bg-warning-bg text-warning',
 };
 
-// progress 톤 opt-in 시 active 노드 chrome — 보더/펄스 ring 이 signal-progress
-// (BASE 는 색 없음, §7.11). 라벨 텍스트는 가독성 위해 ink 유지.
-const NODE_TONE_ACTIVE_PROGRESS =
-  'border-signal-progress bg-paper text-ink stage-flow-node-active stage-flow-node-progress';
-
-function StageMarker({
-  status,
-  activeTone,
-}: {
-  status: StageStatus;
-  activeTone: StageActiveTone;
-}) {
+function StageMarker({ status }: { status: StageStatus }) {
   if (status === 'done') {
     return (
       <svg
@@ -116,9 +99,7 @@ function StageMarker({
     return (
       <span
         aria-hidden
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          activeTone === 'progress' ? 'bg-signal-progress' : 'bg-ink'
-        }`}
+        className="h-2 w-2 shrink-0 rounded-full bg-ink"
       />
     );
   }
@@ -135,28 +116,15 @@ function StageMarker({
 // fill=true(세로 플로우)면 컨테이너 폭을 채우고, false(가로 플로우)면 내용 폭.
 // active 단계는 hint·description 을 펼치고(open), 나머지는 접는다 — grid-rows
 // 0fr↔1fr 트랜지션으로 auto-height 를 부드럽게 여닫는다(모션 축소 존중).
-function StageNode({
-  stage,
-  fill,
-  activeTone,
-}: {
-  stage: Stage;
-  fill?: boolean;
-  activeTone: StageActiveTone;
-}) {
+function StageNode({ stage, fill }: { stage: Stage; fill?: boolean }) {
   const dim = stage.status === 'pending';
   const open = stage.status === 'active';
   const expandable = stage.hint != null || stage.description != null;
-  // active 노드는 톤 opt-in(progress) 이면 signal-progress chrome, 아니면 ink.
-  const toneClass =
-    stage.status === 'active' && activeTone === 'progress'
-      ? NODE_TONE_ACTIVE_PROGRESS
-      : NODE_TONE[stage.status];
   return (
     <div
       className={`flex items-center gap-3 rounded-sm border-[2px] px-3.5 py-2.5 transition-colors ${
         fill ? 'w-full' : 'shrink-0'
-      } ${toneClass}`}
+      } ${NODE_TONE[stage.status]}`}
     >
       {stage.icon != null ? (
         <span
@@ -195,7 +163,7 @@ function StageNode({
           </div>
         ) : null}
       </div>
-      <StageMarker status={stage.status} activeTone={activeTone} />
+      <StageMarker status={stage.status} />
     </div>
   );
 }
@@ -288,7 +256,6 @@ function CompleteHero({
 export function StageFlow({
   stages,
   orientation = 'horizontal',
-  activeTone = 'ink',
   complete = false,
   completeLabel,
   onResult,
@@ -322,7 +289,7 @@ export function StageFlow({
       >
         {stages.map((stage, i) => (
           <div key={stage.id} className="contents">
-            <StageNode stage={stage} fill activeTone={activeTone} />
+            <StageNode stage={stage} fill />
             {i < stages.length - 1 ? (
               <VerticalEdge
                 flowing={edgeFlowing(stage.status, stages[i + 1].status)}
@@ -343,7 +310,7 @@ export function StageFlow({
       <div className="flex items-stretch overflow-x-auto">
         {stages.map((stage, i) => (
           <div key={stage.id} className="contents">
-            <StageNode stage={stage} activeTone={activeTone} />
+            <StageNode stage={stage} />
             {i < stages.length - 1 ? (
               <HorizontalEdge
                 flowing={edgeFlowing(stage.status, stages[i + 1].status)}

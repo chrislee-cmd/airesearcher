@@ -118,26 +118,6 @@ button:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #000; }
 | `src/components/canvas/canvas-minimap.tsx` | 우상단 minimap (theme chrome) |
 | `src/lib/canvas/graph.ts` | 노드 기본 위치 + edge SSOT |
 
-## 락 예외 — 위젯 카드 프레임 (Canvas 1c, 2026-07-20)
-
-> probing·interpreter **세팅 표면**은 위 banner-top 옐로 chrome 대신 Canvas 1c
-> 카드 프레임으로 렌더한다 (writer·CD reconcile 수렴, `pr-widget-card-frame`).
-> 나머지 4 위젯(전사록·데스크·AI UT·인터뷰 등)의 banner-top 락은 불변.
-
-| 요소 | banner-top (기본 락) | 카드 프레임 (probing·interpreter) |
-|---|---|---|
-| 헤더 bg | 옐로 `#ffd53d` (`--canvas-card-header-bg`) | 파스텔 `--widget-header-bg-{sky,mint}` (accent 매핑) |
-| 헤더 높이 | 140px 고정 | 자연 높이 (padding 18/22) |
-| 크레딧·상태·풀뷰 | 헤더에 분리 (배지 + pill + 버튼) | **통합 툴바 단일 pill** `[💎크레딧 │ ●상태 │ ⤢풀뷰]` |
-| 타이틀 | 32px/800 | Outfit 29px/800 · tracking -0.9px |
-| 카드 셸 | radius 14 · shadow 6px6px | radius 20 (`--widget-card-frame-radius`) · `shadow-memphis-md` · border 3px ink |
-| 본문 | framed 2.5px inner frame | frame 없음 · 바디 overflow-hidden(내부 ControlBoardPanel 스크롤) |
-| 푸터 | (위젯별) | 위젯 기존 `WidgetPrimaryCta`(border-t · pinned) 재사용 |
-
-- opt-in = `WidgetContent.meta.cardFrame`. 파스텔 = `meta.accent`(sky/mint).
-- 컬러 팔레트(WidgetHeaderColorPicker)는 카드 프레임에서 미노출(파스텔 고정).
-- 구현: `src/components/canvas/shell/widget-shell.tsx` (variant + 통합 툴바).
-
 ## 다음 PR 후보 (spec writer 결정)
 
 - [ ] switcher 비교 UI 제거 (잠금 후 production cleanup)
