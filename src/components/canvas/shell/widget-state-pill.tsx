@@ -81,15 +81,52 @@ function pillVisual(kind: WidgetStateInfo['kind']): {
   }
 }
 
+// seg 모드 (통합 툴바 세그먼트) 의 상태별 도트·텍스트 색 — border/shadow 없이
+// 텍스트+도트만. idle=success 도트(READY)·running=amore·done=success·error=warning.
+function segDot(kind: WidgetStateInfo['kind']): string {
+  switch (kind) {
+    case 'running':
+      return 'var(--color-amore)';
+    case 'error':
+      return 'var(--color-warning)';
+    case 'done':
+    case 'idle':
+    default:
+      return 'var(--color-success, #16a34a)';
+  }
+}
+
 export type WidgetStatePillProps = {
   // 그릴 상태. 소비처(widget-shell)가 WidgetStateContext 에서 읽어 넘긴다.
   state: WidgetStateInfo;
+  // seg=true → 통합 툴바 pill 안의 세그먼트 (● dot + 라벨, 개별 border/shadow
+  // 없음). WIDGET-SHELL §S1: status seg = ● dot + READY/LIVE.
+  seg?: boolean;
 };
 
-export function WidgetStatePill({ state }: WidgetStatePillProps) {
-  const visual = pillVisual(state.kind);
+export function WidgetStatePill({ state, seg = false }: WidgetStatePillProps) {
   const title =
     state.kind === 'error' && state.message ? state.message : undefined;
+  if (seg) {
+    return (
+      <span
+        data-ds-primitive="WidgetStatePill"
+        className="inline-flex shrink-0 items-center gap-1 px-2.5 text-xs font-bold uppercase tracking-wider tabular-nums text-ink"
+        title={title}
+        aria-live={state.kind === 'running' ? 'polite' : undefined}
+      >
+        <span
+          aria-hidden
+          className={state.kind === 'running' ? 'animate-pulse' : undefined}
+          style={{ color: segDot(state.kind) }}
+        >
+          ●
+        </span>
+        {widgetStatePillLabel(state)}
+      </span>
+    );
+  }
+  const visual = pillVisual(state.kind);
   return (
     <span
       data-ds-primitive="WidgetStatePill"

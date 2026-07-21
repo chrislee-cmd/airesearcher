@@ -23,9 +23,16 @@ export type WidgetCreditBadgeProps = {
   cost: number | undefined;
   // cost 를 통째로 대체하는 라벨 (lifecycle 차감 도구). cost 보다 우선.
   costLabel: string | undefined;
+  // seg=true → 통합 툴바 pill 안의 세그먼트로 렌더 (개별 border/shadow 없음).
+  // WIDGET-SHELL §S2: 헤더 툴바 = 단일 pill, 세그먼트는 borderless.
+  seg?: boolean;
 };
 
-export function WidgetCreditBadge({ cost, costLabel }: WidgetCreditBadgeProps) {
+export function WidgetCreditBadge({
+  cost,
+  costLabel,
+  seg = false,
+}: WidgetCreditBadgeProps) {
   const t = useTranslations('Shell');
   if (costLabel) {
     return (
@@ -45,6 +52,18 @@ export function WidgetCreditBadge({ cost, costLabel }: WidgetCreditBadgeProps) {
         className="text-xs font-bold uppercase opacity-80"
       >
         {t('free')}
+      </span>
+    );
+  }
+  if (seg) {
+    return (
+      <span
+        data-ds-primitive="WidgetCreditBadge"
+        className="inline-flex shrink-0 items-center gap-1 px-2.5 text-xs font-bold tabular-nums text-ink"
+        aria-label={t('creditCost', { count: cost })}
+      >
+        <span aria-hidden>💎</span>
+        <span>{cost}</span>
       </span>
     );
   }

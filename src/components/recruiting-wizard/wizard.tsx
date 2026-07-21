@@ -811,7 +811,30 @@ export function RecruitingWizard({
             title={t('setup.step2Title')}
           >
             {criteriaPhase === 'idle' && (
-              <EmptyHint>{t('setup.criteriaEmpty')}</EmptyHint>
+              // 👻 pre-data 고스트 프리뷰(Rev1 A) — 실 CriteriaChip 을 muted 로
+              // 렌더 + 얇은 라벨. placeholder 바 금지. 추출 後 실데이터로 교체.
+              <GhostPreview label={t('setup.ghostNote')}>
+                <div className="flex flex-wrap gap-2">
+                  <CriteriaChip
+                    category={t('setup.ghostCat1')}
+                    label={t('setup.ghostCrit1')}
+                    required
+                    requiredLabel={t('setup.required')}
+                  />
+                  <CriteriaChip
+                    category={t('setup.ghostCat2')}
+                    label={t('setup.ghostCrit2')}
+                    required
+                    requiredLabel={t('setup.required')}
+                  />
+                  <CriteriaChip
+                    category={t('setup.ghostCat3')}
+                    label={t('setup.ghostCrit3')}
+                    required={false}
+                    requiredLabel={t('setup.required')}
+                  />
+                </div>
+              </GhostPreview>
             )}
             {criteriaPhase === 'generating' && (
               <GeneratingRow
@@ -867,8 +890,32 @@ export function RecruitingWizard({
             nodeState={stepNode(3)}
             title={t('setup.step3Title')}
           >
-            {stepNode(3) === 'todo' && (
-              <EmptyHint>{t('setup.surveyEmpty')}</EmptyHint>
+            {criteriaPhase !== 'approved' && (
+              // 👻 pre-data 고스트 프리뷰(Rev1 A) — 실 SurveySectionRow 를 muted
+              // 로 렌더(locked 🔒 + editable) + 얇은 라벨. 조건 승인 後 실 설문
+              // 으로 교체. placeholder 바 금지.
+              <GhostPreview label={t('setup.ghostNote')}>
+                <div className="space-y-2">
+                  <SurveySectionRow
+                    title={t('setup.ghostSurvConsent')}
+                    meta={t('setup.ghostSurvConsentMeta')}
+                    locked
+                    lockedLabel={t('setup.surveyLocked')}
+                  />
+                  <SurveySectionRow
+                    title={t('setup.ghostSurvScreen')}
+                    meta={`${t('setup.surveyQuestionMeta', { count: 8 })} · ${t('setup.surveyEditable')}`}
+                    locked={false}
+                    lockedLabel={t('setup.surveyLocked')}
+                  />
+                  <SurveySectionRow
+                    title={t('setup.ghostSurvPersonal')}
+                    meta={t('setup.ghostSurvPersonalMeta')}
+                    locked
+                    lockedLabel={t('setup.surveyLocked')}
+                  />
+                </div>
+              </GhostPreview>
             )}
             {criteriaPhase === 'approved' &&
               (surveyPhase === 'idle' || surveyPhase === 'generating') && (
@@ -1237,11 +1284,28 @@ function SurveySectionRow({
   );
 }
 
-// 스텝 상단 안내(todo/empty 상태) — dashed 안내 박스.
-function EmptyHint({ children }: { children: ReactNode }) {
+// 👻 고스트 프리뷰(Rev1 A · §3 c-hybrid) — 데이터 의존 스텝의 pre-data 를
+// 실 컴포넌트로 muted(회색톤·저 opacity) 렌더 + 상단 얇은 라벨. placeholder
+// 바가 아니라 실제 칩/설문행의 muted 버전 → 추출 後 실데이터로 자연 교체.
+// aria-hidden — 실 데이터가 아닌 예시 프리뷰.
+function GhostPreview({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="rounded-sm border border-dashed border-line bg-paper-soft px-3 py-3 text-md text-mute-soft">
-      {children}
+    <div className="space-y-2">
+      <div className="font-mono text-xs uppercase tracking-wide text-mute-soft">
+        {label}
+      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none select-none opacity-40 grayscale"
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -1299,30 +1363,28 @@ function CriteriaInputFields({
   onAddFiles: (incoming: FileList | File[]) => void;
   onRemoveFile: (idx: number) => void;
 }) {
-  // 밸런스 튜닝(desk 미러): 넓어진 idle 클러스터(max-w-2xl) 대비 왜소함을
-  // 해소하려 필드 세로 간격 gap-4 → gap-5, 두 입력 박스 높이 h-[120px] →
-  // h-[140px] 확대 (데스크 controlsForm space-y-5 + 키워드 input 확대와 같은
-  // 계열). 이 컴포넌트는 flow-mode 입력 모달(size=md)에도 마운트되지만, 더
-  // 커진 입력 박스는 그쪽에서도 무해한 시각 확대일 뿐 기능 회귀는 없다.
+  const t = useTranslations('Recruiting');
+  // 문자열 전부 i18n(§7 canonical ko) — 하드코딩 0(Rev1 B). 입력 박스
+  // h-[140px] 은 데스크/프로빙 규격.
   return (
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-2">
-        <Field label="텍스트 붙여넣기">
+        <Field label={t('setup.step1PasteLabel')}>
           <Textarea
             value={pasted}
             onChange={(e) => onPasteChange(e.target.value)}
             disabled={running}
-            placeholder="이메일, 메신저, 브리프 텍스트를 그대로 붙여넣으세요."
+            placeholder={t('setup.step1Paste')}
             className="h-[140px] resize-none text-md text-ink-2"
           />
         </Field>
-        <Field label="파일 업로드">
+        <Field label={t('setup.step1DropLabel')}>
           <FileDropZone
             accept={ACCEPT}
             multiple
             onFiles={(f) => onAddFiles(f)}
-            label="파일을 끌어다 놓거나 클릭"
-            helperText=".pdf · .docx · .xlsx · .csv · .txt — 최대 10개"
+            label={t('setup.step1Drop')}
+            helperText={t('setup.step1DropHint')}
             className="h-[140px] gap-2 px-6"
           />
         </Field>
@@ -1330,7 +1392,7 @@ function CriteriaInputFields({
 
       {rejected.length > 0 && (
         <div className="text-sm text-warning">
-          허용되지 않은 형식: {rejected.join(', ')}
+          {t('setup.step1Rejected')}: {rejected.join(', ')}
         </div>
       )}
 
@@ -1352,7 +1414,7 @@ function CriteriaInputFields({
                 disabled={running}
                 className="shrink-0 text-sm"
               >
-                제거
+                {t('setup.step1Remove')}
               </Button>
             </li>
           ))}

@@ -23,8 +23,9 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { useTranslations } from 'next-intl';
+import type { ReactNode } from 'react';
 import { resolveWidgetLabel, type WidgetContent } from '../widget-types';
-import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
 import {
   WidgetHeaderColorPicker,
   useWidgetHeaderColor,
@@ -53,9 +54,9 @@ export type DragHandleProps = {
 // WidgetStatePill primitive 에 넘기는 얇은 래퍼 — 라벨/톤/렌더 로직은
 // primitive 가 SSOT (widget-state-pill.tsx). shell ↔ body context 배선은
 // 여기서 유지, 카탈로그는 primitive 를 state prop 만 바꿔 standalone 데모.
-function PopStatePill() {
+function PopStatePill({ seg = false }: { seg?: boolean }) {
   const { state } = useWidgetState();
-  return <WidgetStatePill state={state} />;
+  return <WidgetStatePill state={state} seg={seg} />;
 }
 
 // 차감 신호 받으면 헤더 위쪽으로 -N 텍스트가 떠올라 사라진다.
@@ -115,19 +116,63 @@ function FullviewIcon({ className }: { className?: string }) {
   );
 }
 
-// Inline right-arrow glyph — "이동" 시그널 (다른 화면으로 진입). Decorative +
-// aria-hidden; 버튼은 자체 text/aria-label 로 라벨링됨 (FullviewIcon 과 동일 규칙).
-function ArrowRightIcon({ className }: { className?: string }) {
+// 통합 헤더 툴바 pill (WIDGET-SHELL §S1/§S2) — 단일 border-ink pill 안에
+// credit·status·palette·fullview 세그먼트를 1px ink divider 로 나눠 배치.
+// 세그먼트는 개별 border/shadow 없이(seg 모드) 조립되어 "3박스 분리" 를 방지.
+// 순서 고정: 💎credit → ●status → 🎨palette → ⤢fullview(LAST).
+function HeaderToolbar({
+  cost,
+  costLabel,
+  headerColor,
+  onHeaderColorChange,
+  onFullview,
+  fullviewLabel,
+}: {
+  cost: number | undefined;
+  costLabel: string | undefined;
+  headerColor: string | null;
+  onHeaderColorChange: (color: string | null) => void;
+  onFullview?: () => void;
+  fullviewLabel: string;
+}) {
+  const hasCredit = cost !== undefined || !!costLabel;
+  const segs: ReactNode[] = [
+    ...(hasCredit
+      ? [<WidgetCreditBadge key="credit" cost={cost} costLabel={costLabel} seg />]
+      : []),
+    <PopStatePill key="status" seg />,
+    <WidgetHeaderColorPicker
+      key="palette"
+      value={headerColor}
+      onChange={onHeaderColorChange}
+    />,
+    ...(onFullview
+      ? [
+          <IconButton
+            key="fullview"
+            variant="ghost"
+            size="sm"
+            onClick={onFullview}
+            aria-label={fullviewLabel}
+          >
+            <FullviewIcon className="h-3.5 w-3.5" />
+          </IconButton>,
+        ]
+      : []),
+  ];
   return (
-    <svg className={className} viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="ml-auto inline-flex items-center overflow-hidden rounded-sm border border-ink bg-paper shadow-memphis-xs">
+      {segs.map((seg, i) => (
+        <div
+          key={i}
+          className={`flex items-center px-0.5 py-1 ${
+            i > 0 ? 'border-l border-ink' : ''
+          }`}
+        >
+          {seg}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -206,39 +251,19 @@ function WidgetShellInner({
             '3px solid var(--widget-header-row-border, var(--canvas-card-header-divider))',
         }}
       >
-        <div className="relative flex items-center gap-2 text-xs uppercase">
-          <WidgetCreditBadge
+        {/* 통합 툴바 pill (WIDGET-SHELL §S2) — 단일 border-ink pill 안에
+            [ 💎credit │ ●status │ 🎨palette │ ⤢fullview ] 순서, 1px ink
+            divider 로 세그먼트 구분. 개별 박스 3분리 금지(조립 규칙). 우측
+            정렬 · 타이틀은 아래 row (pop 헤더 2행 유지 — canvas-lock §9). */}
+        <div className="relative flex items-center text-xs uppercase">
+          <HeaderToolbar
             cost={content.meta.cost}
             costLabel={content.meta.costLabel}
+            headerColor={headerColor}
+            onHeaderColorChange={setHeaderColor}
+            onFullview={onFullview}
+            fullviewLabel={tWidgets('fullview')}
           />
-          {/* 컬러 팔레트는 cost 옆 (좌측 고정) — 우측 pill 이 state 에 따라
-              너비가 변해도 (READY → TRANSCRIBING 72%) 팔레트 버튼 위치는
-              움직이지 않는다. */}
-          <WidgetHeaderColorPicker
-            value={headerColor}
-            onChange={setHeaderColor}
-          />
-          {/* 우측 = state pill + "전체 보기" 진입을 한 줄(인라인)로. pill 우측에
-              나란히 둬서 첫 row 가 단일 라인 높이로 유지 → 대형 32px 타이틀이
-              아래 row 때문에 밀려 윗부분이 잘리던 회귀 해소. onFullview 넘긴
-              위젯만 버튼 노출 → 미전달이면 버튼 0 (회귀 0). 노란 헤더 위 link
-              톤 text-only 진입점. */}
-          <span className="ml-auto flex items-center gap-2">
-            <PopStatePill />
-            {onFullview && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onFullview}
-                aria-label={tWidgets('fullview')}
-                leftIcon={<FullviewIcon className="h-3.5 w-3.5" />}
-                rightIcon={<ArrowRightIcon className="h-3.5 w-3.5" />}
-                className="normal-case tracking-[0.08em] font-semibold"
-              >
-                {tWidgets('fullview')}
-              </Button>
-            )}
-          </span>
           <CostFlyUpOverlay featureKey={content.key} />
         </div>
         <div
