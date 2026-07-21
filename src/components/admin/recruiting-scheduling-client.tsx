@@ -372,11 +372,13 @@ export function RecruitingSchedulingClient({
   // --- Slot editor wiring ---
 
   function openCreate(start?: Date, candidateId?: string) {
-    if (candidates.length === 0) return;
     const base = start ?? roundToNextHalfHour(new Date());
     const end = new Date(base.getTime() + 30 * 60 * 1000);
     setDraft({
-      candidateId: candidateId ?? candidates[0].id,
+      title: '',
+      // No candidate pre-selected unless one was passed (e.g. the list's "슬롯
+      // 배정") — a fresh event starts as a titled block (PR-B).
+      candidateId: candidateId ?? '',
       startLocal: toLocalInputValue(base.toISOString()),
       endLocal: toLocalInputValue(end.toISOString()),
       status: 'proposed',
@@ -389,7 +391,8 @@ export function RecruitingSchedulingClient({
   function openEdit(slot: SchedSlot) {
     setDraft({
       id: slot.id,
-      candidateId: slot.candidate_id,
+      title: slot.title ?? '',
+      candidateId: slot.candidate_id ?? '',
       startLocal: toLocalInputValue(slot.start_at),
       endLocal: toLocalInputValue(slot.end_at),
       status: slot.status,
@@ -514,7 +517,6 @@ export function RecruitingSchedulingClient({
               variant="primary"
               size="sm"
               onClick={() => openCreate()}
-              disabled={candidates.length === 0}
             >
               {t('slotAdd')}
             </Button>
@@ -889,6 +891,7 @@ export function RecruitingSchedulingClient({
         onClose={() => setEditorOpen(false)}
         draft={draft}
         candidates={candidateOptions}
+        batchId={selectedBatchId ?? ''}
         allSlots={slots}
         onSaved={onSaved}
       />

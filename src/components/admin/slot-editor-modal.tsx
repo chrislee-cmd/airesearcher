@@ -17,6 +17,9 @@ import {
 export type SlotDraft = {
   // Present when editing an existing slot; absent for a fresh create.
   id?: string;
+  // Free-text event label (PR-B). Required unless a candidate is attached.
+  title: string;
+  // Optional (PR-B) — a titled event may have no candidate.
   candidateId: string;
   startLocal: string; // datetime-local value
   endLocal: string;
@@ -32,6 +35,8 @@ type Props = {
   onClose: () => void;
   draft: SlotDraft | null;
   candidates: CandidateOption[];
+  // Batch the new slot belongs to — scopes candidate-less titled events (PR-B).
+  batchId: string;
   // All existing slots — used for the soft double-booking warning.
   allSlots: SchedSlot[];
   onSaved: () => void;
@@ -45,10 +50,12 @@ export function SlotEditorModal({
   onClose,
   draft,
   candidates,
+  batchId,
   allSlots,
   onSaved,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
+  const [title, setTitle] = useState('');
   const [candidateId, setCandidateId] = useState('');
   const [startLocal, setStartLocal] = useState('');
   const [endLocal, setEndLocal] = useState('');
@@ -66,6 +73,7 @@ export function SlotEditorModal({
   // stale seededFor and skip).
   const draftKey = draft ? (draft.id ?? `new:${draft.candidateId}:${draft.startLocal}`) : null;
   if (open && draft && seededFor !== draftKey) {
+    setTitle(draft.title);
     setCandidateId(draft.candidateId);
     setStartLocal(draft.startLocal);
     setEndLocal(draft.endLocal);
@@ -96,7 +104,8 @@ export function SlotEditorModal({
     if (saving) return;
     const startIso = fromLocalInputValue(startLocal);
     const endIso = fromLocalInputValue(endLocal);
-    if (!candidateId || !startIso || !endIso) {
+    // A slot needs a title OR a candidate (PR-B), plus valid times.
+    if ((!title.trim() && !candidateId) || !startIso || !endIso) {
       setError(t('slotMissingFields'));
       return;
     }
@@ -112,6 +121,7 @@ export function SlotEditorModal({
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              title,
               start_at: startIso,
               end_at: endIso,
               status,
@@ -123,7 +133,9 @@ export function SlotEditorModal({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              title,
               candidate_id: candidateId,
+              batch_id: batchId,
               start_at: startIso,
               end_at: endIso,
               status,
@@ -188,11 +200,21 @@ export function SlotEditorModal({
       }
     >
       <div className="flex flex-col gap-4">
+        <Input
+          label={t('slotTitle')}
+          placeholder={t('slotTitlePlaceholder')}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
         <Select
-          label={t('slotCandidate')}
+          label={t('slotCandidateOptional')}
           value={candidateId}
           onChange={(e) => setCandidateId(e.target.value)}
-          options={candidates.map((c) => ({ value: c.id, label: c.label }))}
+          options={[
+            { value: '', label: t('slotCandidateNone') },
+            ...candidates.map((c) => ({ value: c.id, label: c.label })),
+          ]}
           disabled={isEditing}
         />
 

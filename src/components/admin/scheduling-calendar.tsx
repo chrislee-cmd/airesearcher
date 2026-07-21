@@ -95,6 +95,15 @@ export function SchedulingCalendar({
   const t = useTranslations('RecruitingScheduling');
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
 
+  // Block label: free-text title wins (PR-B); otherwise the attached
+  // candidate's name; a titleless candidate-less event falls back to a dash.
+  function slotLabel(s: SchedSlot): string {
+    const title = s.title?.trim();
+    if (title) return title;
+    if (s.candidate_id) return candidateName(s.candidate_id);
+    return t('slotUntitled');
+  }
+
   const days = useMemo(() => {
     if (view === 'day') return [startOfDay(anchor)];
     const wk = startOfWeek(anchor);
@@ -274,7 +283,7 @@ export function SchedulingCalendar({
                             s.status,
                           )}`}
                           style={{ top, height }}
-                          title={`${candidateName(s.candidate_id)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`}
+                          title={`${slotLabel(s)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`}
                         >
                           <span className="flex items-center gap-1 font-medium">
                             <span
@@ -282,9 +291,7 @@ export function SchedulingCalendar({
                                 s.status,
                               )}`}
                             />
-                            <span className="truncate">
-                              {candidateName(s.candidate_id)}
-                            </span>
+                            <span className="truncate">{slotLabel(s)}</span>
                           </span>
                           <span className="block truncate text-xs opacity-80">
                             {timeFmt.format(start)}

@@ -27,10 +27,15 @@ export async function POST(request: Request) {
   }
   const b = body as Record<string, unknown>;
 
+  // PR-B: a slot needs a title OR a candidate. candidate_id is now optional
+  // (standalone titled events), batch_id scopes the slot to its batch.
   const candidateId = typeof b.candidate_id === 'string' ? b.candidate_id : '';
+  const batchId = typeof b.batch_id === 'string' ? b.batch_id : '';
+  const title =
+    typeof b.title === 'string' && b.title.trim() ? b.title.trim() : '';
   const startAt = typeof b.start_at === 'string' ? b.start_at : '';
   const endAt = typeof b.end_at === 'string' ? b.end_at : '';
-  if (!candidateId || !startAt || !endAt) {
+  if ((!title && !candidateId) || !startAt || !endAt) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   }
   const start = new Date(startAt);
@@ -52,29 +57,60 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Verify the candidate exists (also confirms it's a real scheduling row —
-  // the FK would reject a bogus id anyway, but this returns a clean 404).
-  const { data: candidate } = await admin
-    .from('sched_candidates')
-    .select('id')
-    .eq('id', candidateId)
-    .maybeSingle();
-  if (!candidate) {
-    return NextResponse.json({ error: 'candidate_not_found' }, { status: 404 });
+  // Verify the candidate exists when one is attached (FK would reject a bogus id
+  // anyway, but this returns a clean 404).
+  if (candidateId) {
+    const { data: candidate } = await admin
+      .from('sched_candidates')
+      .select('id')
+      .eq('id', candidateId)
+      .maybeSingle();
+    if (!candidate) {
+      return NextResponse.json(
+        { error: 'candidate_not_found' },
+        { status: 404 },
+      );
+    }
   }
 
-  const { data, error } = await admin
+  const wideCols =
+    'id, candidate_id, batch_id, title, start_at, end_at, status, location, note';
+  let { data, error } = await admin
     .from('sched_slots')
     .insert({
-      candidate_id: candidateId,
+      candidate_id: candidateId || null,
+      batch_id: batchId || null,
+      title: title || null,
       start_at: start.toISOString(),
       end_at: end.toISOString(),
       status,
       location,
       note,
     })
-    .select('id, candidate_id, start_at, end_at, status, location, note')
+    .select(wideCols)
     .single();
+
+  // Preview DB without the title/batch_id columns yet — keep candidate-slot
+  // creation working by retrying with the pre-PR-B column set. A candidate-less
+  // titled event genuinely can't be created until the migration applies.
+  if (error && candidateId) {
+    const narrow = await admin
+      .from('sched_slots')
+      .insert({
+        candidate_id: candidateId,
+        start_at: start.toISOString(),
+        end_at: end.toISOString(),
+        status,
+        location,
+        note,
+      })
+      .select('id, candidate_id, start_at, end_at, status, location, note')
+      .single();
+    data = narrow.data
+      ? { ...narrow.data, batch_id: null, title: null }
+      : null;
+    error = narrow.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: 'create_failed' }, { status: 500 });

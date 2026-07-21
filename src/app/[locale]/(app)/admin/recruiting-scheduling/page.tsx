@@ -77,19 +77,37 @@ export default async function Page({
       candidates = (wide.data ?? []) as SchedCandidate[];
     }
 
-    // Slots for this batch = slots whose candidate_id is in the batch. Fetched
-    // as a 2-step .in() query rather than a PostgREST embed — sched_slots and
-    // sched_batches have no direct FK, and a transitive embed would silently
-    // return 0 rows (PROJECT.md §7.10).
-    const candidateIds = candidates.map((c) => c.id);
-    if (candidateIds.length > 0) {
-      const { data: slotRows } = await admin
-        .from('sched_slots')
-        .select('id, candidate_id, start_at, end_at, status, location, note')
-        .in('candidate_id', candidateIds)
-        .order('start_at', { ascending: true })
-        .limit(5000);
-      slots = (slotRows ?? []) as SchedSlot[];
+    // Slots for this batch. Preferred path = batch_id scope (PR-B) so
+    // candidate-less titled events are included. The title/batch_id columns are
+    // additive and only auto-apply on merge to main, so a preview DB may not
+    // have them yet — the wide select then errors and we fall back to the
+    // pre-PR-B candidate-scoped fetch (same wide/narrow pattern as candidates
+    // above; sched_slots/sched_batches have no embed FK — PROJECT.md §7.10).
+    const wideSlots = await admin
+      .from('sched_slots')
+      .select(
+        'id, candidate_id, batch_id, title, start_at, end_at, status, location, note',
+      )
+      .eq('batch_id', selectedBatchId)
+      .order('start_at', { ascending: true })
+      .limit(5000);
+    if (wideSlots.error) {
+      const candidateIds = candidates.map((c) => c.id);
+      if (candidateIds.length > 0) {
+        const { data: slotRows } = await admin
+          .from('sched_slots')
+          .select('id, candidate_id, start_at, end_at, status, location, note')
+          .in('candidate_id', candidateIds)
+          .order('start_at', { ascending: true })
+          .limit(5000);
+        slots = (slotRows ?? []).map((r) => ({
+          ...r,
+          batch_id: null,
+          title: null,
+        })) as SchedSlot[];
+      }
+    } else {
+      slots = (wideSlots.data ?? []) as SchedSlot[];
     }
   }
 
