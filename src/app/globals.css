@@ -101,6 +101,22 @@
   --raw-tag-confusion: #e0a83a;
   --raw-tag-positive: #16a34a;
 
+  /* ── CD widget-setup 프리미티브 (design-handoff/recruiting, 파일럿 #3) ──────
+     CD `Widgets Canvas 1c.dc.html` recruiting row 실측값 승격 — round-2 원칙:
+     기존 컴포넌트/토큰으로 다운그레이드 금지(FileDropZone 3px 솔리드·paper-soft
+     등). 이 값들은 CD refined pill/dashed/cream 을 정확히 재현하기 위한 것으로,
+     recruiting setup-accordion 이 inline style 의 var() 로 소비한다(check:design
+     의 var 통과 규칙 + FileDropZone 과 동일 sanctioned 패턴). */
+  --raw-surface-locked: #faf6ea;                            /* 표준 설문 블록 fill (cream) */
+  --cd-dashed-border: 1.6px dashed rgba(29, 27, 32, 0.22);  /* dropzone dashed */
+  --cd-solid-border: 1.5px solid var(--raw-ink-100);        /* paste box */
+  --cd-hairline-border: 1.4px solid rgba(29, 27, 32, 0.14); /* survey row·info */
+  --cd-amore-border: 1.4px solid var(--raw-accent-pink);    /* required chip·amore pill */
+  --cd-amore-shadow: 2px 2px 0 rgba(255, 92, 138, 0.28);    /* amore pill hard glow */
+  --cd-review-ring: 0 0 0 4px rgba(255, 92, 138, 0.12);     /* review 노드 halo */
+  --cd-disabled-bg: #eceef1;                                /* disabled pill bg */
+  --cd-disabled-fg: #a3a7ad;                                /* disabled pill fg */
+
   /* radius scale */
   --raw-radius-2xs: 2px;
   --raw-radius-xs: 4px;
@@ -473,6 +489,8 @@
   --color-line-soft: var(--raw-border-subtle);
   --color-paper: var(--raw-surface-card);
   --color-paper-soft: var(--raw-surface-elevated);
+  /* CD 표준 설문 블록 cream fill (design-handoff/recruiting) — `bg-surface-locked`. */
+  --color-surface-locked: var(--raw-surface-locked);
 
   /* Bento pastel palette */
   --color-lav: var(--raw-pastel-lav);

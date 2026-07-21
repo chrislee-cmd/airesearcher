@@ -31,7 +31,14 @@
    전부 부모(recruiting-card 의 RecruitingSetupFlow)가 소유하고 props 로 내려온다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+  type ReactNode,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import {
   WidgetAccordion,
@@ -40,8 +47,6 @@ import {
 } from '@/components/canvas/shell/widget-accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { IconButton } from '@/components/ui/icon-button';
 import {
   CriteriaEditor,
@@ -75,7 +80,188 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-// ── CD recruiting-only 프리미티브 (토큰만) ─────────────────────────────
+// ── CD recruiting-only 프리미티브 (CD .dc.html 실측값 → globals.css --cd-* 토큰
+//    을 inline style var() 로 소비. 기존 ui/ primitive 다운그레이드 금지 원칙). ──
+
+// 업로드 글리프 (dropzone). 이모지 금지 → 인라인 SVG.
+function UploadGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-6 stroke-ink"
+      fill="none"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 16V4M7 9l5-5 5 5" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+// CdPill — CD refined 액션 필(amore / ghost). ui/Button 은 memphis(2.5px 검정
+// 보더 + ink bg + hard shadow)라 CD amore/ghost 필과 다름 → fresh 빌드.
+//   amore   = amore fill + amore 보더 + 2px2px amore glow (Approve·Extract)
+//   ghost   = 흰 bg + 헤어라인 보더 + mute 텍스트 (Preview·Edit·Restart·Regenerate)
+//   disabled(amore) = #eceef1 / #a3a7ad (faded-amore 아님)
+function CdPill({
+  tone,
+  disabled = false,
+  onClick,
+  children,
+}: {
+  tone: 'amore' | 'ghost';
+  disabled?: boolean;
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  const style: CSSProperties =
+    tone === 'amore'
+      ? disabled
+        ? {
+            background: 'var(--cd-disabled-bg)',
+            color: 'var(--cd-disabled-fg)',
+            border: 'var(--cd-hairline-border)',
+          }
+        : {
+            background: 'var(--color-amore)',
+            border: 'var(--cd-amore-border)',
+            boxShadow: 'var(--cd-amore-shadow)',
+          }
+      : { border: 'var(--cd-hairline-border)' };
+  const toneClass =
+    tone === 'ghost'
+      ? 'bg-paper text-mute'
+      : disabled
+        ? ''
+        : 'text-paper';
+  return (
+    // eslint-disable-next-line react/forbid-elements -- CD refined pill. ui/Button 은 memphis(2.5px ink + hard shadow)라 CD amore/ghost 와 상이 → fresh. data-canvas-action 으로 셸 [data-canvas-body] button memphis cascade opt-out.
+    <button
+      type="button"
+      data-canvas-action
+      disabled={disabled}
+      onClick={onClick}
+      style={style}
+      className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold transition-transform active:translate-y-px disabled:cursor-not-allowed ${toneClass}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// CdDropzone — CD dashed dropzone(1.6px dashed · radius14 · bg #f7f7f5 · centered
+// 글리프 · 하드섀도 없음). ui/FileDropZone 은 3px 솔리드 memphis 라 CD 와 상이 →
+// fresh. div[role=button] 이라 memphis cascade(button 대상) 무관.
+function CdDropzone({
+  running,
+  onAddFiles,
+  label,
+  hint,
+}: {
+  running: boolean;
+  onAddFiles: (files: FileList | File[]) => void;
+  label: string;
+  hint: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  function open() {
+    if (!running) inputRef.current?.click();
+  }
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    if (running) return;
+    if (e.dataTransfer.files.length > 0) onAddFiles(e.dataTransfer.files);
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={running ? -1 : 0}
+      aria-disabled={running || undefined}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      }}
+      onDragOver={(e) => {
+        if (running) return;
+        e.preventDefault();
+        if (!dragOver) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setDragOver(false);
+      }}
+      onDrop={onDrop}
+      style={{
+        border: dragOver ? 'var(--cd-amore-border)' : 'var(--cd-dashed-border)',
+        borderRadius: 'var(--raw-radius-sm)',
+      }}
+      className={`flex flex-col items-center justify-center gap-1.5 bg-paper-soft px-6 py-7 text-center transition-colors ${
+        running ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      }`}
+    >
+      {/* eslint-disable-next-line react/forbid-elements -- 파일 선택 input. ui/FileDropZone 은 3px 솔리드 memphis 라 CD dashed 재현 불가 → fresh dropzone 내부 hidden input. */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPT}
+        multiple
+        disabled={running}
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files) onAddFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      <UploadGlyph />
+      <div className="text-md font-semibold text-ink">{label}</div>
+      <div className="font-mono text-xs-soft text-mute-soft">{hint}</div>
+    </div>
+  );
+}
+
+// PasteBox — CD paste 박스(1.5px solid ink · radius14). ui/Textarea + canvas
+// 캐스케이드는 2px/#000/radius6 라 CD 와 상이 → fresh textarea(inline style 로
+// 캐스케이드 override). placeholder 는 CD 카피.
+function PasteBox({
+  value,
+  disabled,
+  placeholder,
+  ariaLabel,
+  onChange,
+}: {
+  value: string;
+  disabled: boolean;
+  placeholder: string;
+  ariaLabel: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    // eslint-disable-next-line react/forbid-elements -- CD paste 박스. ui/Textarea + [data-canvas-body] textarea 캐스케이드가 2px/#000/radius6 를 강제해 CD(1.5px ink·radius14)와 상이 → inline style override 위해 fresh.
+    <textarea
+      value={value}
+      disabled={disabled}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      rows={2}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        border: 'var(--cd-solid-border)',
+        borderRadius: 'var(--raw-radius-sm)',
+        padding: '11px 14px',
+      }}
+      className="w-full resize-none bg-paper text-md text-ink-2 placeholder:text-mute-soft focus:outline-none disabled:opacity-50"
+    />
+  );
+}
 
 // GeneratingRow — LLM/발행 진행 행. CD: amore 링 spinner + amore 틴트 보더/배경.
 // (기존 GenRow(BrandLoader) 대체 — CD 는 amore 톤 전용 처리.)
@@ -121,9 +307,12 @@ function CriteriaChip({
   const t = useTranslations('Recruiting.setup');
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border bg-paper px-2.5 py-1 text-md ${
-        required ? 'border-amore' : 'border-line'
-      }`}
+      style={{
+        border: required
+          ? 'var(--cd-amore-border)'
+          : 'var(--cd-hairline-border)',
+      }}
+      className="inline-flex items-center gap-1.5 rounded-full bg-paper px-2.5 py-1 text-md"
     >
       <span className="font-mono text-xs-soft uppercase tracking-wider text-mute-soft">
         {category}
@@ -173,8 +362,8 @@ function DocGlyph() {
   );
 }
 
-// surveySection — 설문 섹션 요약 행. 잠금(표준)=cream 틴트(paper-soft)+🔒 뱃지 /
-// editable=흰색. (cream #faf6ea 전용 토큰 부재 → paper-soft 로 보수적 매핑.)
+// surveySection — 설문 섹션 요약 행. 잠금(표준)=cream fill(surface-locked #faf6ea)
+// +🔒 뱃지 / editable=흰색. border=CD 헤어라인(1.4px .14) · radius 12(chrome).
 function SurveySectionRow({
   title,
   meta,
@@ -187,8 +376,12 @@ function SurveySectionRow({
   const t = useTranslations('Recruiting.setup');
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-sm border border-line px-3 py-2.5 ${
-        locked ? 'bg-paper-soft' : 'bg-paper'
+      style={{
+        border: 'var(--cd-hairline-border)',
+        borderRadius: 'var(--raw-radius-chrome)',
+      }}
+      className={`flex items-center gap-2.5 px-3 py-2.5 ${
+        locked ? 'bg-surface-locked' : 'bg-paper'
       }`}
     >
       <DocGlyph />
@@ -197,7 +390,10 @@ function SurveySectionRow({
         <div className="truncate text-xs text-mute-soft">{meta}</div>
       </div>
       {locked && (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-2 py-0.5 font-mono text-xs-soft font-bold text-mute-soft">
+        <span
+          style={{ border: 'var(--cd-hairline-border)' }}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs-soft font-bold text-mute-soft"
+        >
           <LockGlyph />
           {t('standardBadge')}
         </span>
@@ -220,12 +416,10 @@ function ReviewBar({
     <div className="mt-3 flex flex-wrap items-center gap-2">
       {ghosts}
       <div className="flex-1" />
-      <Button variant="primary" size="sm" onClick={onApprove}>
-        <span aria-hidden className="mr-1">
-          ✓
-        </span>
+      <CdPill tone="amore" onClick={onApprove}>
+        <span aria-hidden>✓</span>
         {approveLabel}
-      </Button>
+      </CdPill>
     </div>
   );
 }
@@ -297,21 +491,18 @@ function SourceStepBody({
   return (
     <div className="flex flex-col gap-4">
       {/* CD 스텝1 = paste 박스 위 dropzone 세로 스택(둘 다 풀폭), 필드 라벨 없음. */}
-      <Textarea
+      <PasteBox
         value={pasted}
-        onChange={(e) => onPasteChange(e.target.value)}
         disabled={running}
         placeholder={t('pastePlaceholder')}
-        aria-label={t('pasteLabel')}
-        className="h-[64px] resize-none text-md text-ink-2"
+        ariaLabel={t('pasteLabel')}
+        onChange={onPasteChange}
       />
-      <FileDropZone
-        accept={ACCEPT}
-        multiple
-        onFiles={(f) => onAddFiles(f)}
+      <CdDropzone
+        running={running}
+        onAddFiles={onAddFiles}
         label={t('uploadDrop')}
-        helperText={t('uploadHint')}
-        className="h-[104px] gap-2 px-6"
+        hint={t('uploadHint')}
       />
 
       {rejected.length > 0 && (
@@ -348,14 +539,9 @@ function SourceStepBody({
 
       {showExtract && (
         <div className="flex justify-end">
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={!canExtract}
-            onClick={onExtract}
-          >
+          <CdPill tone="amore" disabled={!canExtract} onClick={onExtract}>
             {t('extractCta')}
-          </Button>
+          </CdPill>
         </div>
       )}
     </div>
@@ -411,7 +597,10 @@ function CriteriaStepBody({
     <div className="flex flex-col gap-3">
       {!approved && (
         <p className="text-xs leading-relaxed text-mute">
-          {t('criteriaReviewNote', { count: editedBrief.criteria.length })}
+          {t.rich('criteriaReviewNote', {
+            count: editedBrief.criteria.length,
+            b: (c) => <b className="font-semibold text-ink">{c}</b>,
+          })}
         </p>
       )}
 
@@ -451,25 +640,15 @@ function CriteriaStepBody({
         <ReviewBar
           ghosts={
             <>
-              <Button
-                variant="secondary"
-                size="xs"
-                data-open={detail === 'preview'}
-                onClick={() => toggle('preview')}
-              >
+              <CdPill tone="ghost" onClick={() => toggle('preview')}>
                 {t('preview')}
-              </Button>
-              <Button
-                variant="secondary"
-                size="xs"
-                data-open={detail === 'edit'}
-                onClick={() => toggle('edit')}
-              >
+              </CdPill>
+              <CdPill tone="ghost" onClick={() => toggle('edit')}>
                 {t('edit')}
-              </Button>
-              <Button variant="ghost" size="xs" onClick={onRestart}>
+              </CdPill>
+              <CdPill tone="ghost" onClick={onRestart}>
                 {t('criteriaRestart')}
-              </Button>
+              </CdPill>
             </>
           }
           approveLabel={t('approveCriteria')}
@@ -523,9 +702,10 @@ function SurveyStepBody({
     <div className="flex flex-col gap-3">
       {!approved && (
         <p className="text-xs leading-relaxed text-mute">
-          {t('surveyReviewNote', {
+          {t.rich('surveyReviewNote', {
             sections: survey.sections.length,
             questions: questionCount,
+            b: (c) => <b className="font-semibold text-ink">{c}</b>,
           })}
         </p>
       )}
@@ -556,17 +736,12 @@ function SurveyStepBody({
         <ReviewBar
           ghosts={
             <>
-              <Button
-                variant="secondary"
-                size="xs"
-                data-open={expanded}
-                onClick={() => setExpanded((v) => !v)}
-              >
+              <CdPill tone="ghost" onClick={() => setExpanded((v) => !v)}>
                 {t('preview')}
-              </Button>
-              <Button variant="ghost" size="xs" onClick={onRegenerateSurvey}>
+              </CdPill>
+              <CdPill tone="ghost" onClick={onRegenerateSurvey}>
                 {t('surveyRegenerate')}
-              </Button>
+              </CdPill>
             </>
           }
           approveLabel={t('approveSurvey')}
@@ -905,8 +1080,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
   ];
 
   // 완료 판정 = 승인 기반 (CD: green ✓ 는 승인 후에만). 조건/설문은 *승인* 시
-  // done, 소스는 존재 시, 발행은 published 시. (셸 노드는 3-상태라 review 링은
-  // step 내 ReviewBar 가 담당 — 셸 편집 금지.)
+  // done, 소스는 추출 시작 후, 발행은 published 시.
   const isComplete = (index: number): boolean =>
     index === 0
       ? props.criteriaPhase !== 'idle'
@@ -916,11 +1090,21 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
           ? props.surveyPhase === 'approved'
           : props.published != null;
 
+  // 승인 대기 스텝 = amore review 링 노드 (CD NodeReview). 조건 리뷰(step2) /
+  // 설문 리뷰(step3) 가 review phase 일 때. 셸의 4번째 노드 상태로 표시.
+  const isReview = (index: number): boolean =>
+    index === 1
+      ? props.criteriaPhase === 'review'
+      : index === 2
+        ? props.surveyPhase === 'review'
+        : false;
+
   return (
     <WidgetAccordion
       steps={steps}
       isExpanded={accordion.isExpanded}
       isComplete={isComplete}
+      isReview={isReview}
       onOpenStep={accordion.open}
       onCollapseStep={accordion.collapse}
       changeLabel={t('change')}
