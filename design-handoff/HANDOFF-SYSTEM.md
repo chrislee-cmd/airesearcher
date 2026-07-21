@@ -29,6 +29,22 @@ CD (번들 생성)
 - **worker 가 따르는 것:** `README.md`(진입점) + 각 `<feature>/HANDOFF.md`(done-when) + PR 템플릿 Design conformance 체크리스트.
 - **공유 어휘:** `CONTEXT-PACK.md` + `tokens.json` (토큰 SSOT, feature 별 중복 X).
 
+## 규칙 넘버링 정합 — `CD-DELIVERABLE-RULES` ↔ BUILD-SPEC §
+> writer 의 규칙(어휘·conformance·상태·계약·인터랙션)과 CD 의 BUILD-SPEC 섹션 체계(§1~§6)가 **1:1 대응**한다. 한쪽만 봐도 다른 쪽으로 매핑됨.
+
+| CD-DELIVERABLE-RULES (규칙) | → BUILD-SPEC 섹션 | 워커 검증 지점 |
+|---|---|---|
+| 어휘 (토큰/유틸 클래스, hex 금지, `proposed-token:`) | **§1 class map** + **§2 proposed-tokens** | `check:design` + §1 diff |
+| Conformance-first (대조 가능성) | **§1 class map** (= diff 타깃) | §1 diff |
+| 상태 커버리지 (전 상태 정적) | **§3 state matrix** | §3 전 상태 구현 |
+| 계약 준수 (`⚠️ contract-change:`) | **§5 contract-change** | writer 가 해결 |
+| 인터랙션 한계 (정적+문구) | **§4 interaction disclaimer** | 로직 = 워커 |
+| (열린 항목) | **§6 open items** | writer 결정 |
+| 역할 경계·산출물 세트·버전·채널 | — (프로세스 = 이 문서·`README`) | — |
+
+- **워커 관점:** BUILD-SPEC §1 이 diff 타깃, §3 이 구현할 상태 전부, §5 가 착수 전 해결할 블로커, §4 가 로직 경계, §6 가 미결.
+- **CD 관점:** 규칙 = "무엇을", BUILD-SPEC § = "어느 칸에" 담느냐. 규칙 하나가 빠지면 대응 § 이 비어 워커가 추측 → drift.
+
 ## Conformance 3층 방어
 1. **하네스 (CI):** `check:design`(하드코딩 hex ratchet) · `check:i18n` · `check:korean`. → **토큰 이탈(raw hex) 자동 차단.**
 2. **규칙 (worker):** PR 전 자기 TSX 를 BUILD-SPEC §1 클래스·GEOMETRY 실측과 **diff**. → 하네스가 못 잡는 **의미적 이탈**(맞는 토큰인지·지오메트리·누락 상태) 차단. 예: CTA `bg-amore` vs `bg-ink` (둘 다 토큰이라 하네스 통과 → 이 층이 잡음).
