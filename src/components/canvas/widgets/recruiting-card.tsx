@@ -990,10 +990,6 @@ function RecruitingSetupFlow({
       ) as Criterion[]);
   const canExtract =
     (files.length > 0 || pasted.trim().length > 0) && !jobRunning;
-  const surveyReady =
-    !!survey && (surveyPhase === 'review' || surveyPhase === 'approved');
-  const generating =
-    criteriaPhase === 'generating' || surveyPhase === 'generating';
 
   const publishStageLabel =
     [
@@ -1004,28 +1000,18 @@ function RecruitingSetupFlow({
     ][publishStageIdx] ?? t('publishing');
   const needsReauth = isReauthError(publishError) && !google?.adminProxy;
 
-  // 하단 CTA — phase-adaptive 단일 forward 액션 (spec: "Publish form →").
-  // 준비 단계(설문 미완)에선 파이프라인 전진, 설문 준비되면 발행.
-  const ctaPublishMode = surveyReady && !published;
-  const ctaBusy = publishing || generating;
-  const ctaLabel = ctaPublishMode ? t('ctaPublish') : t('ctaPrepare');
-  const ctaBusyLabel = ctaPublishMode ? t('ctaPublishing') : t('ctaPreparing');
-  const ctaDisabled = ctaPublishMode
-    ? false
-    : editedBrief
-      ? false
-      : !canExtract;
+  // 하단 CTA — CD `Publish form →` (design-handoff/recruiting). extract·approve
+  // 는 이제 step 내 버튼(SourceStep Extract / ReviewBar Approve)이 담당하고,
+  // 하단 CTA 는 발행 게이트만: 조건·설문 *양쪽 승인* 전까지 disabled. 승인
+  // 완료 시 auto-publish effect 가 발행하며(회귀 0), 이 CTA 는 미발화 edge
+  // (OAuth 왕복 후 등)를 위한 수동 트리거로도 동작한다 — triggeredForRef 가
+  // 중복 발행을 막는다.
+  const bothApproved =
+    criteriaPhase === 'approved' && surveyPhase === 'approved';
+  const ctaDisabled = !bothApproved || publishing || !!published;
 
   function handleCta() {
-    if (ctaPublishMode) {
-      requireAuth(() => approveSurvey());
-      return;
-    }
-    if (editedBrief) {
-      approveCriteria();
-      return;
-    }
-    startExtract();
+    requireAuth(() => void autoPublish());
   }
 
   return (
@@ -1037,23 +1023,28 @@ function RecruitingSetupFlow({
             pasted={pasted}
             rejected={rejected}
             running={jobRunning}
+            canExtract={canExtract}
             onPasteChange={setPasted}
             onAddFiles={addFiles}
             onRemoveFile={removeFile}
+            onExtract={startExtract}
             criteriaPhase={criteriaPhase}
             editedBrief={editedBrief}
             partialCount={partialCriteria.length}
             criteriaError={criteriaError}
             onEditedBriefChange={setEditedBrief}
             onRestart={restartCriteria}
+            onApproveCriteria={approveCriteria}
             surveyPhase={surveyPhase}
             survey={survey}
             surveyError={surveyError}
             onSurveyChange={setSurvey}
             onRegenerateSurvey={regenerateSurvey}
+            onApproveSurvey={() => requireAuth(() => approveSurvey())}
             google={google}
             googleAuthError={googleAuthError}
             publishing={publishing}
+            publishStageIdx={publishStageIdx}
             publishStageLabel={publishStageLabel}
             published={published}
             publishError={publishError}
@@ -1076,9 +1067,9 @@ function RecruitingSetupFlow({
 
       {!published && (
         <WidgetPrimaryCta
-          label={ctaLabel}
-          busyLabel={ctaBusyLabel}
-          busy={ctaBusy}
+          label={t('ctaPublish')}
+          busyLabel={t('ctaPublishing')}
+          busy={publishing}
           disabled={ctaDisabled}
           onClick={handleCta}
         />

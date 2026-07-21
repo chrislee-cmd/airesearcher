@@ -43,7 +43,9 @@
 
 import { useState, type ReactNode } from 'react';
 
-export type AccordionStepState = 'active' | 'done' | 'todo';
+// review = 승인 대기 스텝 (amore 링 노드). recruiting 처럼 스텝별 승인 게이트가
+// 있는 위젯만 isReview 로 opt-in — 나머지 위젯은 done/active/todo 3-상태 그대로.
+export type AccordionStepState = 'active' | 'done' | 'todo' | 'review';
 
 // 한 스텝의 선언적 구성. 완료 여부는 호출부가 isComplete 로 계산해 넘긴다
 // (스텝별 완료 규칙이 위젯마다 다름).
@@ -97,12 +99,15 @@ function StepNode({
   state: AccordionStepState;
   label: ReactNode;
 }) {
+  // review = 승인 대기 (CD amore ring 노드): 흰 바탕 + amore 보더 + amore halo.
   const cls =
     state === 'active'
       ? 'bg-ink text-paper'
       : state === 'done'
         ? 'bg-success text-paper'
-        : 'bg-line-soft text-mute-soft';
+        : state === 'review'
+          ? 'border-2 border-amore bg-paper text-amore ring-4 ring-amore/10'
+          : 'bg-line-soft text-mute-soft';
   return (
     <span
       aria-hidden
@@ -265,6 +270,7 @@ export function WidgetAccordion({
   steps,
   isExpanded,
   isComplete,
+  isReview,
   onOpenStep,
   onCollapseStep,
   changeLabel,
@@ -273,6 +279,10 @@ export function WidgetAccordion({
   steps: AccordionStepConfig[];
   isExpanded: (index: number, complete: boolean) => boolean;
   isComplete: (index: number) => boolean;
+  // 승인 대기 스텝(amore review 링) 판정 — opt-in. 미배선(undefined)이면 review
+  // 노드가 안 나와 기존 done/active/todo 3-상태 그대로(회귀 0). complete 가
+  // 우선하고, 미완 + isReview=true 일 때만 review 노드로 표시.
+  isReview?: (index: number) => boolean;
   onOpenStep: (index: number) => void;
   // 펼친 스텝 헤더 클릭 → 개별 접기 (accordion.collapse). 미배선(undefined)이면
   // 헤더 클릭이 no-op — 하위호환. 4위젯은 accordion.collapse 를 배선한다.
@@ -296,9 +306,11 @@ export function WidgetAccordion({
         const complete = isComplete(index);
         const nodeState: AccordionStepState = complete
           ? 'done'
-          : index === firstIncomplete
-            ? 'active'
-            : 'todo';
+          : isReview?.(index)
+            ? 'review'
+            : index === firstIncomplete
+              ? 'active'
+              : 'todo';
         return (
           <AccordionStep
             key={config.key}
