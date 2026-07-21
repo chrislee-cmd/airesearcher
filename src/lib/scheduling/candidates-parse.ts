@@ -51,11 +51,45 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/[\s_\-./]/g, '');
 }
 
-function findKey(headers: string[], candidates: string[]): string | null {
+function findKey(
+  headers: string[],
+  candidates: string[],
+  taken?: Set<string>,
+): string | null {
   const wanted = candidates.map(normalize);
-  for (const h of headers) if (wanted.includes(normalize(h))) return h;
+  for (const h of headers) {
+    if (taken?.has(h)) continue;
+    if (wanted.includes(normalize(h))) return h;
+  }
   return null;
 }
+
+// Substring fallback for real-world survey headers that embed the field name in
+// a longer label — e.g. Google Form's "연락 가능한 전화번호" (a phone NUMBER)
+// won't exact-match "전화번호". Only CURATED strong tokens are eligible so the
+// fallback can't grab decoy columns like "핸드폰 기기 모델명" (a device model)
+// or "게임 이름을 적어주세요" (a game title) — those share a weak token (핸드폰 /
+// 이름) but never a strong one. Exact match (findKey) always takes priority.
+function findKeyContains(
+  headers: string[],
+  tokens: string[],
+  taken: Set<string>,
+): string | null {
+  const wanted = tokens.map(normalize);
+  for (const h of headers) {
+    if (taken.has(h)) continue;
+    const nh = normalize(h);
+    if (wanted.some((w) => nh.includes(w))) return h;
+  }
+  return null;
+}
+
+// Strong, unambiguous substrings that reliably denote a contact NUMBER / email —
+// deliberately excludes bare 핸드폰/휴대폰 (match device-model decoy columns).
+// i18n-allow-korean -- 업로드 스프레드시트 헤더 부분매칭 토큰(UI 아님)
+const PHONE_CONTAINS = ['전화번호', '연락처', '연락가능', '전화', 'phonenumber'];
+// i18n-allow-korean -- 업로드 스프레드시트 헤더 부분매칭 토큰(UI 아님)
+const EMAIL_CONTAINS = ['이메일', '메일', 'email'];
 
 function decodeCsvBuffer(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -106,12 +140,36 @@ export async function parseCandidateFile(file: File): Promise<ParseCandidatesRes
     ? parseCsvString(decodeCsvBuffer(buf))
     : await parseXlsxToRows(buf);
 
+  return parseCandidateRows(headers, rows);
+}
+
+// Shared row → candidate mapping used by both the file upload path
+// (parseCandidateFile) and the Google Sheets import path. Given a header list
+// and value rows keyed by header, it applies the same email/name/phone alias
+// mapping + fields capture + identity merge/dedup. Kept separate so a Sheets
+// import (already an array of rows) doesn't have to fake a File.
+export function parseCandidateRows(
+  headers: string[],
+  rows: Record<string, unknown>[],
+): ParseCandidatesResult {
   if (rows.length === 0) return { candidates: [], headers: [] };
 
-  const emailKey = findKey(headers, EMAIL_KEYS);
-  const nameKey = findKey(headers, NAME_KEYS);
-  const phoneKey = findKey(headers, PHONE_KEYS);
-  const reserved = new Set([emailKey, nameKey, phoneKey].filter(Boolean) as string[]);
+  // Two passes: exact alias match first (well-formed sheets), then a curated
+  // substring fallback for the remaining unmatched field. `reserved` grows as
+  // each field claims a header so no column is mapped twice or leaks into
+  // `fields`. name stays exact-only — a substring pass would grab decoys like
+  // "게임 이름을 적어주세요".
+  const reserved = new Set<string>();
+  const emailKey =
+    findKey(headers, EMAIL_KEYS, reserved) ??
+    findKeyContains(headers, EMAIL_CONTAINS, reserved);
+  if (emailKey) reserved.add(emailKey);
+  const nameKey = findKey(headers, NAME_KEYS, reserved);
+  if (nameKey) reserved.add(nameKey);
+  const phoneKey =
+    findKey(headers, PHONE_KEYS, reserved) ??
+    findKeyContains(headers, PHONE_CONTAINS, reserved);
+  if (phoneKey) reserved.add(phoneKey);
 
   const parsed: ParsedCandidate[] = [];
   for (const row of rows) {

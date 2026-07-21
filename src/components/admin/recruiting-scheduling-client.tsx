@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs } from '@/components/ui/tabs';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
 import {
@@ -39,6 +40,8 @@ export type SchedCandidate = {
   phone: string | null;
   fields: Record<string, string>;
   participant_token: string;
+  // Coarse per-candidate flag set by the "개인 확정" bulk action (PR-A).
+  status: string;
 };
 
 type Props = {
@@ -52,6 +55,26 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 type ViewTab = 'list' | 'calendar' | 'chat';
 
+// Fixed pixel widths for the three sticky-left columns so their `left` offsets
+// are deterministic (checkbox → name → contact). The rest of the table scrolls
+// horizontally underneath them.
+const STICKY_W = { check: 44, name: 168, contact: 184 };
+const STICKY_LEFT = {
+  check: 0,
+  name: STICKY_W.check,
+  contact: STICKY_W.check + STICKY_W.name,
+};
+// Max width for scrollable data cells — nowrap + ellipsis past this.
+const DATA_CELL_MAX = 240;
+
+// Sticky column cells must be pinned to an EXACT width (min = max = width) so
+// the next sticky column's `left` offset lines up perfectly — otherwise an
+// auto-sized column grows past its width hint and the following frozen column
+// overlaps it, leaving a gap where scrolling content bleeds through.
+function stickyStyle(left: number, w: number): CSSProperties {
+  return { left, width: w, minWidth: w, maxWidth: w };
+}
+
 export function RecruitingSchedulingClient({
   batches,
   selectedBatchId,
@@ -63,7 +86,16 @@ export function RecruitingSchedulingClient({
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+
+  // Bulk selection + actions.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showAssign, setShowAssign] = useState(false);
+  const [assignTitle, setAssignTitle] = useState('');
+  const [assignBatchId, setAssignBatchId] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Captured once at mount — the "upcoming vs past" boundary for the list's
   // 다음 슬롯 column. Reading Date.now() directly in render trips
@@ -82,6 +114,11 @@ export function RecruitingSchedulingClient({
 
   function candidateLabel(c: SchedCandidate): string {
     return c.name || c.email || c.phone || t('unnamedCandidate');
+  }
+
+  // Contact column: phone first, email fallback (spec §2 — 연락처=phone; 없으면 email).
+  function contactValue(c: SchedCandidate): string | null {
+    return c.phone || c.email || null;
   }
 
   const candidateNameById = useMemo(() => {
@@ -115,6 +152,31 @@ export function RecruitingSchedulingClient({
 
   function selectBatch(id: string) {
     router.push(`/admin/recruiting-scheduling?batch=${id}`);
+  }
+
+  // --- Selection ---
+
+  const allSelected =
+    candidates.length > 0 && candidates.every((c) => selected.has(c.id));
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(candidates.map((c) => c.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+    setShowAssign(false);
+    setAssignTitle('');
+    setAssignBatchId('');
   }
 
   async function createBatch() {
@@ -169,6 +231,129 @@ export function RecruitingSchedulingClient({
     }
   }
 
+  async function importSheet() {
+    const url = sheetUrl.trim();
+    if (!url || !selectedBatchId || importing) return;
+    setImporting(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/scheduling/batches/${selectedBatchId}/import-sheet`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheetUrl: url }),
+        },
+      );
+      const json = (await res.json().catch(() => ({}))) as {
+        upserted?: number;
+        error?: string;
+      };
+      // Not connected / missing Sheets scope → bounce into the existing
+      // recruiting Google OAuth with the Sheets superset (share=1). No new
+      // auth flow — same connection the forms feature uses.
+      if (
+        res.status === 412 ||
+        json.error === 'google_not_connected' ||
+        json.error === 'reconsent_required'
+      ) {
+        setMessage(t('sheetsConnectPrompt'));
+        window.location.href = '/api/recruiting/google/start?share=1';
+        return;
+      }
+      if (!res.ok) {
+        setMessage(sheetErrorMessage(json.error));
+        return;
+      }
+      setMessage(t('uploaded', { count: json.upserted ?? 0 }));
+      setSheetUrl('');
+      router.refresh();
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function sheetErrorMessage(code: string | undefined): string {
+    switch (code) {
+      case 'invalid_sheet_url':
+        return t('sheetsInvalidUrl');
+      case 'no_candidates':
+        return t('noCandidates');
+      case 'sheet_read_failed':
+        return t('sheetsReadFailed');
+      default:
+        return t('sheetsImportFailed');
+    }
+  }
+
+  // --- Bulk actions ---
+
+  async function confirmSelected() {
+    if (selected.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/scheduling/candidates/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateIds: [...selected] }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        updated?: number;
+        error?: string;
+      };
+      if (!res.ok) {
+        setMessage(t('bulkConfirmFailed'));
+        return;
+      }
+      setMessage(t('bulkConfirmed', { count: json.updated ?? 0 }));
+      clearSelection();
+      router.refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function assignSelected() {
+    if (selected.size === 0 || bulkBusy) return;
+    const title = assignTitle.trim();
+    if (!title && !assignBatchId) return;
+    setBulkBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/scheduling/candidates/assign-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateIds: [...selected],
+          ...(title ? { newBatchTitle: title } : { batchId: assignBatchId }),
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        moved?: number;
+        batchId?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setMessage(
+          json.error === 'duplicate_in_target'
+            ? t('bulkDuplicateInTarget')
+            : t('bulkAssignFailed'),
+        );
+        return;
+      }
+      clearSelection();
+      // Moved candidates leave the current batch — follow them to the target so
+      // the result is visible instead of an empty-looking current list.
+      if (json.batchId) {
+        router.push(`/admin/recruiting-scheduling?batch=${json.batchId}`);
+      }
+      router.refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   // --- Slot editor wiring ---
 
   function openCreate(start?: Date, candidateId?: string) {
@@ -207,6 +392,14 @@ export function RecruitingSchedulingClient({
     id: c.id,
     label: candidateLabel(c),
   }));
+
+  // Existing batches other than the current one, as move targets.
+  const assignBatchOptions = [
+    { value: '', label: t('bulkChooseBatch') },
+    ...batches
+      .filter((b) => b.id !== selectedBatchId)
+      .map((b) => ({ value: b.id, label: b.title })),
+  ];
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
@@ -247,18 +440,41 @@ export function RecruitingSchedulingClient({
 
       {selectedBatchId ? (
         <>
-          <FileDropZone
-            accept=".csv,.xlsx"
-            maxSizeBytes={MAX_UPLOAD_BYTES}
-            disabled={uploading}
-            onFiles={(files) => {
-              if (files[0]) uploadFile(files[0]);
-            }}
-            onError={() => setMessage(t('fileTooLarge'))}
-            label={uploading ? t('uploading') : t('uploadLabel')}
-            helperText={t('uploadHelper')}
-            className="px-6 py-12"
-          />
+          {/* Source entry — file upload OR Google Sheets import (spec §1). */}
+          <div className="flex flex-col gap-4 md:flex-row">
+            <FileDropZone
+              accept=".csv,.xlsx"
+              maxSizeBytes={MAX_UPLOAD_BYTES}
+              disabled={uploading}
+              onFiles={(files) => {
+                if (files[0]) uploadFile(files[0]);
+              }}
+              onError={() => setMessage(t('fileTooLarge'))}
+              label={uploading ? t('uploading') : t('uploadLabel')}
+              helperText={t('uploadHelper')}
+              className="flex-1 px-6 py-12"
+            />
+            <div className="flex flex-1 flex-col gap-2 rounded-sm border border-line px-6 py-6">
+              <p className="text-sm font-medium text-ink">{t('sheetsTitle')}</p>
+              <p className="text-sm text-mute">{t('sheetsHelper')}</p>
+              <Input
+                aria-label={t('sheetsUrlLabel')}
+                placeholder={t('sheetsUrlPlaceholder')}
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') importSheet();
+                }}
+              />
+              <Button
+                variant="secondary"
+                onClick={importSheet}
+                disabled={importing || !sheetUrl.trim()}
+              >
+                {importing ? t('sheetsImporting') : t('sheetsImport')}
+              </Button>
+            </div>
+          </div>
 
           {message && <p className="text-sm text-ink">{message}</p>}
 
@@ -286,96 +502,237 @@ export function RecruitingSchedulingClient({
           </div>
 
           {tab === 'list' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-mute">
-                    <th className="px-3 py-2 font-medium">{t('colEmail')}</th>
-                    <th className="px-3 py-2 font-medium">{t('colName')}</th>
-                    <th className="px-3 py-2 font-medium">{t('colPhone')}</th>
-                    {fieldColumns.map((col) => (
-                      <th key={col} className="px-3 py-2 font-medium">
-                        {col}
-                      </th>
-                    ))}
-                    <th className="px-3 py-2 font-medium">{t('colSlot')}</th>
-                    <th className="px-3 py-2 font-medium">
-                      {t('colShareLink')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {candidates.length === 0 ? (
-                    <tr>
-                      <td
-                        className="px-3 py-6 text-center text-mute"
-                        colSpan={5 + fieldColumns.length}
+            <>
+              {selected.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-paper-soft px-3 py-2">
+                  <span className="text-sm text-ink">
+                    {t('bulkSelected', { count: selected.size })}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={confirmSelected}
+                    disabled={bulkBusy}
+                  >
+                    {t('bulkConfirm')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setShowAssign((v) => !v)}
+                    disabled={bulkBusy}
+                  >
+                    {t('bulkAssign')}
+                  </Button>
+                  <Button size="sm" variant="link" onClick={clearSelection}>
+                    {t('bulkClear')}
+                  </Button>
+                  {showAssign && (
+                    <div className="flex w-full flex-wrap items-end gap-2 pt-2">
+                      <Input
+                        label={t('bulkNewBatch')}
+                        placeholder={t('newBatchPlaceholder')}
+                        value={assignTitle}
+                        onChange={(e) => setAssignTitle(e.target.value)}
+                      />
+                      <span className="pb-2 text-sm text-mute">
+                        {t('bulkOr')}
+                      </span>
+                      <div className="min-w-[200px]">
+                        <Select
+                          label={t('bulkExistingBatch')}
+                          value={assignBatchId}
+                          onChange={(e) => setAssignBatchId(e.target.value)}
+                          options={assignBatchOptions}
+                          disabled={!!assignTitle.trim()}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={assignSelected}
+                        disabled={
+                          bulkBusy || (!assignTitle.trim() && !assignBatchId)
+                        }
                       >
-                        {t('emptyCandidates')}
-                      </td>
-                    </tr>
-                  ) : (
-                    candidates.map((c) => {
-                      const next = nextSlotForCandidate(c.id, slots, now);
-                      return (
-                        <tr key={c.id} className="border-b border-line-soft">
-                          <td className="px-3 py-2 text-ink">{c.email ?? '—'}</td>
-                          <td className="px-3 py-2 text-ink">{c.name ?? '—'}</td>
-                          <td className="px-3 py-2 text-ink">{c.phone ?? '—'}</td>
-                          {fieldColumns.map((col) => (
-                            <td key={col} className="px-3 py-2 text-mute">
-                              {c.fields[col] ?? ''}
-                            </td>
-                          ))}
-                          <td className="px-3 py-2">
-                            {next ? (
-                              <Button
-                                variant="link"
-                                size="xs"
-                                onClick={() => openEdit(next)}
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <span
-                                    className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                                      next.status === 'confirmed'
-                                        ? 'bg-success'
-                                        : next.status === 'cancelled'
-                                          ? 'bg-mute-soft'
-                                          : 'bg-amore'
-                                    }`}
-                                  />
-                                  <span>
-                                    {slotTimeFmt.format(new Date(next.start_at))}
-                                  </span>
-                                  <span className="text-mute-soft">
-                                    · {statusLabel[next.status]}
-                                  </span>
-                                </span>
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="link"
-                                size="xs"
-                                onClick={() => openCreate(undefined, c.id)}
-                              >
-                                {t('assignSlot')}
-                              </Button>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            <ShareLinkCell
-                              candidateId={c.id}
-                              token={c.participant_token}
-                              onReissued={() => router.refresh()}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })
+                        {t('bulkAssignGo')}
+                      </Button>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                {/* border-separate (not collapse): under border-collapse, z-index
+                    on sticky <td> is ignored in Chrome so scrolling columns
+                    bleed through the frozen ones. Row borders move onto the
+                    cells via thead/tbody variants since <tr> borders don't
+                    paint in separate mode. */}
+                <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
+                  <thead className="[&_th]:border-b [&_th]:border-line">
+                    <tr className="text-left text-mute">
+                      <th
+                        className="sticky z-table-cell-sticky bg-paper px-3 py-2"
+                        style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                      >
+                        <Checkbox
+                          aria-label={t('selectAll')}
+                          checked={allSelected}
+                          onChange={toggleAll}
+                        />
+                      </th>
+                      <th
+                        className="sticky z-table-cell-sticky bg-paper px-3 py-2 font-medium"
+                        style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
+                      >
+                        {t('colName')}
+                      </th>
+                      <th
+                        className="sticky z-table-cell-sticky border-r border-line bg-paper px-3 py-2 font-medium"
+                        style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
+                      >
+                        {t('colContact')}
+                      </th>
+                      <th className="px-3 py-2 font-medium">{t('colEmail')}</th>
+                      {fieldColumns.map((col) => (
+                        <th key={col} className="px-3 py-2 font-medium">
+                          {col}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2 font-medium">{t('colSlot')}</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t('colShareLink')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&_td]:border-b [&_td]:border-line-soft">
+                    {candidates.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-center text-mute"
+                          colSpan={6 + fieldColumns.length}
+                        >
+                          {t('emptyCandidates')}
+                        </td>
+                      </tr>
+                    ) : (
+                      candidates.map((c) => {
+                        const next = nextSlotForCandidate(c.id, slots, now);
+                        const checked = selected.has(c.id);
+                        const contact = contactValue(c);
+                        return (
+                          <tr key={c.id}>
+                            <td
+                              className="sticky z-table-cell-sticky bg-paper px-3 py-2"
+                              style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                            >
+                              <Checkbox
+                                aria-label={t('selectRow')}
+                                checked={checked}
+                                onChange={() => toggleOne(c.id)}
+                              />
+                            </td>
+                            <td
+                              className="sticky z-table-cell-sticky bg-paper px-3 py-2 text-ink"
+                              style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="truncate"
+                                  title={c.name ?? undefined}
+                                >
+                                  {c.name ?? '—'}
+                                </span>
+                                {c.status === 'confirmed' && (
+                                  <span className="shrink-0 rounded-xs bg-success px-1 py-0.5 text-xs text-paper">
+                                    {t('confirmedChip')}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td
+                              className="sticky z-table-cell-sticky border-r border-line bg-paper px-3 py-2 text-ink"
+                              style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
+                            >
+                              <div
+                                className="truncate"
+                                title={contact ?? undefined}
+                              >
+                                {contact ?? '—'}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-ink">
+                              <div
+                                className="truncate"
+                                style={{ maxWidth: DATA_CELL_MAX }}
+                                title={c.email ?? undefined}
+                              >
+                                {c.email ?? '—'}
+                              </div>
+                            </td>
+                            {fieldColumns.map((col) => (
+                              <td key={col} className="px-3 py-2 text-mute">
+                                <div
+                                  className="truncate"
+                                  style={{ maxWidth: DATA_CELL_MAX }}
+                                  title={c.fields[col] || undefined}
+                                >
+                                  {c.fields[col] || ''}
+                                </div>
+                              </td>
+                            ))}
+                            <td className="px-3 py-2">
+                              {next ? (
+                                <Button
+                                  variant="link"
+                                  size="xs"
+                                  onClick={() => openEdit(next)}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <span
+                                      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                                        next.status === 'confirmed'
+                                          ? 'bg-success'
+                                          : next.status === 'cancelled'
+                                            ? 'bg-mute-soft'
+                                            : 'bg-amore'
+                                      }`}
+                                    />
+                                    <span>
+                                      {slotTimeFmt.format(
+                                        new Date(next.start_at),
+                                      )}
+                                    </span>
+                                    <span className="text-mute-soft">
+                                      · {statusLabel[next.status]}
+                                    </span>
+                                  </span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="link"
+                                  size="xs"
+                                  onClick={() => openCreate(undefined, c.id)}
+                                >
+                                  {t('assignSlot')}
+                                </Button>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <ShareLinkCell
+                                candidateId={c.id}
+                                token={c.participant_token}
+                                onReissued={() => router.refresh()}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : tab === 'calendar' ? (
             <SchedulingCalendar
               slots={slots}

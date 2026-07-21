@@ -50,14 +50,32 @@ export default async function Page({
   let slots: SchedSlot[] = [];
   if (selectedBatchId) {
     // participant_token now surfaced (PR4) so the list can render each
-    // candidate's public share link.
-    const { data: candRows } = await admin
+    // candidate's public share link. `status` (PR-A bulk-confirm flag) may be
+    // missing on a preview whose DB hasn't had the additive migration applied
+    // yet (auto-apply runs on merge to main only) — a wide select then errors,
+    // so fall back to the pre-status column set and default status to 'pending'
+    // (mirrors link-sheet's owner_email wide/narrow pattern). Keeps the list
+    // rendering on preview instead of blanking to zero rows.
+    const wide = await admin
       .from('sched_candidates')
-      .select('id, email, name, phone, fields, participant_token')
+      .select('id, email, name, phone, fields, participant_token, status')
       .eq('batch_id', selectedBatchId)
       .order('created_at', { ascending: true })
       .limit(2000);
-    candidates = (candRows ?? []) as SchedCandidate[];
+    if (wide.error) {
+      const narrow = await admin
+        .from('sched_candidates')
+        .select('id, email, name, phone, fields, participant_token')
+        .eq('batch_id', selectedBatchId)
+        .order('created_at', { ascending: true })
+        .limit(2000);
+      candidates = (narrow.data ?? []).map((r) => ({
+        ...r,
+        status: 'pending',
+      })) as SchedCandidate[];
+    } else {
+      candidates = (wide.data ?? []) as SchedCandidate[];
+    }
 
     // Slots for this batch = slots whose candidate_id is in the batch. Fetched
     // as a 2-step .in() query rather than a PostgREST embed — sched_slots and
