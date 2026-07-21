@@ -14,6 +14,7 @@ import {
   type InferredSpeakersPayload,
 } from '@/lib/transcripts/diarization';
 import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
+import { parseTranscriptTurns, turnsToSrt } from '@/lib/transcripts/turns';
 
 // 회의록 요약 블록을 전사 마크다운의 front-matter 직후(본문 상단)에 삽입.
 // docx 는 markdownToDocx 의 opts 로 별 챕터 렌더하지만, md/txt 는 순수 텍스트라
@@ -77,7 +78,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string; format: string }> },
 ) {
   const { id, format } = await params;
-  if (format !== 'md' && format !== 'docx' && format !== 'txt') {
+  if (
+    format !== 'md' &&
+    format !== 'docx' &&
+    format !== 'txt' &&
+    format !== 'srt'
+  ) {
     return NextResponse.json({ error: 'unsupported_format' }, { status: 400 });
   }
   const url = new URL(req.url);
@@ -172,7 +178,7 @@ export async function GET(
   // Hoist `job.created_at` into a local — the inner closure loses TS's
   // null-narrowing on `job` otherwise.
   const jobCreatedAt = job.created_at as string;
-  function fileFor(ext: 'md' | 'txt' | 'docx'): string {
+  function fileFor(ext: 'md' | 'txt' | 'docx' | 'srt'): string {
     return buildArtifactFilename({
       prefix: 'transcript',
       slug,
@@ -200,6 +206,21 @@ export async function GET(
       headers: {
         'content-type': 'text/plain; charset=utf-8',
         'content-disposition': contentDispositionHeader(fileFor('txt')),
+      },
+    });
+  }
+
+  if (format === 'srt') {
+    // 자막 — 라벨링된 turn(시점 + 화자 + 발화)을 SubRip 큐로. 요약 블록은
+    // 자막에 무의미하므로 제외하고 순수 발화 turn 만 렌더한다. 배치 STT 는
+    // turn 시작 시점만 저장(단어 오프셋 없음)이라 각 큐의 끝은 다음 turn 시작
+    // 으로 근사한다(turns.ts turnsToSrt 참고 — 보수적 해석).
+    const srt = turnsToSrt(parseTranscriptTurns(labeledMarkdown));
+    return new Response(srt, {
+      status: 200,
+      headers: {
+        'content-type': 'application/x-subrip; charset=utf-8',
+        'content-disposition': contentDispositionHeader(fileFor('srt')),
       },
     });
   }

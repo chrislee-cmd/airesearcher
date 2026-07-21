@@ -35,21 +35,31 @@ import { Button } from './ui/button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
-import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
 import {
-  BrowserAudioNotice,
-  isBrowserAudioNoticeSuppressed,
-} from './browser-audio-notice';
+  ShareGuidePopup,
+  isShareGuideSuppressed,
+} from './share-guide-popup';
 import { FileDropZone } from './ui/file-drop-zone';
-import { DropdownMenu } from './ui/dropdown-menu';
-import { ControlTrigger } from './ui/control-trigger';
+import {
+  CaptureUseCaseCards,
+  type CaptureUseCaseOption,
+} from './ui/capture-usecase-cards';
+import { DuotoneIcon } from './ui/icons/duotone-icon';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
+import {
+  WidgetAccordion,
+  useWidgetAccordion,
+  type AccordionStepConfig,
+} from './canvas/shell/widget-accordion';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { WidgetOutputRegion } from './canvas/shell/widget-output-region';
+import { WidgetLiveFullviewPrompt } from './canvas/shell/widget-live-fullview-prompt';
+import { useFullview } from './canvas/shell/fullview-shell-context';
 import { ListenerPanel } from './translate/listener-panel';
-import { EchoOnboarding } from './translate/echo-onboarding';
 import { LangDualDropdown } from './translate/lang-dual-dropdown';
 import { ProjectPicker } from '@/components/project-picker';
 import { useProjectSelection } from '@/components/project-selection-provider';
@@ -710,7 +720,33 @@ export function TranslateConsole({
 } = {}) {
   const { notify: notifyDeduction } = useCreditDeduction();
   const t = useTranslations('TranslateConsole');
+  // 캡처모드 유스케이스 카드 공유 네임스페이스 (probing 과 동일 컴포넌트/카피).
+  const tc = useTranslations('CaptureUseCase');
   const locale = useLocale();
+
+  // 캡처모드 3-카드 옵션 + 위젯별 모드 매핑. mic-only→오프라인(진행자·참석자
+  // 모두 마이크, 화자 구분 없음), both→온라인(진행자 mic + 응답자 tab 병렬
+  // 캡처 + 화자분리), tab-only→참관(진행자·참석자 모두 탭 오디오).
+  const CAPTURE_USECASE_OPTIONS: CaptureUseCaseOption[] = [
+    {
+      id: 'mic-only',
+      icon: <DuotoneIcon name="offline" size={24} />,
+      title: tc('offlineTitle'),
+      desc: tc('offlineDesc'),
+    },
+    {
+      id: 'both',
+      icon: <DuotoneIcon name="online" size={24} />,
+      title: tc('onlineTitle'),
+      desc: tc('onlineDesc'),
+    },
+    {
+      id: 'tab-only',
+      icon: <DuotoneIcon name="observe" size={24} />,
+      title: tc('observeTitle'),
+      desc: tc('observeDesc'),
+    },
+  ];
 
   const [status, setStatus] = useState<Status>('idle');
 
@@ -749,7 +785,7 @@ export function TranslateConsole({
   // 선택 프로젝트가 있으면 glossary 를 그 프로젝트의 project_widget_settings
   // ('translate', { glossary }) 로 hydrate/save(DB 영속). 미선택이면 로컬/빈 값
   // (하위호환) — 세션 start payload(:2418)는 어느 쪽이든 이 glossary state 를 그대로 씀.
-  const { getSelection, setSelection } = useProjectSelection();
+  const { getSelection, setSelection, selection } = useProjectSelection();
   const projectId = getSelection('translate');
   const {
     settings: widgetSettings,
@@ -2406,6 +2442,8 @@ export function TranslateConsole({
     }
     if (status === 'live' || status === 'starting') return;
     startInFlightRef.current = true;
+    // 새 세션은 항상 "전체보기 유도" 화면에서 시작 (직전 세션의 setup-peek 잔상 리셋).
+    setSetupPeek(false);
     // 위젯 동시사용 게이트 — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가
     // 뜨고 admitted 로 바뀔 때까지 여기서 보류된다(자동 진행). 취소 시 false.
     const admitted = await gate.acquire();
@@ -3497,13 +3535,13 @@ export function TranslateConsole({
   // 않기"로 억제됐으면 tab 경로도 바로 진행.
   const handleStartClick = useCallback(() => {
     const usesTab = !!captureMode && activeSlots(captureMode).includes('tab');
-    if (usesTab && !isBrowserAudioNoticeSuppressed()) {
+    if (usesTab && !isShareGuideSuppressed()) {
       setBrowserAudioNoticeOpen(true);
       return;
     }
     void start();
   }, [captureMode, start]);
-  const handleBrowserAudioConfirm = useCallback(() => {
+  const handleShareGuideConfirm = useCallback(() => {
     setBrowserAudioNoticeOpen(false);
     void start();
   }, [start]);
@@ -4272,6 +4310,15 @@ export function TranslateConsole({
 
   const live = status === 'live';
   const busy = status === 'starting' || status === 'ending';
+
+  // 라이브 카드 본문 = "전체보기 유도" 컴팩트 화면 (기본). 인라인 자막
+  // 스트림(PrompterPane)은 전체보기(TranslateFullviewView, promptedLines
+  // 미러)로 이관 — 자막 유실 0. "Back to setup" 으로 세팅/컨트롤 뷰(공유 URL·
+  // 음성 토글 포함)로 비파괴 토글, 세션은 계속. 세션 종료 시 prompt 로 리셋.
+  // useFullview: 카드 안(FullviewShellProvider) 이면 전체보기 open, /live
+  // 단독 페이지(provider 부재)면 no-op(안전).
+  const { openFullview } = useFullview('translate');
+  const [setupPeek, setSetupPeek] = useState(false);
   const langOptions = useMemo(() => LANGS, []);
   // Display-only rolling window. We keep every line in `outputLines`
   // state for the eventual "download full transcript" feature (PR-B),
@@ -4321,6 +4368,11 @@ export function TranslateConsole({
   // 미러). 미선택('')이면 비활성. busy 는 각 CTA 에서 별도 OR.
   const canStart = Boolean(captureMode && sourceLang && targetLang);
 
+  // V2 세팅 아코디언 (PR-B) — idle/setup 전용. live 표면은 감싸지 않는다(회귀 0).
+  // active-step 상태 + 프로젝트명 해석(STEP1 done 요약).
+  const setupAccordion = useWidgetAccordion();
+  const { projects: v2Projects } = useInterviewV2Projects();
+
   // 원어/대상어/입력 모드 + Glossary — idle 센터 보드와 live 상단 고정 바가
   // 공유하는 필드 묶음 (probing ControlFields 패턴).
   const controlFields = (
@@ -4364,44 +4416,23 @@ export function TranslateConsole({
             disabled={busy || live}
           />
         </Field>
-        <Field
-          label={t('captureMode.label')}
-          // both = mic + tab 두 병렬 세션 → OpenAI realtime 비용 2배. 선택 시에만
-          // 안내(다른 모드는 단일 세션이라 무관). bothCostHint 는 이 경고 전용 키.
-          description={captureMode === 'both' ? t('captureMode.bothCostHint') : undefined}
-        >
-          <DropdownMenu
-            items={[
-              { key: 'mic-only', label: t('captureMode.micOnly'), mode: 'mic-only' },
-              { key: 'tab-only', label: t('captureMode.tabOnly'), mode: 'tab-only' },
-              // both(mic=진행자 + tab=응답자, 두 병렬 세션) 재노출 — 브라우저 화상
-              // 인터뷰 양방향 캡처. dormant 였던 코드경로를 picker 로 다시 도달 가능하게.
-              { key: 'both', label: t('captureMode.both'), mode: 'both' },
-            ].map((o) => ({
-              key: o.key,
-              label: o.label,
-              onSelect: () => setCaptureMode(o.mode as CaptureMode),
-            }))}
-            trigger={({ open, onClick, ...aria }) => (
-              <ControlTrigger
-                {...aria}
-                data-open={open}
-                onClick={onClick}
-                disabled={busy || live}
-                aria-label={t('captureMode.label')}
-                className="min-w-32"
-              >
-                {captureMode === 'mic-only'
-                  ? t('captureMode.micOnly')
-                  : captureMode === 'tab-only'
-                    ? t('captureMode.tabOnly')
-                    : captureMode === 'both'
-                      ? t('captureMode.both')
-                      : t('select')}
-              </ControlTrigger>
-            )}
-          />
-        </Field>
+        {/* 캡처모드 = 유스케이스 3-카드 (CaptureUseCaseCards 공유 프리미티브,
+            probing 과 동일 컴포넌트). 옛 DropdownMenu 를 대체 — 추상
+            mic-only/tab-only/both 를 인터뷰 방식 + 화자 라우팅으로 재표현.
+            값 매핑: mic-only→오프라인, both→온라인(진행자 mic + 응답자 tab
+            화자분리), tab-only→참관. captureMode 값·activeSlots·세션 로직
+            전부 불변. 카드는 넓어 flex 행에서 자기 줄 차지하도록 w-full. */}
+        <div className="w-full">
+          <Field label={tc('sectionLabel')}>
+            <CaptureUseCaseCards
+              ariaLabel={tc('groupAria')}
+              value={captureMode}
+              onChange={(id) => setCaptureMode(id as CaptureMode)}
+              disabled={busy || live}
+              options={CAPTURE_USECASE_OPTIONS}
+            />
+          </Field>
+        </div>
       </ControlBoardPanel.Settings>
 
       {/* Glossary (Layer B) — 인명/도구명/약어의 정규 표기. 한 줄에 하나씩
@@ -4413,13 +4444,136 @@ export function TranslateConsole({
           onChange={handleGlossaryChange}
           disabled={busy || live}
           ariaLabel={t('glossary.label')}
-          placeholder={t('glossary.placeholder')}
-          applyLabel={t('glossary.apply')}
-          applyTitle={t('glossary.applyTitle')}
-          dirtyNotice={t('glossary.dirtyNotice')}
+          placeholder={t('glossary.addPlaceholder')}
+          addLabel={t('glossary.add')}
+          removeLabel={t('glossary.remove')}
         />
       </ControlBoardPanel.Input>
     </>
+  );
+
+  // V2 세팅 아코디언 (PR-B, idle 전용) — 위 controlFields 의 평면 리스트를
+  // 유스케이스 4-스텝으로 재구성. 필드 컴포넌트(ProjectPicker/LangDualDropdown/
+  // CaptureUseCaseCards/GlossaryField)는 그대로 재사용, 스텝 셸만 씌운다.
+  // ④ 라이브 인플레이스: live 표면(controlFields active + WidgetOutputRegion)은
+  // 이 아코디언 밖 — 회귀 0. 펼침: 전체 오픈 기본(미완 펼침, 완료 요약 접힘).
+  const langLabelOf = (v: string) =>
+    langOptions.find((l) => l.value === v)?.label ?? v;
+  const projectName =
+    v2Projects.find((p) => p.id === projectId)?.name ??
+    t('setup.step1Selected');
+  // 크로스위젯 "일괄 적용" 반영(프로토 A.1) — 등장한 모든 위젯 선택이 이 위젯의
+  // 프로젝트와 동일하면 STEP1 done 요약에 "· 일괄" 태그. applyToAll 로 맞춰진 상태.
+  const selectionValues = Object.values(selection);
+  const projectAppliedToAll =
+    projectId != null &&
+    selectionValues.length > 0 &&
+    selectionValues.every((v) => v === projectId);
+  const projectSummary = projectAppliedToAll
+    ? `${projectName} · ${t('setup.step1BulkTag')}`
+    : projectName;
+  const captureTitle =
+    CAPTURE_USECASE_OPTIONS.find((o) => o.id === captureMode)?.title ?? '';
+
+  const setupSteps: AccordionStepConfig[] = [
+    {
+      key: 'project',
+      eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
+      title: t('setup.step1Title'),
+      summary: projectSummary,
+      body: (
+        <Field label={t('project')}>
+          <ProjectPicker
+            widget="translate"
+            value={projectId}
+            onChange={handleProjectChange}
+          />
+        </Field>
+      ),
+    },
+    {
+      key: 'method',
+      eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
+      title: t('setup.step2Title'),
+      summary: captureTitle,
+      body: (
+        <Field label={tc('sectionLabel')}>
+          <CaptureUseCaseCards
+            ariaLabel={tc('groupAria')}
+            value={captureMode}
+            onChange={(id) => setCaptureMode(id as CaptureMode)}
+            disabled={busy}
+            options={CAPTURE_USECASE_OPTIONS}
+          />
+        </Field>
+      ),
+    },
+    {
+      key: 'language',
+      eyebrow: t('setup.stepEyebrow', { n: 3, label: t('setup.step3Short') }),
+      title: t('setup.step3Title'),
+      summary:
+        sourceLang && targetLang
+          ? `${langLabelOf(sourceLang)} → ${langLabelOf(targetLang)}`
+          : '',
+      body: (
+        <Field label={t('lang')}>
+          <LangDualDropdown
+            langs={langOptions}
+            sourceLang={sourceLang}
+            targetLang={targetLang}
+            onSelectSource={setSourceLang}
+            onSelectTarget={setTargetLang}
+            placeholder={t('select')}
+            inputLabel={t('inputLang')}
+            outputLabel={t('outputLang')}
+            triggerLabel={t('lang')}
+            disabled={busy}
+          />
+        </Field>
+      ),
+    },
+    {
+      key: 'glossary',
+      eyebrow: t('setup.stepEyebrow', { n: 4, label: t('setup.step4Short') }),
+      title: t('setup.step4Title'),
+      optional: true,
+      summary: t('setup.glossarySummary', { count: glossary.length }),
+      body: (
+        <GlossaryField
+          values={glossary}
+          onChange={handleGlossaryChange}
+          disabled={busy}
+          ariaLabel={t('glossary.label')}
+          placeholder={t('glossary.addPlaceholder')}
+          addLabel={t('glossary.add')}
+          removeLabel={t('glossary.remove')}
+        />
+      ),
+    },
+  ];
+
+  const setupIsComplete = (index: number): boolean =>
+    index === 0
+      ? projectId != null
+      : index === 1
+        ? captureMode !== ''
+        : index === 2
+          ? Boolean(sourceLang && targetLang)
+          : glossary.length > 0;
+
+  const setupAccordionEl = (
+    <ControlBoardPanel.Region>
+      <WidgetAccordion
+        steps={setupSteps}
+        isExpanded={setupAccordion.isExpanded}
+        isComplete={setupIsComplete}
+        onOpenStep={setupAccordion.open}
+        onCollapseStep={setupAccordion.collapse}
+        changeLabel={t('setup.change')}
+        optionalLabel={t('setup.optional')}
+      />
+    </ControlBoardPanel.Region>
   );
 
   const errorBanner = error ? (
@@ -4461,11 +4615,12 @@ export function TranslateConsole({
   return (
     <div
       className={
-        idlePhase
-          ? // idle — 컨트롤보드 layout(wrapper/폭/정렬/간격) 은 ControlBoardPanel
-            // SSOT 가 소유. 이 래퍼는 flex-col + 높이 체인만 제공한다 (CTA 는
-            // 하단 액션 바로 분리). 부모(translate-card) 패딩 0 → 타 5위젯과
-            // 동일 경로로 ControlBoardPanel pt-10=40px 를 그대로 흡수.
+        idlePhase || (live && !setupPeek)
+          ? // idle / 라이브 유도 화면 — 컨트롤보드 layout(wrapper/폭/정렬/간격)은
+            // ControlBoardPanel SSOT 가 소유. 이 래퍼는 flex-col + 높이 체인만
+            // 제공한다 (CTA 는 하단 액션 바로 분리). 라이브 유도 화면도 동일
+            // flex-col 로 footer(mt-auto)가 카드 하단에 붙는다. 부모
+            // (translate-card) 패딩 0 → 타 5위젯과 동일 경로로 프레임 여백 흡수.
             'flex min-h-0 flex-1 flex-col'
           : 'space-y-4'
       }
@@ -4485,28 +4640,57 @@ export function TranslateConsole({
           // 알아서 빈 mb-6 래퍼를 안 그린다 — 프래그먼트 phantom 여백 회귀 없음.
           banners={ttsBlockedBanner ?? undefined}
         >
-          {/* 실행 CTA(통역 시작)는 WidgetPrimaryCta (우측 중앙 고정 앵커) 로
-              이동 — 6 위젯 주 CTA 통일. */}
-          {controlFields}
-          {/* 에코-free 온보딩 — 음성 OFF 디폴트 안내 + 공유링크/이어폰 3-step.
-              드롭다운 아래 배치(dropdown-first). 비침습(Start 안 막음), "다시
-              안 보기" localStorage 저장. 공유 링크는 세션 시작 후 생성되므로
-              idle 에선 복사 버튼이 안내용 대기. */}
-          <EchoOnboarding
-            audible={outputAudible}
-            onToggleAudible={() => setOutputAudible((v) => !v)}
-            shareUrl={shareUrl}
-            onCopyShareUrl={() => void copyShareUrl()}
-            copied={shareCopied}
-            listenerCount={listeners.length}
-          />
-          {/* WebRTC/연결 오류 배너 — 컨트롤 top 이 아니라 "에코 없이 쓰는법"
-              안내 아래에 노출 (사용자 2026-07-09). errorBanner 는 무오류 시
-              null 이라 클러스터 gap-4 를 소비하지 않아 빈 공간 회귀 없음. */}
+          {/* V2 세팅 (PR-B) — idle 은 유스케이스 4-스텝 아코디언. live/ended 는
+              아래 분기에서 controlFields(평면, disabled) 그대로 (라이브 회귀 0).
+              실행 CTA(통역 시작)는 WidgetPrimaryCta (하단 액션 바) 로 통일. */}
+          {setupAccordionEl}
+          {/* WebRTC/연결 오류 배너 — 컨트롤(아코디언) 아래 노출. errorBanner 는
+              무오류 시 null 이라 클러스터 gap-4 를 소비하지 않아 빈 공간 회귀 없음.
+              (에코-free 온보딩 박스["에코 없이 쓰는법"]는 Canvas 1c 아코디언 정합
+              declutter 로 idle 셋업에서 제거 — 사용자 2026-07-20. idle 은 재생할
+              통역 오디오가 없어 음성 토글이 교육용일 뿐이었고, 기본 음소거 default
+              + live monitorMute 토글이 실기능을 계속 담당. EchoOnboarding 컴포넌트/
+              i18n(onboarding.*)은 미사용으로 남김.) */}
           {errorBanner}
         </ControlBoardPanel>
+      ) : live && !setupPeek ? (
+        // 라이브 — 카드 본문 = "전체보기 유도" 컴팩트 화면. 인라인 자막
+        // 스트림(PrompterPane)은 전체보기로 이관 (promptedLines 미러 → 유실 0).
+        // footer(좌 Session in progress · 우 종료)는 유지 — 세션/캡처 회귀 0.
+        <div className="flex min-h-0 flex-1 flex-col">
+          <WidgetLiveFullviewPrompt
+            onFullview={openFullview}
+            onBackToSetup={() => setSetupPeek(true)}
+            heading={t('live.fullviewHeading')}
+            sub={t('live.fullviewSubInterpreter')}
+            backLabel={t('live.backToSetup')}
+          />
+          {/* footer — 좌 진행 상태 · 우 통역 종료. stop() 경로 불변(세션 종료
+              로직 동일). 라벨은 기존 t('stop') 유지. */}
+          <div className="mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-line-soft px-4 py-3">
+            <span className="text-xs text-mute">
+              {renewing ? t('renewing') : t('live.sessionInProgress')}
+            </span>
+            <ChromeButton size="lg" onClick={() => void stop()}>
+              {t('stop')}
+            </ChromeButton>
+          </div>
+        </div>
       ) : (
         <>
+          {/* setupPeek 토글-백 스트립 — 라이브 중 세팅/컨트롤 뷰에서 다시
+              "전체보기 유도" 화면으로 복귀. ended 등 비-라이브에선 노출 X. */}
+          {live ? (
+            <div className="flex shrink-0 items-center border-b border-line-soft px-4 py-2">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setSetupPeek(false)}
+              >
+                {t('live.backToPrompt')}
+              </Button>
+            </div>
+          ) : null}
           {/* 컨트롤 패널 — live/ending/ended. 손코딩 상단 바 제거, idle 과
               동일한 ControlBoardPanel active 프레임 경유(상태 불변 — idle→active
               프레임/컨트롤 위치 픽셀 불변). 부모 패딩 0 → ControlBoardPanel 이
@@ -4745,12 +4929,15 @@ export function TranslateConsole({
           busy={busy}
           disabled={busy || !canStart}
           onClick={handleStartClick}
+          // 아코디언 푸터 좌측 상태 라벨 (프로토 D10). ready = 원어+대상어+캡처 선택.
+          statusLabel={canStart ? t('setup.readyGo') : t('setup.readyPending')}
         />
       )}
 
-      <BrowserAudioNotice
+      <ShareGuidePopup
         open={browserAudioNoticeOpen}
-        onConfirm={handleBrowserAudioConfirm}
+        widget="translate"
+        onConfirm={handleShareGuideConfirm}
         onCancel={() => setBrowserAudioNoticeOpen(false)}
       />
 
@@ -4940,27 +5127,12 @@ function RecordingDownloadPanel({
 }
 
 // ── Layer B: glossary editor ──
-// Textarea + 명시적 "적용" 버튼 (프로빙 control-board.tsx 조사목적 패턴 미러).
-// 한 줄 = 용어 1개. 타이핑은 로컬 draft(string) 만 갱신하고, "적용" 클릭
-// 시에만 라인 파싱 → onChange(string[]) 1회 호출(= 영속화). glossary 의
-// 저장/세션 payload 계약은 여전히 string[] — Textarea 는 표현 계층만 담당.
+// D5(GEOMETRY.md): 인라인 AddRow(입력 + ＋추가) + 칩 리스트. 예전 Textarea +
+// "적용" 버튼(라인 파싱)을 프로빙 InjectedQuestionsField 규격에 정합 — 용어를
+// 하나씩 즉시 반영(Apply 없음), 칩은 rounded-pill bg-paper-soft border-line 에
+// "용어 ✕". glossary 의 저장/세션 payload 계약은 여전히 string[].
 const GLOSSARY_MAX_TERMS = 200;
 const GLOSSARY_MAX_LEN = 200;
-
-// draft(string) → string[]: 라인 분리 → trim → 빈 줄 제거 → 중복 제거
-// (순서 보존) → 각 항목 MAX_LEN slice → 전체 MAX_TERMS 제한.
-function parseGlossary(raw: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const line of raw.split('\n')) {
-    const term = line.trim().slice(0, GLOSSARY_MAX_LEN);
-    if (!term || seen.has(term)) continue;
-    seen.add(term);
-    out.push(term);
-    if (out.length >= GLOSSARY_MAX_TERMS) break;
-  }
-  return out;
-}
 
 function GlossaryField({
   values,
@@ -4968,68 +5140,85 @@ function GlossaryField({
   disabled,
   ariaLabel,
   placeholder,
-  applyLabel,
-  applyTitle,
-  dirtyNotice,
+  addLabel,
+  removeLabel,
 }: {
   values: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
   ariaLabel: string;
   placeholder: string;
-  applyLabel: string;
-  applyTitle: string;
-  dirtyNotice: string;
+  addLabel: string;
+  removeLabel: string;
 }) {
-  // 외부 hydrate(프로젝트 전환/설정 로드)로 values 가 바뀌면 draft 를 재시드.
-  // 프로빙의 draft-vs-synced 리셋 패턴(render 중 감지) 을 준용 — effect 내
-  // 동기 setState 를 막는 design-system lint 룰 회피.
-  const synced = values.join('\n');
-  const [draft, setDraft] = useState(synced);
-  const [syncedSnapshot, setSyncedSnapshot] = useState(synced);
-  if (synced !== syncedSnapshot) {
-    setSyncedSnapshot(synced);
-    setDraft(synced);
-  }
+  // 입력 중인 한 용어만 로컬 draft. Enter/＋추가 시 즉시 values 에 append(중복
+  // 스킵) → onChange(string[]) 로 영속. 값 편집은 칩 ✕ 제거뿐 — Apply 없음.
+  const [draft, setDraft] = useState('');
+  const atMax = values.length >= GLOSSARY_MAX_TERMS;
 
-  // 적용해도 저장값이 달라질 때만 dirty(파싱 결과 기준 — 순수 공백/빈 줄
-  // 편집은 no-op 이라 버튼을 켜지 않는다).
-  const dirty = parseGlossary(draft).join('\n') !== synced;
-  const canApply = dirty && !disabled;
-
-  function apply() {
-    if (!canApply) return;
-    const next = parseGlossary(draft);
-    onChange(next);
-    // 정규화된 형태로 draft 재시드 — 후행 공백/중복/빈 줄 정리 반영.
-    setDraft(next.join('\n'));
+  function addTerm() {
+    if (disabled) return;
+    const term = draft.trim().slice(0, GLOSSARY_MAX_LEN);
+    if (!term) return;
+    if (values.includes(term)) {
+      setDraft('');
+      return;
+    }
+    if (atMax) return;
+    onChange([...values, term]);
+    setDraft('');
   }
 
   return (
-    <div>
-      <Textarea
-        aria-label={ariaLabel}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={3}
-        disabled={disabled}
-        placeholder={placeholder}
-        className="resize-none text-md"
-      />
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="text-xs text-mute" aria-live="polite">
-          {dirty ? dirtyNotice : ''}
-        </p>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.slice(0, GLOSSARY_MAX_LEN))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTerm();
+            }
+          }}
+          maxLength={GLOSSARY_MAX_LEN}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          disabled={disabled || atMax}
+          size="sm"
+        />
         <Button
           variant="primary"
           size="sm"
-          onClick={apply}
-          disabled={!canApply}
-          title={applyTitle}
+          onClick={addTerm}
+          disabled={disabled || !draft.trim() || atMax}
+          className="shrink-0 whitespace-nowrap"
         >
-          {applyLabel}
+          {addLabel}
         </Button>
       </div>
+      {values.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {values.map((term, i) => (
+            <li
+              key={`${i}-${term}`}
+              className="inline-flex items-center gap-1 rounded-pill border border-line bg-paper-soft py-1 pl-3 pr-1 text-sm text-ink"
+            >
+              <span className="break-words">{term}</span>
+              <IconButton
+                aria-label={`${removeLabel}: ${term}`}
+                size="sm"
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => onChange(values.filter((_, j) => j !== i))}
+                className="shrink-0"
+              >
+                <span aria-hidden>✕</span>
+              </IconButton>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

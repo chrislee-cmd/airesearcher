@@ -20,9 +20,14 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import type { UtPhase, UtSessionResult } from './use-ut-session';
 import { UtBehaviorView } from './ut-behavior-view';
 import { UtInsightClips } from './ut-insight-clips';
+
+// 섹션 헤더 듀오톤 아이콘 채움 = peach(위젯 톤). 하드코딩 hex 0(토큰만) —
+// ut-setup-accordion 과 동일 어휘.
+const PEACH_FILL = 'var(--widget-header-bg-peach)';
 
 function formatDuration(ms: number | null): string {
   if (!ms || ms < 0) return '—';
@@ -65,6 +70,12 @@ export function UtResultView({
   const hasAudio = Boolean(result?.has_audio);
   // 발화 로그는 기본 접힘 — 리서처가 인용 맥락이 필요할 때만 토글로 펼친다.
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  // 발화 턴 수 — 613 배치 Scribe 전사는 발화별 타임스탬프가 없어(단일 텍스트)
+  // 줄바꿈 단위 세그먼트를 턴 프록시로 센다(보수적 해석). 2턴 이상일 때만
+  // "· N turns" 접미를 붙인다(단문/1턴이면 어색한 라벨 회피).
+  const turnCount = transcript
+    ? transcript.split(/\n+/).filter((line) => line.trim().length > 0).length
+    : 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -112,6 +123,7 @@ export function UtResultView({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
+            <DuotoneIcon name="minutes" size={16} fill={PEACH_FILL} />
             <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
               {t('result.logTitle')}
             </h3>
@@ -127,7 +139,11 @@ export function UtResultView({
               size="sm"
               onClick={() => setTranscriptOpen((v) => !v)}
             >
-              {transcriptOpen ? t('result.hideTranscript') : t('result.showTranscript')}
+              {transcriptOpen
+                ? t('result.hideTranscript')
+                : turnCount > 1
+                  ? t('result.showTranscriptCount', { turns: turnCount })
+                  : t('result.showTranscript')}
             </Button>
           )}
         </div>
@@ -150,9 +166,12 @@ export function UtResultView({
 
       {/* 다운로드 */}
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
-          {t('result.downloadTitle')}
-        </h3>
+        <div className="flex items-center gap-2">
+          <DuotoneIcon name="document" size={16} fill={PEACH_FILL} />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-mute">
+            {t('result.downloadTitle')}
+          </h3>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"

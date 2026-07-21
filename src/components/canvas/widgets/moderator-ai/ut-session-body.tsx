@@ -1,41 +1,44 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   AI UT (moderator_ai) 위젯 본문 — 로컬/원격 두 모드.
+   AI UT (moderator_ai) 위젯 본문 — 유스케이스 4-스텝 세팅 아코디언 (V2, U1).
 
-   ▸ 로컬(내 화면 직접, 613·614): embed 없이 리서처가 자기 브라우저 새 탭에서
-     실제 사이트를 보며 자유발화 → 인앱 getDisplayMedia 화면녹화 + 마이크
-     보이스 → 발화 로그 + 다운로드. (기존 흐름 그대로 — 회귀 0.)
-   ▸ 원격(참가자 초대): 리서처가 과제 + 대상 URL 로 세션을 만들고 참가자
-     링크를 발급 → 참가자가 자기 화면을 공유 → 리서처가 viewer-token 으로
-     라이브 관전(LiveKit subscribe) → 종료 후 녹화·전사 리뷰. (신규, additive.)
+   세팅(idle)은 UtSetupAccordion 4-스텝(프로젝트 → 테스트방식 2-카드 → 언어 →
+   대상 URL·과제). 테스트방식 2-카드가 mode 매핑의 유일 배타 축:
+     ▸ host "내 기기에서 테스트" → 로컬(613·614): embed 없이 리서처가 자기
+       브라우저 새 탭에서 실제 사이트를 보며 자유발화 → 인앱 getDisplayMedia
+       화면녹화 + 마이크 보이스 → 발화 로그 + 다운로드. (기존 흐름 — 회귀 0.)
+     ▸ guest "참가자 기기에서 테스트" → 원격: 과제 + 대상 URL 로 세션 생성 +
+       참가자 링크 발급 → 공유 인플레이스(링크박스+대기) → 참가자 진행 후 리뷰.
+
+   moderated/unmoderated 는 모드가 아니라 런타임 축(합의) — 선택 스텝 없음.
+   guest 생성은 session_kind='moderated' 고정(라이브 관전 옵셔널 + 사후 리뷰
+   항상). 생성 API(zod input_language 필수)·participant_token·mode 매핑 불변.
 
    두 세션 엔진(useUtSession / useUtRemoteSession)은 카드(ExpandedBody, 항상
    마운트)에 산다 — 전체보기 모달은 portal 이라 카드가 unmount 되지 않으므로
-   세션이 모달 open/close 를 가로질러 살아남는다. 라이브 프리뷰/관전 <video>
-   는 현재 보이는 표면(전체보기 열림=fullview, 아니면=card)에만 단일 인스턴스로
-   렌더해 스트림이 한 element 에만 붙는다.
+   세션이 모달 open/close 를 가로질러 살아남는다.
 
-   모드 토글은 idle(양 엔진 idle)에서만 노출 — 세션이 시작되면 활성 엔진을
-   따라가고 토글은 숨는다. 컨트롤 프레임은 ControlBoardPanel 슬롯 계약(#1031).
+   ⚠ 라이브 관전 화면(참여자 접속 중)·리뷰 fullview 는 별도 PR(U2). 이 PR 은
+   세팅 + 공유 인플레이스까지.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
+import { useProjectSelection } from '@/components/project-selection-provider';
 import { useUtSession, normalizeTargetUrl } from './use-ut-session';
-import { useUtRemoteSession, type UtSessionKind } from './use-ut-remote-session';
-import { UtLanguageSelect } from './ut-language-select';
+import { useUtRemoteSession } from './use-ut-remote-session';
 import { UtConsentModal } from './consent-modal';
 import { UtResultView } from './ut-result';
 import { UtRemoteBody } from './ut-remote-body';
+import { UtSetupAccordion, type UtMethod } from './ut-setup-accordion';
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -44,72 +47,43 @@ function formatElapsed(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-type UtMode = 'local' | 'remote';
-
-// 모드 토글 — 로컬(내 화면)/원격(참가자 초대). idle 에서만 노출. 두 Button
-// (aria-pressed) 세그먼트 — 색/radius 는 토큰만.
-function ModeToggle({
-  mode,
-  onChange,
-}: {
-  mode: UtMode;
-  onChange: (m: UtMode) => void;
-}) {
-  const t = useTranslations('AiUt');
-  return (
-    <div
-      role="group"
-      aria-label={t('mode.label')}
-      className="flex gap-2 rounded-xs border border-line-soft bg-paper-soft p-1"
-    >
-      {(['local', 'remote'] as const).map((m) => {
-        const selected = mode === m;
-        return (
-          <Button
-            key={m}
-            variant={selected ? 'secondary' : 'ghost'}
-            size="sm"
-            aria-pressed={selected}
-            onClick={() => onChange(m)}
-            className="flex-1"
-          >
-            {t(m === 'local' ? 'mode.local' : 'mode.remote')}
-          </Button>
-        );
-      })}
-    </div>
-  );
-}
-
 export function UtSessionBody() {
   const t = useTranslations('AiUt');
   const session = useUtSession();
   const remote = useUtRemoteSession();
-  const [mode, setMode] = useState<UtMode>('local');
+  const { getSelection, setSelection } = useProjectSelection();
+
+  // 세팅 폼 상태 — 카드/전체보기가 공유하도록 부모 소유. 테스트방식 2-카드가
+  // host/guest(=local/remote) 를 고르는 유일 배타 축.
+  const [method, setMethod] = useState<UtMethod | ''>('');
   const [targetUrl, setTargetUrl] = useState('');
+  const [taskGoal, setTaskGoal] = useState('');
   const [includeSiteAudio, setIncludeSiteAudio] = useState(false);
-  // 예상 참여자 언어 — 미선택('') 이면 세션 시작 불가(강제 선택). auto-detect
-  // 선택지 없음. 로컬/원격 각자 소유(카드/전체보기 공유하도록 부모 소유).
+  // 예상 참여자 언어 — 미선택('')이면 시작/생성 불가(서버 400 가드의 클라 짝).
   const [inputLanguage, setInputLanguage] = useState('');
-  const [remoteInputLanguage, setRemoteInputLanguage] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
-  // 원격 폼 상태 — 카드/전체보기가 공유하도록 부모 소유(로컬 targetUrl 과 동형).
-  const [remoteTaskGoal, setRemoteTaskGoal] = useState('');
-  const [remoteTargetUrl, setRemoteTargetUrl] = useState('');
-  const [remoteSessionKind, setRemoteSessionKind] =
-    useState<UtSessionKind>('moderated');
+
+  const projectId = getSelection('moderator_ai');
+
   const { isCurrent, renderInSlot, close } = useFullview('moderator_ai');
   const { setState } = useWidgetState();
 
+  // 표면 라우팅 — 로컬 세션 활성(live/result) / 원격 공유 활성(waiting~review) /
+  // 그 외(idle·생성중·에러) = 세팅 아코디언. 원격 idle/creating/error 는 세팅
+  // 표면에서 CTA busy·배너로 처리(별도 idle 폼 없음).
   const localActive = session.phase !== 'idle';
-  const remoteActive = remote.phase !== 'idle';
-  // 세션이 시작되면 활성 엔진을 따라가고, 둘 다 idle 이면 토글 선택값.
-  const effectiveMode: UtMode = localActive
+  const remoteShareActive =
+    remote.phase === 'waiting' ||
+    remote.phase === 'live' ||
+    remote.phase === 'review';
+  // 세션이 시작되면 활성 엔진을 따라가고, 둘 다 idle 이면 선택한 방식.
+  const effectiveMode: 'local' | 'remote' = localActive
     ? 'local'
-    : remoteActive
+    : remote.phase !== 'idle'
       ? 'remote'
-      : mode;
-  const bothIdle = !localActive && !remoteActive;
+      : method === 'guest'
+        ? 'remote'
+        : 'local';
 
   // 헤더 상태 pill — 활성 엔진의 phase → WidgetStateInfo.
   useEffect(() => {
@@ -119,8 +93,6 @@ export function UtSessionBody() {
           setState({ kind: 'running', label: 'PREPARING' });
           break;
         case 'waiting':
-          // unmoderated 는 phase 가 'live' 로 걷지 않으므로(라이브 관전 없음),
-          // 참여자 진행 여부는 reviewStatus 로만 드러난다 — 'live' 면 진행중.
           setState({
             kind: 'running',
             label:
@@ -177,7 +149,6 @@ export function UtSessionBody() {
     setState,
   ]);
 
-  const isIdle = session.phase === 'idle';
   const isLive = session.phase === 'live';
   const isResult =
     session.phase === 'uploading' ||
@@ -186,13 +157,23 @@ export function UtSessionBody() {
     session.phase === 'error';
 
   const urlValid = normalizeTargetUrl(targetUrl) !== null;
-  // 언어 미선택('')이면 시작 불가 — 서버 400 가드의 클라 짝(강제 선택).
-  const startDisabled = !session.isSupported || !urlValid || !inputLanguage;
+  // 방식별 시작 게이트. host=지원·URL·언어 / guest=언어·과제.
+  const hostDisabled = !session.isSupported || !urlValid || !inputLanguage;
+  const guestDisabled = !inputLanguage || taskGoal.trim().length === 0;
+  const isCreating = remote.phase === 'creating';
 
   const handleStartClick = () => setConsentOpen(true);
   const handleConsent = () => {
     setConsentOpen(false);
     void session.start(targetUrl, { includeSiteAudio, inputLanguage });
+  };
+  const handleCreate = () => {
+    void remote.create({
+      taskGoal,
+      rawTargetUrl: targetUrl,
+      sessionKind: 'moderated',
+      inputLanguage,
+    });
   };
 
   // 현재 보이는 표면 — 프리뷰 <video> 를 여기에만 렌더(단일 스트림 부착).
@@ -209,44 +190,29 @@ export function UtSessionBody() {
       />
     ) : null;
 
-  const unsupportedNotice = !session.isSupported && (
-    <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
-      {t('unsupported')}
-    </div>
-  );
-
-  const idleError = isIdle && session.error && (
-    <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
-      {session.error}
-    </div>
-  );
+  // 세팅 표면 배너 — 미지원 안내 / 로컬·원격 에러.
+  const setupBanner =
+    (!session.isSupported && (
+      <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+        {t('unsupported')}
+      </div>
+    )) ||
+    (session.phase === 'idle' && session.error && (
+      <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+        {session.error}
+      </div>
+    )) ||
+    (remote.phase === 'error' && remote.error && (
+      <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+        {remote.error}
+      </div>
+    )) ||
+    undefined;
 
   // 한 표면 분의 세션 콘텐츠 — 카드/전체보기가 공유. surface 로 프리뷰 부착만 분기.
   const renderContent = (surface: 'card' | 'fullview') => {
-    // 원격 모드 — 활성 원격 세션이거나, idle 에서 원격을 고른 경우.
-    if (effectiveMode === 'remote') {
-      return (
-        <UtRemoteBody
-          remote={remote}
-          attachMonitor={remote.attachMonitor}
-          surface={surface}
-          isActiveSurface={surface === activeSurface}
-          topSlot={
-            bothIdle ? <ModeToggle mode={mode} onChange={setMode} /> : null
-          }
-          taskGoal={remoteTaskGoal}
-          onTaskGoal={setRemoteTaskGoal}
-          targetUrl={remoteTargetUrl}
-          onTargetUrl={setRemoteTargetUrl}
-          sessionKind={remoteSessionKind}
-          onSessionKind={setRemoteSessionKind}
-          inputLanguage={remoteInputLanguage}
-          onInputLanguage={setRemoteInputLanguage}
-        />
-      );
-    }
-
-    if (isResult) {
+    // 로컬 세션 결과(업로드·전사·완료·에러).
+    if (localActive && isResult) {
       return (
         <UtResultView
           phase={session.phase}
@@ -262,7 +228,8 @@ export function UtSessionBody() {
       );
     }
 
-    if (isLive) {
+    // 로컬 라이브 녹화.
+    if (localActive && isLive) {
       return (
         <div className="flex h-full min-h-0 flex-col">
           <ControlBoardPanel active gap="section">
@@ -286,70 +253,67 @@ export function UtSessionBody() {
       );
     }
 
-    // idle — 모드 토글 + URL 입력 + 세션 시작(로컬).
+    // 원격 공유 인플레이스(대기) · 관전 · 리뷰 — UtRemoteBody.
+    if (remoteShareActive) {
+      return (
+        <UtRemoteBody
+          remote={remote}
+          attachMonitor={remote.attachMonitor}
+          isActiveSurface={surface === activeSurface}
+        />
+      );
+    }
+
+    // 세팅 — 4-스텝 아코디언 + 방식별 CTA.
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <ControlBoardPanel gap="section" banners={unsupportedNotice || idleError || undefined}>
+        <ControlBoardPanel gap="section" banners={setupBanner}>
           <ControlBoardPanel.Region>
-            <ModeToggle mode={mode} onChange={setMode} />
+            <UtSetupAccordion
+              surface={surface}
+              projectId={projectId}
+              onProjectChange={(id) => setSelection('moderator_ai', id)}
+              method={method}
+              onMethodChange={setMethod}
+              inputLanguage={inputLanguage}
+              onInputLanguage={setInputLanguage}
+              targetUrl={targetUrl}
+              onTargetUrl={setTargetUrl}
+              taskGoal={taskGoal}
+              onTaskGoal={setTaskGoal}
+              includeSiteAudio={includeSiteAudio}
+              onIncludeSiteAudio={setIncludeSiteAudio}
+              supported={session.isSupported}
+            />
           </ControlBoardPanel.Region>
-          <ControlBoardPanel.Input
-            label={t('url.label')}
-            description={t('url.description')}
-            htmlFor={`ut-url-${surface}`}
-          >
-            <Input
-              id={`ut-url-${surface}`}
-              value={targetUrl}
-              onChange={(e) => setTargetUrl(e.target.value)}
-              placeholder="https://example.com"
-              inputMode="url"
-              autoComplete="off"
-              disabled={!session.isSupported}
-            />
-          </ControlBoardPanel.Input>
-          <ControlBoardPanel.Input
-            label={t('language.label')}
-            description={t('language.description')}
-            required
-          >
-            <UtLanguageSelect
-              value={inputLanguage}
-              onChange={setInputLanguage}
-              disabled={!session.isSupported}
-            />
-          </ControlBoardPanel.Input>
-          <ControlBoardPanel.Settings>
-            <label className="flex items-start gap-2 text-sm text-mute">
-              <Checkbox
-                checked={includeSiteAudio}
-                onChange={(e) => setIncludeSiteAudio(e.target.checked)}
-                disabled={!session.isSupported}
-                className="mt-[3px]"
-                aria-label={t('siteAudio.label')}
-              />
-              <span>
-                <span className="font-semibold text-ink-2">
-                  {t('siteAudio.label')}
-                </span>
-                <br />
-                <span className="text-xs-soft text-mute-soft">
-                  {t('siteAudio.description')}
-                </span>
-              </span>
-            </label>
-          </ControlBoardPanel.Settings>
         </ControlBoardPanel>
-        <WidgetPrimaryCta
-          label={t('cta.start')}
-          disabled={startDisabled}
-          onClick={handleStartClick}
-        />
+        {method === 'guest' ? (
+          <WidgetPrimaryCta
+            label={t('remote.cta.create')}
+            busy={isCreating}
+            busyLabel={t('remote.cta.creating')}
+            disabled={guestDisabled}
+            icon={<DuotoneIcon name="link" size={16} mono />}
+            onClick={handleCreate}
+          />
+        ) : (
+          <WidgetPrimaryCta
+            label={t('cta.start')}
+            disabled={method === '' || hostDisabled}
+            onClick={handleStartClick}
+          />
+        )}
       </div>
     );
   };
 
-  // 전체보기 subtitle — 활성 엔진/phase 기준.
+  // 리뷰(사후 결과) 표면 — 로컬 결과 또는 원격 review. peach 헤더 + 'AI UT ·
+  // Review' 타이틀 + 'Post-session review' pill 로 Canvas 1c 리뷰 fullview 정합.
+  const isReviewSurface =
+    isResult || (effectiveMode === 'remote' && remote.phase === 'review');
+
+  // 전체보기 subtitle — 활성 엔진/phase 기준. 로컬 리뷰는 N participant · 시간 ·
+  // PREVIEW 메타(self-capture 는 참가자 1명).
   const fullviewSubtitle =
     effectiveMode === 'remote'
       ? remote.phase === 'live'
@@ -360,7 +324,13 @@ export function UtSessionBody() {
       : isLive
         ? t('subtitle.live')
         : isResult
-          ? t('subtitle.result')
+          ? t('fullview.reviewMeta', {
+              count: 1,
+              duration:
+                session.result?.duration_ms != null
+                  ? formatElapsed(session.result.duration_ms)
+                  : '—',
+            })
           : t('subtitle.idle');
 
   return (
@@ -368,9 +338,23 @@ export function UtSessionBody() {
       {/* 카드 본문 — 항상 마운트(세션 엔진 보존). */}
       <div className="flex h-full min-h-0 flex-col">{renderContent('card')}</div>
 
-      {/* 전체보기 — 공유 모달 slot 으로 portal. */}
+      {/* 전체보기 — 공유 모달 slot 으로 portal. 리뷰 표면은 peach 헤더밴드 +
+          'AI UT · Review' display 타이틀 + 'Post-session review' pill 로 정합. */}
       {renderInSlot(
-        <WidgetFullviewPanel title="AI UT" subtitle={fullviewSubtitle} onClose={close}>
+        <WidgetFullviewPanel
+          title={isReviewSurface ? t('fullview.reviewTitle') : 'AI UT'}
+          subtitle={fullviewSubtitle}
+          onClose={close}
+          tone={isReviewSurface ? 'var(--widget-header-bg-peach)' : undefined}
+          titleDisplay={isReviewSurface}
+          badge={
+            isReviewSurface ? (
+              <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs-soft font-semibold uppercase tracking-wider text-mute">
+                {t('fullview.reviewBadge')}
+              </span>
+            ) : undefined
+          }
+        >
           <div className="flex h-full min-h-0 flex-col">
             {renderContent('fullview')}
           </div>

@@ -106,7 +106,9 @@
     },
     "url": {
       "label": "Target site URL",
-      "description": "The site you want to test. It opens in a new tab when the session starts."
+      "description": "The site you want to test. It opens in a new tab when the session starts.",
+      "add": "Add",
+      "remove": "Remove"
     },
     "language": {
       "label": "Expected participant language",
@@ -132,6 +134,11 @@
       "result": "Session result",
       "idle": "Screen-share + voice usability testing"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · Review",
+      "reviewBadge": "Post-session review",
+      "reviewMeta": "{count} participant · {duration} · PREVIEW"
+    },
     "unsupported": "This browser doesn't support screen-share recording. Please use a recent desktop browser such as Chrome or Edge.",
     "result": {
       "uploading": "Saving the recording…",
@@ -141,6 +148,7 @@
       "logPlaceholderTranscribing": "Your speech will appear here once transcription finishes.",
       "logPlaceholderEmpty": "No speech was transcribed.",
       "showTranscript": "Show full transcript",
+      "showTranscriptCount": "Show full transcript · {turns} turns",
       "hideTranscript": "Hide full transcript",
       "downloadTitle": "Downloads"
     },
@@ -191,6 +199,30 @@
       "createSession": "Couldn't start the session. Please try again in a moment.",
       "downloadLink": "Couldn't create the download link. Please try again in a moment.",
       "download": "An error occurred during download."
+    },
+    "method": {
+      "sectionLabel": "Test method",
+      "groupAria": "Choose test method",
+      "hostTitle": "Test on my device",
+      "hostLine1": "Start right away, no link",
+      "hostLine2": "Record my own screen & voice",
+      "guestTitle": "Test on participant device",
+      "guestLine1": "Issue a link to the participant",
+      "guestLine2": "Remote watch + post review"
+    },
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step2Short": "Test method",
+      "step2Title": "Choose how to run the test",
+      "step3Short": "Language",
+      "step3Title": "Which language will the participant speak?",
+      "step4Short": "Target",
+      "step4Title": "Enter the target site and task",
+      "change": "Change",
+      "optional": "(optional)"
     }
   },
   "UtParticipant": {
@@ -256,13 +288,32 @@
   "Brand": {
     "name": "Research-Canvas"
   },
-  "BrowserAudioNotice": {
-    "title": "Use browser tab audio",
-    "body": "This session captures audio from your browser tab. Open the meeting or website in your browser — not the native desktop app (Zoom, Teams, etc.) — so its sound can be captured.",
-    "hint": "Native app audio can't be captured; only the browser tab's audio is picked up.",
-    "dontShowAgain": "Don't show this again",
+  "ShareGuide": {
+    "step": "{n}/2",
     "cancel": "Cancel",
-    "confirm": "Continue"
+    "next": "Next →",
+    "prev": "← Back",
+    "confirm": "🔊 Got it · Start",
+    "dontShowAgain": "Don't show this again",
+    "sub": {
+      "probing": "Needed to capture participants' voices.",
+      "translate": "Needed to capture the source audio for interpreting."
+    },
+    "step1": {
+      "title": "Join the meeting in your browser",
+      "body": "When you open the meeting link, choose “Continue in browser” — not the app. Native desktop apps like Zoom or Teams have no tab audio, so voices won't be captured.",
+      "warn": "Opening in the native app means audio can't be captured.",
+      "imgAlt": "Prompt to choose the browser instead of the app when joining a meeting",
+      "frameLabel": "Meeting join screen"
+    },
+    "step2": {
+      "title": "Share system audio · must be ON",
+      "body": "In the screen-share window, turn ON the “Also share system audio” toggle at the bottom-left before you start sharing.",
+      "warn": "If the toggle is off, audio won't be saved.",
+      "imgAlt": "Prompt to pick the Window tab and turn on the Also share system audio toggle in the screen-share window",
+      "frameLabel": "Screen share dialog",
+      "badge": "System audio ON"
+    }
   },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
@@ -772,6 +823,12 @@
     "placeholder": "Select a project",
     "newProject": "+ New project",
     "applyToAll": "Apply to all widgets",
+    "applyToAllHint": "☑ Checked applies to all widgets · unchecked, this widget only",
+    "createPlaceholder": "New project name",
+    "createConfirm": "Create",
+    "creating": "Creating…",
+    "createCancel": "Cancel",
+    "createFailed": "Couldn't create the project",
     "menu": "Project menu"
   },
   "ComingSoon": {
@@ -851,7 +908,52 @@
       "description": "Generate interview scripts and discussion guides.",
       "cost": "1 credit"
     },
+    "transcriptResult": {
+      "kind": "Transcript",
+      "donePill": "Done",
+      "back": "List",
+      "open": "View results",
+      "minutes": "{min} min",
+      "speakers": "{count} speakers",
+      "searchPlaceholder": "Search transcript…",
+      "bySpeaker": "By speaker",
+      "byTimestamp": "Timestamp",
+      "exportTitle": "Export",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "Text (.txt)",
+      "exportSrt": "Subtitles (.srt)",
+      "loading": "Loading transcript…",
+      "error": "Couldn't load the transcript.",
+      "empty": "No turns to show.",
+      "noResults": "No matches.",
+      "aiSummaryTitle": "AI summary",
+      "keyThemesTitle": "Key themes",
+      "comingSoon": "Coming soon (later update)."
+    },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "Project",
+        "step1Title": "Select the project you are working on",
+        "step1Selected": "Selected",
+        "step2Short": "Method",
+        "step2Title": "Select the transcription method",
+        "step3Short": "Language",
+        "step3Title": "Which language do you want for analysis?",
+        "step3Field": "Source audio language",
+        "step4Short": "Audio",
+        "step4Title": "Upload or record the audio to transcribe",
+        "orDivider": "or",
+        "change": "Change"
+      },
+      "method": {
+        "sectionLabel": "Transcription method",
+        "groupAria": "Select the transcription method",
+        "micTitle": "Qualitative interview transcription",
+        "micSub": "1:1 in-depth · speaker separation",
+        "minutesTitle": "Meeting minutes transcription",
+        "minutesSub": "Multi-party speech · summary"
+      },
       "transcribingEta": "{elapsed} elapsed · ~{remain} remaining (est.)",
       "languageConfirm": {
         "title": "Use this language to transcribe?",
@@ -1342,6 +1444,24 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
+      "step2Short": "Interview method",
+      "step2Title": "Choose your interview method",
+      "step3Short": "Languages",
+      "step3Title": "Set your interpretation languages",
+      "step4Short": "Custom terms",
+      "step4Title": "Add any special keywords or proper nouns",
+      "glossarySummary": "{count} term(s) added",
+      "change": "Change",
+      "optional": "(optional)",
+      "readyPending": "Set the interpretation languages",
+      "readyGo": "Ready · You can start interpreting"
+    },
     "sourceLang": "Source",
     "targetLang": "Target",
     "project": "Project",
@@ -1361,7 +1481,6 @@
       "micOnly": "Device microphone",
       "tabOnly": "Browser audio input",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only.",
-      "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)",
       "shortBoth": "mic + tab",
       "shortMic": "mic",
       "shortTab": "tab"
@@ -1425,6 +1544,13 @@
       "controlHint": "Start, stop, and sharing are controlled from the widget card.",
       "backToWidget": "Back to widget"
     },
+    "live": {
+      "fullviewHeading": "Please check the full view",
+      "fullviewSubInterpreter": "The session has started. Track live interpretation in the full view.",
+      "backToSetup": "← Back to setup",
+      "backToPrompt": "← Back to live view",
+      "sessionInProgress": "Session in progress"
+    },
     "speaker": {
       "host": "Host",
       "guest": "Guest"
@@ -1486,7 +1612,10 @@
       "placeholder": "One term per line (e.g. SDK, on-prem)",
       "apply": "Apply",
       "applyTitle": "Apply the terms you entered now",
-      "dirtyNotice": "Unapplied changes — press “Apply” to save"
+      "dirtyNotice": "Unapplied changes — press “Apply” to save",
+      "add": "Add",
+      "remove": "Remove",
+      "addPlaceholder": "Type a term, then add (e.g. SDK)"
     },
     "postProcess": {
       "eyebrow": "Output quality fix (post-process LLM)",
@@ -1593,6 +1722,7 @@
     "viewAll": "View all →",
     "transcriptRunning": "Transcription in progress",
     "transcriptDone": "Transcription complete",
+    "transcriptReadyTitle": "Transcript is ready!",
     "transcriptStageUpload": "Upload",
     "transcriptStageTranscribe": "Transcribe",
     "transcriptStageMd": "Document",
@@ -2292,6 +2422,28 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
+      "step2Short": "Interview method",
+      "step2Title": "Choose your interview method",
+      "step3Short": "Analysis language",
+      "step3Title": "Which language would you like the analysis in?",
+      "step4Short": "Questions",
+      "step4Title": "Inject questions you must cover",
+      "questionPlaceholder": "Type a must-ask question and press Enter",
+      "questionAdd": "Add",
+      "questionRemove": "Remove question",
+      "questionEmpty": "No questions injected yet",
+      "questionSummary": "{count} question(s) injected",
+      "change": "Change",
+      "optional": "(optional)",
+      "readyPending": "Select an input source and language",
+      "readyGo": "Ready · You can start"
+    },
     "card": {
       "recordingNoAudioTab": "Audio wasn't captured. If this was a tab-share session, check that \"Share tab audio\" was on.",
       "recordingUnsupported": "This browser doesn't support session recording.",
@@ -2480,6 +2632,25 @@
       "liveHint": "Session in progress · check the AI reasoning and suggested questions in full view",
       "startHint": "Start a session",
       "openFullview": "Open full view"
+    },
+    "live": {
+      "fullviewHeading": "Please check the full view",
+      "fullviewSubProbing": "The session has started. Track live probing progress in the full view.",
+      "backToSetup": "← Back to setup",
+      "backToPrompt": "← Back to live view",
+      "sessionInProgress": "Session in progress",
+      "endSession": "End session"
     }
+  },
+  "CaptureUseCase": {
+    "sectionLabel": "Interview setup",
+    "groupAria": "Select interview setup",
+    "offlineTitle": "In-person interview",
+    "onlineTitle": "Online interview",
+    "observeTitle": "Online observation",
+    "offlineDesc": "An interview where you meet and talk in person",
+    "onlineDesc": "An interview where you talk over a video call",
+    "observeDesc": "I only listen in, over a video call",
+    "offlineNote": "One device mic captures the whole room · no speaker separation"
   }
 }
