@@ -2631,7 +2631,23 @@
       "ghostSurvConsentMeta": "ประตูยินยอม · ข้อความทางกฎหมาย",
       "ghostSurvScreen": "คำถามคัดกรอง",
       "ghostSurvPersonal": "ข้อมูลส่วนบุคคล",
-      "ghostSurvPersonalMeta": "ชื่อ · ปีเกิด · เพศ · อุปกรณ์"
+      "ghostSurvPersonalMeta": "ชื่อ · ปีเกิด · เพศ · อุปกรณ์",
+      "statePublishing": "กำลังเผยแพร่",
+      "stateSurvey": "สร้างแบบสอบถาม",
+      "stateExtracting": "กำลังดึง",
+      "publishConnectHint": "เชื่อมต่อบัญชี Google เพื่อเผยแพร่แบบฟอร์มโดยอัตโนมัติ",
+      "publishConnectCta": "เชื่อมต่อบัญชี Google",
+      "publishAttendeeLabel": "สำหรับผู้เข้าร่วม",
+      "publishCopy": "คัดลอก",
+      "publishCopied": "คัดลอกแล้ว",
+      "publishErrorPrefix": "ข้อผิดพลาดในการเผยแพร่",
+      "publishRetry": "ลองอีกครั้ง",
+      "publishReauthHint": "โทเคน Google อาจหมดอายุหรือถูกเพิกถอน เชื่อมต่อใหม่เพื่อกู้คืน",
+      "publishReconnect": "เชื่อมต่อ Google ใหม่",
+      "publishDriveHint": "เชื่อมต่อบัญชี Google ใหม่เพื่อให้สิทธิ์เข้าถึงแก่ทุกคนที่มีลิงก์",
+      "publishDriveReconnect": "เชื่อมต่อใหม่",
+      "googleAuthErrorPrefix": "ข้อผิดพลาดการเชื่อมต่อ Google",
+      "googleAuthClose": "ปิด"
     }
   }
 }

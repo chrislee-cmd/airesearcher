@@ -2538,7 +2538,23 @@
       "ghostSurvConsentMeta": "동의 게이트 · 법적 고지",
       "ghostSurvScreen": "스크리닝 질문",
       "ghostSurvPersonal": "인적사항",
-      "ghostSurvPersonalMeta": "이름 · 출생년도 · 성별 · 기기"
+      "ghostSurvPersonalMeta": "이름 · 출생년도 · 성별 · 기기",
+      "statePublishing": "발행 중",
+      "stateSurvey": "설문 생성",
+      "stateExtracting": "추출 중",
+      "publishConnectHint": "Google 계정을 연결하면 설문이 자동으로 발행됩니다.",
+      "publishConnectCta": "Google 계정 연결",
+      "publishAttendeeLabel": "참석자용",
+      "publishCopy": "복사",
+      "publishCopied": "복사됨",
+      "publishErrorPrefix": "발행 오류",
+      "publishRetry": "다시 시도",
+      "publishReauthHint": "Google 토큰이 만료/취소된 것 같습니다. 재연결로 복구하세요.",
+      "publishReconnect": "Google 재연결",
+      "publishDriveHint": "공개(링크 보유자) 권한 부여를 위해 Google 계정을 다시 연결해주세요.",
+      "publishDriveReconnect": "재연결",
+      "googleAuthErrorPrefix": "Google 연결 오류",
+      "googleAuthClose": "닫기"
     }
   }
 }

@@ -2631,7 +2631,23 @@
       "ghostSurvConsentMeta": "同意ゲート · 法的文言",
       "ghostSurvScreen": "スクリーニング質問",
       "ghostSurvPersonal": "個人情報",
-      "ghostSurvPersonalMeta": "氏名 · 生年 · 性別 · デバイス"
+      "ghostSurvPersonalMeta": "氏名 · 生年 · 性別 · デバイス",
+      "statePublishing": "公開中",
+      "stateSurvey": "調査生成",
+      "stateExtracting": "抽出中",
+      "publishConnectHint": "Google アカウントを連携すると、フォームが自動で公開されます。",
+      "publishConnectCta": "Google アカウントを連携",
+      "publishAttendeeLabel": "回答者用",
+      "publishCopy": "コピー",
+      "publishCopied": "コピー済み",
+      "publishErrorPrefix": "公開エラー",
+      "publishRetry": "再試行",
+      "publishReauthHint": "Google トークンが期限切れ/取り消された可能性があります。再連携で復旧してください。",
+      "publishReconnect": "Google を再連携",
+      "publishDriveHint": "リンクを知る全員への公開権限のため、Google アカウントを再連携してください。",
+      "publishDriveReconnect": "再連携",
+      "googleAuthErrorPrefix": "Google 連携エラー",
+      "googleAuthClose": "閉じる"
     }
   }
 }

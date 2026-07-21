@@ -2538,7 +2538,23 @@
       "ghostSurvConsentMeta": "Consent gate · legal copy",
       "ghostSurvScreen": "Screening questions",
       "ghostSurvPersonal": "Personal info",
-      "ghostSurvPersonalMeta": "Name · birth year · gender · device"
+      "ghostSurvPersonalMeta": "Name · birth year · gender · device",
+      "statePublishing": "Publishing",
+      "stateSurvey": "Survey",
+      "stateExtracting": "Extracting",
+      "publishConnectHint": "Connect your Google account to publish the form automatically.",
+      "publishConnectCta": "Connect Google account",
+      "publishAttendeeLabel": "For respondents",
+      "publishCopy": "Copy",
+      "publishCopied": "Copied",
+      "publishErrorPrefix": "Publish error",
+      "publishRetry": "Try again",
+      "publishReauthHint": "Your Google token may be expired or revoked. Reconnect to recover.",
+      "publishReconnect": "Reconnect Google",
+      "publishDriveHint": "Reconnect your Google account to grant anyone-with-link access.",
+      "publishDriveReconnect": "Reconnect",
+      "googleAuthErrorPrefix": "Google connection error",
+      "googleAuthClose": "Close"
     }
   }
 }

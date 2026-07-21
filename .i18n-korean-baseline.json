@@ -52,7 +52,6 @@
   "src/components/quant-analyzer.tsx": 3,
   "src/components/recruiting-wizard/attendee-review-modal.tsx": 15,
   "src/components/recruiting-wizard/views.tsx": 41,
-  "src/components/recruiting-wizard/wizard.tsx": 30,
   "src/components/report-generator.tsx": 21,
   "src/components/reports/enhance-panel.tsx": 32,
   "src/components/reports/version-selector.tsx": 7,

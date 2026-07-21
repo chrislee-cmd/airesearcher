@@ -7,7 +7,7 @@ import { track as trackEvent } from '@/lib/analytics/events';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
-import { RecruitingWizard } from '@/components/recruiting-wizard';
+import { RecruitingSetupAccordion } from './recruiting/setup-accordion';
 import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
@@ -30,7 +30,8 @@ import {
   type RecruitingFilter,
 } from '@/lib/recruiting/distribution';
 
-// 카드 본문 = RecruitingWizard (3-step: 조건 → 설문 → Google Form 발행).
+// 카드 본문 = RecruitingSetupAccordion (fresh CD 4-step: 소스 → criteria →
+// 설문 → Google Form 발행).
 // 이전엔 위젯 바닥에 발행된 폼 목록 "최근 산출물" 영역이 있었지만, prod
 // 마이그 lag 로 인한 forms/list 500/401 폭주 + UX 정리 차원에서 제거.
 // 발행 결과 링크는 wizard 의 Card 3 발행 완료 패널에서 바로 노출.
@@ -190,11 +191,11 @@ function ExpandedBody() {
   };
   return (
     <div className="flex h-full flex-col">
-      {/* wizard = 컨트롤 (조건 → 설문 → 발행). 서브헤더 slim bar 폐기 —
-          phase 무관 항상 노출되어 발행 후에도 재발행/조건 조정이 가능하다.
-          fullview·진행 state 보존을 위해 항상 마운트. */}
+      {/* 세팅 = CD 4-step 아코디언 (fresh 신규 빌드 — recruiting/setup-accordion).
+          §E: 옛 wizard.tsx 편집·재사용 X → 대체. 로직/데이터는 use-recruiting-setup
+          훅(api·lib·schema 재사용). fullview·진행 state 보존 위해 항상 마운트. */}
       <div className="flex min-h-0 flex-1 flex-col">
-        <RecruitingWizard
+        <RecruitingSetupAccordion
           onPublishedChange={setIsPublished}
           onConditionsChange={setConditionsBrief}
         />
