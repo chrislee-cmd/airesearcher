@@ -1382,6 +1382,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "プロジェクト",
+      "step1Title": "作業中のプロジェクトを選択してください",
+      "step1Selected": "選択済み",
+      "step1BulkTag": "一括",
+      "fieldProject": "プロジェクト",
+      "step2Short": "トピック・キーワード",
+      "step2Title": "調査するトピック・キーワードを入力してください",
+      "step2Summary": "{count}件のキーワード",
+      "step3Short": "リサーチ目的",
+      "step3Title": "リサーチ目的を選択してください",
+      "step4Short": "収集範囲",
+      "step4Title": "収集範囲を設定してください",
+      "change": "変更",
+      "optional": "（任意）"
+    },
     "keywordLabel": "キーワード",
     "keywordPlaceholder": "キーワードを入力してEnterを押してください",
     "keywordAddMore": "さらに追加…",

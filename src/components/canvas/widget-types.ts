@@ -32,7 +32,14 @@ export type WidgetStateInfo =
 
 export type WidgetState = WidgetStateInfo['kind'];
 
-export type AccentColor = 'sky' | 'peach' | 'mint' | 'lav' | 'sun' | 'rose';
+export type AccentColor =
+  | 'sky'
+  | 'peach'
+  | 'mint'
+  | 'lav'
+  | 'sun'
+  | 'rose'
+  | 'cyan';
 
 export type WidgetContent = {
   key: string;
