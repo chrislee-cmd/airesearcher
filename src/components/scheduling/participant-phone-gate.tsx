@@ -79,6 +79,7 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
           fullWidth
           onClick={() => void submit()}
           disabled={!canSubmit}
+          className="min-h-11"
         >
           {submitting ? t('gateVerifying') : t('gateSubmit')}
         </Button>
