@@ -2851,6 +2851,18 @@
     }
   },
   "RecruitingScheduling": {
+    "calClickHint": "セルをクリックして30分の枠を作成",
+    "chatKindLabel": "メッセージの種類",
+    "chatReachLabel": "宛先",
+    "chatReachAllHint": "サブ対象は不要です。このプロジェクトの候補者{count}名全員に送信します。",
+    "chatReachGroupQuestion": "どのグループ？",
+    "chatReachIndividualQuestion": "どの候補者？",
+    "chatReachIndividualHint": "既定は開いているスレッドです。誰かを選ぶと新しい個別スレッドを開始します。",
+    "chatSlotEdit": "編集",
+    "slotTitleHelper": "自由入力 · 参加者のスケジュールとカレンダーブロックに表示されます。",
+    "slotSectionTarget": "対象",
+    "slotSectionTime": "時間",
+    "slotSectionDetails": "詳細",
     "title": "候補者インタビューのスケジューリング",
     "subtitle": "プロジェクトを選択または新規作成し、アップロードやシート連携で候補者グループを追加してください。",
     "projectLabel": "プロジェクト",

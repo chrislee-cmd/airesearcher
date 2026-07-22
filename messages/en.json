@@ -2758,6 +2758,18 @@
     }
   },
   "RecruitingScheduling": {
+    "calClickHint": "Click a cell to create a 30-min slot",
+    "chatKindLabel": "Message type",
+    "chatReachLabel": "Reach",
+    "chatReachAllHint": "No sub-target needed. Sends to all {count} candidates in this project.",
+    "chatReachGroupQuestion": "Which group?",
+    "chatReachIndividualQuestion": "Which candidate?",
+    "chatReachIndividualHint": "Defaults to the open thread; pick anyone to start a new private thread.",
+    "chatSlotEdit": "Edit",
+    "slotTitleHelper": "Free text · shown on the participant’s schedule and calendar block.",
+    "slotSectionTarget": "Target",
+    "slotSectionTime": "Time",
+    "slotSectionDetails": "Details",
     "title": "Interview Scheduling",
     "subtitle": "Select or create a project, then add candidate groups via upload or Sheets.",
     "projectLabel": "Project",

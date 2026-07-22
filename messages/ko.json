@@ -2758,6 +2758,18 @@
     }
   },
   "RecruitingScheduling": {
+    "calClickHint": "셀을 클릭해 30분 슬롯을 만드세요",
+    "chatKindLabel": "메시지 유형",
+    "chatReachLabel": "대상",
+    "chatReachAllHint": "하위 대상이 필요 없습니다. 이 프로젝트의 후보 {count}명 전원에게 보냅니다.",
+    "chatReachGroupQuestion": "어느 그룹인가요?",
+    "chatReachIndividualQuestion": "어느 후보인가요?",
+    "chatReachIndividualHint": "열린 스레드가 기본값입니다. 아무나 선택하면 새 개인 스레드가 시작됩니다.",
+    "chatSlotEdit": "편집",
+    "slotTitleHelper": "자유 텍스트 · 참여자 일정과 캘린더 블록에 표시됩니다.",
+    "slotSectionTarget": "대상",
+    "slotSectionTime": "시간",
+    "slotSectionDetails": "세부정보",
     "title": "후보자 인터뷰 스케줄링",
     "subtitle": "프로젝트를 선택하거나 새로 만들고, 업로드/시트로 후보자 그룹을 추가하세요.",
     "projectLabel": "프로젝트",
