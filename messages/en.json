@@ -1738,6 +1738,8 @@
     "transcriptRunning": "Transcription in progress",
     "transcriptDone": "Transcription complete",
     "transcriptReadyTitle": "Transcript is ready!",
+    "transcriptReadySubtitle": "Speaker-separated, time-stamped transcript is ready. Check results in the full view.",
+    "transcriptAddMore": "＋ Add transcript",
     "transcriptStageUpload": "Upload",
     "transcriptStageTranscribe": "Transcribe",
     "transcriptStageMd": "Document",

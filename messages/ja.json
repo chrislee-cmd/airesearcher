@@ -1831,6 +1831,8 @@
     "transcriptRunning": "文字起こし中",
     "transcriptDone": "文字起こし完了",
     "transcriptReadyTitle": "文字起こしの準備ができました！",
+    "transcriptReadySubtitle": "話者分離とタイムスタンプ付きの文字起こしが準備できました。全体表示で結果をご確認ください。",
+    "transcriptAddMore": "＋ 新しい文字起こしを追加",
     "transcriptStageUpload": "アップロード",
     "transcriptStageTranscribe": "文字起こし",
     "transcriptStageMd": "ドキュメント",

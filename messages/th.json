@@ -1831,6 +1831,8 @@
     "transcriptRunning": "กำลังถอดความ",
     "transcriptDone": "ถอดความเสร็จสิ้น",
     "transcriptReadyTitle": "ถอดความพร้อมแล้ว!",
+    "transcriptReadySubtitle": "ถอดความแยกผู้พูดและมีการประทับเวลาพร้อมแล้ว ดูผลลัพธ์ได้ในมุมมองแบบเต็ม",
+    "transcriptAddMore": "＋ เพิ่มการถอดความ",
     "transcriptStageUpload": "อัปโหลด",
     "transcriptStageTranscribe": "ถอดความ",
     "transcriptStageMd": "เอกสาร",

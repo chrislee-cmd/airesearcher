@@ -291,6 +291,9 @@ export function QuotesCardBody() {
   // "전체 보기"(fullview)로 산출물을 확인하고 닫으면 카드를 idle 로 되돌려
   // 새 작업 준비 상태로 만든다 (진행 중이면 유지 — 아래 handleCloseFullview).
   const [phase, setPhase] = useState<'idle' | 'active'>('idle');
+  // done(성공 카드) 상태에서 "＋ 새 전사 추가" 세컨더리를 눌러 dropzone/녹음을
+  // reveal 하는 로컬 토글. 기본 false = CD-clean 성공 카드만 노출. (#504 재배치)
+  const [showAddMore, setShowAddMore] = useState(false);
   // fullview 를 확인하고 닫아 idle 로 되돌린 신호. 완료분만 있는 상태에서
   // 아래 승격 effect 가 다시 active 로 올리지 않도록 막는다. 진행/업로드/대기
   // 신호가 새로 생기면 해제된다. 뷰 상태 전용 ref — DB 산출물은 보존된다.
@@ -1223,35 +1226,62 @@ export function QuotesCardBody() {
                 )}
               </div>
             ) : showDone ? (
-              // done: StageFlow 완료 hero + "결과 보기" CTA (사용자 결정 3) →
-              // fullview 진입. 파일 추가 업로드 경로(dropzone + 녹음)는 hero
-              // 아래 보존 — 완료 상태에서도 새 전사를 이어서 시작할 수 있다.
-              <div className="flex flex-col items-center gap-6 py-4">
-                <StageFlow
-                  stages={txStages}
-                  complete
-                  activeTone="progress"
-                  completeLabel={tWidgets('transcriptReadyTitle')}
-                  onResult={handleQuotesFullview}
-                  resultLabel={tWidgets('viewAll')}
-                />
-                {/* 파일 추가 업로드 경로 — 인라인 dropzone (idle 컨트롤과 동일
-                    핸들러). 드롭/클릭 → 새 전사 flow. */}
-                <div className="w-full space-y-4">
-                  <ControlDropzone
-                    accept={ACCEPT}
-                    multiple
-                    disabled={busyUpload}
-                    onFiles={(files) => startUploads(files)}
-                    onDropRaw={handleArtifactDrop}
-                    label={tUp('dropHere')}
-                    helperText={tUp('supported')}
-                  />
-                  {/* 완료 상태에서도 직접 녹음으로 새 전사 추가 (#503). */}
-                  <TranscriptRecordButton
-                    disabled={busyUpload}
-                    onRecorded={(file) => startUploads([file])}
-                  />
+              // done: CD `transDone` 초록 성공 카드 (fresh 프레젠테이션 — StageFlow
+              // complete hero 대체, #504). 외형 SSOT = Canvas 1c transDone(L353~357):
+              // 64×64 ink-보더 체크박스(연초록 틴트 + 초록 memphis 그림자) + 타이틀 +
+              // 서브카피 + INK CTA. dropzone/녹음은 상시 노출 제거 → "＋ 새 전사 추가"
+              // 세컨더리 reveal 로 재배치(CD-clean 기본 · 완료 후 새 전사 기능 보존).
+              <div className="flex w-full flex-col items-center gap-4 py-5 text-center">
+                {/* 성공 체크박스 — 초록 틴트 bg + 초록 offset 그림자 = 신규 success
+                    토큰(bg-success-soft · shadow-memphis-md-success). radius 는 CD 16
+                    에 근접한 rounded-sm(14) 사용(스펙 근접 지침 · 과잉 토큰 회피). */}
+                <div className="flex h-16 w-16 items-center justify-center rounded-sm border-2 border-ink bg-success-soft text-display font-extrabold text-success shadow-memphis-md-success">
+                  ✓
+                </div>
+                <div className="text-3xl font-extrabold text-ink">
+                  {tWidgets('transcriptReadyTitle')}
+                </div>
+                <p className="max-w-[300px] text-lg leading-relaxed text-mute">
+                  {tWidgets('transcriptReadySubtitle')}
+                </p>
+                <Button
+                  variant="primary"
+                  size="cta"
+                  onClick={handleQuotesFullview}
+                  className="normal-case tracking-normal"
+                >
+                  {tWidgets('viewAll')}
+                </Button>
+
+                {/* 새 전사 추가 — CD-clean 기본. 세컨더리 클릭 시에만 dropzone/녹음
+                    reveal (완료 후 새 전사 시작 기능 보존 · 핸들러 동일, #504 재배치). */}
+                <div className="w-full">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAddMore((v) => !v)}
+                    aria-expanded={showAddMore}
+                  >
+                    {tWidgets('transcriptAddMore')}
+                  </Button>
+                  {showAddMore && (
+                    <div className="mt-4 space-y-4 text-left">
+                      <ControlDropzone
+                        accept={ACCEPT}
+                        multiple
+                        disabled={busyUpload}
+                        onFiles={(files) => startUploads(files)}
+                        onDropRaw={handleArtifactDrop}
+                        label={tUp('dropHere')}
+                        helperText={tUp('supported')}
+                      />
+                      {/* 완료 상태에서도 직접 녹음으로 새 전사 추가 (#503). */}
+                      <TranscriptRecordButton
+                        disabled={busyUpload}
+                        onRecorded={(file) => startUploads([file])}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
