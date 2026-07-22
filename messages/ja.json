@@ -3053,6 +3053,7 @@
     "collisionUnnamed": "名前未登録",
     "fullPhoneTitle": "電話番号をすべて入力",
     "fullPhoneBody": "ご本人を区別するため、電話番号をすべて入力してください。",
-    "fullPhoneLabel": "電話番号"
+    "fullPhoneLabel": "電話番号",
+    "gatePrivacy": "本人確認のみに使用し、この端末には何も保存されません。"
   }
 }

@@ -1,5 +1,19 @@
 import type { Metadata, Viewport } from 'next';
+import { Outfit } from 'next/font/google';
 import '../globals.css';
+
+// Outfit display font — the recruiting-scheduling redesign (Memphis, CD frames
+// 03B·04) renders participant screen titles in Outfit 800. This route lives
+// outside `(app)`, so its `--font-outfit` variable is defined here (mirrors
+// `(app)/layout.tsx`); the participant components consume it via inline
+// `fontFamily: 'var(--font-outfit), var(--font-sans)'` (same pattern as
+// WidgetFullviewPanel).
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 // Public participant page for the recruiting-scheduling share link (PR4). Lives
 // at the top level (outside `[locale]`) so it bypasses next-intl middleware,
@@ -32,7 +46,7 @@ export default function ScheduleParticipantLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`${outfit.variable} h-full`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

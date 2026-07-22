@@ -7,23 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PHONE_TAIL_LEN } from '@/lib/scheduling/participant-gate';
 
-// Entry gate for the recruiting-scheduling COMMON share link. The link is
-// anonymous (one URL per project), so the visitor proves identity with the last
-// PHONE_TAIL_LEN digits of the phone the admin registered. The verify route
-// matches the tail against the project's candidates:
+// Participant entry gate for the recruiting-scheduling COMMON share link,
+// redesigned to the Memphis system (CD frame 03B "Verify it's you"). The link
+// is anonymous (one URL per project), so the visitor proves identity with the
+// last PHONE_TAIL_LEN digits of the phone the admin registered. The verify
+// route matches the tail against the project's candidates:
 //   * unique match → sets the candidate-bound cookie → we refresh into the view;
 //   * collision (same tail, distinct names) → we show a name picker;
 //   * collision with indistinguishable names → we ask for the full phone number;
-//   * no match → a plain "no candidate" message (no-phone candidates never
-//     match, so they land here too — consistent with the no-phone policy).
-// All UI uses design tokens (§9); no login, no navigation chrome.
+//   * no match / wrong digits → an inline error on the OTP cells.
+// Presentation is a fresh Memphis build (CD SSOT); only the verify flow logic is
+// reused. All surfaces bind to design tokens (§9) — no hardcoded hex, no
+// arbitrary shadows/radii (shadow-memphis-* / rounded-{xs,sm,md,full} only).
 
-// Display only: group the 6 raw digits as ##-#### (hyphen after the 2nd). The
-// stored `tail` state stays digits-only, so the value POSTed to /verify never
-// carries the hyphen (and `normalizeTailInput` strips it server-side anyway).
-function formatTail(digits: string): string {
-  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}-${digits.slice(2)}`;
-}
+// Display font stacks: Outfit 800 for the screen title (CD 03B), ui-monospace
+// for the OTP digits. Consumed inline (same pattern as WidgetFullviewPanel) —
+// this route defines --font-outfit in schedule/layout.tsx.
+const OUTFIT = 'var(--font-outfit), var(--font-sans)';
+const MONO = 'ui-monospace, Menlo, monospace';
 
 type PickCandidate = { id: string; name: string | null };
 type Step = 'tail' | 'pick' | 'fullphone';
@@ -37,6 +38,7 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
   const [picks, setPicks] = useState<PickCandidate[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
 
   const verifyUrl = `/api/scheduling/public/${encodeURIComponent(token)}/verify`;
 
@@ -94,39 +96,36 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
   const canSubmitFull = fullPhone.replace(/\D/g, '').length >= 8 && !submitting;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-5 px-6">
+    <GateCanvas>
       {step === 'pick' ? (
         <>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-lg font-semibold text-ink">
-              {t('collisionTitle')}
-            </h1>
-            <p className="text-sm text-mute">{t('collisionBody')}</p>
-          </div>
+          <GateHeader
+            title={t('collisionTitle')}
+            body={t('collisionBody')}
+          />
           <div className="flex w-full flex-col gap-2">
             {picks.map((c) => (
               <Button
                 key={c.id}
                 variant="secondary"
                 fullWidth
+                size="lg"
+                className="!rounded-full"
                 onClick={() => void post({ tail, candidateId: c.id })}
                 disabled={submitting}
-                className="min-h-11"
               >
                 {c.name?.trim() || t('collisionUnnamed')}
               </Button>
             ))}
-            {error && <p className="text-sm text-warning">{error}</p>}
+            {error && <ErrorNote>{error}</ErrorNote>}
           </div>
         </>
       ) : step === 'fullphone' ? (
         <>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-lg font-semibold text-ink">
-              {t('fullPhoneTitle')}
-            </h1>
-            <p className="text-sm text-mute">{t('fullPhoneBody')}</p>
-          </div>
+          <GateHeader
+            title={t('fullPhoneTitle')}
+            body={t('fullPhoneBody')}
+          />
           <div className="flex w-full flex-col gap-3">
             <Input
               label={t('fullPhoneLabel')}
@@ -134,6 +133,7 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
               autoComplete="off"
               value={fullPhone}
               error={error ?? undefined}
+              className="!border-2 !border-ink text-ink"
               onChange={(e) => setFullPhone(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -145,9 +145,10 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
             <Button
               variant="primary"
               fullWidth
+              size="lg"
+              className="!rounded-full"
               onClick={() => void post({ fullPhone })}
               disabled={!canSubmitFull}
-              className="min-h-11"
             >
               {submitting ? t('gateVerifying') : t('gateSubmit')}
             </Button>
@@ -155,22 +156,53 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
         </>
       ) : (
         <>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-lg font-semibold text-ink">{t('gateTitle')}</h1>
-            <p className="text-sm text-mute">
-              {t('gateBody', { n: PHONE_TAIL_LEN })}
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-3">
+          <LockChip />
+          <h1
+            className="mt-1.5 text-center text-ink"
+            style={{ fontFamily: OUTFIT, fontWeight: 800, fontSize: 22, letterSpacing: '-0.4px' }}
+          >
+            {t('gateTitle')}
+          </h1>
+          <p className="max-w-[340px] text-center text-lg leading-relaxed text-mute">
+            {t('gateBody', { n: PHONE_TAIL_LEN })}
+          </p>
+
+          {/* 6-cell OTP — one visually-hidden, focusable <Input> captures the
+              digits; the 6 cells are presentation only. Clicking the row (the
+              wrapping <label>) focuses the input; the active cell tracks the
+              caret position while focused. */}
+          <label className="relative mt-4 flex cursor-text gap-[9px]">
+            {Array.from({ length: PHONE_TAIL_LEN }).map((_, i) => {
+              const filled = i < tail.length;
+              const active = focused && i === Math.min(tail.length, PHONE_TAIL_LEN - 1);
+              const cellTone = error
+                ? 'border-warning bg-paper'
+                : filled
+                  ? 'border-ink bg-paper shadow-memphis-sm-faint'
+                  : active
+                    ? 'border-amore bg-paper shadow-memphis-xs-amore'
+                    : 'border-ink/20 bg-paper-soft';
+              return (
+                <span
+                  key={i}
+                  className={`flex h-14 w-[46px] items-center justify-center rounded-sm border-2 text-ink ${cellTone}`}
+                  style={{ fontFamily: MONO, fontWeight: 700, fontSize: 22 }}
+                >
+                  {tail[i] ?? ''}
+                </span>
+              );
+            })}
             <Input
-              label={t('gateInputLabel', { n: PHONE_TAIL_LEN })}
+              fullWidth={false}
+              className="sr-only"
               inputMode="numeric"
-              autoComplete="off"
-              // +1 for the display hyphen (##-####); the stored value is 6 digits.
-              maxLength={PHONE_TAIL_LEN + 1}
-              placeholder="##-####"
-              value={formatTail(tail)}
-              error={error ?? undefined}
+              autoComplete="one-time-code"
+              aria-label={t('gateInputLabel', { n: PHONE_TAIL_LEN })}
+              maxLength={PHONE_TAIL_LEN}
+              autoFocus
+              value={tail}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               onChange={(e) =>
                 setTail(e.target.value.replace(/\D/g, '').slice(0, PHONE_TAIL_LEN))
               }
@@ -181,18 +213,71 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
                 }
               }}
             />
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={() => void post({ tail })}
-              disabled={!canSubmitTail}
-              className="min-h-11"
-            >
-              {submitting ? t('gateVerifying') : t('gateSubmit')}
-            </Button>
-          </div>
+          </label>
+
+          {error && <ErrorNote>{error}</ErrorNote>}
+
+          <Button
+            variant="primary"
+            fullWidth
+            size="lg"
+            className="mt-[22px] !rounded-full"
+            onClick={() => void post({ tail })}
+            disabled={!canSubmitTail}
+          >
+            {submitting ? t('gateVerifying') : t('gateSubmit')}
+          </Button>
+
+          <p className="mt-2.5 flex items-start justify-center gap-[7px] text-center text-sm leading-snug text-mute-soft">
+            <span aria-hidden="true">🛈</span>
+            <span>{t('gatePrivacy')}</span>
+          </p>
         </>
       )}
+    </GateCanvas>
+  );
+}
+
+// Centered Memphis card on the neutral canvas (CD 03B). The 520×620 device
+// frame in the comp is mockup chrome; the real page centers the card on the
+// viewport and lets it fill small screens.
+function GateCanvas({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-paper px-6 py-10">
+      <div className="flex w-full max-w-[380px] flex-col items-center gap-2 rounded-md border-[3px] border-ink bg-paper px-[30px] py-[34px] shadow-memphis-2xl">
+        {children}
+      </div>
     </div>
   );
+}
+
+// Sky icon chip (CD 03B) — the participant identity tone.
+function LockChip() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-[60px] w-[60px] items-center justify-center rounded-sm border-2 border-ink bg-sky shadow-memphis-sm"
+      style={{ fontSize: 28 }}
+    >
+      🔒
+    </span>
+  );
+}
+
+function GateHeader({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 text-center">
+      <h1
+        className="text-ink"
+        style={{ fontFamily: OUTFIT, fontWeight: 800, fontSize: 22, letterSpacing: '-0.4px' }}
+      >
+        {title}
+      </h1>
+      <p className="text-lg leading-relaxed text-mute">{body}</p>
+    </div>
+  );
+}
+
+function ErrorNote({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm text-warning">{children}</p>;
 }
