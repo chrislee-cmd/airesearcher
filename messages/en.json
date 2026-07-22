@@ -2647,6 +2647,14 @@
       "cancel": "Cancel",
       "add": "Add"
     },
+    "fv": {
+      "personaBuilding": "Participant persona · building live",
+      "thinkingHeader": "AI thinking stream",
+      "spotlightHint": "High-importance questions appear full-screen as a spotlight →",
+      "historyHeader": "Question history",
+      "spotlightAutosave": "Auto-saves to history after 15s · hover to pause",
+      "projectFallback": "Project"
+    },
     "canvasBody": {
       "liveHint": "Session in progress · check the AI reasoning and suggested questions in full view",
       "startHint": "Start a session",

@@ -2740,6 +2740,14 @@
       "cancel": "キャンセル",
       "add": "追加"
     },
+    "fv": {
+      "personaBuilding": "回答者ペルソナ · リアルタイム生成中",
+      "thinkingHeader": "AI の思考ストリーム",
+      "spotlightHint": "重要度の高い質問は全画面のスポットライトで表示されます →",
+      "historyHeader": "質問履歴",
+      "spotlightAutosave": "15秒後に履歴へ自動保存 · カーソルを合わせると一時停止",
+      "projectFallback": "プロジェクト"
+    },
     "canvasBody": {
       "liveHint": "セッション進行中 · フルビューでAIの推論と提案された質問をご確認ください",
       "startHint": "セッションを開始する",
