@@ -446,11 +446,6 @@ export function CanvasBoard({
   const [fullviewSlotEl, setFullviewSlotEl] = useState<HTMLElement | null>(
     null,
   );
-  // 풀뷰 V2 (fullviewV2) 셸 헤더 안 위젯-주입 portal 대상 — 좌(타이틀 옆 pill) /
-  // 우(닫기✕ 왼쪽 상태 chip·End-session). V2 셸이 마운트될 때만 non-null.
-  const [headerStartEl, setHeaderStartEl] = useState<HTMLElement | null>(null);
-  const [headerEndEl, setHeaderEndEl] = useState<HTMLElement | null>(null);
-
   // ── 뷰 모드 (캔버스 ⇄ 리스트) ────────────────────────────────────────
   // 라이트/다크처럼 유저 선호 뷰. 'list' 면 캔버스 보드 대신 좌 SidebarNav +
   // 우 단일 위젯 상세(fullview 셸의 풀페이지 버전)를 렌더한다.
@@ -500,9 +495,6 @@ export function CanvasBoard({
       open: isList ? true : fullviewOpen,
       // 리스트 모드면 상세 slot, 캔버스 모드면 모달 slot.
       slotEl: isList ? listSlotEl : fullviewSlotEl,
-      // 헤더 portal 대상 — V2 셸(캔버스 모드)에서만 non-null. 리스트/레거시는 null.
-      headerStartEl: isList ? null : headerStartEl,
-      headerEndEl: isList ? null : headerEndEl,
       chrome: (isList ? 'page' : 'modal') as 'page' | 'modal',
       openFullview,
       switchTo: switchFullview,
@@ -514,8 +506,6 @@ export function CanvasBoard({
       listSlotEl,
       fullviewOpen,
       fullviewSlotEl,
-      headerStartEl,
-      headerEndEl,
       openFullview,
       switchFullview,
       closeFullview,
@@ -1307,12 +1297,6 @@ export function CanvasBoard({
             title={resolveWidgetLabel(tRoot, currentWidget.meta)}
             tone={`var(--widget-header-bg-${currentWidget.meta.accent})`}
             onClose={closeFullview}
-            // 위젯-주입 slot — 셸은 밴드/타이틀/닫기만, 위젯(probing)이 pill·chip·
-            // End-session 을 renderInHeaderStart/End 로 portal (fullview-shell-context).
-            projectPill={
-              <span ref={setHeaderStartEl} className="contents" />
-            }
-            actions={<span ref={setHeaderEndEl} className="contents" />}
           />
         }
       >
