@@ -3044,6 +3044,8 @@
     "gateSubmit": "続ける",
     "gateVerifying": "確認中…",
     "gateError": "一致しません。もう一度ご確認ください。",
-    "gateRateLimited": "試行回数が多すぎます。しばらくしてからもう一度お試しください。"
+    "gateRateLimited": "試行回数が多すぎます。しばらくしてからもう一度お試しください。",
+    "gateNoPhoneTitle": "このリンクは開けません",
+    "gateNoPhoneBody": "本人確認に使用する電話番号が登録されていません。リンクを共有した担当者にお問い合わせください。"
   }
 }

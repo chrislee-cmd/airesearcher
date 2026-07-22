@@ -33,9 +33,15 @@ export async function POST(
   const { admin, candidate } = gate;
 
   // Same phone-tail gate as the read route — a leaked link can't post either.
+  // No phone on file → 'blocked' (distinct code); missing/invalid cookie →
+  // 'required'.
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(participantGateCookieName(token))?.value;
-  if (participantGateStatus(candidate.phone, token, cookieValue) === 'required') {
+  const gateStatus = participantGateStatus(candidate.phone, token, cookieValue);
+  if (gateStatus === 'blocked') {
+    return NextResponse.json({ error: 'gate_no_phone' }, { status: 401 });
+  }
+  if (gateStatus === 'required') {
     return NextResponse.json({ error: 'gate_required' }, { status: 401 });
   }
 

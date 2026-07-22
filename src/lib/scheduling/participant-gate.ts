@@ -3,8 +3,9 @@
 //
 // 왜 필요한가: 665 의 participant_token 은 "후보자 1명 스코프"(서버 service-role)
 // 이라 다른 후보자 데이터는 새지 않지만, 링크만 있으면 누구나 그 후보자 것을
-// 본다. 이 게이트는 진입 시 candidate.phone 뒷자리 4자리를 대조해 "링크 소지 =
-// 열람"을 "본인 = 열람"으로 좁힌다(링크 유출 방어).
+// 본다. 이 게이트는 진입 시 candidate.phone 뒷자리 6자리를 대조해 "링크 소지 =
+// 열람"을 "본인 = 열람"으로 좁힌다(링크 유출 방어). 전화 미등록 후보는 대조할
+// 시크릿이 없어 진입 차단('blocked') — 뒷자리 게이트 필수화.
 //
 // 🔒 보안:
 //   * 서명 키는 서버 전용 SUPABASE_SERVICE_ROLE_KEY (클라 노출 없음).
@@ -20,8 +21,8 @@ import { env } from '@/env';
 /** 게이트 통과 후 재열람 허용 창(분). 짧게 — 링크 공유는 세션이 아니다. */
 export const PARTICIPANT_GATE_TTL_MIN = 30;
 
-/** 대조하는 전화 뒷자리 길이. */
-export const PHONE_TAIL_LEN = 4;
+/** 대조하는 전화 뒷자리 길이. 표시는 ##-#### 로 그루핑(입력은 숫자 6자리). */
+export const PHONE_TAIL_LEN = 6;
 
 /** 쿠키 이름 — token 별로 분리해 여러 링크가 서로 덮어쓰지 않게 한다. */
 export function participantGateCookieName(token: string): string {
@@ -108,9 +109,9 @@ export function verifyParticipantGate(
 
 /**
  * 이 후보자에 대해 게이트를 강제해야 하는가 + 통과했는가.
- *   * 전화 미등록(tail null) → 대조할 시크릿이 없으므로 게이트 미강제('pass').
- *     token 스코프(665)가 유일한 보호막으로 남는다. (spec §제약 명시 기본값:
- *     phone null 이면 토큰만으로 진입 허용.)
+ *   * 전화 미등록(tail null) → 대조할 시크릿이 없어 본인 확인 불가 → 'blocked'.
+ *     전화 없는 후보는 진입 자체를 막는다(2026-07-22 정책 반전: 예전엔 토큰만으로
+ *     통과시켰으나, 뒷자리 게이트 필수화로 전화 미등록 = 차단).
  *   * 전화 등록 + 유효 쿠키 → 'pass'.
  *   * 전화 등록 + 쿠키 없음/무효 → 'required'(뒷자리 화면).
  */
@@ -118,7 +119,7 @@ export function participantGateStatus(
   candidatePhone: string | null | undefined,
   token: string,
   cookieValue: string | undefined,
-): 'pass' | 'required' {
-  if (!phoneTail(candidatePhone)) return 'pass';
+): 'pass' | 'required' | 'blocked' {
+  if (!phoneTail(candidatePhone)) return 'blocked';
   return verifyParticipantGate(token, cookieValue) ? 'pass' : 'required';
 }
