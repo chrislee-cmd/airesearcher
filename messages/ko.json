@@ -1325,6 +1325,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "섹션",
+      "judgmentLog": "AI 판단 로그",
+      "expandedKeywords": "확장된 유사 키워드",
+      "toExplore": "더 살펴볼 것:",
+      "jobSelectAria": "이전 산출물 선택",
+      "loading": "불러오는 중",
+      "loadFailedTitle": "리포트를 불러오지 못했습니다",
+      "loadFailedDesc": "네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
+      "notDoneTitle": "이 산출물은 완료되지 않았습니다",
+      "notDoneDesc": "위 드롭다운에서 완료된 다른 산출물을 선택해 주세요.",
+      "emptyTitle": "아직 완료된 리포트가 없습니다",
+      "emptyDesc": "검색을 실행하면 결과 리포트를 여기서 볼 수 있어요.",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "주제",
+        "value": "수치",
+        "source": "출처",
+        "tier": "tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "프로젝트",

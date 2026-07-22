@@ -1415,6 +1415,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "ส่วน",
+      "judgmentLog": "บันทึกการตัดสินของ AI",
+      "expandedKeywords": "คีย์เวิร์ดที่ขยายเพิ่ม",
+      "toExplore": "สิ่งที่ควรสำรวจเพิ่ม:",
+      "jobSelectAria": "เลือกผลลัพธ์ก่อนหน้า",
+      "loading": "กำลังโหลด",
+      "loadFailedTitle": "โหลดรายงานไม่สำเร็จ",
+      "loadFailedDesc": "ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+      "notDoneTitle": "งานนี้ยังไม่เสร็จ",
+      "notDoneDesc": "เลือกผลลัพธ์ที่เสร็จแล้วจากรายการด้านบน",
+      "emptyTitle": "ยังไม่มีรายงานที่เสร็จ",
+      "emptyDesc": "เรียกใช้การค้นหาเพื่อดูรายงานที่นี่",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "หัวข้อ",
+        "value": "ค่า",
+        "source": "แหล่งที่มา",
+        "tier": "tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "โปรเจกต์",
