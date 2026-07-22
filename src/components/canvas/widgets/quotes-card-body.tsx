@@ -1150,7 +1150,7 @@ export function QuotesCardBody() {
   // 주입한다(드롭/클릭 → startUploads → language-confirm → 업로드+자동 전사).
   const renderControls = () => (
     <>
-      <ControlBoardPanel.Region>
+      <ControlBoardPanel.Region fill>
         <TranscriptSetupAccordion
           projectId={projectId}
           onProjectChange={(id) => setSelection('quotes', id)}
@@ -1204,7 +1204,7 @@ export function QuotesCardBody() {
             항상 노출. idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에
             띄워 통일 launcher 룩 (데스크/프로빙 기준 — 사용자 결정 2026-07-06).
             active 진입 시 상단 고정 + 아래 산출물. */}
-        <ControlBoardPanel active={phase === 'active'} gap="field">
+        <ControlBoardPanel active={phase === 'active'} gap="field" fill>
           {revealFlowActive ? (
               // active: 컨트롤+CTA 완전 대체 → StageFlow 공정 플로우차트 hero
               // (사용자 결정 3, 데스크 미러). 좁은 카드 대응 vertical. per-file
