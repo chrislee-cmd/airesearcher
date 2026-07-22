@@ -45,6 +45,12 @@ type Props = {
   // 자기 이름으로 덮어써 인스펙터에 정확한 primitive 를 노출한다. Button 의
   // dsPrimitive override 패턴과 동일.
   dsPrimitive?: string;
+  // Bare 모드 — 패널의 자체 border/bg/shadow/rounded/overflow + 헤더/본문/
+  // 푸터 chrome 을 전부 걷어내고 positioning·sizing·transition·a11y·메커니즘
+  // (Esc·backdrop·scroll-lock·focus)만 남긴다. children 이 프레임 비주얼을
+  // 통째로 소유(예: FullviewShell §F1 프레임 — fv-frame-shadow/surface-canvas).
+  // 미지정(기본 false)이면 기존 동작 그대로 → 모든 소비자 회귀 0.
+  bare?: boolean;
 };
 
 const SIZE: Record<Size, string> = {
@@ -79,6 +85,7 @@ export function Modal({
   dismissOnBackdrop = true,
   labelledBy,
   dsPrimitive = 'Modal',
+  bare = false,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -187,19 +194,25 @@ export function Modal({
           // flex-col + max-h: 본문이 viewport 보다 길어지면 패널이 잘리지
           // 않고 본문만 스크롤. (이전엔 overflow-hidden 만 있고 max-h 가
           // 없어서 화면 위아래로 spill 한 버그)
-          'relative flex w-full flex-col overflow-hidden border-[3px] border-ink bg-paper',
+          'relative flex w-full flex-col',
+          // bare: 패널 자체 border/bg/shadow/rounded/overflow + max-h 를 모두
+          // 걷어낸다 — children(셸 프레임)이 유일한 비주얼 박스가 되고 프레임
+          // 그림자가 패널에 clip 되지 않는다.
+          bare ? '' : 'overflow-hidden border-[3px] border-ink bg-paper',
           // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide / 우측 드로어는
           // 자체적으로 h-screen / h-[90vh] / h-full 을 직접 잡는다.
-          size === 'full' || size === 'wide' || side === 'right'
+          bare || size === 'full' || size === 'wide' || side === 'right'
             ? ''
             : 'max-h-[calc(100vh-2rem)]',
           // Memphis 외곽: 3px 검정 border + 8px offset 검정 그림자. full size 와
           // 우측 드로어는 edge 에 붙어 모서리·그림자 잘림 회피 위해 각지게.
-          side === 'right'
-            ? 'h-full rounded-none'
-            : size === 'full'
-              ? 'rounded-none'
-              : 'rounded-sm shadow-memphis-2xl',
+          bare
+            ? ''
+            : side === 'right'
+              ? 'h-full rounded-none'
+              : size === 'full'
+                ? 'rounded-none'
+                : 'rounded-sm shadow-memphis-2xl',
           // Enter/leave: 우측 드로어는 오른쪽에서 슬라이드, 그 외는 중앙 scale+fade.
           // reduced-motion drops the transition so it snaps to the final state.
           reduced ? '' : 'transition-[transform,opacity] duration-[180ms] ease-out',
@@ -213,6 +226,12 @@ export function Modal({
           side === 'right' ? DRAWER_WIDTH : SIZE[size],
         ].join(' ')}
       >
+        {bare ? (
+          // bare: chrome 없이 children 이 패널을 통째로 소유. h-full 로 채워
+          // 프레임이 90vh 슬롯을 정확히 채운다.
+          <div className="flex h-full w-full min-h-0 flex-col">{children}</div>
+        ) : (
+          <>
         {(title || description) && (
           <header className="shrink-0 border-b-[2px] border-ink px-5 pb-3 pt-4">
             {title ? (
@@ -248,6 +267,8 @@ export function Modal({
             {footer}
           </footer>
         ) : null}
+          </>
+        )}
       </div>
     </div>,
     document.body,
