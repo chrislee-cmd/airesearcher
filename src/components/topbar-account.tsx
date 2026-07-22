@@ -376,6 +376,15 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
               >
                 {t('adminRecruitingInvitations')}
               </PopoverLink>
+              <PopoverLink
+                href="/admin/recruiting-scheduling"
+                onClick={() => {
+                  track('admin_recruiting_scheduling_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminRecruitingScheduling')}
+              </PopoverLink>
             </>
           )}
           <div className="my-1 h-px bg-line-soft" />
