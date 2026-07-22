@@ -43,6 +43,17 @@ type FullviewShellApi = {
   chrome?: 'modal' | 'page';
   /** 위젯 본문이 portal 할 대상 DOM. 모달이 열렸을 때만 non-null. */
   slotEl: HTMLElement | null;
+  /**
+   * 풀뷰 V2 (fullviewV2) 셸 헤더 스캐폴드의 위젯-주입 slot (FullviewHeader §F3).
+   * 셸은 밴드/타이틀/톤/닫기✕ 를 소유하고, 위젯 종속 액션만 이 두 slot 으로
+   * 주입한다 ("셸은 스캐폴드"):
+   *   - headerStartEl → 타이틀 옆(좌 flex-1 영역) — 프로젝트 pill.
+   *   - headerEndEl   → 우측 클러스터(닫기✕ 왼쪽) — 상태 chip · End-session.
+   * 레거시 모달 / 리스트 모드에서는 둘 다 null — 그 경로는 위젯 본문의
+   * WidgetFullviewPanel 이 자체 헤더를 소유하므로 이 slot 을 쓰지 않는다.
+   */
+  headerStartEl?: HTMLElement | null;
+  headerEndEl?: HTMLElement | null;
   /** 위젯 전체보기 열기 (카드 "전체 보기" 버튼 / deep-link). */
   openFullview: (key: string) => void;
   /** 사이드바에서 다른 위젯으로 전환 (모달 유지). */
@@ -72,6 +83,14 @@ export function FullviewShellProvider({
 export function useFullview(widgetKey: string): {
   isCurrent: boolean;
   renderInSlot: (node: ReactNode) => ReactNode;
+  /**
+   * 풀뷰 V2 헤더 좌측(타이틀 옆)으로 portal — 프로젝트 pill.
+   * headerStartEl 이 없는 경로(레거시 / 리스트)에서는 null 을 돌려주므로 위젯은
+   * 결과를 그대로 렌더해도 안전하다.
+   */
+  renderInHeaderStart: (node: ReactNode) => ReactNode;
+  /** 풀뷰 V2 헤더 우측(닫기✕ 왼쪽)으로 portal — 상태 chip · End-session. */
+  renderInHeaderEnd: (node: ReactNode) => ReactNode;
   /** 이 위젯의 전체보기 modal 열기 (카드 안 완료 CTA / 진입점용). */
   openFullview: () => void;
   close: () => void;
@@ -79,11 +98,19 @@ export function useFullview(widgetKey: string): {
   const ctx = useContext(FullviewShellContext);
   const isCurrent = !!ctx && ctx.open && ctx.currentKey === widgetKey;
   const slotEl = ctx?.slotEl ?? null;
+  const headerStartEl = ctx?.headerStartEl ?? null;
+  const headerEndEl = ctx?.headerEndEl ?? null;
   const renderInSlot = (node: ReactNode): ReactNode =>
     isCurrent && slotEl ? createPortal(node, slotEl) : null;
+  const renderInHeaderStart = (node: ReactNode): ReactNode =>
+    isCurrent && headerStartEl ? createPortal(node, headerStartEl) : null;
+  const renderInHeaderEnd = (node: ReactNode): ReactNode =>
+    isCurrent && headerEndEl ? createPortal(node, headerEndEl) : null;
   return {
     isCurrent,
     renderInSlot,
+    renderInHeaderStart,
+    renderInHeaderEnd,
     openFullview: ctx ? () => ctx.openFullview(widgetKey) : () => {},
     close: ctx?.close ?? (() => {}),
   };
