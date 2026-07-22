@@ -28,6 +28,11 @@ export const moderatorAiCard: WidgetContent = {
     // (expandedRows 미지정=1 → 604×900 카드가 2×2 큰 셀에 떠 하단 공백 나지 않음).
     expandedCols: 3,
     cardFrame: true,
+    // 풀뷰 V2 opt-in (pr-fullview-aiut) — 캔버스 전체보기를 레거시 모달 대신 공유
+    // FullviewShell(프레임+사이드바+헤더 §F1~F3)로 렌더. body = fresh
+    // AiutLiveMonitor(state 06)·AiutReviewReport(state 07). CD 미도시 표면
+    // (세팅/공유대기/로컬녹화)은 기존 본문 유지(회귀 0).
+    fullviewV2: true,
   },
   state: 'idle',
   ExpandedBody: UtSessionBody,

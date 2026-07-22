@@ -139,7 +139,34 @@
     "fullview": {
       "reviewTitle": "AI UT · Review",
       "reviewBadge": "Post-session review",
-      "reviewMeta": "{count} participant · {duration} · PREVIEW"
+      "reviewMeta": "{count} participant · {duration} · PREVIEW",
+      "projectFallback": "No project"
+    },
+    "fv": {
+      "live": {
+        "thinkAloud": "Think-aloud stream",
+        "thinkAloudWaiting": "Waiting for participant speech…",
+        "urlPlaceholder": "Target URL",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "Waiting for participant screen",
+        "recTag": "REC",
+        "micOn": "mic on",
+        "cursorTracked": "cursor tracked",
+        "taskLabel": "Assigned task",
+        "taskEmpty": "No task assigned",
+        "endSession": "End session"
+      },
+      "review": {
+        "insightReport": "Insight report",
+        "taskHeading": "Task: {task}",
+        "taskFallback": "No task assigned",
+        "insightRunning": "Generating insight report…",
+        "keyClips": "Key clips · {count}",
+        "behavioralMetrics": "Behavioral metrics",
+        "estimatedMeta": "(estimated · {pct}% confidence)",
+        "utteranceLog": "Full utterance log",
+        "turns": "{turns} turns"
+      }
     },
     "unsupported": "This browser doesn't support screen-share recording. Please use a recent desktop browser such as Chrome or Edge.",
     "result": {

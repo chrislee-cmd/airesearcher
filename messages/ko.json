@@ -139,7 +139,34 @@
     "fullview": {
       "reviewTitle": "AI UT · 리뷰",
       "reviewBadge": "세션 후 리뷰",
-      "reviewMeta": "참가자 {count}명 · {duration} · PREVIEW"
+      "reviewMeta": "참가자 {count}명 · {duration} · PREVIEW",
+      "projectFallback": "프로젝트 미선택"
+    },
+    "fv": {
+      "live": {
+        "thinkAloud": "생각 말하기 스트림",
+        "thinkAloudWaiting": "참가자 발화를 기다리는 중…",
+        "urlPlaceholder": "대상 URL",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "참가자 화면 대기 중",
+        "recTag": "REC",
+        "micOn": "마이크 켜짐",
+        "cursorTracked": "커서 추적 중",
+        "taskLabel": "지정된 과제",
+        "taskEmpty": "지정된 과제 없음",
+        "endSession": "세션 종료"
+      },
+      "review": {
+        "insightReport": "인사이트 리포트",
+        "taskHeading": "과제: {task}",
+        "taskFallback": "지정된 과제 없음",
+        "insightRunning": "인사이트 리포트 생성 중…",
+        "keyClips": "핵심 클립 · {count}",
+        "behavioralMetrics": "행동 메트릭",
+        "estimatedMeta": "(추정 · 신뢰도 {pct}%)",
+        "utteranceLog": "발화 전문 로그",
+        "turns": "{turns}턴"
+      }
     },
     "unsupported": "이 브라우저는 화면 공유 녹화를 지원하지 않아요. 데스크톱 Chrome·Edge 등 최신 브라우저에서 이용해 주세요.",
     "result": {
