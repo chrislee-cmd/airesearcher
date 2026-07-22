@@ -553,6 +553,7 @@ export function RecruitingSchedulingClient({
       : null;
     setEditorBatchId(cand?.batch_id ?? activeCalendarGroupId);
     setDraft({
+      mode: 'individual',
       title: '',
       candidateId: candidateId ?? '',
       startLocal: toLocalInputValue(base.toISOString()),
@@ -568,6 +569,7 @@ export function RecruitingSchedulingClient({
     setEditorBatchId(slot.batch_id ?? activeCalendarGroupId);
     setDraft({
       id: slot.id,
+      mode: 'individual',
       title: slot.title ?? '',
       candidateId: slot.candidate_id ?? '',
       startLocal: toLocalInputValue(slot.start_at),
@@ -615,6 +617,9 @@ export function RecruitingSchedulingClient({
   );
 
   const currentGroup = groups.find((g) => g.id === activeCalendarGroupId) ?? null;
+  // Batch name shown in the slot editor's group-mode helper.
+  const editorGroupName =
+    groups.find((g) => g.id === editorBatchId)?.title ?? '';
 
   // Move targets = existing assignment groups (not the inbox pool).
   const assignBatchOptions = [
@@ -1231,6 +1236,7 @@ export function RecruitingSchedulingClient({
         draft={draft}
         candidates={editorCandidateOptions}
         batchId={editorBatchId}
+        groupName={editorGroupName}
         allSlots={editorSlots}
         onSaved={onSaved}
       />
