@@ -2187,9 +2187,11 @@ function ExpandedBody() {
           // 전체보기 QuestionPane 에만. footer(좌 Session in progress · 우
           // End session)는 유지 — 세션/캡처 로직 회귀 0(본문 표시만 교체).
           if (isLive) {
-            // Back to setup 비파괴 토글 — 세팅 뷰(세션-잠금, 세션 계속). controlPanel
-            // 이 자체 stop 버튼/상태 footer 를 포함하므로 종료 경로 유지. 상단
-            // 얇은 스트립의 "← 전체보기 유도로" 로 다시 prompt 로 토글.
+            // Back to setup 비파괴 토글 — 세팅 뷰(세션-잠금, 세션 계속). CD V2 정합:
+            // 옛 평면 컨트롤(ProbingControlPanel) 대신 idle 과 동일한 셋업 아코디언
+            // (ProbingSetupAccordion) 을 미러 렌더 → back-to-setup 이 CD `PA_closed`
+            // (접힘 요약 아코디언) 로 뜬다. 종료(stop)는 상단 얇은 스트립의
+            // "← 전체보기 유도로" 로 prompt 뷰(footer 에 End session)로 복귀해 수행.
             if (setupPeek) {
               return (
                 <>
@@ -2202,8 +2204,26 @@ function ExpandedBody() {
                       {t('live.backToPrompt')}
                     </Button>
                   </div>
-                  <ControlBoardPanel active gap="field">
-                    {controlPanel}
+                  <ControlBoardPanel active gap="none">
+                    <ControlBoardPanel.Region fill>
+                      <ProbingSetupAccordion
+                        projectId={selectedProjectId}
+                        onProjectChange={(id) => setSelection('probing', id)}
+                        source={source}
+                        onSourceChange={setSource}
+                        outputLang={outputLang}
+                        onOutputLangChange={setOutputLang}
+                        questions={context.injected_questions}
+                        onQuestionsChange={(next) =>
+                          setContext((prev) => ({
+                            ...prev,
+                            injected_questions: next,
+                          }))
+                        }
+                        questionDraft={questionDraft}
+                        onQuestionDraftChange={setQuestionDraft}
+                      />
+                    </ControlBoardPanel.Region>
                   </ControlBoardPanel>
                 </>
               );

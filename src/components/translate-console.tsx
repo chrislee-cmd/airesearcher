@@ -4706,14 +4706,21 @@ export function TranslateConsole({
               </Button>
             </div>
           ) : null}
-          {/* 컨트롤 패널 — live/ending/ended. 손코딩 상단 바 제거, idle 과
-              동일한 ControlBoardPanel active 프레임 경유(상태 불변 — idle→active
-              프레임/컨트롤 위치 픽셀 불변). 부모 패딩 0 → ControlBoardPanel 이
-              카드 상단·좌우 끝에서 시작하고 divider(border-b, active 소유)가 전폭
-              (타 5위젯과 동일 경로 — 음수 마진 상쇄 불필요). 컨트롤 아래 출력부
-              (공유/프롬프터/녹음)는 자체 px-5 로 좌우 여백을 소유(데스크/쿼트 출력부
-              미러). 세션 중(live)엔 언어·모드·Glossary 변경 불가(결정 3) 라 필드는
-              disabled + 안내, CTA 는 🚀 세션 시작 → 정지 전환. */}
+          {/* 컨트롤 패널 — live(=setupPeek) / ending / ended. 이 else 분기는
+              live+setupPeek 과 ended/ending 을 공유한다(위 `live && !setupPeek` 는
+              풀뷰 유도로 분기됨). 따라서 여기서 `live` == `live && setupPeek`.
+              ── setupPeek(back-to-setup): CD V2 정합으로 옛 평면 controlFields 대신
+                 idle 과 동일한 셋업 아코디언(setupAccordionEl)을 미러 렌더 →
+                 CD `LI_closed`(접힘 요약). 세션 계속·값 유지. 종료(stop)는 상단
+                 스트립 "← 전체보기 유도로" 로 프롬프트 뷰(footer 종료)에서 수행.
+              ── ended/ending(!live): 기존 controlFields 평면 클러스터 + 다음 세션
+                 🚀 시작 CTA 그대로 유지(회귀 0). 컨트롤 아래 출력부(공유/프롬프터/
+                 녹음)는 자체 px-5 로 좌우 여백 소유. */}
+          {live ? (
+            <ControlBoardPanel active gap="none">
+              {setupAccordionEl}
+            </ControlBoardPanel>
+          ) : (
           <ControlBoardPanel active gap="field">
               {controlFields}
 
@@ -4802,6 +4809,7 @@ export function TranslateConsole({
                 </ControlBoardPanel.Action>
               )}
           </ControlBoardPanel>
+          )}
 
           {/* 컨트롤 아래 출력부 — 수평 여백·클러스터(컨트롤 좌측 정합)는
               WidgetOutputRegion SSOT. 전사록/데스크와 동일 클러스터라 넓은
