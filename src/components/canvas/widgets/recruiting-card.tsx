@@ -10,9 +10,7 @@ import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu } from '@/components/ui/dropdown-menu';
-import { ControlTrigger } from '@/components/ui/control-trigger';
+import { useActiveProject } from '@/components/active-project-provider';
 import { ControlBoardPanel } from '../shell/control-board-panel';
 import { WidgetPrimaryCta } from '../shell/widget-primary-cta';
 import { useWidgetState } from '../shell/widget-state-context';
@@ -24,18 +22,13 @@ import {
 import { applyStandardBlocks } from '@/lib/recruiting/survey-postprocess';
 import type { RecruitingBrief } from '@/lib/recruiting-schema';
 import type { Survey } from '@/lib/survey-schema';
-import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 import { WidgetStatusFooter } from '../shell/widget-status-footer';
-import { Banner } from '../shell/banner';
 import {
   ResponsesSpreadsheet,
-  selectorLabel,
   type FormSummary,
 } from './recruiting/responses-spreadsheet';
-import { JudgedListTable } from './recruiting/judged-list-table';
-import { RecruitingConditionsPanel } from './recruiting/conditions-panel';
-import { RecruitingDistributionPanel } from './recruiting/distribution-panel';
+import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
 import {
   clearDraft,
   loadDraft,
@@ -66,6 +59,7 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
+  const { active: activeProject } = useActiveProject();
   // Published state emitted by the wizard. When true, the card shows the
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
@@ -235,170 +229,49 @@ function ExpandedBody() {
           onClick={handleRecruitingFullview}
         />
       )}
+      {/* 풀뷰 V2 (fullviewV2) — CD state 08 fresh 본문. 공유 FullviewShell 이
+          프레임/사이드바/헤더 스캐폴드를 소유하고, 이 본문이 slot 으로 portal
+          된다(헤더 액션은 §F3 header slot 으로 주입). 데이터 SSOT =
+          ResponsesSpreadsheet(rawTabContent 으로 마운트 유지 → 좌측 패널 공급
+          + "전체 데이터" 탭). 상태/로직은 위 host 가 그대로 소유. */}
       {renderInSlot(
-        <WidgetFullviewPanel
-          title="리크루팅 — 응답"
-          subtitle="참여자 조건 · 분포 · 응답 spreadsheet"
-          onClose={close}
-          headerAction={
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleDownloadCsv}
-                disabled={!hasResponses}
-                title="응답 전체를 CSV 로 내려받습니다 (이름·전화 등 개인정보 제외)"
-              >
-                CSV 다운로드
-              </Button>
-              <Button variant="secondary" size="sm" onClick={handleRefresh}>
-                새로고침
-              </Button>
-            </div>
+        <RecruitingFullviewBody
+          projectName={activeProject?.name ?? null}
+          conditionsForPanel={conditionsForPanel}
+          criteriaPersistMissing={criteriaPersistMissing}
+          onCriteriaRepublish={handleCriteriaRepublish}
+          responseData={responseData}
+          responsesLoading={responsesLoading}
+          formsLoading={formsLoading}
+          hasForm={selectedForm != null}
+          filterableQuestions={filterableQuestions}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+          forms={forms}
+          activeFormId={activeFormId}
+          onSelectFormId={setActiveFormId}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          judgeRefreshSignal={judgeRefreshSignal}
+          hasResponses={hasResponses}
+          onDownloadCsv={handleDownloadCsv}
+          onRefresh={handleRefresh}
+          rawTabContent={
+            <ResponsesSpreadsheet
+              selectedFormId={activeFormId}
+              onSelectFormId={setActiveFormId}
+              onFormsChange={handleFormsChange}
+              hideSelector
+              onSelectedFormChange={setSelectedForm}
+              onFormsLoadingChange={setFormsLoading}
+              onRegisterRefresh={registerResponsesRefresh}
+              filter={activeFilter}
+              onFilterableQuestionsChange={setFilterableQuestions}
+              onResponsesChange={setResponseData}
+              onResponsesLoadingChange={setResponsesLoading}
+            />
           }
-        >
-          {/* 좌우 2패널 — 좌: 참여자 조건(위) + 분포 통계(아래) 세로,
-              우: 응답 spreadsheet 테이블만. (발행 폼 드롭다운·필터 wire 는
-              main 아키텍처 그대로 — spreadsheet 이 폼/응답 SSOT, 분포는
-              lift 된 responseData 에서 파생.) */}
-          <div className="flex h-full min-h-0 flex-col">
-            {criteriaPersistMissing && (
-              <Banner tone="warning" divider="none">
-                {tWidgets('recruitingCriteriaEmptyBanner')}
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="ml-1 px-0"
-                  onClick={handleCriteriaRepublish}
-                >
-                  {tWidgets('recruitingCriteriaEmptyBannerCta')}
-                </Button>
-              </Banner>
-            )}
-            <div className="flex min-h-0 flex-1">
-              {/* 좌측 패널 = 참여자 조건(위) + 분포 통계(아래) 세로 스택.
-                  조건은 고정 높이, 분포는 내용 크기에 맞춘 auto height(빈 공간 X).
-                  둘 합이 패널보다 커지면 좌측 컬럼이 세로 스크롤. */}
-              <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-line-soft p-4">
-                <div className="h-[240px] shrink-0">
-                  <RecruitingConditionsPanel brief={conditionsForPanel} />
-                </div>
-                {/* 분포 위젯 = 내용 크기에 맞춤(auto height, 패널 자체 min 만 유지).
-                    옛 flex-1 은 짧은 테이블에서도 좌측 컬럼 남은 공간을 다 채워
-                    white space 가 생겼다 — shrink-0 으로 테이블 크기에 fit. */}
-                <div className="shrink-0">
-                  <RecruitingDistributionPanel
-                    columns={responseData?.columns ?? []}
-                    rows={responseData?.rows ?? []}
-                    loading={responsesLoading}
-                    formsLoading={formsLoading}
-                    hasForm={selectedForm != null}
-                    filterableQuestions={filterableQuestions}
-                    filter={activeFilter}
-                    onFilterChange={setActiveFilter}
-                  />
-                </div>
-              </div>
-
-              {/* 우측 패널 = 공유 폼 셀렉터 + 탭(요약 default / 전체 데이터).
-                  ResponsesSpreadsheet 은 raw 탭이 아닐 때도 항상 마운트해 둔다 —
-                  좌측 조건/분포 패널이 이 컴포넌트가 lift 하는 선택 폼·응답에
-                  의존하므로(요약 탭이 default 여도 좌측이 살아 있어야 함). 요약
-                  탭일 땐 CSS 로만 숨긴다(unmount X). */}
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-4 py-2">
-                  {forms.length > 0 ? (
-                    // 컨트롤 드롭다운 통일 — native <Select> → DropdownMenu
-                    // (인터뷰 기준). 항목/value/onChange 로직 불변 (spec 결정 3).
-                    <div className="min-w-[240px]">
-                      <DropdownMenu
-                        items={forms.map((f) => ({
-                          key: f.formId,
-                          label: selectorLabel(f),
-                          onSelect: () => setActiveFormId(f.formId),
-                        }))}
-                        trigger={({ open, onClick, ...aria }) => (
-                          <ControlTrigger
-                            {...aria}
-                            data-open={open}
-                            onClick={onClick}
-                            aria-label="설문 선택"
-                          >
-                            {(() => {
-                              const active = forms.find(
-                                (f) => f.formId === activeFormId,
-                              );
-                              return active
-                                ? selectorLabel(active)
-                                : '설문 선택';
-                            })()}
-                          </ControlTrigger>
-                        )}
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-sm text-mute-soft">
-                      발행된 설문 없음
-                    </span>
-                  )}
-                  <div
-                    role="tablist"
-                    aria-label="응답 보기 방식"
-                    className="ml-auto flex items-center gap-1"
-                  >
-                    <Button
-                      variant={activeTab === 'summary' ? 'primary' : 'ghost'}
-                      size="xs"
-                      role="tab"
-                      aria-selected={activeTab === 'summary'}
-                      onClick={() => setActiveTab('summary')}
-                    >
-                      부합도 요약
-                    </Button>
-                    <Button
-                      variant={activeTab === 'raw' ? 'primary' : 'ghost'}
-                      size="xs"
-                      role="tab"
-                      aria-selected={activeTab === 'raw'}
-                      onClick={() => setActiveTab('raw')}
-                    >
-                      전체 데이터
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="relative min-h-0 flex-1">
-                  {/* raw 스프레드시트 — 좌측 패널 데이터 공급 위해 항상 마운트,
-                      요약 탭일 땐 display:none 으로만 숨김. */}
-                  <div className={activeTab === 'raw' ? 'h-full' : 'hidden'}>
-                    <ResponsesSpreadsheet
-                      selectedFormId={activeFormId}
-                      onSelectFormId={setActiveFormId}
-                      onFormsChange={handleFormsChange}
-                      hideSelector
-                      onSelectedFormChange={setSelectedForm}
-                      onFormsLoadingChange={setFormsLoading}
-                      onRegisterRefresh={registerResponsesRefresh}
-                      filter={activeFilter}
-                      onFilterableQuestionsChange={setFilterableQuestions}
-                      onResponsesChange={setResponseData}
-                      onResponsesLoadingChange={setResponsesLoading}
-                    />
-                  </div>
-                  {activeTab === 'summary' && (
-                    <div className="h-full">
-                      <JudgedListTable
-                        formId={activeFormId}
-                        responseData={responseData}
-                        refreshSignal={judgeRefreshSignal}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </WidgetFullviewPanel>,
+        />,
       )}
     </div>
   );
@@ -1096,6 +969,9 @@ export const recruitingCard: WidgetContent = {
     // Canvas 1c 카드 프레임 opt-in — 604×900 카드 + sun 파스텔 헤더밴드 +
     // 통합 툴바(💎10). probing·전사록·통역·UT 와 동일 프레임 상속.
     cardFrame: true,
+    // 풀뷰 V2 opt-in — 전체보기를 공유 <FullviewShell>(프레임+사이드바+헤더
+    // 스캐폴드)로 렌더하고 본문은 CD state 08(RecruitingFullviewBody)로.
+    fullviewV2: true,
   },
   state: 'idle',
   ExpandedBody,
