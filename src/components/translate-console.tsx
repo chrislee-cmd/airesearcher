@@ -47,7 +47,7 @@ import {
   CaptureUseCaseCards,
   type CaptureUseCaseOption,
 } from './ui/capture-usecase-cards';
-import { DuotoneIcon } from './ui/icons/duotone-icon';
+import { DuotoneIcon, type DuotoneIconName } from './ui/icons/duotone-icon';
 import { Field } from './canvas/shell/field';
 import { ControlBoardPanel } from './canvas/shell/control-board-panel';
 import {
@@ -4474,6 +4474,14 @@ export function TranslateConsole({
     : projectName;
   const captureTitle =
     CAPTURE_USECASE_OPTIONS.find((o) => o.id === captureMode)?.title ?? '';
+  // 접힘 요약행 방식 아이콘 = 선택 캡처 방식(mic-only→offline / both→online /
+  // tab-only→observe). CD `IV('offline'|'online'|'observe', …)`.
+  const captureIconName: DuotoneIconName =
+    captureMode === 'both'
+      ? 'online'
+      : captureMode === 'tab-only'
+        ? 'observe'
+        : 'offline';
 
   const setupSteps: AccordionStepConfig[] = [
     {
@@ -4481,6 +4489,7 @@ export function TranslateConsole({
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
       summary: projectSummary,
+      summaryIcon: <DuotoneIcon name="project" size={15} />,
       body: (
         <Field label={t('project')}>
           <ProjectPicker
@@ -4497,6 +4506,7 @@ export function TranslateConsole({
       eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
       title: t('setup.step2Title'),
       summary: captureTitle,
+      summaryIcon: <DuotoneIcon name={captureIconName} size={15} />,
       body: (
         <Field label={tc('sectionLabel')}>
           <CaptureUseCaseCards
@@ -4517,6 +4527,7 @@ export function TranslateConsole({
         sourceLang && targetLang
           ? `${langLabelOf(sourceLang)} → ${langLabelOf(targetLang)}`
           : '',
+      summaryIcon: <DuotoneIcon name="language" size={15} />,
       body: (
         <Field label={t('lang')}>
           <LangDualDropdown
@@ -4541,6 +4552,7 @@ export function TranslateConsole({
       title: t('setup.step4Title'),
       optional: true,
       summary: t('setup.glossarySummary', { count: glossary.length }),
+      summaryIcon: <DuotoneIcon name="keywords" size={15} />,
       body: (
         <GlossaryField
           values={glossary}

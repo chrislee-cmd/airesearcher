@@ -34,7 +34,7 @@ import {
   CaptureUseCaseCards,
   type CaptureUseCaseOption,
 } from '@/components/ui/capture-usecase-cards';
-import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { DuotoneIcon, type DuotoneIconName } from '@/components/ui/icons/duotone-icon';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { UtLanguageSelect } from './ut-language-select';
 import { normalizeTargetUrl } from './use-ut-session';
@@ -102,6 +102,8 @@ export function UtSetupAccordion({
     METHOD_OPTIONS.find((o) => o.id === method)?.title ?? '';
 
   const isGuest = method === 'guest';
+  // 접힘 요약행 방식 아이콘 = 선택 방식(host/guest). CD `IV('guest'|'host', …)`.
+  const methodIconName: DuotoneIconName = isGuest ? 'guest' : 'host';
   const urlValid = normalizeTargetUrl(targetUrl) !== null;
 
   const steps: AccordionStepConfig[] = [
@@ -110,6 +112,7 @@ export function UtSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
       summary: projectName,
+      summaryIcon: <DuotoneIcon name="project" size={15} />,
       body: (
         <Field label={t('setup.step1Short')}>
           <ProjectPicker
@@ -126,6 +129,7 @@ export function UtSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
       title: t('setup.step2Title'),
       summary: methodTitle,
+      summaryIcon: <DuotoneIcon name={methodIconName} size={15} />,
       body: (
         <Field label={t('method.sectionLabel')}>
           <CaptureUseCaseCards
@@ -143,6 +147,7 @@ export function UtSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 3, label: t('setup.step3Short') }),
       title: t('setup.step3Title'),
       summary: t('language.label'),
+      summaryIcon: <DuotoneIcon name="language" size={15} />,
       body: (
         <Field label={t('language.label')}>
           <UtLanguageSelect
@@ -159,6 +164,7 @@ export function UtSetupAccordion({
       summary: isGuest
         ? taskGoal.trim().slice(0, 40) || t('setup.step4Short')
         : targetUrl || t('setup.step4Short'),
+      summaryIcon: <DuotoneIcon name="target" size={15} />,
       body: (
         <div className="flex flex-col gap-4">
           {isGuest && (
