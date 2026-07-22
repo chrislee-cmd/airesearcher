@@ -29,7 +29,8 @@ export type DuotoneIconName =
   | 'diamond' | 'offline' | 'online' | 'observe' | 'mic' | 'minutes'
   | 'host' | 'guest' | 'language' | 'project' | 'questions' | 'keywords'
   | 'target' | 'document' | 'upload' | 'interpret' | 'speakers' | 'typos'
-  | 'polish' | 'link' | 'waiting' | 'start' | 'stop' | 'audio' | 'fullview';
+  | 'polish' | 'link' | 'waiting' | 'start' | 'stop' | 'audio' | 'fullview'
+  | 'search' | 'trend' | 'market';
 
 // f = 듀오톤 채움색. paths(name) 에서 fill 지정된 요소만 채워지고 나머지는
 // 순수 스트로크. mono 모드는 호출부에서 f='none' 을 넘긴다.
@@ -60,6 +61,9 @@ function paths(name: DuotoneIconName, f: string): ReactNode[] {
     case 'stop': return [<rect key={0} x={6} y={6} width={12} height={12} rx={2.5} fill={f} />];
     case 'audio': return [<path key={0} d="M4 9v6h4l5 4V5L8 9z" fill={f} />, <path key={1} d="M16.5 9.5a4 4 0 0 1 0 5" />];
     case 'fullview': return [<path key={0} d="M9 4H4v5" />, <path key={1} d="M4 4l6 6" />, <path key={2} d="M15 20h5v-5" />, <path key={3} d="M20 20l-6-6" />];
+    case 'trend': return [<path key={0} d="M4 16l5-5 4 3 7-8" />, <path key={1} d="M15 6h5v5" />];
+    case 'market': return [<rect key={0} x={4} y={11} width={4} height={8} rx={1} fill={f} />, <rect key={1} x={10} y={7} width={4} height={12} rx={1} fill={f} />, <rect key={2} x={16} y={4} width={4} height={15} rx={1} fill={f} />];
+    case 'search': return [<circle key={0} cx={11} cy={11} r={6} fill={f} />, <path key={1} d="M20 20l-4-4" />];
     default: return [];
   }
 }

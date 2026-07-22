@@ -29,7 +29,7 @@ import {
   TranscriptMethodCards,
   type TranscriptMethodOption,
 } from '@/components/ui/transcript-method-cards';
-import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { DuotoneIcon, type DuotoneIconName } from '@/components/ui/icons/duotone-icon';
 import { LANGUAGES } from '@/lib/transcripts/languages';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 
@@ -94,6 +94,8 @@ export function TranscriptSetupAccordion({
     projects.find((p) => p.id === projectId)?.name ?? t('setup.step1Selected');
   const methodTitle =
     METHOD_OPTIONS.find((o) => o.id === method)?.title ?? '';
+  // 접힘 요약행 방식 아이콘 = 선택 방식에 따라(research→mic / meeting→minutes).
+  const methodIconName: DuotoneIconName = method === 'meeting' ? 'minutes' : 'mic';
 
   const steps: AccordionStepConfig[] = [
     {
@@ -101,6 +103,7 @@ export function TranscriptSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
       summary: projectName,
+      summaryIcon: <DuotoneIcon name="project" size={15} />,
       body: (
         <Field label={t('fieldProject')}>
           <ProjectPicker
@@ -117,6 +120,7 @@ export function TranscriptSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
       title: t('setup.step2Title'),
       summary: methodTitle,
+      summaryIcon: <DuotoneIcon name={methodIconName} size={15} />,
       body: (
         <Field label={t('method.sectionLabel')}>
           <TranscriptMethodCards
@@ -133,6 +137,7 @@ export function TranscriptSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 3, label: t('setup.step3Short') }),
       title: t('setup.step3Title'),
       summary: currentLanguageLabel,
+      summaryIcon: <DuotoneIcon name="language" size={15} />,
       body: (
         <Field label={t('setup.step3Field')}>
           <DropdownMenu
@@ -156,6 +161,7 @@ export function TranscriptSetupAccordion({
       key: 'audio',
       eyebrow: t('setup.stepEyebrow', { n: 4, label: t('setup.step4Short') }),
       title: t('setup.step4Title'),
+      summaryIcon: <DuotoneIcon name="document" size={15} />,
       body: (
         <div className="flex flex-col gap-3">
           {dropzone}

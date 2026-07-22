@@ -58,6 +58,10 @@ export type AccordionStepConfig = {
   title: string;
   // done 상태에서 노출할 값 요약 (예: 프로젝트명 / "한국어 → English").
   summary?: ReactNode;
+  // 접힘 요약행의 값(summary) 앞에 붙는 15px 스트로크 아이콘 (CD `IV(icon,value)`).
+  // 위젯이 스텝별 CD 지정 DuotoneIcon(size=15) 을 넘긴다. 미배선이면 아이콘 없이
+  // 값만 렌더 (하위호환). eyebrow 에는 붙지 않고 값 라인에만 인라인(gap:8).
+  summaryIcon?: ReactNode;
   // 선택 스텝 표식 (예: interpreter 용어집). title 옆 "(선택)" 렌더.
   optional?: boolean;
   // 펼침 상태 바디 (컨트롤). 펼쳐졌을 때만 렌더.
@@ -211,8 +215,15 @@ function AccordionStep({
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <span className="flex min-w-0 flex-col">
               <span className="text-xs text-mute">{config.eyebrow}</span>
-              <span className="truncate text-sm font-semibold text-ink">
-                {config.summary}
+              {/* CD `IV(icon,value)`: 15px 스트로크 아이콘 + gap:8 + 값. 아이콘은
+                  값(summary) 라인에만 인라인 — eyebrow 엔 안 붙음. */}
+              <span className="flex min-w-0 items-center gap-2">
+                {config.summaryIcon && (
+                  <span className="shrink-0">{config.summaryIcon}</span>
+                )}
+                <span className="truncate text-sm font-semibold text-ink">
+                  {config.summary}
+                </span>
               </span>
             </span>
             <span className="shrink-0 text-xs font-medium text-mute-soft transition-colors group-hover:text-ink">

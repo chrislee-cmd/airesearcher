@@ -31,7 +31,7 @@ import {
   CaptureUseCaseCards,
   type CaptureUseCaseOption,
 } from '@/components/ui/capture-usecase-cards';
-import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { DuotoneIcon, type DuotoneIconName } from '@/components/ui/icons/duotone-icon';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useProjectSelection } from '@/components/project-selection-provider';
 import type { ProbingOutputLang } from '@/lib/probing-prompts';
@@ -205,6 +205,10 @@ export function ProbingSetupAccordion({
     : projectName;
   const sourceTitle =
     SOURCE_USECASE_OPTIONS.find((o) => o.id === source)?.title ?? '';
+  // 접힘 요약행 방식 아이콘 = 선택 소스에 따라(mic→offline / both→online /
+  // tab→observe). CD `IV('online'|'offline'|'observe', …)`.
+  const sourceIconName: DuotoneIconName =
+    source === 'both' ? 'online' : source === 'tab' ? 'observe' : 'offline';
   const langLabel =
     OUTPUT_LANG_OPTIONS.find((o) => o.value === outputLang)?.label ?? '';
 
@@ -214,6 +218,7 @@ export function ProbingSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
       summary: projectSummary,
+      summaryIcon: <DuotoneIcon name="project" size={15} />,
       body: (
         <Field label={t('control.fieldProject')}>
           <ProjectPicker
@@ -230,6 +235,7 @@ export function ProbingSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
       title: t('setup.step2Title'),
       summary: sourceTitle,
+      summaryIcon: <DuotoneIcon name={sourceIconName} size={15} />,
       body: (
         <Field label={tc('sectionLabel')}>
           <CaptureUseCaseCards
@@ -246,6 +252,7 @@ export function ProbingSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 3, label: t('setup.step3Short') }),
       title: t('setup.step3Title'),
       summary: langLabel,
+      summaryIcon: <DuotoneIcon name="language" size={15} />,
       body: (
         <Field label={t('control.fieldLanguage')}>
           <SelectMenu
@@ -265,6 +272,7 @@ export function ProbingSetupAccordion({
       title: t('setup.step4Title'),
       optional: true,
       summary: t('setup.questionSummary', { count: questions.length }),
+      summaryIcon: <DuotoneIcon name="questions" size={15} />,
       body: (
         <InjectedQuestionsField
           questions={questions}

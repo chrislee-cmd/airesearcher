@@ -25,6 +25,7 @@ import { Field } from '@/components/canvas/shell/field';
 import { ProjectPicker } from '@/components/project-picker';
 import { ChipField } from '@/components/ui/chip-field';
 import { ModeCardGroup } from '@/components/ui/mode-button';
+import { DuotoneIcon, type DuotoneIconName } from '@/components/ui/icons/duotone-icon';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
@@ -52,9 +53,10 @@ const RANGE_PRESETS: { id: string; days: number | null }[] = [
 const DESK_OPTION_TRIGGER_CLASS = CONTROL_TRIGGER_CLASS;
 
 // 리서치 목적 2 mode 카드 — trend / market 모두 라이브(서버 자동 소스 선정).
-const MODE_OPTIONS: { key: DeskMode; icon: string }[] = [
-  { key: 'trend', icon: '🔥' },
-  { key: 'market', icon: '📊' },
+// 아이콘 = CD Icon System 스트로크 세트(이모지 제거, 나머지 5위젯 method 카드와 통일).
+const MODE_OPTIONS: { key: DeskMode; iconName: DuotoneIconName }[] = [
+  { key: 'trend', iconName: 'trend' },
+  { key: 'market', iconName: 'market' },
 ];
 
 export function DeskSetupAccordion({
@@ -130,7 +132,7 @@ export function DeskSetupAccordion({
       ariaLabel={t('modeLabel')}
       options={MODE_OPTIONS.map((opt) => ({
         key: opt.key,
-        icon: opt.icon,
+        icon: <DuotoneIcon name={opt.iconName} size={24} />,
         label: t(`modeTitle.${opt.key}` as never),
         description: t(`modeDesc.${opt.key}` as never),
       }))}
@@ -228,6 +230,7 @@ export function DeskSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 1, label: t('setup.step1Short') }),
       title: t('setup.step1Title'),
       summary: projectSummary,
+      summaryIcon: <DuotoneIcon name="project" size={15} />,
       body: (
         <Field label={t('setup.fieldProject')}>
           <ProjectPicker
@@ -244,6 +247,7 @@ export function DeskSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 2, label: t('setup.step2Short') }),
       title: t('setup.step2Title'),
       summary: t('setup.step2Summary', { count: keywords.length }),
+      summaryIcon: <DuotoneIcon name="keywords" size={15} />,
       body: (
         <Field label={t('boardTopicLabel')}>
           <ChipField
@@ -263,6 +267,8 @@ export function DeskSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 3, label: t('setup.step3Short') }),
       title: t('setup.step3Title'),
       summary: modeTitle,
+      // 목적 아이콘 = 선택 mode(trend/market). CD `IV('trend'|'market', …)`.
+      summaryIcon: <DuotoneIcon name={mode} size={15} />,
       body: <Field label={t('modeLabel')}>{modeSelector}</Field>,
     },
     {
@@ -270,6 +276,7 @@ export function DeskSetupAccordion({
       eyebrow: t('setup.stepEyebrow', { n: 4, label: t('setup.step4Short') }),
       title: t('setup.step4Title'),
       summary: scopeSummary,
+      summaryIcon: <DuotoneIcon name="search" size={15} />,
       body: scopeBody,
     },
   ];

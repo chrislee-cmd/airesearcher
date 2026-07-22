@@ -48,6 +48,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IconButton } from '@/components/ui/icon-button';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import {
   CriteriaEditor,
   CriteriaPreview,
@@ -1006,6 +1007,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
       eyebrow: t('stepEyebrow', { n: 1, label: t('step1Short') }),
       title: t('step1Title'),
       summary: sourceSummary,
+      summaryIcon: <DuotoneIcon name="document" size={15} />,
       body: (
         <SourceStepBody
           files={props.files}
@@ -1026,6 +1028,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
       eyebrow: t('stepEyebrow', { n: 2, label: t('step2Short') }),
       title: t('step2Title'),
       summary: criteriaSummary,
+      summaryIcon: <DuotoneIcon name="target" size={15} />,
       body: (
         <CriteriaStepBody
           criteriaPhase={props.criteriaPhase}
@@ -1043,6 +1046,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
       eyebrow: t('stepEyebrow', { n: 3, label: t('step3Short') }),
       title: t('step3Title'),
       summary: surveySummary,
+      summaryIcon: <DuotoneIcon name="minutes" size={15} />,
       body: (
         <SurveyStepBody
           criteriaPhase={props.criteriaPhase}
@@ -1060,6 +1064,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
       eyebrow: t('stepEyebrow', { n: 4, label: t('step4Short') }),
       title: t('step4Title'),
       summary: publishSummary,
+      summaryIcon: <DuotoneIcon name="link" size={15} />,
       body: (
         <PublishStepBody
           google={props.google}
