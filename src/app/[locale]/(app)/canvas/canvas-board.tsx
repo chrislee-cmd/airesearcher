@@ -4,10 +4,11 @@
    CanvasBoard — production /canvas. 대시보드 + pan + zoom-out + 자유 reposition.
 
    - 모든 위젯 항상 펼친 상태 (collapse 없음).
-   - 3×3 widget-slot 그리드 — 한 슬롯 = 한 위젯 (CELL_W 816, CELL_H 800,
-     GAP 48). CELL_W 816 = 6×5 시절 expandedCols=3 위젯 한 장의 visual
-     width (3 × 240 + 2 × 48). 즉 위젯 크기 자체는 그대로 유지. SURFACE_W
-     2544 = 3 × 816 + 2 × 48 (고정값, viewport 따라 reactive 하게 변하지
+   - 3×3 widget-slot 그리드 — 한 슬롯 = 한 위젯 (CELL_W 654, CELL_H 950,
+     GAP 48). 카드 자체는 widget-shell 고정 604×900. 슬롯 폭 654 = 카드
+     604 + 우측 슬랙 50 → 수평 시각 gap (654−604)+48 = 98 로 수직 gap
+     (950−900)+48 = 98 과 통일 (간격 균형). SURFACE_W = GRID_COLS × 654 +
+     (GRID_COLS−1) × 48 (고정값, viewport 따라 reactive 하게 변하지
      않음). 위젯 메타의 expandedCols/expandedRows 는 canvas 안에서는 1×1
      로 강제 (모달·focus mode 같은 다른 컨텍스트에서만 본래 값 사용).
    - 디폴트 배치는 row-major — 9 위젯이면 3행에 3+3+3 로 꽉 참.
@@ -39,10 +40,12 @@ import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-
 import { WidgetNavigator } from './widget-navigator';
 
 const GAP = 48;
-// CELL_W 816 — 6×5 시절 expandedCols=3 위젯 한 장의 visual width
-// (3 × 240 + 2 × 48). 즉 위젯 자체의 크기는 변하지 않고, slot 단위만
-// 6 cell→3 slot 으로 재정의된 것. viewport / zoom 과 무관하게 고정.
-const CELL_W = 816;
+// CELL_W 654 — 슬롯 폭. 카드 자체는 widget-shell 고정 604 폭. 654 = 604 +
+// 우측 슬랙 50 → 수평 시각 gap = (654−604)+48 = 98. CELL_H(950) 기준 수직
+// 시각 gap = (950−900)+48 = 98 과 통일 (간격 균형, 2026-07-22). 옛 816 은
+// 수평 슬랙 212 로 수직 슬랙 50 대비 4배라 위젯 사이가 수평으로만 벌어졌음.
+// 카드 604×900 은 셸 고정 — 여기선 슬롯 폭만 축소. viewport / zoom 무관 고정.
+const CELL_W = 654;
 const CELL_H = 950;
 
 // 그리드 컬럼/행은 **위젯 개수에 맞춰 파생**한다 — 4개 이하(일반계정:
@@ -786,7 +789,7 @@ export function CanvasBoard({
   );
 
   // 클릭 jump — 위젯이 화면에 완전히 들어가는 fit zoom 계산 + 중앙 정렬.
-  // 예전엔 targetZoom = 1.0 하드코딩이라 위젯(816×950)이 container 보다 크면
+  // 예전엔 targetZoom = 1.0 하드코딩이라 위젯(654×950)이 container 보다 크면
   // 짤리고 "너무 클로즈업" 됐다. 이제 위젯 실 픽셀 크기 대비 container 비율로
   // 축소해 전체를 노출한다.
   // 좌표계: surface 는 flex 로 컨테이너 가로 중앙에 배치되고 transformOrigin
@@ -806,7 +809,7 @@ export function CanvasBoard({
 
       // 위젯이 surface 안에서 차지하는 실제 픽셀 크기. widgetCenter 와 동일한
       // spanOf + CELL/GAP 좌표계 — 스펙 예시의 widget.width/height 는 이 코드엔
-      // 없어 spanOf 기반으로 보수적으로 계산 (현재 spanOf = 항상 1×1 → 816×950).
+      // 없어 spanOf 기반으로 보수적으로 계산 (현재 spanOf = 항상 1×1 → 654×950).
       const span = spanOf(widget);
       const widgetW = span.cols * CELL_W + (span.cols - 1) * GAP;
       const widgetH = span.rows * CELL_H + (span.rows - 1) * GAP;
@@ -895,7 +898,7 @@ export function CanvasBoard({
       if (rect.width <= 0 || rect.height <= 0) return;
 
       // 현재 positions 의 widget bounding box. 9 위젯 3×3 default 면
-      // 0..2 col × 0..2 row = 2544 × 2946 (3행 모두 채워짐).
+      // 0..2 col × 0..2 row = 2058 × 2946 (3행 모두 채워짐).
       let minCol = GRID_COLS;
       let maxCol = -1;
       let minRow = GRID_ROWS;
@@ -1022,7 +1025,7 @@ export function CanvasBoard({
           data-canvas-surface
           // shrink-0 필수 — surface 의 자식(위젯 카드·빈 셀)이 전부 absolute
           // 라 min-content 폭이 0. flex-shrink 기본 1 이면 컨테이너가 SURFACE_W
-          // (2544) 보다 좁을 때 surface 실제 렌더 폭이 컨테이너 폭으로 축소되고,
+          // (2058) 보다 좁을 때 surface 실제 렌더 폭이 컨테이너 폭으로 축소되고,
           // transformOrigin 'center top' 의 center 가 SURFACE_W/2 가 아니게 되어
           // focusWidget / initialFit / wheel focal point 의 pan 계산이 전부
           // 좌측으로 어긋난다 (click-to-focus 좌상단 쏠림 회귀의 root cause).
