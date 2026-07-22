@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     candidateIds?: unknown;
     batchId?: unknown;
     newBatchTitle?: unknown;
+    projectId?: unknown;
   };
   const candidateIds = Array.isArray(obj.candidateIds)
     ? obj.candidateIds.filter((v): v is string => typeof v === 'string')
@@ -44,6 +45,9 @@ export async function POST(request: Request) {
     typeof obj.batchId === 'string' && obj.batchId ? obj.batchId : null;
   const newBatchTitle =
     typeof obj.newBatchTitle === 'string' ? obj.newBatchTitle.trim() : '';
+  // Keep a freshly-created target group inside the current project (PR-C).
+  const projectId =
+    typeof obj.projectId === 'string' && obj.projectId ? obj.projectId : null;
 
   const admin = createAdminClient();
 
@@ -51,12 +55,33 @@ export async function POST(request: Request) {
   // the supplied existing id.
   let targetBatchId: string;
   if (newBatchTitle) {
-    const { data: created, error: createErr } = await admin
+    // project_id may be absent on a preview DB — retry without it (wide/narrow).
+    const wide = await admin
       .from('sched_batches')
-      .insert({ owner_user_id: user!.id, title: newBatchTitle })
+      .insert(
+        projectId
+          ? { owner_user_id: user!.id, title: newBatchTitle, project_id: projectId }
+          : { owner_user_id: user!.id, title: newBatchTitle },
+      )
       .select('id')
       .single();
-    if (createErr || !created) {
+    let created = wide.data;
+    if (wide.error) {
+      if (projectId) {
+        const narrow = await admin
+          .from('sched_batches')
+          .insert({ owner_user_id: user!.id, title: newBatchTitle })
+          .select('id')
+          .single();
+        if (narrow.error || !narrow.data) {
+          return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+        }
+        created = narrow.data;
+      } else {
+        return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+      }
+    }
+    if (!created) {
       return NextResponse.json({ error: 'create_failed' }, { status: 500 });
     }
     targetBatchId = created.id;
