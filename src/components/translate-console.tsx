@@ -4706,14 +4706,21 @@ export function TranslateConsole({
               </Button>
             </div>
           ) : null}
-          {/* 컨트롤 패널 — live/ending/ended. 손코딩 상단 바 제거, idle 과
-              동일한 ControlBoardPanel active 프레임 경유(상태 불변 — idle→active
-              프레임/컨트롤 위치 픽셀 불변). 부모 패딩 0 → ControlBoardPanel 이
-              카드 상단·좌우 끝에서 시작하고 divider(border-b, active 소유)가 전폭
-              (타 5위젯과 동일 경로 — 음수 마진 상쇄 불필요). 컨트롤 아래 출력부
-              (공유/프롬프터/녹음)는 자체 px-5 로 좌우 여백을 소유(데스크/쿼트 출력부
-              미러). 세션 중(live)엔 언어·모드·Glossary 변경 불가(결정 3) 라 필드는
-              disabled + 안내, CTA 는 🚀 세션 시작 → 정지 전환. */}
+          {/* 컨트롤 패널 — live(=setupPeek) / ending / ended. 이 else 분기는
+              live+setupPeek 과 ended/ending 을 공유한다(위 `live && !setupPeek` 는
+              풀뷰 유도로 분기됨). 따라서 여기서 `live` == `live && setupPeek`.
+              ── setupPeek(back-to-setup): CD V2 정합으로 옛 평면 controlFields 대신
+                 idle 과 동일한 셋업 아코디언(setupAccordionEl)을 미러 렌더 →
+                 CD `LI_closed`(접힘 요약). 세션 계속·값 유지. 종료(stop)는 상단
+                 스트립 "← 전체보기 유도로" 로 프롬프트 뷰(footer 종료)에서 수행.
+              ── ended/ending(!live): 기존 controlFields 평면 클러스터 + 다음 세션
+                 🚀 시작 CTA 그대로 유지(회귀 0). 컨트롤 아래 출력부(공유/프롬프터/
+                 녹음)는 자체 px-5 로 좌우 여백 소유. */}
+          {live ? (
+            <ControlBoardPanel active gap="none">
+              {setupAccordionEl}
+            </ControlBoardPanel>
+          ) : (
           <ControlBoardPanel active gap="field">
               {controlFields}
 
@@ -4802,13 +4809,19 @@ export function TranslateConsole({
                 </ControlBoardPanel.Action>
               )}
           </ControlBoardPanel>
+          )}
 
           {/* 컨트롤 아래 출력부 — 수평 여백·클러스터(컨트롤 좌측 정합)는
               WidgetOutputRegion SSOT. 전사록/데스크와 동일 클러스터라 넓은
               카드(폭>max-w-2xl)에서도 컨트롤과 좌측 픽셀 정합. (bleed 는 좁은-카드
               inset px-5 에 고정돼, 넓은 카드에선 컨트롤 클러스터보다 왼쪽으로
               튀어나옴 = "좁은 버전 여백" 회귀. PrompterPane 은 클러스터 폭
-              안에서 중앙정렬.) 세로는 데스크/쿼트 산출부 미러(py-5). */}
+              안에서 중앙정렬.) 세로는 데스크/쿼트 산출부 미러(py-5).
+              ⚠️ setupPeek(live) 에서는 렌더 X — CD 셋업 아코디언은 idle 미러라
+              출력부(공유 URL·음성 토글·프롬프터·상태 배너)가 없다. 이 출력부는
+              ended/ending(!live: 녹음 다운로드 등)에서만 노출. live 중 공유/프롬프터는
+              전체보기(fullview)에서 접근. */}
+          {live ? null : (
           <WidgetOutputRegion scroll={false} padY="lg">
             <div className="space-y-4">
           {ttsBlockedBanner}
@@ -4914,7 +4927,9 @@ export function TranslateConsole({
           <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
         ))}
 
-      {status === 'ended' || (recording && status !== 'live') ? (
+      {/* 이 출력부는 !live 게이트 안이라 status 는 'live' 가 아님(setupPeek 제외).
+          기존 `status !== 'live'` 가드는 여기서 항상 참 → 녹음 존재 여부만 본다. */}
+      {status === 'ended' || recording ? (
         <RecordingDownloadPanel
           sessionId={sessionIdRef.current}
           recording={recording}
@@ -4930,6 +4945,7 @@ export function TranslateConsole({
       ) : null}
             </div>
           </WidgetOutputRegion>
+          )}
         </>
       )}
 
