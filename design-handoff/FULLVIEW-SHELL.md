@@ -124,35 +124,60 @@ The worker diffs their TSX against the **§F class map** below. Every visual ele
 | radius `14` / `24` / `999` | `rounded-sm` / `rounded-md` / `rounded-pill` |
 | sizes `10 / 10.5 / 11.5 / 12.5 / 13 / 15 / 22` | `text-{xs,xs-soft,sm,md,lg,xl,3xl}` |
 
-## §F6 proposed-tokens (⚠️ intentional new values — promote to DS, do not hardcode)
-> Convention: `CONTEXT-PACK.md §5`. Each is a CD value with no existing DS equivalent; writer decides promotion vs. re-use.
+## §F6 proposed-tokens — labeled, split by promotion target
+> Convention: `CONTEXT-PACK.md §5`. Each is a CD value with no existing DS equivalent. **Label format = `--css-var` (globals.css `@theme`) → `utility-class` (Tailwind).** Two groups:
+> **(A) Global → `globals.css @theme`.** Not fullview-specific — these are DS gaps the fullview surfaced; several already recur in the card widgets. Writer adds the `--css-var`; the `utility-class` then works everywhere. Once promoted, CD drops the `proposed:` label.
+> **(B) Fullview-local.** Only meaningful inside this shell; keep scoped (shell-local var or raw `[..]` utility). Promote to global only if reused elsewhere.
 
-**Color**
-- `surface-canvas` `#fbfbf9` — fullview frame / neutral canvas bg (NOT `surface-accent` yellow)
-- `amore-deep` `#c2334f` — destructive/emphasis crimson (End-session, Σ totals, active dist cell, med-fit)
-- `signal-success-text` `#14713a` · `signal-success-bg` `#f4fbf6` · `signal-success-line` `#cdeed8` — Done badge/tint (a11y: keep dark text, do NOT snap to `#16a34a`)
-- `signal-success-bg-soft` `#eafaf0` — Interpreter OUTPUT header
-- `signal-rec` `#ef4444` · `signal-rec-soft` `#ff9a9a` — AI UT recording (distinct from amore)
-- `accent-amber` `#e0a83a` · `signal-warning-text` `#8a5a10` · `signal-warning-text-deep` `#b45309` — spotlight / flags / confidence
-- `warning-line-amber` `#f0d78a` — flag/note border (vs DS `warning-line` `#ffd9bf`)
-- `signal-error-text` `#b4443f` · `signal-error-line` `#f0c0c0` — failed transcript
-- `accent-violet` `#8b5cf6` · `pastel-lav-bg` `#f6f2ff/#faf7ff/#f3eefe` · `pastel-lav-text` `#6b4aa0` — Transcript/Desk lav family
-- `accent-blue` `#2563a8` — moderator speaker name
-- `pastel-peach-bg` `#fff7f0` `pastel-rose-bg` `#ffeef4` `pastel-mint-bg` `#edf9f0` `pastel-sun-bg` `#fdf6e6` `pastel-neutral-bg` `#f2f2f3` — desk section-head tints
-- `line-empty` `#c9ccd2` (dashed empty state) · `text-faint` `#a3a7ad` (mono captions/placeholder) · `text-disabled` `#b3b7bd` (estimated metrics)
-- `bg-widget-header-cyan` `#bfe9ef` — Desk (open decision: cyan vs unify-sky, see desk §6)
+### (A) Global colors → `@theme`
+| Raw | `--css-var` | utility class | Role |
+|---|---|---|---|
+| `#c2334f` | `--color-amore-deep` | `text/bg/border-amore-deep` | destructive/emphasis crimson (End-session · Σ total · active dist cell · med-fit) |
+| `#14713a` | `--color-success-text` | `text-success-text` | Done badge text (a11y: keep dark, do NOT snap to `#16a34a`) |
+| `#f4fbf6` | `--color-success-bg` | `bg-success-bg` | Done/complete tint |
+| `#cdeed8` | `--color-success-line` | `border-success-line` | Done tint border |
+| `#eafaf0` | `--color-success-bg-soft` | `bg-success-bg-soft` | Interpreter OUTPUT header |
+| `#ef4444` | `--color-rec` | `text/bg-rec` | AI UT recording (distinct from amore) |
+| `#ff9a9a` | `--color-rec-soft` | `text-rec-soft` | recording edge/label on dark |
+| `#e0a83a` | `--color-amber` | `text/bg/border-amber` | spotlight border · confidence 🟡 · fill-2 dots |
+| `#8a5a10` | `--color-warning-text` | `text-warning-text` | flag/note text on `warning-bg` |
+| `#b45309` | `--color-warning-text-deep` | `text-warning-text-deep` | spotlight meta |
+| `#f0d78a` | `--color-warning-line-amber` | `border-warning-line-amber` | flag/note border (vs DS `warning-line #ffd9bf`) |
+| `#b4443f` | `--color-error-text` | `text-error-text` | failed transcript |
+| `#f0c0c0` | `--color-error-line` | `border-error-line` | failed transcript border |
+| `#8b5cf6` | `--color-violet` | `text/bg-violet` | Transcript progress · theme count · RQ (WIDGET-SHELL §S3 accent) |
+| `#2563a8` | `--color-blue` | `text-blue` | moderator speaker name |
+| `#a3a7ad` | `--color-faint` | `text-faint` | mono captions / placeholders (extends text ramp: `mute-soft #8a8693` → `faint` → `disabled`) |
+| `#b3b7bd` | `--color-disabled` | `text-disabled` | estimated-metric / disabled |
+| `#c9ccd2` | `--color-line-empty` | `border-line-empty` | dashed empty-state border · empty fill dots |
+| `#fbfbf9` | `--color-surface-canvas` | `bg-surface-canvas` | fullview/neutral canvas bg (NOT yellow `surface-accent`) |
+| `#f6f2ff`·`#faf7ff`·`#f3eefe` | `--color-lav-bg` (+ `-2/-3` if distinct) | `bg-lav-bg` | lav tints (transcript summary/rows · desk RQ head) |
+| `#6b4aa0` | `--color-lav-text` | `text-lav-text` | processing status text |
+| `#fff7f0` | `--color-peach-bg` | `bg-peach-bg` | AI UT / peach section tint |
+| `#ffeef4` | `--color-rose-bg` | `bg-rose-bg` | desk exec-head tint |
+| `#edf9f0` | `--color-mint-bg` | `bg-mint-bg` | desk findings-head tint |
+| `#fdf6e6` | `--color-sun-bg` | `bg-sun-bg` | desk quant-head tint |
+| `#f2f2f3` | `--color-neutral-bg` | `bg-neutral-bg` | desk appendix-head tint |
+| `#bfe9ef` | `--color-widget-header-cyan` | `bg-widget-header-cyan` | Desk header (WIDGET-SHELL §S4; open: cyan vs unify-sky) |
+> Naming aligns with existing DS: signal family stays `success-*`/`warning-*`/`error-*`; pastel tints pair with existing `pastel.{lav,peach,mint,sun,rose}` headers → same stems + `-bg`.
 
-**Shadow**
-- `shadow-fullview-frame` = `8px 8px 0 rgba(29,27,32,0.28)` (frame; vs solid `memphis-2xl`)
-- `shadow-memphis-sm-faint` = `2px 2px 0 rgba(29,27,32,0.12)` (panel cards)
-- `shadow-memphis-sm-crimson` = `2px 2px 0 #c2334f` · `shadow-modal-amber` = `8px 8px 0 #e0a83a`
+### (A) Global shadow → `@theme`
+| Value | `--css-var` | utility | Role |
+|---|---|---|---|
+| `2px 2px 0 rgba(29,27,32,0.12)` | `--shadow-memphis-sm-faint` | `shadow-memphis-sm-faint` | panel/list cards (softer than solid `memphis-sm`) — also used by card widgets |
 
-**Radius (DS scale is sparse: 2/4/14/24/999)** — off-scale small radii used as raw `border-[Npx]`: `8` (nav item, chip) · `9` (close btn) · `10` (link field, footnote) · `11` (persona/RQ card) · `12` (panel/monitor) · `16` (translation panel). Promote as `radius-nav 8` / `radius-panel 12` / `radius-panel-lg 16` if a scale is wanted; otherwise raw `border-[Npx]` is acceptable per DS `border_width` note.
+### (B) Fullview-local (shell-scoped — promote only if reused)
+| Token | Value | Where | Note |
+|---|---|---|---|
+| `--fv-frame-shadow` | `8px 8px 0 rgba(29,27,32,0.28)` | fullview frame | vs solid `memphis-2xl`; shell-local |
+| `--fv-shadow-crimson` | `2px 2px 0 #c2334f` | End-session btn | = `memphis-sm` in `amore-deep`; derive from `--color-amore-deep` |
+| `--fv-shadow-modal-amber` | `8px 8px 0 #e0a83a` | spotlight modal only | derive from `--color-amber` |
+| `--fv-title` | Outfit 800 / 22px / ls -0.5 | fullview header title | distinct from 29px card title |
+| `--fv-spotlight-q` | Outfit 700 / 31px | spotlight question | |
+| radii `8/9/10/11/12/16` | raw `rounded-[Npx]` | nav item·close·link·card·panel | DS radius scale sparse (2/4/14/24/999); promote `radius-nav 8`/`radius-panel 12`/`-lg 16` only if a scale is wanted |
+| off-scale type `11/12/13.5/14/18/20/23/24` | nearest `text-*` or `text-[Npx]` | body copy | |
 
-**Type**
-- `text-fullview-title` = Outfit 800 / 22px / ls -0.5 (fullview header title; distinct from 29px card title)
-- `text-spotlight-q` = Outfit 700 / 31px (spotlight question)
-- off-scale body sizes `11 / 12 / 13.5 / 14 / 18 / 20 / 23 / 24` → nearest `text-*` or raw `text-[Npx]`
+**Priority for writer:** promote group (A) first — those close the DS gaps that caused earlier fidelity drift (success tints, amore-deep, amber, pastel tints already appear in card widgets). Group (B) can stay `--fv-*` local.
 
 ## §F7 ⚠️ contract notes (decisions the writer must confirm)
 1. **Mono for technical labels.** DS says `font._no_mono_default` (production body is NOT mono), but the fullview intentionally uses `ui-monospace` for section labels, timestamps, IDs, badges, table headers. This is a CD decision → introduce `proposed:font-mono-label` (`ui-monospace`) scoped to technical captions. **Confirm** this is allowed, or map to `font-sans`.
