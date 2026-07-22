@@ -34,6 +34,7 @@ import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { UserTimelineDrawer } from './admin-user-timeline-drawer';
+import { LandingVisitDetailDrawer } from './landing-visit-detail-drawer';
 
 type Tab = 'native' | 'posthog';
 
@@ -74,6 +75,11 @@ export function AdminAnalytics({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // #499 — day (Asia/Seoul YYYY-MM-DD) selected by clicking the 접속자 추이
+  // chart; opens the individual-visit detail drawer. Kept while the drawer
+  // animates closed so its content survives the exit transition. Admin-only —
+  // never wired in the public /status view (the detail API is admin-gated).
+  const [detailDay, setDetailDay] = useState<string | null>(null);
 
   const load = useCallback(
     async (p: AnalyticsPeriod, exclude: boolean) => {
@@ -211,12 +217,23 @@ export function AdminAnalytics({
             랜딩 트래픽 · #574 landing_visits
           </div>
           {!publicView && <LandingSelfVisitToggle />}
-          <LandingTrafficCard landing={report.landing} />
+          <LandingTrafficCard
+            landing={report.landing}
+            onSelectDay={publicView ? undefined : setDetailDay}
+          />
           <LandingSourceCard landing={report.landing} />
           <RetentionFunnelCard landing={report.landing} />
 
           {!publicView && <SignupAccountsCard roster={initialSignups} />}
         </>
+      )}
+
+      {!publicView && (
+        <LandingVisitDetailDrawer
+          day={detailDay}
+          open={detailDay !== null}
+          onClose={() => setDetailDay(null)}
+        />
       )}
     </div>
   );
