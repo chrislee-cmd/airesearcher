@@ -14,6 +14,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -51,6 +52,7 @@ export function RecruitingDistribution({
   filter?: RecruitingFilter;
   onFilterChange?: (filter: RecruitingFilter) => void;
 }) {
+  const t = useTranslations('Recruiting.fv');
   const nowYear = new Date().getFullYear();
   const table = useMemo(
     () => buildDistributionTable(columns, rows, { nowYear }),
@@ -68,10 +70,10 @@ export function RecruitingDistribution({
         <span aria-hidden className="text-md">
           📊
         </span>
-        <span className="text-md font-bold text-ink">분포 통계</span>
+        <span className="text-md font-bold text-ink">{t('distTitle')}</span>
         {table && table.grandTotal > 0 && (
           <span className="font-mono-label text-sm tabular-nums text-mute-soft">
-            총 {table.grandTotal}
+            {t('distTotal', { count: table.grandTotal })}
           </span>
         )}
         {filterableQuestions.length > 0 && (
@@ -116,6 +118,7 @@ function FilterChips({
   filterableQuestions: FilterableQuestion[];
   onFilterChange?: (filter: RecruitingFilter) => void;
 }) {
+  const t = useTranslations('Recruiting.fv');
   const qTitle = (field: string) =>
     filterableQuestions.find((q) => q.field === field)?.title ?? field;
 
@@ -127,7 +130,7 @@ function FilterChips({
           variant="subtle"
           className="max-w-[180px] text-xs-soft"
           onDismiss={() => onFilterChange?.(toggleCell(filter, c))}
-          dismissLabel="필터 제거"
+          dismissLabel={t('filterRemove')}
         >
           {`${c.gender} × ${c.ageBucket}`}
         </Badge>
@@ -139,7 +142,7 @@ function FilterChips({
             variant="subtle"
             className="max-w-[180px] text-xs-soft"
             onDismiss={() => onFilterChange?.(toggleAnswer(filter, q.field, ans))}
-            dismissLabel="필터 제거"
+            dismissLabel={t('filterRemove')}
           >
             {`${qTitle(q.field)}: ${ans}`}
           </Badge>
@@ -151,7 +154,7 @@ function FilterChips({
         className="ml-auto px-0"
         onClick={() => onFilterChange?.(EMPTY_FILTER)}
       >
-        전체 초기화
+        {t('filterClearAll')}
       </Button>
     </div>
   );
@@ -172,13 +175,14 @@ function PanelBody({
   filter: RecruitingFilter;
   onCellClick: (gender: string, ageBucket: string) => void;
 }) {
+  const t = useTranslations('Recruiting.fv');
   if (formsLoading && !hasForm) return <BrandLoader size={32} />;
   if (!hasForm) {
     return (
       <EmptyState
         tone="subtle"
-        title="발행된 설문이 없습니다"
-        description="설문을 발행하면 성별 · 연령 분포가 여기에 표시됩니다."
+        title={t('distNoFormTitle')}
+        description={t('distNoFormDesc')}
       />
     );
   }
@@ -187,8 +191,8 @@ function PanelBody({
     return (
       <EmptyState
         tone="subtle"
-        title="분포를 만들 문항이 없습니다"
-        description="설문에 성별 · 연령(출생년도) 문항이 있어야 교차 분포를 계산할 수 있어요."
+        title={t('distNoAxisTitle')}
+        description={t('distNoAxisDesc')}
       />
     );
   }
@@ -196,8 +200,8 @@ function PanelBody({
     return (
       <EmptyState
         tone="subtle"
-        title="아직 집계할 응답이 없습니다"
-        description="응답이 들어오면 성별 × 연령대 분포가 여기에 표시됩니다."
+        title={t('distNoResponsesTitle')}
+        description={t('distNoResponsesDesc')}
       />
     );
   }
@@ -213,6 +217,7 @@ function DistributionGrid({
   filter: RecruitingFilter;
   onCellClick: (gender: string, ageBucket: string) => void;
 }) {
+  const t = useTranslations('Recruiting.fv');
   const { xLabels, yLabels, cells, xTotal, yTotal, grandTotal } = table;
   return (
     <div className="w-full">
@@ -220,7 +225,7 @@ function DistributionGrid({
         <thead>
           <tr>
             <th className="border-b border-line px-1 py-1.5 text-left text-xs uppercase tracking-[0.1em] text-faint">
-              성별 \ 연령
+              {t('distAxisHeader')}
             </th>
             {yLabels.map((y) => (
               <th
@@ -254,7 +259,7 @@ function DistributionGrid({
                       type="button"
                       onClick={() => onCellClick(x, y)}
                       aria-pressed={active}
-                      aria-label={`${x} × ${y} ${count}명 필터`}
+                      aria-label={t('distCellAria', { gender: x, age: y, count })}
                       className={`block w-full px-2 py-1.5 text-right tabular-nums transition-colors hover:bg-paper-soft ${
                         active
                           ? // design-allow-hardcoded -- CD state 08 active dist cell radius 6px (§F6(B) off-scale, DS radius scale 4/14 에 없음 — CD 절대값 유지)
@@ -295,7 +300,7 @@ function DistributionGrid({
         </tfoot>
       </table>
       <p className="mt-[9px] text-xs leading-[1.45] text-faint">
-        응답 100% 기준 고정 — 필터는 셀을 강조할 뿐 이 수치를 바꾸지 않습니다.
+        {t('distFixedNote')}
       </p>
     </div>
   );

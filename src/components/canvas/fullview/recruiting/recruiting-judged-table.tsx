@@ -14,6 +14,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -27,26 +28,27 @@ import type {
 import { RespondentDrawer } from '../../widgets/recruiting/respondent-drawer';
 
 // ─── fit 배지 (CD §F4 — 레거시 대비 medium 을 amore-deep 로 교정) ──────────
-const FIT_META: Record<
+// 색만 코드 소유(토큰), 라벨은 i18n 키(fitHigh/fitMedium/fitLow).
+const FIT_STYLE: Record<
   PersonaFit,
-  { label: string; dot: string; text: string; border: string; bg: string }
+  { labelKey: string; dot: string; text: string; border: string; bg: string }
 > = {
   high: {
-    label: '높음',
+    labelKey: 'fitHigh',
     dot: 'bg-success',
     text: 'text-success',
     border: 'border-success',
     bg: 'bg-success/10',
   },
   medium: {
-    label: '중간',
+    labelKey: 'fitMedium',
     dot: 'bg-amore',
     text: 'text-amore-deep',
     border: 'border-amore',
     bg: 'bg-amore/10',
   },
   low: {
-    label: '낮음',
+    labelKey: 'fitLow',
     dot: 'bg-mute-soft',
     text: 'text-mute-soft',
     border: 'border-line',
@@ -54,36 +56,44 @@ const FIT_META: Record<
   },
 };
 
-function FitBadge({ fit }: { fit: PersonaFit | null }) {
+function FitBadge({
+  fit,
+  t,
+}: {
+  fit: PersonaFit | null;
+  t: ReturnType<typeof useTranslations>;
+}) {
   if (!fit) {
     return (
-      <span
-        className="text-xs-soft text-mute-soft"
-        title="참여자 조건이 설정되지 않아 부합도를 판단하지 않았습니다."
-      >
+      <span className="text-xs-soft text-mute-soft" title={t('fitNoneTitle')}>
         —
       </span>
     );
   }
-  const m = FIT_META[fit];
+  const m = FIT_STYLE[fit];
   return (
     <span
       className={`inline-flex items-center gap-1.5 self-start rounded-pill border ${m.border} ${m.bg} px-2.5 py-0.5 text-sm font-bold ${m.text}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} aria-hidden="true" />
-      {m.label}
+      {t(m.labelKey)}
     </span>
   );
 }
 
-// flag 원문(모델 자유 태그)을 얕게 한글 매핑, 매핑 없으면 원문 그대로.
-function flagLabel(flag: string): string {
+// flag 원문(모델 자유 태그)을 얕게 매핑해 i18n 라벨로. 매칭 키워드는 응답
+// 콘텐츠/모델 태그 대조용(표시 아님)이라 한글 리터럴 허용.
+function flagText(flag: string, t: ReturnType<typeof useTranslations>): string {
   const f = flag.toLowerCase();
-  if (f.includes('duplicate') || f.includes('중복')) return '중복 응답';
+  // i18n-allow-korean -- flag 매칭 키워드(모델 태그/응답 콘텐츠 대조, 표시 아님)
+  if (f.includes('duplicate') || f.includes('중복')) return t('flagDuplicate');
+  // i18n-allow-korean -- flag 매칭 키워드(모델 태그/응답 콘텐츠 대조, 표시 아님)
   if (f.includes('short') || f.includes('한 글자') || f.includes('한글자'))
-    return '단답 의심';
-  if (f.includes('contradict') || f.includes('모순')) return '모순 응답';
-  if (f.includes('nonsense') || f.includes('무의미')) return '무의미 응답';
+    return t('flagShort');
+  // i18n-allow-korean -- flag 매칭 키워드(모델 태그/응답 콘텐츠 대조, 표시 아님)
+  if (f.includes('contradict') || f.includes('모순')) return t('flagContradict');
+  // i18n-allow-korean -- flag 매칭 키워드(모델 태그/응답 콘텐츠 대조, 표시 아님)
+  if (f.includes('nonsense') || f.includes('무의미')) return t('flagNonsense');
   return flag;
 }
 
@@ -91,11 +101,11 @@ const FIT_RANK: Record<PersonaFit, number> = { high: 0, medium: 1, low: 2 };
 const fitRank = (f: PersonaFit | null) => (f ? FIT_RANK[f] : 3);
 
 type FitFilter = 'all' | PersonaFit;
-const FILTER_CHIPS: { key: FitFilter; label: string }[] = [
-  { key: 'all', label: '전체' },
-  { key: 'high', label: '높음' },
-  { key: 'medium', label: '중간' },
-  { key: 'low', label: '낮음' },
+const FILTER_CHIPS: { key: FitFilter; labelKey: string }[] = [
+  { key: 'all', labelKey: 'filterAll' },
+  { key: 'high', labelKey: 'fitHigh' },
+  { key: 'medium', labelKey: 'fitMedium' },
+  { key: 'low', labelKey: 'fitLow' },
 ];
 
 type JudgmentsPayload = {
@@ -114,6 +124,7 @@ export function RecruitingJudgedTable({
   responseData: { columns: FormColumn[]; rows: FormResponseRow[] } | null;
   refreshSignal: number;
 }) {
+  const t = useTranslations('Recruiting.fv');
   const [payload, setPayload] = useState<JudgmentsPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -239,7 +250,7 @@ export function RecruitingJudgedTable({
                   : 'border-line bg-paper font-semibold text-mute hover:bg-paper-soft'
               }`}
             >
-              {chip.label}
+              {t(chip.labelKey)}
               {payload && (
                 <span className="font-mono-label text-xs-soft tabular-nums">
                   {count}
@@ -249,7 +260,9 @@ export function RecruitingJudgedTable({
           );
         })}
         {loading && payload && (
-          <span className="ml-auto text-xs-soft text-mute-soft">판단 갱신 중…</span>
+          <span className="ml-auto text-xs-soft text-mute-soft">
+            {t('judgingUpdating')}
+          </span>
         )}
       </div>
 
@@ -259,14 +272,14 @@ export function RecruitingJudgedTable({
           <div className="flex h-full items-center justify-center p-8">
             <EmptyState
               tone="subtle"
-              title="발행된 설문을 선택하세요"
-              description="응답이 있는 설문을 고르면 응답자별 부합도 판단이 여기에 표시됩니다."
+              title={t('noFormSelectTitle')}
+              description={t('noFormSelectDesc')}
             />
           </div>
         ) : error ? (
           <div className="p-5">
             <Banner tone="warning" divider="none">
-              부합도 판단을 불러오지 못했어요: {error}
+              {t('judgeError', { error })}
             </Banner>
             <div className="mt-3">
               <Button
@@ -274,33 +287,39 @@ export function RecruitingJudgedTable({
                 size="sm"
                 onClick={() => formId && void loadJudgments(formId)}
               >
-                다시 시도
+                {t('retry')}
               </Button>
             </div>
           </div>
         ) : showSkeleton ? (
-          <JudgingSkeleton />
+          <JudgingSkeleton t={t} />
         ) : !payload || payload.judgments.length === 0 ? (
           <div className="flex h-full items-center justify-center p-8">
             <EmptyState
               tone="subtle"
-              title="아직 판단할 응답이 없습니다"
-              description="설문 링크를 공유해 응답이 들어오면 응답자별 부합도 판단이 표시됩니다."
+              title={t('noJudgeTitle')}
+              description={t('noJudgeDesc')}
             />
           </div>
         ) : displayItems.length === 0 ? (
           <div className="flex h-full items-center justify-center p-8">
             <EmptyState
               tone="subtle"
-              title="해당 부합도의 응답이 없습니다"
-              description="필터를 '전체' 로 바꾸면 모든 응답자가 다시 표시됩니다."
+              title={t('noFilterMatchTitle')}
+              description={t('noFilterMatchDesc')}
             />
           </div>
         ) : (
           <table className="w-full border-collapse text-md">
             <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
               <tr>
-                {['응답자', '성별', '연령', '거주지', '부합도 · 근거'].map((h) => (
+                {[
+                  t('colRespondent'),
+                  t('colGender'),
+                  t('colAge'),
+                  t('colRegion'),
+                  t('colFitReason'),
+                ].map((h) => (
                   <th
                     key={h}
                     className="border-b border-line px-4 py-2.5 font-mono-label text-xs-soft uppercase tracking-[0.05em] text-mute-soft"
@@ -324,7 +343,9 @@ export function RecruitingJudgedTable({
                         #{num}
                         {j.flags.length > 0 && (
                           <span
-                            title={j.flags.map(flagLabel).join(', ')}
+                            title={j.flags
+                              .map((f) => flagText(f, t))
+                              .join(', ')}
                             className="rounded-pill border border-warning-line-amber bg-warning-bg px-1.5 text-xs-soft font-extrabold text-warning-text"
                           >
                             ⚠ {j.flags.length}
@@ -343,7 +364,7 @@ export function RecruitingJudgedTable({
                     </td>
                     <td className="px-4 py-[11px] align-top">
                       <div className="flex flex-col gap-1">
-                        <FitBadge fit={j.fit} />
+                        <FitBadge fit={j.fit} t={t} />
                         {j.fit_reason ? (
                           <span className="line-clamp-2 break-words text-sm leading-[1.5] text-mute">
                             {j.fit_reason}
@@ -364,9 +385,17 @@ export function RecruitingJudgedTable({
         <span className="tabular-nums">
           {payload
             ? fitFilter === 'all'
-              ? `${payload.judgments.length} 응답 · 높음 ${fitCounts.high} · 중간 ${fitCounts.medium} · 낮음 ${fitCounts.low} · 이름·전화 제외`
-              : `${displayItems.length} / ${payload.judgments.length} 응답 표시`
-            : '이름·전화 등 개인정보는 판단에 반영되나 표시되지 않습니다.'}
+              ? t('footerAll', {
+                  count: payload.judgments.length,
+                  high: fitCounts.high,
+                  medium: fitCounts.medium,
+                  low: fitCounts.low,
+                })
+              : t('footerFiltered', {
+                  shown: displayItems.length,
+                  total: payload.judgments.length,
+                })
+            : t('footerEmpty')}
         </span>
       </footer>
 
@@ -390,12 +419,16 @@ export function RecruitingJudgedTable({
   );
 }
 
-function JudgingSkeleton() {
+function JudgingSkeleton({
+  t,
+}: {
+  t: ReturnType<typeof useTranslations>;
+}) {
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2 px-5 py-3 text-sm text-mute-soft">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amore" />
-        응답자별 부합도를 판단하는 중…
+        {t('judgingLabel')}
       </div>
       {Array.from({ length: 6 }).map((_, i) => (
         <div

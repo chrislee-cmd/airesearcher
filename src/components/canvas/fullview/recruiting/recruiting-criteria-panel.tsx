@@ -12,6 +12,7 @@
    비필수 chip = border-line. cat = mono-label uppercase mute-soft.
    ──────────────────────────────────────────────────────────────────── */
 
+import { useTranslations } from 'next-intl';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
 
 export function RecruitingCriteriaPanel({
@@ -19,6 +20,7 @@ export function RecruitingCriteriaPanel({
 }: {
   brief: EditableBrief | null;
 }) {
+  const t = useTranslations('Recruiting.fv');
   const criteria = brief?.criteria ?? [];
   const summary = brief?.summary?.trim() ?? '';
 
@@ -28,10 +30,10 @@ export function RecruitingCriteriaPanel({
         <span aria-hidden className="text-md">
           🎯
         </span>
-        <span className="text-md font-bold text-ink">참여자 조건</span>
+        <span className="text-md font-bold text-ink">{t('criteriaTitle')}</span>
         {criteria.length > 0 && (
           <span className="font-mono-label text-sm tabular-nums text-mute-soft">
-            {criteria.length}개
+            {t('criteriaCount', { count: criteria.length })}
           </span>
         )}
       </header>
@@ -39,7 +41,7 @@ export function RecruitingCriteriaPanel({
       <div className="px-[14px] py-[13px]">
         {criteria.length === 0 ? (
           <p className="text-sm leading-[1.6] text-mute-soft">
-            카드 본문에서 자료를 분석하면 참여자 조건이 여기에 요약됩니다.
+            {t('criteriaEmpty')}
           </p>
         ) : (
           <>
@@ -62,7 +64,9 @@ export function RecruitingCriteriaPanel({
                   </span>
                   <span className="font-semibold text-ink">{c.label}</span>
                   {c.required && (
-                    <span className="text-xs font-bold text-amore">필수</span>
+                    <span className="text-xs font-bold text-amore">
+                      {t('required')}
+                    </span>
                   )}
                 </li>
               ))}

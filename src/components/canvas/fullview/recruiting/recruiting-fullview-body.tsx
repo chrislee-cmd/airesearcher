@@ -17,6 +17,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
 import { Banner } from '../../shell/banner';
@@ -86,6 +87,7 @@ export function RecruitingFullviewBody({
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
 }) {
+  const t = useTranslations('Recruiting.fv');
   const { renderInHeaderStart, renderInHeaderEnd } = useFullview('recruiting');
 
   return (
@@ -102,7 +104,7 @@ export function RecruitingFullviewBody({
             type="button"
             onClick={onDownloadCsv}
             disabled={!hasResponses}
-            title="응답 전체를 CSV 로 내려받습니다 (이름·전화 등 개인정보 제외)"
+            title={t('csvTitle')}
             className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1.5 text-sm font-bold text-ink shadow-memphis-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             ↓ CSV
@@ -113,21 +115,21 @@ export function RecruitingFullviewBody({
             onClick={onRefresh}
             className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink/16 bg-paper px-3 py-1.5 text-sm font-semibold text-mute-soft hover:text-ink"
           >
-            ↻ 새로고침
+            ↻ {t('refresh')}
           </button>
         </div>,
       )}
 
       {criteriaPersistMissing && (
         <Banner tone="warning" divider="none">
-          이 설문에는 저장된 참여자 조건이 없습니다.
+          {t('criteriaMissingBanner')}
           <Button
             variant="link"
             size="sm"
             className="ml-1 px-0"
             onClick={onCriteriaRepublish}
           >
-            조건 다시 발행하기
+            {t('criteriaRepublish')}
           </Button>
         </Banner>
       )}
@@ -164,30 +166,30 @@ export function RecruitingFullviewBody({
                       {...aria}
                       data-open={open}
                       onClick={onClick}
-                      aria-label="설문 선택"
+                      aria-label={t('formSelect')}
                     >
                       {(() => {
                         const active = forms.find(
                           (f) => f.formId === activeFormId,
                         );
-                        return active ? selectorLabel(active) : '설문 선택';
+                        return active ? selectorLabel(active) : t('formSelect');
                       })()}
                     </ControlTrigger>
                   )}
                 />
               </div>
             ) : (
-              <FullviewStatusChip label="발행된 설문 없음" tone="rec" />
+              <FullviewStatusChip label={t('noFormChip')} tone="rec" />
             )}
             <div
               role="tablist"
-              aria-label="응답 보기 방식"
+              aria-label={t('tablistLabel')}
               className="ml-auto flex items-center gap-1.5"
             >
               {(
                 [
-                  { key: 'summary', label: '부합도 요약' },
-                  { key: 'raw', label: '전체 데이터' },
+                  { key: 'summary', label: t('tabSummary') },
+                  { key: 'raw', label: t('tabRaw') },
                 ] as const
               ).map((tab) => {
                 const active = activeTab === tab.key;
