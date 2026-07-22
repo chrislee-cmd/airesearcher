@@ -545,8 +545,8 @@
      풀뷰 서피스가 드러낸 DS 갭 — 여러 색은 이미 카드 위젯에서도 재현된다.
      CD `.dc.html` 측정 절대값 = SSOT(AUTHORITY: CD wins, 근사 DS값 다운그레이드
      금지). CD 는 pop 값만 제공하므로 theme-agnostic @theme 리터럴로 둔다
-     (--shadow-select-glow·--text-* 선례). 네이밍은 기존 DS 정렬: signal 계열
-     success-*/warning-*/error- 스템, 파스텔 틴트는 기존 pastel 스템 + -bg. */
+     (--shadow-select-glow·--text-* 선례). 네이밍은 기존 DS 정렬: signal 계열은
+     success/warning/error 스템, 파스텔 틴트는 기존 pastel 스템 + -bg 접미. */
   --color-amore-deep: #c2334f;          /* destructive/emphasis crimson (End-session·Σ total·active dist cell·med-fit) */
   --color-success-text: #14713a;        /* Done 배지 텍스트 (a11y: 어둡게 유지, #16a34a 로 snap 금지) */
   --color-success-bg: #f4fbf6;          /* Done/complete 틴트 (= --raw-signal-success-soft 값과 동일; §F6 는 Done 틴트 역할로 success-bg 명명) */
