@@ -2158,8 +2158,8 @@ function ExpandedBody() {
           // 위젯 자유). live/전체보기 표면은 아래 분기로 그대로(회귀 0).
           if (!isLive && !isCurrent) {
             return (
-              <ControlBoardPanel gap="none">
-                <ControlBoardPanel.Region>
+              <ControlBoardPanel gap="none" fill>
+                <ControlBoardPanel.Region fill>
                   <ProbingSetupAccordion
                     projectId={selectedProjectId}
                     onProjectChange={(id) => setSelection('probing', id)}
