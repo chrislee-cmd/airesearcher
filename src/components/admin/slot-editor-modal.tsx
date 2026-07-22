@@ -35,6 +35,8 @@ export type SlotDraft = {
 };
 
 type CandidateOption = { id: string; label: string };
+// A selectable group for group-mode fan-out — name + its active-candidate count.
+export type GroupOption = { id: string; name: string; count: number };
 
 type Props = {
   open: boolean;
@@ -42,10 +44,11 @@ type Props = {
   draft: SlotDraft | null;
   candidates: CandidateOption[];
   // Batch the new slot belongs to — scopes candidate-less titled events (PR-B)
-  // and is the fan-out target in group mode.
+  // and is the default fan-out target in group mode.
   batchId: string;
-  // Display name of the batch (shown in the group-mode helper). May be empty.
-  groupName: string;
+  // Every assignment group — the group-mode picker lists them all so the admin
+  // can fan out to any group, not just the calendar's active one.
+  groupOptions: GroupOption[];
   // All existing slots — used for the soft double-booking warning.
   allSlots: SchedSlot[];
   onSaved: () => void;
@@ -60,12 +63,14 @@ export function SlotEditorModal({
   draft,
   candidates,
   batchId,
-  groupName,
+  groupOptions,
   allSlots,
   onSaved,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const [mode, setMode] = useState<SlotAssignMode>('individual');
+  // Which group to fan out over in group mode (defaults to the calendar's group).
+  const [groupId, setGroupId] = useState('');
   const [title, setTitle] = useState('');
   const [candidateId, setCandidateId] = useState('');
   const [startLocal, setStartLocal] = useState('');
@@ -85,6 +90,13 @@ export function SlotEditorModal({
   const draftKey = draft ? (draft.id ?? `new:${draft.candidateId}:${draft.startLocal}`) : null;
   if (open && draft && seededFor !== draftKey) {
     setMode(draft.mode);
+    // Default the group picker to the calendar's active group when present,
+    // otherwise the first available group.
+    setGroupId(
+      groupOptions.some((g) => g.id === batchId)
+        ? batchId
+        : (groupOptions[0]?.id ?? ''),
+    );
     setTitle(draft.title);
     setCandidateId(draft.candidateId);
     setStartLocal(draft.startLocal);
@@ -114,7 +126,8 @@ export function SlotEditorModal({
 
   // Group mode is create-only; editing an existing slot is always per-candidate.
   const isGroup = mode === 'group' && !isEditing;
-  const groupCount = candidates.length;
+  const selectedGroup = groupOptions.find((g) => g.id === groupId) ?? null;
+  const groupCount = selectedGroup?.count ?? 0;
 
   async function save() {
     if (saving) return;
@@ -163,7 +176,7 @@ export function SlotEditorModal({
               isGroup
                 ? {
                     mode: 'group',
-                    batch_id: batchId,
+                    batch_id: groupId,
                     title,
                     start_at: startIso,
                     end_at: endIso,
@@ -275,10 +288,16 @@ export function SlotEditorModal({
         )}
 
         {isGroup ? (
-          <div className="rounded-xs border border-line-soft bg-paper px-3 py-2">
-            {groupName && (
-              <p className="text-sm font-medium text-ink">{groupName}</p>
-            )}
+          <div className="flex flex-col gap-2">
+            <Select
+              label={t('slotGroupSelect')}
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
+              options={groupOptions.map((g) => ({
+                value: g.id,
+                label: g.name || t('slotUntitled'),
+              }))}
+            />
             <p className="text-sm text-mute">
               {t('slotGroupHelper', { count: groupCount })}
             </p>

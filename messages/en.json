@@ -2836,6 +2836,7 @@
     "slotAssignMode": "Assignment",
     "slotModeIndividual": "Individual",
     "slotModeGroup": "Group",
+    "slotGroupSelect": "Select group",
     "slotGroupHelper": "Creates the same slot for all {count} group members",
     "slotGroupEmpty": "This group has no candidates.",
     "slotUntitled": "Untitled",

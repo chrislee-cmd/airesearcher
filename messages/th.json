@@ -2929,6 +2929,7 @@
     "slotAssignMode": "รูปแบบการมอบหมาย",
     "slotModeIndividual": "รายบุคคล",
     "slotModeGroup": "กลุ่ม",
+    "slotGroupSelect": "เลือกกลุ่ม",
     "slotGroupHelper": "สร้างช่วงเวลาเดียวกันให้สมาชิกทั้ง {count} คนในกลุ่ม",
     "slotGroupEmpty": "กลุ่มนี้ไม่มีผู้สมัคร",
     "slotUntitled": "ไม่มีชื่อ",

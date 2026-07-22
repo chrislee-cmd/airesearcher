@@ -2836,6 +2836,7 @@
     "slotAssignMode": "할당 방식",
     "slotModeIndividual": "개인",
     "slotModeGroup": "그룹",
+    "slotGroupSelect": "그룹 선택",
     "slotGroupHelper": "그룹 {count}명 전원에게 동일 슬롯 생성",
     "slotGroupEmpty": "이 그룹에 후보자가 없습니다.",
     "slotUntitled": "제목 없음",

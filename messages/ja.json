@@ -2929,6 +2929,7 @@
     "slotAssignMode": "割り当て方法",
     "slotModeIndividual": "個人",
     "slotModeGroup": "グループ",
+    "slotGroupSelect": "グループを選択",
     "slotGroupHelper": "グループ{count}名全員に同じスロットを作成",
     "slotGroupEmpty": "このグループに候補者がいません。",
     "slotUntitled": "タイトルなし",

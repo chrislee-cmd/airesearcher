@@ -617,9 +617,16 @@ export function RecruitingSchedulingClient({
   );
 
   const currentGroup = groups.find((g) => g.id === activeCalendarGroupId) ?? null;
-  // Batch name shown in the slot editor's group-mode helper.
-  const editorGroupName =
-    groups.find((g) => g.id === editorBatchId)?.title ?? '';
+  // Every assignment group + its active-candidate count — feeds the slot
+  // editor's group-mode picker so fan-out can target any group. Non-cancelled
+  // only, mirroring the server-side fan-out filter.
+  const groupModeOptions = namedGroups.map((g) => ({
+    id: g.id,
+    name: g.title,
+    count: candidates.filter(
+      (c) => c.batch_id === g.id && c.status !== 'cancelled',
+    ).length,
+  }));
 
   // Move targets = existing assignment groups (not the inbox pool).
   const assignBatchOptions = [
@@ -1236,7 +1243,7 @@ export function RecruitingSchedulingClient({
         draft={draft}
         candidates={editorCandidateOptions}
         batchId={editorBatchId}
-        groupName={editorGroupName}
+        groupOptions={groupModeOptions}
         allSlots={editorSlots}
         onSaved={onSaved}
       />
