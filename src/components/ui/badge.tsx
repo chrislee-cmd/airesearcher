@@ -93,14 +93,16 @@ export function Badge({
         // data-canvas-action: opt out of the [data-canvas-body] button cascade
         // (globals.css injects padding/border on native buttons inside canvas
         // widgets) so this × keeps its bare glyph shape — same guard Button /
-        // IconButton / probing ActionButton use. text-current lets the ×
-        // inherit the badge variant's color.
+        // IconButton / probing ActionButton use. The × rests on the CD grey
+        // (#a3a7ad → text-mute-soft) with a hover:text-ink-2 lift — kept in
+        // sync with ChipField's remove × so the two dismiss glyphs read as one
+        // family (was text-current + opacity, which tinted amore-variant × pink).
         <button
           type="button"
           onClick={onDismiss}
           aria-label={dismissLabel ?? 'remove'}
           data-canvas-action
-          className="-mr-0.5 shrink-0 leading-none text-current opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus-visible:opacity-100"
+          className="-mr-0.5 shrink-0 leading-none text-mute-soft transition-colors hover:text-ink-2 focus:outline-none focus-visible:text-amore"
         >
           <span aria-hidden>×</span>
         </button>

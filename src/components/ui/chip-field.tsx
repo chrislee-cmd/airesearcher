@@ -24,8 +24,9 @@ import { IconButton } from '@/components/ui/icon-button';
 //
 // The remove × is <IconButton variant="plain"> — a bare glyph with no
 // box/bg/shadow (PR #903). It replaces the older ghost-brand boxed × the
-// four sites used, so a second Memphis box no longer sits inside the amore
-// pill (user request: background-less × button).
+// four sites used, so a second Memphis box no longer sits inside the chip
+// pill (user request: background-less × button). The × rests on the CD grey
+// (#a3a7ad → text-mute-soft) to match the kwChip spec.
 //
 // Container color lives on the VARIANT, never BASE — §7.11: Tailwind v4
 // resolves className conflicts by compiled-CSS source order, so a resting
@@ -49,9 +50,15 @@ const CONTAINER_VARIANT: Record<ChipFieldVariant, string> = {
   subtle: 'border border-line',
 };
 
+// CD `kwChip` (design-handoff/Widgets Canvas 1c.dc.html:440): 1.4px ink
+// (#1d1b20) outline + ink text + white fill — NOT the amore (red) pill this
+// primitive shipped with. `border-ink`/`text-ink` = --raw-ink-100 = #1d1b20,
+// an exact promotion of the CD value (user decision: global CHIP blanket, not
+// a desk-only variant). radius/padding/gap stay on the existing tokens; only
+// the color treatment is corrected to conform.
 const CHIP =
-  'inline-flex items-center gap-1 rounded-pill border border-amore ' +
-  'bg-paper px-2.5 py-0.5 text-xs text-amore';
+  'inline-flex items-center gap-1 rounded-pill border border-ink ' +
+  'bg-paper px-2.5 py-0.5 text-xs text-ink';
 
 type Props = {
   values: string[];
@@ -146,6 +153,14 @@ export function ChipField({
             onClick={() => removeAt(idx)}
             disabled={disabled}
             aria-label={removeLabel(value)}
+            // CD kwChip x = #a3a7ad (rest). `plain` defaults to text-mute
+            // (--raw-ink-60, too dark); text-mute-soft (--raw-ink-40) is the
+            // sanctioned grey mapping. §7.11: --color-mute-soft is declared
+            // after --color-mute in @theme, so this class wins the source-order
+            // conflict over the variant's text-mute. hover:text-ink-2 (plain)
+            // stays — CD leaves hover undefined and the rest color now anchors
+            // on the CD grey first.
+            className="text-mute-soft"
           >
             <span aria-hidden>×</span>
           </IconButton>
