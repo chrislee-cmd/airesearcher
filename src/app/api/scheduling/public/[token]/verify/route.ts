@@ -7,7 +7,7 @@
 //
 // 🔒 방어:
 //   * 뒷자리 대조·candidate 도출 전부 서버(service-role). 클라 신뢰 X.
-//   * 시크릿이 4자리(1만 조합)라 rate-limit + lockout(token:ip) 이 실질 방어.
+//   * 시크릿이 6자리(100만 조합)라 rate-limit + lockout(token:ip) 이 실질 방어.
 //   * 실패/무효 토큰 모두 동일한 generic 401 — 후보자 존재/전화 등록 여부 미노출.
 //   * 발급 쿠키는 httpOnly + Secure + token 바인딩(다른 링크 재사용 불가).
 import { NextResponse } from 'next/server';

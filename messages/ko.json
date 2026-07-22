@@ -2951,6 +2951,8 @@
     "gateSubmit": "계속",
     "gateVerifying": "확인 중…",
     "gateError": "일치하지 않습니다. 다시 확인해 주세요.",
-    "gateRateLimited": "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."
+    "gateRateLimited": "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+    "gateNoPhoneTitle": "이 링크로 입장할 수 없습니다",
+    "gateNoPhoneBody": "본인 확인에 사용할 전화번호가 등록되어 있지 않습니다. 링크를 공유한 담당자에게 문의해 주세요."
   }
 }

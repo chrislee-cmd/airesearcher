@@ -82,7 +82,8 @@ export default async function Page({
 
   // Phone-tail entry gate. A candidate with a phone on file must prove the tail
   // before their schedule/chat renders (a leaked link alone isn't enough). No
-  // phone on file → gate skipped, token scope stays the only protection. The
+  // phone on file → 'blocked': the tail can't be verified, so entry is refused
+  // with a host-contact notice (2026-07-22 policy — tail gate is mandatory). The
   // gate screen is deliberately generic — it never reveals whose link this is
   // (mirrors the invalid-notice's no-leak stance) until identity is proven.
   const cookieStore = await cookies();
@@ -94,14 +95,17 @@ export default async function Page({
   let body: ReactNode;
   if ('error' in gate) {
     body = <ParticipantScheduleNotice />;
-  } else if (
-    participantGateStatus(gate.candidate.phone, token, gateCookie) === 'required'
-  ) {
-    body = <ParticipantPhoneGate token={token} />;
   } else {
-    body = (
-      <ParticipantSchedule token={token} candidateName={gate.candidate.name} />
-    );
+    const status = participantGateStatus(gate.candidate.phone, token, gateCookie);
+    if (status === 'blocked') {
+      body = <ParticipantScheduleNotice reason="no_phone" />;
+    } else if (status === 'required') {
+      body = <ParticipantPhoneGate token={token} />;
+    } else {
+      body = (
+        <ParticipantSchedule token={token} candidateName={gate.candidate.name} />
+      );
+    }
   }
 
   return (

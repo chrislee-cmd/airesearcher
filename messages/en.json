@@ -2951,6 +2951,8 @@
     "gateSubmit": "Continue",
     "gateVerifying": "Verifying…",
     "gateError": "That doesn't match. Please check and try again.",
-    "gateRateLimited": "Too many attempts. Please try again later."
+    "gateRateLimited": "Too many attempts. Please try again later.",
+    "gateNoPhoneTitle": "This link can't be opened",
+    "gateNoPhoneBody": "There's no phone number on file to verify your identity. Please contact the person who shared this link."
   }
 }

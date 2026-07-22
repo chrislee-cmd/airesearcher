@@ -38,10 +38,15 @@ export async function GET(
 
   // Phone-tail gate: a candidate with a phone on file must have proved the tail
   // (valid signed cookie). Without it we refuse — a leaked link alone can't read
-  // the schedule/chat. (No phone on file → gate skipped; token scope remains.)
+  // the schedule/chat. No phone on file → 'blocked' (tail can't be verified), a
+  // distinct 401 code so the client shows the host-contact notice, not the gate.
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(participantGateCookieName(token))?.value;
-  if (participantGateStatus(candidate.phone, token, cookieValue) === 'required') {
+  const gateStatus = participantGateStatus(candidate.phone, token, cookieValue);
+  if (gateStatus === 'blocked') {
+    return NextResponse.json({ error: 'gate_no_phone' }, { status: 401 });
+  }
+  if (gateStatus === 'required') {
     return NextResponse.json({ error: 'gate_required' }, { status: 401 });
   }
 

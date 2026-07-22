@@ -14,6 +14,14 @@ import { PHONE_TAIL_LEN } from '@/lib/scheduling/participant-gate';
 // re-resolves the gate and renders <ParticipantSchedule>. Deliberately generic:
 // a wrong tail never reveals whether the candidate/phone exists. All UI uses
 // design tokens (§9); no login, no navigation chrome.
+
+// Display only: group the 6 raw digits as ##-#### (hyphen after the 2nd). The
+// stored `tail` state stays digits-only, so the value POSTed to /verify never
+// carries the hyphen (and `normalizeTailInput` strips it server-side anyway).
+function formatTail(digits: string): string {
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}-${digits.slice(2)}`;
+}
+
 export function ParticipantPhoneGate({ token }: { token: string }) {
   const t = useTranslations('SchedulingParticipant');
   const router = useRouter();
@@ -60,9 +68,10 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
           label={t('gateInputLabel', { n: PHONE_TAIL_LEN })}
           inputMode="numeric"
           autoComplete="off"
-          maxLength={PHONE_TAIL_LEN}
-          placeholder={'•'.repeat(PHONE_TAIL_LEN)}
-          value={tail}
+          // +1 for the display hyphen (##-####); the stored value is 6 digits.
+          maxLength={PHONE_TAIL_LEN + 1}
+          placeholder="##-####"
+          value={formatTail(tail)}
           error={error ?? undefined}
           onChange={(e) =>
             setTail(e.target.value.replace(/\D/g, '').slice(0, PHONE_TAIL_LEN))
