@@ -271,19 +271,22 @@ function UrlAddField({
   if (value) {
     return (
       <ul className="flex flex-wrap gap-2">
-        <li className="inline-flex items-center gap-1 rounded-pill border border-line bg-paper-soft py-1 pl-3 pr-1 text-sm text-ink">
+        <li className="inline-flex items-center gap-1 rounded-pill border border-ink bg-paper-soft py-1 pl-3 pr-1 text-sm text-ink">
           <span className="break-all" aria-label={ariaLabel}>
             {value}
           </span>
+          {/* CD kwChip 정합(제자리 교정): border-line→border-ink(먹색 아웃라인),
+              boxed ghost ✕ → 무박스 plain × + text-mute-soft 그레이(#a3a7ad
+              매핑). glossary 칩과 동일 토큰(형제 일관). */}
           <IconButton
             aria-label={`${removeLabel}: ${value}`}
             size="sm"
-            variant="ghost"
+            variant="plain"
             disabled={disabled}
             onClick={() => onChange('')}
-            className="shrink-0"
+            className="shrink-0 text-mute-soft"
           >
-            <span aria-hidden>✕</span>
+            <span aria-hidden>×</span>
           </IconButton>
         </li>
       </ul>
