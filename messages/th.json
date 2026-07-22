@@ -2603,6 +2603,8 @@
     "emptyGroups": "โปรเจกต์นี้ยังไม่มีกลุ่ม เพิ่มได้ผ่านการอัปโหลดหรือ Sheets",
     "groupCount": "{count} คน",
     "calendarGroupLabel": "เลือกกลุ่ม",
+    "groupPickerLabel": "กลุ่ม",
+    "groupAll": "ทั้งหมด",
     "bulkChooseGroup": "เลือกกลุ่ม…",
     "bulkNewGroup": "ชื่อกลุ่มใหม่",
     "newGroupPlaceholder": "ชื่อกลุ่ม",

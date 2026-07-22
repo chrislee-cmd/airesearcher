@@ -2510,6 +2510,8 @@
     "emptyGroups": "This project has no groups yet. Add one via upload or Sheets.",
     "groupCount": "{count}",
     "calendarGroupLabel": "Select group",
+    "groupPickerLabel": "Group",
+    "groupAll": "All",
     "bulkChooseGroup": "Select a group…",
     "bulkNewGroup": "New group name",
     "newGroupPlaceholder": "Group name",

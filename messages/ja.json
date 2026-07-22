@@ -2603,6 +2603,8 @@
     "emptyGroups": "このプロジェクトにはまだグループがありません。アップロードやシート連携で追加してください。",
     "groupCount": "{count}名",
     "calendarGroupLabel": "グループを選択",
+    "groupPickerLabel": "グループ",
+    "groupAll": "すべて",
     "bulkChooseGroup": "グループを選択…",
     "bulkNewGroup": "新しいグループ名",
     "newGroupPlaceholder": "グループ名",

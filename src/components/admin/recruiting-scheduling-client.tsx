@@ -145,9 +145,10 @@ export function RecruitingSchedulingClient({
   const [draft, setDraft] = useState<SlotDraft | null>(null);
   const [editorBatchId, setEditorBatchId] = useState('');
 
-  // Which group the calendar view is scoped to. Derived below so a project
-  // switch (new `groups`) never leaves it pointing at a stale group id.
-  const [calendarGroupId, setCalendarGroupId] = useState('');
+  // Which group is in focus. '' = 전체 (all groups). Drives both the list scope
+  // and the (batch-scoped) calendar scope. Derived below so a project switch
+  // (new `groups`) never leaves it pointing at a stale group id.
+  const [selectedGroupId, setSelectedGroupId] = useState('');
 
   // Chat sidebar (unified calendar view). `chatThread` is a candidate id or the
   // broadcast sentinel; `chatOpen` toggles the right rail.
@@ -159,10 +160,14 @@ export function RecruitingSchedulingClient({
     setChatOpen(true);
   }
 
-  const activeCalendarGroupId =
-    groups.some((g) => g.id === calendarGroupId)
-      ? calendarGroupId
-      : (groups[0]?.id ?? '');
+  // A group id that actually exists in this project, or '' for "all" — guards
+  // against a stale id lingering after a project switch.
+  const effectiveGroupId = groups.some((g) => g.id === selectedGroupId)
+    ? selectedGroupId
+    : '';
+  // The calendar is batch-scoped, so it always resolves to one concrete group:
+  // the picked one, or the first when "all" is selected.
+  const activeCalendarGroupId = effectiveGroupId || (groups[0]?.id ?? '');
 
   // Extra (non email/name/phone) columns present across the project, preserved
   // in `fields`. Union so a candidate missing a key still renders an empty cell.
@@ -230,10 +235,21 @@ export function RecruitingSchedulingClient({
     ).sort();
   }, [candidates, filterKey]);
 
+  // List scope: only the picked group's candidates, or every group when "all".
+  const scopedCandidates = useMemo(
+    () =>
+      effectiveGroupId
+        ? candidates.filter((c) => c.batch_id === effectiveGroupId)
+        : candidates,
+    [candidates, effectiveGroupId],
+  );
+
   const filteredCandidates = useMemo(() => {
-    if (!filterKey || !filterValue) return candidates;
-    return candidates.filter((c) => (c.fields[filterKey] ?? '') === filterValue);
-  }, [candidates, filterKey, filterValue]);
+    if (!filterKey || !filterValue) return scopedCandidates;
+    return scopedCandidates.filter(
+      (c) => (c.fields[filterKey] ?? '') === filterValue,
+    );
+  }, [scopedCandidates, filterKey, filterValue]);
 
   const sortedCandidates = useMemo(() => {
     if (!sortKey) return filteredCandidates;
@@ -262,15 +278,15 @@ export function RecruitingSchedulingClient({
     return arr;
   }, [filteredCandidates, sortKey, sortDir, slots, now]);
 
-  // Group sections (그룹별 목록): each group with its slice of the sorted list.
-  const groupSections = useMemo(
-    () =>
-      groups.map((g) => ({
-        group: g,
-        rows: sortedCandidates.filter((c) => c.batch_id === g.id),
-      })),
-    [groups, sortedCandidates],
-  );
+  // Group sections (그룹별 목록): each visible group with its slice of the
+  // sorted list. When a group is picked, only that section shows.
+  const visibleGroups = effectiveGroupId
+    ? groups.filter((g) => g.id === effectiveGroupId)
+    : groups;
+  const groupSections = visibleGroups.map((g) => ({
+    group: g,
+    rows: sortedCandidates.filter((c) => c.batch_id === g.id),
+  }));
 
   // --- Selection (operates on the visible/sorted list) ---
 
@@ -887,6 +903,22 @@ export function RecruitingSchedulingClient({
 
           {message && <p className="text-sm text-ink">{message}</p>}
 
+          {/* Group picker (spec feedback): sits below the upload since groups
+              are produced by uploads. Scopes both the list and the calendar. */}
+          {groups.length > 0 && (
+            <div className="min-w-[220px]">
+              <Select
+                label={t('groupPickerLabel')}
+                value={effectiveGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                options={[
+                  { value: '', label: t('groupAll') },
+                  ...groups.map((g) => ({ value: g.id, label: g.title })),
+                ]}
+              />
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Tabs
               aria-label={t('viewTabsLabel')}
@@ -1061,20 +1093,6 @@ export function RecruitingSchedulingClient({
             // more than one.
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
               <div className="flex min-w-0 flex-1 flex-col gap-4">
-                {groups.length > 1 && (
-                  <div className="min-w-[220px]">
-                    <Select
-                      label={t('calendarGroupLabel')}
-                      value={activeCalendarGroupId}
-                      onChange={(e) => setCalendarGroupId(e.target.value)}
-                      options={groups.map((g) => ({
-                        value: g.id,
-                        label: g.title,
-                      }))}
-                    />
-                  </div>
-                )}
-
                 {activeCalendarGroupId && (
                   <BatchTitleField
                     key={activeCalendarGroupId}
