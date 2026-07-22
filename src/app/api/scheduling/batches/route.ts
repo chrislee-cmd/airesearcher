@@ -3,9 +3,14 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
 
-// Create a scheduling batch (super-admin only). Mirrors the /api/admin/* gate:
-// non-admins get 404 (route stays unobservable) and writes go through the
+// Create a scheduling batch (=group) (super-admin only). Mirrors the /api/admin/*
+// gate: non-admins get 404 (route stays unobservable) and writes go through the
 // service-role client after the code-level isSuperAdminEmail check.
+//
+// A batch may be scoped under a project (PR-C) via optional `projectId`. When
+// the project_id column isn't present yet (preview DB, additive migration not
+// auto-applied) the insert-with-project errors, so we retry without it —
+// wide/narrow degrade keeps group creation working on preview.
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -21,23 +26,45 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
-  const title =
-    body && typeof body === 'object' && typeof (body as { title?: unknown }).title === 'string'
-      ? (body as { title: string }).title.trim()
-      : '';
+  const obj = (body ?? {}) as { title?: unknown; projectId?: unknown };
+  const title = typeof obj.title === 'string' ? obj.title.trim() : '';
   if (!title) {
     return NextResponse.json({ error: 'title_required' }, { status: 400 });
   }
+  const projectId =
+    typeof obj.projectId === 'string' && obj.projectId ? obj.projectId : null;
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const wide = await admin
     .from('sched_batches')
-    .insert({ owner_user_id: user!.id, title })
+    .insert(
+      projectId
+        ? { owner_user_id: user!.id, title, project_id: projectId }
+        : { owner_user_id: user!.id, title },
+    )
     .select('id, title, created_at')
     .single();
 
-  if (error) {
-    return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+  let data = wide.data;
+  if (wide.error) {
+    // project_id column may not exist on a preview DB yet — fall back to a
+    // project-less insert so the group still gets created.
+    if (projectId) {
+      const narrow = await admin
+        .from('sched_batches')
+        .insert({ owner_user_id: user!.id, title })
+        .select('id, title, created_at')
+        .single();
+      if (narrow.error) {
+        return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+      }
+      data = narrow.data;
+    } else {
+      return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+    }
   }
-  return NextResponse.json({ batch: data }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json(
+    { batch: data },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }
