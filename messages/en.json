@@ -2960,6 +2960,7 @@
     "collisionUnnamed": "Unnamed",
     "fullPhoneTitle": "Enter your full phone number",
     "fullPhoneBody": "To tell you apart, please enter your full phone number.",
-    "fullPhoneLabel": "Phone number"
+    "fullPhoneLabel": "Phone number",
+    "gatePrivacy": "We use this only to match you to your interview — nothing is stored on this device."
   }
 }
