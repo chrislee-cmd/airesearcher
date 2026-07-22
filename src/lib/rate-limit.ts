@@ -168,6 +168,12 @@ export const LIMITS = {
   // backstop against enumeration sweeps across many tokens.
   shareOtp: { limit: 3, window: '1 m' as Window },
   shareOtpHourly: { limit: 20, window: '1 h' as Window },
+  // Recruiting-scheduling participant phone-tail gate (anonymous). The secret
+  // is only a 4-digit tail (10k combos), so the throttle is the real defense:
+  // keyed by (token:ip). Minute cap tolerates a couple of typos; the hourly cap
+  // is the lockout that makes brute force infeasible (20/h ⋙ 10k combos).
+  schedGate: { limit: 5, window: '1 m' as Window },
+  schedGateHourly: { limit: 20, window: '1 h' as Window },
   // Authenticated LLM calls per user-minute.
   llmPerUser: { limit: 30, window: '1 m' as Window },
   // Authenticated LLM calls per org-day. Catches a single org running
