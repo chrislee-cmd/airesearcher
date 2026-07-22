@@ -1016,8 +1016,8 @@ function RecruitingSetupFlow({
 
   return (
     <div className="flex h-full flex-col">
-      <ControlBoardPanel gap="none">
-        <ControlBoardPanel.Region>
+      <ControlBoardPanel gap="none" fill>
+        <ControlBoardPanel.Region fill>
           <RecruitingSetupAccordion
             files={files}
             pasted={pasted}

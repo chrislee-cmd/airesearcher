@@ -4577,7 +4577,7 @@ export function TranslateConsole({
           : glossary.length > 0;
 
   const setupAccordionEl = (
-    <ControlBoardPanel.Region>
+    <ControlBoardPanel.Region fill>
       <WidgetAccordion
         steps={setupSteps}
         isExpanded={setupAccordion.isExpanded}
@@ -4646,6 +4646,7 @@ export function TranslateConsole({
         // 차단(tts)만 상단 고정 — 오류 배너는 에코 안내 아래로. gap = 'field'(gap-4).
         <ControlBoardPanel
           gap="field"
+          fill
           // banners 슬롯엔 autoplay 차단(Layer A tts)만 상단 고정 — 이건 "왜
           // 모니터가 조용한가"를 즉시 알려야 해서 top 이 맞다. 반면 WebRTC/연결
           // 오류 배너(errorBanner)는 EchoOnboarding("에코 없이 쓰는법") 아래로

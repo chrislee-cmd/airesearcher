@@ -273,8 +273,8 @@ export function UtSessionBody() {
     // 세팅 — 4-스텝 아코디언 + 방식별 CTA.
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <ControlBoardPanel gap="section" banners={setupBanner}>
-          <ControlBoardPanel.Region>
+        <ControlBoardPanel gap="section" banners={setupBanner} fill>
+          <ControlBoardPanel.Region fill>
             <UtSetupAccordion
               surface={surface}
               projectId={projectId}
