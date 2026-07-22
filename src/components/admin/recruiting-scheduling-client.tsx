@@ -1564,7 +1564,7 @@ function MasterLinkBar({
         </div>
         <div className="text-sm text-mute">{t('masterLinkHelper')}</div>
       </div>
-      <div className="min-w-[180px] flex-1 truncate rounded-[10px] border-[1.5px] border-ink bg-paper px-3 py-2 font-mono text-md text-ink">
+      <div className="min-w-[180px] flex-1 truncate rounded-[var(--fv-radius-field)] border-[1.5px] border-ink bg-paper px-3 py-2 font-mono text-md text-ink">
         {relative}
       </div>
       <Button variant="secondary" size="sm" onClick={copy}>

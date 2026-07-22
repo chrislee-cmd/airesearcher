@@ -481,6 +481,12 @@
      와 동등 — 중복 신설 회피). theme-agnostic 구조값이라 :root 단일 정의. */
   --widget-card-frame-radius: 20px;
   --widget-card-frame-toolbar-radius: 10px;
+
+  /* fullview/recsched 셸 인풋·필드 radius (BUILD-SPEC §1 — field 10~11).
+     rounded-{xs(4),sm(14)} 사이라 정확 매칭 토큰이 없어 CD 절대값을 전용 토큰으로
+     승격(AUTHORITY — 가까운 rounded-xs/sm 로 다운그레이드 금지). `rounded-[var(
+     --fv-radius-field)]` 로 소비. theme-agnostic 구조값이라 :root 단일 정의. */
+  --fv-radius-field: 10px;
 }
 
 /* =========================================================================
