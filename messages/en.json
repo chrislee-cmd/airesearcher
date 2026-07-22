@@ -106,16 +106,20 @@
     },
     "url": {
       "label": "Target site URL",
-      "description": "The site you want to test. It opens in a new tab when the session starts."
+      "description": "The site you want to test. It opens in a new tab when the session starts.",
+      "add": "Add",
+      "remove": "Remove"
     },
     "language": {
       "label": "Expected participant language",
       "description": "Pick the language the participant will speak so the transcript is accurate. Required to start the session.",
       "placeholder": "Select a language"
     },
-    "siteAudio": {
-      "label": "Also record site audio",
-      "description": "Includes both your microphone and the site's audio in the video. Turn on \"Share tab audio\" in the screen-share dialog. (Default: microphone only.)"
+    "host": {
+      "task": {
+        "label": "Test task",
+        "placeholder": "e.g. Sign up for a new account and add an item to the cart."
+      }
     },
     "cta": {
       "start": "Start session",
@@ -132,6 +136,11 @@
       "result": "Session result",
       "idle": "Screen-share + voice usability testing"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · Review",
+      "reviewBadge": "Post-session review",
+      "reviewMeta": "{count} participant · {duration} · PREVIEW"
+    },
     "unsupported": "This browser doesn't support screen-share recording. Please use a recent desktop browser such as Chrome or Edge.",
     "result": {
       "uploading": "Saving the recording…",
@@ -141,6 +150,7 @@
       "logPlaceholderTranscribing": "Your speech will appear here once transcription finishes.",
       "logPlaceholderEmpty": "No speech was transcribed.",
       "showTranscript": "Show full transcript",
+      "showTranscriptCount": "Show full transcript · {turns} turns",
       "hideTranscript": "Hide full transcript",
       "downloadTitle": "Downloads"
     },
@@ -191,6 +201,26 @@
       "createSession": "Couldn't start the session. Please try again in a moment.",
       "downloadLink": "Couldn't create the download link. Please try again in a moment.",
       "download": "An error occurred during download."
+    },
+    "method": {
+      "sectionLabel": "Test method",
+      "groupAria": "Choose test method",
+      "hostTitle": "Test on my device",
+      "guestTitle": "Test on participant device"
+    },
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step2Short": "Test method",
+      "step2Title": "Choose how to run the test",
+      "step3Short": "Language",
+      "step3Title": "Which language will the participant speak?",
+      "step4Short": "Target",
+      "step4Title": "Enter the target site and task",
+      "change": "Change",
+      "optional": "(optional)"
     }
   },
   "UtParticipant": {
@@ -256,13 +286,32 @@
   "Brand": {
     "name": "Research-Canvas"
   },
-  "BrowserAudioNotice": {
-    "title": "Use browser tab audio",
-    "body": "This session captures audio from your browser tab. Open the meeting or website in your browser — not the native desktop app (Zoom, Teams, etc.) — so its sound can be captured.",
-    "hint": "Native app audio can't be captured; only the browser tab's audio is picked up.",
-    "dontShowAgain": "Don't show this again",
+  "ShareGuide": {
+    "step": "{n}/2",
     "cancel": "Cancel",
-    "confirm": "Continue"
+    "next": "Next →",
+    "prev": "← Back",
+    "confirm": "🔊 Got it · Start",
+    "dontShowAgain": "Don't show this again",
+    "sub": {
+      "probing": "Needed to capture participants' voices.",
+      "translate": "Needed to capture the source audio for interpreting."
+    },
+    "step1": {
+      "title": "Join the meeting in your browser",
+      "body": "When you open the meeting link, choose “Continue in browser” — not the app. Native desktop apps like Zoom or Teams have no tab audio, so voices won't be captured.",
+      "warn": "Opening in the native app means audio can't be captured.",
+      "imgAlt": "Prompt to choose the browser instead of the app when joining a meeting",
+      "frameLabel": "Meeting join screen"
+    },
+    "step2": {
+      "title": "Share system audio · must be ON",
+      "body": "In the screen-share window, turn ON the “Also share system audio” toggle at the bottom-left before you start sharing.",
+      "warn": "If the toggle is off, audio won't be saved.",
+      "imgAlt": "Prompt to pick the Window tab and turn on the Also share system audio toggle in the screen-share window",
+      "frameLabel": "Screen share dialog",
+      "badge": "System audio ON"
+    }
   },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
@@ -773,6 +822,12 @@
     "placeholder": "Select a project",
     "newProject": "+ New project",
     "applyToAll": "Apply to all widgets",
+    "applyToAllHint": "☑ Checked applies to all widgets · unchecked, this widget only",
+    "createPlaceholder": "New project name",
+    "createConfirm": "Create",
+    "creating": "Creating…",
+    "createCancel": "Cancel",
+    "createFailed": "Couldn't create the project",
     "menu": "Project menu"
   },
   "ComingSoon": {
@@ -852,7 +907,52 @@
       "description": "Generate interview scripts and discussion guides.",
       "cost": "1 credit"
     },
+    "transcriptResult": {
+      "kind": "Transcript",
+      "donePill": "Done",
+      "back": "List",
+      "open": "View results",
+      "minutes": "{min} min",
+      "speakers": "{count} speakers",
+      "searchPlaceholder": "Search transcript…",
+      "bySpeaker": "By speaker",
+      "byTimestamp": "Timestamp",
+      "exportTitle": "Export",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "Text (.txt)",
+      "exportSrt": "Subtitles (.srt)",
+      "loading": "Loading transcript…",
+      "error": "Couldn't load the transcript.",
+      "empty": "No turns to show.",
+      "noResults": "No matches.",
+      "aiSummaryTitle": "AI summary",
+      "keyThemesTitle": "Key themes",
+      "comingSoon": "Coming soon (later update)."
+    },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "Project",
+        "step1Title": "Select the project you are working on",
+        "step1Selected": "Selected",
+        "step2Short": "Method",
+        "step2Title": "Select the transcription method",
+        "step3Short": "Language",
+        "step3Title": "Which language do you want for analysis?",
+        "step3Field": "Source audio language",
+        "step4Short": "Audio",
+        "step4Title": "Upload or record the audio to transcribe",
+        "orDivider": "or",
+        "change": "Change"
+      },
+      "method": {
+        "sectionLabel": "Transcription method",
+        "groupAria": "Select the transcription method",
+        "micTitle": "Qualitative interview transcription",
+        "micSub": "1:1 in-depth · speaker separation",
+        "minutesTitle": "Meeting minutes / debriefing transcription",
+        "minutesSub": "Multi-party speech · summary"
+      },
       "transcribingEta": "{elapsed} elapsed · ~{remain} remaining (est.)",
       "languageConfirm": {
         "title": "Use this language to transcribe?",
@@ -1193,6 +1293,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
+      "fieldProject": "Project",
+      "step2Short": "Topics & keywords",
+      "step2Title": "Enter the topics and keywords to research",
+      "step2Summary": "{count} keyword(s)",
+      "step3Short": "Research purpose",
+      "step3Title": "Choose the research purpose",
+      "step4Short": "Scope",
+      "step4Title": "Set the collection scope",
+      "change": "Change",
+      "optional": "(optional)"
+    },
     "keywordLabel": "Keywords",
     "keywordPlaceholder": "Type a keyword and press Enter",
     "keywordAddMore": "Add another…",
@@ -1343,6 +1460,24 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
+      "step2Short": "Interview method",
+      "step2Title": "Choose your interview method",
+      "step3Short": "Languages",
+      "step3Title": "Set your interpretation languages",
+      "step4Short": "Custom terms",
+      "step4Title": "Add any special keywords or proper nouns",
+      "glossarySummary": "{count} term(s) added",
+      "change": "Change",
+      "optional": "(optional)",
+      "readyPending": "Set the interpretation languages",
+      "readyGo": "Ready · You can start interpreting"
+    },
     "sourceLang": "Source",
     "targetLang": "Target",
     "project": "Project",
@@ -1362,7 +1497,6 @@
       "micOnly": "Device microphone",
       "tabOnly": "Browser audio input",
       "tabHint": "Pick a tab in the share dialog and check \"Share tab audio\". Chrome desktop only.",
-      "bothCostHint": "Both sides = 2× OpenAI realtime cost (mic + tab run separate sessions)",
       "shortBoth": "mic + tab",
       "shortMic": "mic",
       "shortTab": "tab"
@@ -1426,6 +1560,13 @@
       "controlHint": "Start, stop, and sharing are controlled from the widget card.",
       "backToWidget": "Back to widget"
     },
+    "live": {
+      "fullviewHeading": "Please check the full view",
+      "fullviewSubInterpreter": "The session has started. Track live interpretation in the full view.",
+      "backToSetup": "← Back to setup",
+      "backToPrompt": "← Back to live view",
+      "sessionInProgress": "Session in progress"
+    },
     "speaker": {
       "host": "Host",
       "guest": "Guest"
@@ -1487,7 +1628,10 @@
       "placeholder": "One term per line (e.g. SDK, on-prem)",
       "apply": "Apply",
       "applyTitle": "Apply the terms you entered now",
-      "dirtyNotice": "Unapplied changes — press “Apply” to save"
+      "dirtyNotice": "Unapplied changes — press “Apply” to save",
+      "add": "Add",
+      "remove": "Remove",
+      "addPlaceholder": "Type a term, then add (e.g. SDK)"
     },
     "postProcess": {
       "eyebrow": "Output quality fix (post-process LLM)",
@@ -1594,6 +1738,10 @@
     "viewAll": "View all →",
     "transcriptRunning": "Transcription in progress",
     "transcriptDone": "Transcription complete",
+    "transcriptReadyTitle": "Transcript is ready!",
+    "transcriptReadySubtitle": "Speaker-separated, time-stamped transcript is ready. Check results in the full view.",
+    "transcriptOpenFullview": "Open full view",
+    "transcriptBackToSetup": "← Back to setup",
     "transcriptStageUpload": "Upload",
     "transcriptStageTranscribe": "Transcribe",
     "transcriptStageMd": "Document",
@@ -2293,6 +2441,28 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "Project",
+      "step1Title": "Select the project you're working on",
+      "step1Selected": "Selected",
+      "step1BulkTag": "All widgets",
+      "step2Short": "Interview method",
+      "step2Title": "Choose your interview method",
+      "step3Short": "Analysis language",
+      "step3Title": "Which language would you like the analysis in?",
+      "step4Short": "Questions",
+      "step4Title": "Inject questions you must cover",
+      "questionPlaceholder": "Type a must-ask question and press Enter",
+      "questionAdd": "Add",
+      "questionRemove": "Remove question",
+      "questionEmpty": "No questions injected yet",
+      "questionSummary": "{count} question(s) injected",
+      "change": "Change",
+      "optional": "(optional)",
+      "readyPending": "Select an input source and language",
+      "readyGo": "Ready · You can start"
+    },
     "card": {
       "recordingNoAudioTab": "Audio wasn't captured. If this was a tab-share session, check that \"Share tab audio\" was on.",
       "recordingUnsupported": "This browser doesn't support session recording.",
@@ -2481,6 +2651,110 @@
       "liveHint": "Session in progress · check the AI reasoning and suggested questions in full view",
       "startHint": "Start a session",
       "openFullview": "Open full view"
+    },
+    "live": {
+      "fullviewHeading": "Please check the full view",
+      "fullviewSubProbing": "The session has started. Track live probing progress in the full view.",
+      "backToSetup": "← Back to setup",
+      "backToPrompt": "← Back to live view",
+      "sessionInProgress": "Session in progress",
+      "endSession": "End session"
+    }
+  },
+  "CaptureUseCase": {
+    "sectionLabel": "Interview setup",
+    "groupAria": "Select interview setup",
+    "offlineTitle": "In-person interview",
+    "onlineTitle": "Online interview",
+    "observeTitle": "Online observation",
+    "offlineDesc": "An in-person, face-to-face interview",
+    "onlineDesc": "An interview held over a video call",
+    "observeDesc": "Listen-only, over a video call",
+    "offlineNote": "One device mic captures the whole room · no speaker separation"
+  },
+  "Recruiting": {
+    "setup": {
+      "chipRequired": "Required",
+      "standardBadge": "Standard",
+      "extractCta": "Extract criteria →",
+      "criteriaReviewNote": "<b>{count} criteria</b> extracted from your RFP. Preview or edit, then approve to continue.",
+      "preview": "Preview",
+      "edit": "Edit",
+      "approveCriteria": "Approve criteria",
+      "surveyReviewNote": "<b>{sections} sections · {questions} questions</b> generated. Standard blocks are locked; edit only the domain questions.",
+      "approveSurvey": "Approve survey",
+      "surveyUntitledSection": "Untitled section",
+      "surveySectionLocked": "{count} questions · Standard",
+      "surveySectionEditable": "{count} questions · editable",
+      "publishAutoSub": "Runs automatically after approval",
+      "pubFormCreated": "Google Form created",
+      "pubLinkingSheet": "Linking response Sheet…",
+      "pubShare": "Share · anyone-with-link",
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "change": "Change",
+      "optional": "(optional)",
+      "step1Short": "Source",
+      "step1Title": "Upload the source material (RFP · brief · email)",
+      "pasteLabel": "Paste text",
+      "pastePlaceholder": "Paste an RFP, brief, or recruiting email…",
+      "uploadLabel": "Upload files",
+      "uploadHint": "pdf · docx · xlsx · csv · txt · up to 10",
+      "uploadDrop": "Drag & drop or click to upload",
+      "rejected": "Unsupported format: {names}",
+      "fileRemove": "Remove",
+      "sourceEmpty": "Paste or upload files",
+      "sourceSummaryFiles": "{count} files",
+      "sourceSummaryPaste": "Pasted text",
+      "sourceSummaryBoth": "{count} files · pasted",
+      "step2Short": "Criteria",
+      "step2Title": "Review the participant criteria",
+      "criteriaWaiting": "Criteria are extracted once you add a source",
+      "criteriaGenerating": "Extracting criteria…",
+      "criteriaGeneratingCount": "Extracting {count} criteria…",
+      "criteriaEmpty": "No criteria extracted",
+      "criteriaSummary": "{count} criteria",
+      "criteriaEditToggle": "Edit",
+      "criteriaPreviewToggle": "Preview",
+      "criteriaError": "Extraction error: {message}",
+      "criteriaRestart": "Restart",
+      "step3Short": "Survey",
+      "step3Title": "Review the screening survey",
+      "surveyWaiting": "The survey is generated after you review the criteria",
+      "surveyGenerating": "Generating a survey from the criteria…",
+      "surveySummary": "{sections} sections · {questions} questions",
+      "surveyEmpty": "No survey generated",
+      "surveyError": "Survey error: {message}",
+      "surveyRegenerate": "Regenerate",
+      "step4Short": "Publish",
+      "step4Title": "Publish to a Google Form",
+      "publishSummaryPending": "Ready to publish",
+      "publishSummaryDone": "Published",
+      "googleChecking": "Checking Google connection…",
+      "googleConnectHint": "Connect a Google account to publish the survey automatically.",
+      "googleConnect": "Connect Google account",
+      "publishInfo": "Publishing auto-creates a Google Form and a linked responses sheet.",
+      "publishing": "Publishing…",
+      "responderLabel": "Attendee link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "publishErrorLabel": "Publish error: {message}",
+      "retry": "Try again",
+      "reauthHint": "The Google token looks expired or revoked. Reconnect to recover.",
+      "reconnect": "Reconnect Google",
+      "driveHint": "Reconnect your Google account to grant public-link access.",
+      "reconnectShort": "Reconnect",
+      "authErrorLabel": "Google connection error: {message}",
+      "close": "Close",
+      "streamTruncated": "The AI response was cut off. Add a bit more detail and try again.",
+      "publishTimeout": "No response within 45 seconds. Please try again.",
+      "publishStage1": "Checking Google connection…",
+      "publishStage2": "Creating the Google Form…",
+      "publishStage3": "Linking the responses sheet…",
+      "publishStage4": "Finishing up…",
+      "ctaPrepare": "Prepare survey",
+      "ctaPreparing": "Preparing…",
+      "ctaPublish": "Publish form →",
+      "ctaPublishing": "Publishing…"
     }
   },
   "RecruitingScheduling": {

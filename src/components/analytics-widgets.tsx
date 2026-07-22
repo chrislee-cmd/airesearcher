@@ -23,6 +23,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import type { MouseHandlerDataParam } from 'recharts';
 import type {
   AdminAnalyticsReport,
   FeatureUsageRow,
@@ -395,8 +396,29 @@ function LandingUnavailable() {
 }
 
 // #575-1 — 랜딩 접속자 추이: 일별 고유 세션, 신규 vs 재방문 스택.
-export function LandingTrafficCard({ landing }: { landing: LandingTraffic }) {
+// #499 — onSelectDay 가 주어지면 막대 클릭 시 그 날짜(Asia/Seoul YYYY-MM-DD)로
+// 개별 방문 상세를 연다. 슈퍼어드민 대시보드만 이 prop 을 넘긴다 —
+// 공개 /status 위젯 보드는 넘기지 않아 클릭 비활성(상세 API 는 어드민 게이트).
+export function LandingTrafficCard({
+  landing,
+  onSelectDay,
+}: {
+  landing: LandingTraffic;
+  onSelectDay?: (day: string) => void;
+}) {
   const hasData = landing.trend.some((p) => p.newVisitors + p.returning > 0);
+  const clickable = Boolean(onSelectDay);
+  // recharts 차트 클릭 → activeIndex 로 트렌드 배열을 참조해 그 포인트의 full
+  // day(YYYY-MM-DD)를 읽는다. index 기반이라 name(MM-DD)의 연말 중복과 무관.
+  const handleChartClick = (state: MouseHandlerDataParam) => {
+    const idx =
+      typeof state?.activeIndex === 'number'
+        ? state.activeIndex
+        : Number(state?.activeIndex);
+    if (!Number.isInteger(idx)) return;
+    const day = landing.trend[idx]?.day;
+    if (day && onSelectDay) onSelectDay(day);
+  };
   return (
     <Card
       title="랜딩 접속자 추이"
@@ -422,7 +444,7 @@ export function LandingTrafficCard({ landing }: { landing: LandingTraffic }) {
           </div>
           {hasData ? (
             <>
-              <div className="mb-2 flex flex-wrap gap-3">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
                 <span className="flex items-center gap-1.5 text-xs-soft text-mute">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-xs"
@@ -437,10 +459,18 @@ export function LandingTrafficCard({ landing }: { landing: LandingTraffic }) {
                   />
                   재방문
                 </span>
+                {clickable && (
+                  <span className="ml-auto text-xs-soft text-mute-soft">
+                    막대 클릭 → 그날 방문 상세
+                  </span>
+                )}
               </div>
-              <div className="h-64 w-full">
+              <div className={`h-64 w-full ${clickable ? 'cursor-pointer' : ''}`}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={landing.trend}>
+                  <BarChart
+                    data={landing.trend}
+                    onClick={clickable ? handleChartClick : undefined}
+                  >
                     <CartesianGrid
                       stroke="var(--color-line-soft)"
                       vertical={false}

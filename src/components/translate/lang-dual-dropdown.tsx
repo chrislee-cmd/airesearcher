@@ -44,6 +44,9 @@ type Props = {
   triggerLabel: string;
   disabled?: boolean;
   className?: string;
+  /** 트리거를 컬럼 풀폭으로 렌더(세팅 아코디언 STEP3). 기본은 content-width
+   *  (inline-block + min-w-44) — 라이브 컨트롤보드의 가로 배치 유지용. */
+  fullWidth?: boolean;
 };
 
 export function LangDualDropdown({
@@ -58,6 +61,7 @@ export function LangDualDropdown({
   triggerLabel,
   disabled,
   className,
+  fullWidth = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -178,7 +182,10 @@ export function LangDualDropdown({
   }
 
   return (
-    <div className="relative inline-block" ref={wrapRef}>
+    <div
+      className={fullWidth ? 'relative block w-full' : 'relative inline-block'}
+      ref={wrapRef}
+    >
       <ControlTrigger
         id={triggerId}
         aria-haspopup="menu"
@@ -187,7 +194,7 @@ export function LangDualDropdown({
         data-open={panelOpen}
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        className={className ?? 'min-w-44'}
+        className={className ?? (fullWidth ? undefined : 'min-w-44')}
       >
         {triggerText}
       </ControlTrigger>

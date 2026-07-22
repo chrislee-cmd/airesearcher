@@ -106,16 +106,20 @@
     },
     "url": {
       "label": "URL ของเว็บไซต์เป้าหมาย",
-      "description": "เว็บไซต์ที่คุณต้องการทดสอบ จะเปิดในแท็บใหม่เมื่อเซสชันเริ่มต้น"
+      "description": "เว็บไซต์ที่คุณต้องการทดสอบ จะเปิดในแท็บใหม่เมื่อเซสชันเริ่มต้น",
+      "add": "เพิ่ม",
+      "remove": "ลบ"
     },
     "language": {
       "label": "ภาษาที่คาดว่าผู้เข้าร่วมจะใช้",
       "description": "เลือกภาษาที่ผู้เข้าร่วมจะพูดเพื่อให้การถอดเสียงแม่นยำ ต้องเลือกก่อนจึงจะเริ่มเซสชันได้",
       "placeholder": "เลือกภาษา"
     },
-    "siteAudio": {
-      "label": "บันทึกเสียงของเว็บไซต์ด้วย",
-      "description": "รวมทั้งเสียงจากไมโครโฟนและเสียงของเว็บไซต์ไว้ในวิดีโอ เปิด \"แชร์เสียงแท็บ\" ในกล่องโต้ตอบการแชร์หน้าจอ (ค่าเริ่มต้น: เฉพาะไมโครโฟน)"
+    "host": {
+      "task": {
+        "label": "งานทดสอบ",
+        "placeholder": "เช่น สมัครบัญชีใหม่และเพิ่มสินค้าลงในตะกร้า"
+      }
     },
     "cta": {
       "start": "เริ่มเซสชัน",
@@ -132,6 +136,11 @@
       "result": "ผลลัพธ์ของเซสชัน",
       "idle": "การทดสอบความสามารถใช้งานด้วยการแชร์หน้าจอและเสียง"
     },
+    "fullview": {
+      "reviewTitle": "AI UT · รีวิว",
+      "reviewBadge": "รีวิวหลังเซสชัน",
+      "reviewMeta": "ผู้เข้าร่วม {count} คน · {duration} · PREVIEW"
+    },
     "unsupported": "เบราว์เซอร์นี้ไม่รองรับการบันทึกหน้าจอ กรุณาใช้เบราว์เซอร์เดสก์ท็อปเวอร์ชันล่าสุด เช่น Chrome หรือ Edge",
     "result": {
       "uploading": "กำลังบันทึกข้อมูล…",
@@ -141,6 +150,7 @@
       "logPlaceholderTranscribing": "เสียงพูดของคุณจะปรากฏที่นี่เมื่อการแปลงเสร็จสมบูรณ์",
       "logPlaceholderEmpty": "ไม่มีเสียงพูดที่ถูกแปลงเป็นข้อความ",
       "showTranscript": "ดูบทพูดฉบับเต็ม",
+      "showTranscriptCount": "ดูบทพูดฉบับเต็ม · {turns} ช่วง",
       "hideTranscript": "ซ่อนบทพูดฉบับเต็ม",
       "downloadTitle": "ดาวน์โหลด"
     },
@@ -191,6 +201,26 @@
       "createSession": "ไม่สามารถเริ่มเซสชันได้ กรุณาลองใหม่อีกครั้งในอีกสักครู่",
       "downloadLink": "ไม่สามารถสร้างลิงก์ดาวน์โหลดได้ กรุณาลองใหม่อีกครั้งในอีกสักครู่",
       "download": "เกิดข้อผิดพลาดระหว่างการดาวน์โหลด"
+    },
+    "method": {
+      "sectionLabel": "วิธีการทดสอบ",
+      "groupAria": "เลือกวิธีการทดสอบ",
+      "hostTitle": "ทดสอบบนอุปกรณ์ของฉัน",
+      "guestTitle": "ทดสอบบนอุปกรณ์ผู้เข้าร่วม"
+    },
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำ",
+      "step1Selected": "เลือกแล้ว",
+      "step2Short": "วิธีการทดสอบ",
+      "step2Title": "เลือกวิธีการทดสอบ",
+      "step3Short": "ภาษาที่คาดไว้",
+      "step3Title": "ผู้เข้าร่วมจะพูดภาษาใด?",
+      "step4Short": "เป้าหมาย",
+      "step4Title": "กรอกเว็บไซต์เป้าหมายและงาน",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)"
     }
   },
   "UtParticipant": {
@@ -256,13 +286,32 @@
   "Brand": {
     "name": "Research-Canvas"
   },
-  "BrowserAudioNotice": {
-    "title": "ใช้เสียงจากแท็บเบราว์เซอร์",
-    "body": "เซสชันนี้จะจับเสียงจากแท็บเบราว์เซอร์ของคุณ เปิดการประชุมหรือเว็บไซต์ในเบราว์เซอร์ — ไม่ใช่แอปเดสก์ท็อป (Zoom, Teams ฯลฯ) — เพื่อให้จับเสียงได้",
-    "hint": "ไม่สามารถจับเสียงจากแอปเดสก์ท็อปได้ ระบบจะรับเฉพาะเสียงจากแท็บเบราว์เซอร์เท่านั้น",
-    "dontShowAgain": "ไม่ต้องแสดงอีก",
+  "ShareGuide": {
+    "step": "{n}/2",
     "cancel": "ยกเลิก",
-    "confirm": "ดำเนินการต่อ"
+    "next": "ถัดไป →",
+    "prev": "← ย้อนกลับ",
+    "confirm": "🔊 รับทราบแล้ว · เริ่ม",
+    "dontShowAgain": "ไม่ต้องแสดงอีก",
+    "sub": {
+      "probing": "จำเป็นเพื่อจับเสียงของผู้เข้าร่วม",
+      "translate": "จำเป็นเพื่อจับเสียงต้นฉบับสำหรับการแปล"
+    },
+    "step1": {
+      "title": "เข้าร่วมประชุมผ่านเบราว์เซอร์",
+      "body": "เมื่อเปิดลิงก์การประชุม ให้เลือก “ดำเนินการต่อในเบราว์เซอร์” ไม่ใช่แอป แอปเดสก์ท็อปอย่าง Zoom หรือ Teams ไม่มีเสียงแท็บ จึงจับเสียงไม่ได้",
+      "warn": "หากเปิดในแอปเดสก์ท็อป จะจับเสียงไม่ได้",
+      "imgAlt": "หน้าจอแนะนำให้เลือกเบราว์เซอร์แทนแอปเมื่อเข้าร่วมประชุม",
+      "frameLabel": "หน้าจอเข้าร่วมประชุม"
+    },
+    "step2": {
+      "title": "แชร์เสียงระบบ · ต้องเปิด",
+      "body": "ในหน้าต่างแชร์หน้าจอ ให้เปิดสวิตช์ “แชร์เสียงระบบด้วย” ที่มุมล่างซ้ายก่อนเริ่มแชร์",
+      "warn": "หากปิดสวิตช์นี้ เสียงจะไม่ถูกบันทึก",
+      "imgAlt": "หน้าจอแนะนำให้เลือกแท็บ ‘หน้าต่าง’ และเปิดสวิตช์แชร์เสียงระบบในหน้าต่างแชร์หน้าจอ",
+      "frameLabel": "หน้าต่างแชร์หน้าจอ",
+      "badge": "เสียงระบบ ON"
+    }
   },
   "Landing": {
     "metaTitle": "Research-Canvas — Your research workflow, in one place",
@@ -863,6 +912,12 @@
     "placeholder": "เลือกโปรเจกต์",
     "newProject": "+ โปรเจกต์ใหม่",
     "applyToAll": "ใช้กับวิดเจ็ตทั้งหมด",
+    "applyToAllHint": "☑ ติ๊กเพื่อใช้กับทุกวิดเจ็ต · ไม่ติ๊กใช้เฉพาะวิดเจ็ตนี้",
+    "createPlaceholder": "ชื่อโปรเจกต์ใหม่",
+    "createConfirm": "สร้าง",
+    "creating": "กำลังสร้าง…",
+    "createCancel": "ยกเลิก",
+    "createFailed": "สร้างโปรเจกต์ไม่สำเร็จ",
     "menu": "เมนูโปรเจกต์"
   },
   "ComingSoon": {
@@ -942,7 +997,52 @@
       "description": "สร้างสคริปต์อินเทอร์วิวและไกด์ไลน์การสนทนา",
       "cost": "1 เครดิต"
     },
+    "transcriptResult": {
+      "kind": "บทถอดเสียง",
+      "donePill": "เสร็จ",
+      "back": "รายการ",
+      "open": "ดูผลลัพธ์",
+      "minutes": "{min} นาที",
+      "speakers": "ผู้พูด {count} คน",
+      "searchPlaceholder": "ค้นหาบทถอดเสียง…",
+      "bySpeaker": "ตามผู้พูด",
+      "byTimestamp": "เวลา",
+      "exportTitle": "ส่งออก",
+      "exportDocx": "Word (.docx)",
+      "exportTxt": "ข้อความ (.txt)",
+      "exportSrt": "คำบรรยาย (.srt)",
+      "loading": "กำลังโหลดบทถอดเสียง…",
+      "error": "ไม่สามารถโหลดบทถอดเสียงได้",
+      "empty": "ยังไม่มีบทสนทนา",
+      "noResults": "ไม่พบผลลัพธ์",
+      "aiSummaryTitle": "สรุปด้วย AI",
+      "keyThemesTitle": "ธีมหลัก",
+      "comingSoon": "เร็ว ๆ นี้ (อัปเดตภายหลัง)"
+    },
     "transcriptsView": {
+      "setup": {
+        "stepEyebrow": "STEP 0{n} · {label}",
+        "step1Short": "โปรเจกต์",
+        "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำงานอยู่",
+        "step1Selected": "เลือกแล้ว",
+        "step2Short": "วิธีถอดเสียง",
+        "step2Title": "เลือกวิธีการถอดเสียง",
+        "step3Short": "ภาษาวิเคราะห์",
+        "step3Title": "คุณต้องการวิเคราะห์เป็นภาษาใด?",
+        "step3Field": "ภาษาของเสียงต้นฉบับ",
+        "step4Short": "เสียง",
+        "step4Title": "อัปโหลดหรือบันทึกเสียงที่ต้องการถอดเสียง",
+        "orDivider": "หรือ",
+        "change": "เปลี่ยน"
+      },
+      "method": {
+        "sectionLabel": "วิธีถอดเสียง",
+        "groupAria": "เลือกวิธีการถอดเสียง",
+        "micTitle": "ถอดเสียงสัมภาษณ์เชิงคุณภาพ",
+        "micSub": "เชิงลึกแบบ 1:1 · แยกผู้พูด",
+        "minutesTitle": "ถอดเสียงบันทึกการประชุม/ดีบรีฟ",
+        "minutesSub": "การพูดหลายฝ่าย · สรุป"
+      },
       "transcribingEta": "ผ่านไป {elapsed} · เหลืออีกประมาณ {remain} (ประมาณการ)",
       "languageConfirm": {
         "title": "ใช้ภาษานี้ในการถอดเสียงหรือไม่",
@@ -1283,6 +1383,23 @@
     }
   },
   "Desk": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "step1Selected": "เลือกแล้ว",
+      "step1BulkTag": "ทั้งหมด",
+      "fieldProject": "โปรเจกต์",
+      "step2Short": "หัวข้อ·คีย์เวิร์ด",
+      "step2Title": "กรอกหัวข้อและคีย์เวิร์ดที่ต้องการค้นคว้า",
+      "step2Summary": "{count} คีย์เวิร์ด",
+      "step3Short": "วัตถุประสงค์การวิจัย",
+      "step3Title": "เลือกวัตถุประสงค์การวิจัย",
+      "step4Short": "ขอบเขต",
+      "step4Title": "ตั้งค่าขอบเขตการเก็บข้อมูล",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)"
+    },
     "keywordLabel": "คีย์เวิร์ด",
     "keywordPlaceholder": "พิมพ์คีย์เวิร์ดแล้วกด Enter",
     "keywordAddMore": "เพิ่มอีก…",
@@ -1436,6 +1553,24 @@
     }
   },
   "TranslateConsole": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "step1Selected": "เลือกแล้ว",
+      "step1BulkTag": "ทั้งหมด",
+      "step2Short": "รูปแบบการสัมภาษณ์",
+      "step2Title": "เลือกรูปแบบการสัมภาษณ์",
+      "step3Short": "ภาษาการแปล",
+      "step3Title": "ตั้งค่าภาษาสำหรับการแปล",
+      "step4Short": "คำเฉพาะ",
+      "step4Title": "เพิ่มคำสำคัญหรือคำเฉพาะ (ถ้ามี)",
+      "glossarySummary": "เพิ่มคำแล้ว {count} คำ",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)",
+      "readyPending": "ตั้งค่าภาษาการแปล",
+      "readyGo": "พร้อมแล้ว · เริ่มการแปลได้เลย"
+    },
     "sourceLang": "ภาษาต้นทาง",
     "targetLang": "ภาษาปลายทาง",
     "project": "โปรเจกต์",
@@ -1455,7 +1590,6 @@
       "micOnly": "ไมโครโฟนของอุปกรณ์",
       "tabOnly": "อินพุตเสียงของเบราว์เซอร์",
       "tabHint": "เลือกแท็บในกล่องโต้ตอบการแชร์ แล้วเลือก \"Share tab audio\" รองรับเฉพาะ Chrome บนเดสก์ท็อปเท่านั้น",
-      "bothCostHint": "ทั้งสองฝั่ง = ค่าใช้จ่าย OpenAI realtime 2 เท่า (ไมค์ + แท็บทำงานแยกเซสชันกัน)",
       "shortBoth": "ไมค์ + แท็บ",
       "shortMic": "ไมค์",
       "shortTab": "แท็บ"
@@ -1519,6 +1653,13 @@
       "controlHint": "การเริ่ม หยุด และแชร์ควบคุมได้จากการ์ดวิดเจ็ต",
       "backToWidget": "กลับไปที่วิดเจ็ต"
     },
+    "live": {
+      "fullviewHeading": "โปรดตรวจสอบมุมมองเต็มหน้าจอ",
+      "fullviewSubInterpreter": "เซสชันเริ่มต้นแล้ว ติดตามการล่ามแบบเรียลไทม์ได้ในมุมมองเต็มหน้าจอ",
+      "backToSetup": "← กลับไปที่การตั้งค่า",
+      "backToPrompt": "← กลับไปที่หน้าแนะนำ",
+      "sessionInProgress": "เซสชันกำลังดำเนินอยู่"
+    },
     "speaker": {
       "host": "Host",
       "guest": "Guest"
@@ -1580,7 +1721,10 @@
       "placeholder": "หนึ่งคำต่อบรรทัด (เช่น SDK, on-prem)",
       "apply": "นำไปใช้",
       "applyTitle": "นำคำศัพท์ที่คุณป้อนไปใช้ทันที",
-      "dirtyNotice": "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก — กด \"นำไปใช้\" เพื่อบันทึก"
+      "dirtyNotice": "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก — กด \"นำไปใช้\" เพื่อบันทึก",
+      "add": "เพิ่ม",
+      "remove": "ลบ",
+      "addPlaceholder": "พิมพ์คำแล้วเพิ่ม (เช่น SDK)"
     },
     "postProcess": {
       "eyebrow": "การปรับปรุงคุณภาพผลลัพธ์ (post-process LLM)",
@@ -1687,6 +1831,10 @@
     "viewAll": "ดูทั้งหมด →",
     "transcriptRunning": "กำลังถอดความ",
     "transcriptDone": "ถอดความเสร็จสิ้น",
+    "transcriptReadyTitle": "ถอดความพร้อมแล้ว!",
+    "transcriptReadySubtitle": "ถอดความแยกผู้พูดและมีการประทับเวลาพร้อมแล้ว ดูผลลัพธ์ได้ในมุมมองแบบเต็ม",
+    "transcriptOpenFullview": "เปิดมุมมองแบบเต็ม",
+    "transcriptBackToSetup": "← กลับไปตั้งค่า",
     "transcriptStageUpload": "อัปโหลด",
     "transcriptStageTranscribe": "ถอดความ",
     "transcriptStageMd": "เอกสาร",
@@ -2386,6 +2534,28 @@
     }
   },
   "Probing": {
+    "setup": {
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "step1Short": "โปรเจกต์",
+      "step1Title": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "step1Selected": "เลือกแล้ว",
+      "step1BulkTag": "ทั้งหมด",
+      "step2Short": "รูปแบบการสัมภาษณ์",
+      "step2Title": "เลือกรูปแบบการสัมภาษณ์",
+      "step3Short": "ภาษาสำหรับวิเคราะห์",
+      "step3Title": "ต้องการวิเคราะห์เป็นภาษาใด?",
+      "step4Short": "คำถาม",
+      "step4Title": "เพิ่มคำถามที่ต้องถามให้ครบ",
+      "questionPlaceholder": "พิมพ์คำถามที่ต้องถามแล้วกด Enter",
+      "questionAdd": "เพิ่ม",
+      "questionRemove": "ลบคำถาม",
+      "questionEmpty": "ยังไม่มีคำถามที่เพิ่มไว้",
+      "questionSummary": "เพิ่มคำถามแล้ว {count} ข้อ",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)",
+      "readyPending": "เลือกแหล่งเสียงและภาษา",
+      "readyGo": "พร้อมแล้ว · เริ่มได้เลย"
+    },
     "card": {
       "recordingNoAudioTab": "ไม่มีการบันทึกเสียง หากเป็นเซสชันแบบแชร์แท็บ โปรดตรวจสอบว่าได้เปิด \"แชร์เสียงแท็บ\" ไว้แล้ว",
       "recordingUnsupported": "เบราว์เซอร์นี้ไม่รองรับการบันทึกเซสชัน",
@@ -2574,6 +2744,110 @@
       "liveHint": "เซสชันกำลังดำเนินอยู่ · ตรวจสอบการวิเคราะห์ของ AI และคำถามที่แนะนำในมุมมองเต็มหน้าจอ",
       "startHint": "เริ่มเซสชัน",
       "openFullview": "เปิดมุมมองเต็มหน้าจอ"
+    },
+    "live": {
+      "fullviewHeading": "โปรดตรวจสอบมุมมองเต็มหน้าจอ",
+      "fullviewSubProbing": "เซสชันเริ่มต้นแล้ว ติดตามความคืบหน้าการโพรบแบบเรียลไทม์ได้ในมุมมองเต็มหน้าจอ",
+      "backToSetup": "← กลับไปที่การตั้งค่า",
+      "backToPrompt": "← กลับไปที่หน้าแนะนำ",
+      "sessionInProgress": "เซสชันกำลังดำเนินอยู่",
+      "endSession": "จบเซสชัน"
+    }
+  },
+  "CaptureUseCase": {
+    "sectionLabel": "รูปแบบการสัมภาษณ์",
+    "groupAria": "เลือกรูปแบบการสัมภาษณ์",
+    "offlineTitle": "สัมภาษณ์แบบพบหน้า",
+    "onlineTitle": "สัมภาษณ์ออนไลน์",
+    "observeTitle": "สังเกตการณ์ออนไลน์",
+    "offlineDesc": "การสัมภาษณ์แบบพบหน้าพูดคุยกัน",
+    "onlineDesc": "การสัมภาษณ์พูดคุยผ่านวิดีโอคอล",
+    "observeDesc": "ฟังอย่างเดียวผ่านวิดีโอคอล",
+    "offlineNote": "ไมค์เครื่องเดียวเก็บเสียงทั้งห้อง · ไม่แยกผู้พูด"
+  },
+  "Recruiting": {
+    "setup": {
+      "chipRequired": "จำเป็น",
+      "standardBadge": "มาตรฐาน",
+      "extractCta": "ดึงเกณฑ์ →",
+      "criteriaReviewNote": "ดึง<b>เกณฑ์ {count} รายการ</b>จาก RFP ของคุณ ดูตัวอย่างหรือแก้ไข แล้วอนุมัติเพื่อดำเนินการต่อ",
+      "preview": "ดูตัวอย่าง",
+      "edit": "แก้ไข",
+      "approveCriteria": "อนุมัติเกณฑ์",
+      "surveyReviewNote": "สร้าง<b>{sections} ส่วน · {questions} คำถาม</b>แล้ว บล็อกมาตรฐานถูกล็อก แก้ไขได้เฉพาะคำถามเฉพาะโดเมน",
+      "approveSurvey": "อนุมัติแบบสอบถาม",
+      "surveyUntitledSection": "ส่วนที่ไม่มีชื่อ",
+      "surveySectionLocked": "{count} คำถาม · มาตรฐาน",
+      "surveySectionEditable": "{count} คำถาม · แก้ไขได้",
+      "publishAutoSub": "ทำงานอัตโนมัติหลังการอนุมัติ",
+      "pubFormCreated": "สร้าง Google Form แล้ว",
+      "pubLinkingSheet": "กำลังเชื่อมชีตคำตอบ…",
+      "pubShare": "แชร์ · ใครก็ตามที่มีลิงก์",
+      "stepEyebrow": "STEP 0{n} · {label}",
+      "change": "เปลี่ยน",
+      "optional": "(ไม่บังคับ)",
+      "step1Short": "แหล่งข้อมูล",
+      "step1Title": "อัปโหลดแหล่งข้อมูล (RFP · บรีฟ · อีเมล)",
+      "pasteLabel": "วางข้อความ",
+      "pastePlaceholder": "วางข้อความ RFP · บรีฟ · อีเมลได้เลย",
+      "uploadLabel": "อัปโหลดไฟล์",
+      "uploadHint": "pdf · docx · xlsx · csv · txt · สูงสุด 10",
+      "uploadDrop": "ลากแล้ววางหรือคลิกเพื่ออัปโหลด",
+      "rejected": "รูปแบบที่ไม่รองรับ: {names}",
+      "fileRemove": "ลบ",
+      "sourceEmpty": "วางข้อความหรืออัปโหลดไฟล์",
+      "sourceSummaryFiles": "{count} ไฟล์",
+      "sourceSummaryPaste": "ข้อความที่วาง",
+      "sourceSummaryBoth": "{count} ไฟล์ · วางข้อความ",
+      "step2Short": "เกณฑ์",
+      "step2Title": "ตรวจสอบเกณฑ์ผู้เข้าร่วม",
+      "criteriaWaiting": "ระบบจะดึงเกณฑ์เมื่อคุณเพิ่มแหล่งข้อมูล",
+      "criteriaGenerating": "กำลังดึงเกณฑ์…",
+      "criteriaGeneratingCount": "กำลังดึง {count} เกณฑ์…",
+      "criteriaEmpty": "ไม่มีเกณฑ์ที่ดึงได้",
+      "criteriaSummary": "{count} เกณฑ์",
+      "criteriaEditToggle": "แก้ไข",
+      "criteriaPreviewToggle": "ดูตัวอย่าง",
+      "criteriaError": "ข้อผิดพลาดในการดึง: {message}",
+      "criteriaRestart": "เริ่มใหม่",
+      "step3Short": "แบบสอบถาม",
+      "step3Title": "ตรวจสอบแบบสอบถามคัดกรอง",
+      "surveyWaiting": "แบบสอบถามจะถูกสร้างหลังจากตรวจสอบเกณฑ์",
+      "surveyGenerating": "กำลังสร้างแบบสอบถามจากเกณฑ์…",
+      "surveySummary": "{sections} ส่วน · {questions} คำถาม",
+      "surveyEmpty": "ยังไม่มีแบบสอบถามที่สร้าง",
+      "surveyError": "ข้อผิดพลาดแบบสอบถาม: {message}",
+      "surveyRegenerate": "สร้างใหม่",
+      "step4Short": "เผยแพร่",
+      "step4Title": "เผยแพร่ไปยัง Google Form",
+      "publishSummaryPending": "พร้อมเผยแพร่",
+      "publishSummaryDone": "เผยแพร่แล้ว",
+      "googleChecking": "กำลังตรวจสอบการเชื่อมต่อ Google…",
+      "googleConnectHint": "เชื่อมต่อบัญชี Google เพื่อเผยแพร่แบบสอบถามอัตโนมัติ",
+      "googleConnect": "เชื่อมต่อบัญชี Google",
+      "publishInfo": "การเผยแพร่จะสร้าง Google Form และชีตคำตอบที่เชื่อมโยงโดยอัตโนมัติ",
+      "publishing": "กำลังเผยแพร่…",
+      "responderLabel": "ลิงก์สำหรับผู้เข้าร่วม",
+      "copy": "คัดลอก",
+      "copied": "คัดลอกแล้ว",
+      "publishErrorLabel": "ข้อผิดพลาดในการเผยแพร่: {message}",
+      "retry": "ลองอีกครั้ง",
+      "reauthHint": "โทเค็น Google ดูเหมือนหมดอายุหรือถูกเพิกถอน เชื่อมต่อใหม่เพื่อกู้คืน",
+      "reconnect": "เชื่อมต่อ Google อีกครั้ง",
+      "driveHint": "เชื่อมต่อบัญชี Google อีกครั้งเพื่อให้สิทธิ์ลิงก์สาธารณะ",
+      "reconnectShort": "เชื่อมต่อใหม่",
+      "authErrorLabel": "ข้อผิดพลาดการเชื่อมต่อ Google: {message}",
+      "close": "ปิด",
+      "streamTruncated": "การตอบกลับของ AI ถูกตัด กรุณาเพิ่มรายละเอียดแล้วลองอีกครั้ง",
+      "publishTimeout": "ไม่มีการตอบกลับภายใน 45 วินาที กรุณาลองอีกครั้ง",
+      "publishStage1": "กำลังตรวจสอบการเชื่อมต่อ Google…",
+      "publishStage2": "กำลังสร้าง Google Form…",
+      "publishStage3": "กำลังเชื่อมโยงชีตคำตอบ…",
+      "publishStage4": "กำลังเสร็จสิ้น…",
+      "ctaPrepare": "เตรียมแบบสอบถาม",
+      "ctaPreparing": "กำลังเตรียม…",
+      "ctaPublish": "เผยแพร่ฟอร์ม →",
+      "ctaPublishing": "กำลังเผยแพร่…"
     }
   },
   "RecruitingScheduling": {

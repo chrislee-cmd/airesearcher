@@ -34,16 +34,18 @@ import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
 import {
-  BrowserAudioNotice,
-  isBrowserAudioNoticeSuppressed,
-} from '@/components/browser-audio-notice';
+  ShareGuidePopup,
+  isShareGuideSuppressed,
+} from '@/components/share-guide-popup';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
+import { WidgetLiveFullviewPrompt } from '@/components/canvas/shell/widget-live-fullview-prompt';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { useWidgetGate } from '@/components/widget-gate-provider';
 import type {
@@ -62,6 +64,7 @@ import {
   ProbingControlPanel,
   type SourceKind,
 } from './probing/control-board';
+import { ProbingSetupAccordion } from './probing/setup-accordion';
 import { CUSTOM_SECTION_MAX } from './probing/use-custom-sections';
 import { useProbingPersonaConfig } from './probing/use-probing-persona-config';
 import { useProjectSelection } from '@/components/project-selection-provider';
@@ -342,6 +345,10 @@ function ExpandedBody() {
   // (아래 startDisabled 게이트). 선택 후에만 실제 값이 start payload 로 발화.
   const [source, setSource] = useState<SourceKind | ''>('');
 
+  // STEP4 질문 입력 draft (결정②) — 아직 추가 안 한 타이핑 중 텍스트. 커밋된
+  // 질문 리스트는 context.injected_questions (DB 영속).
+  const [questionDraft, setQuestionDraft] = useState('');
+
   // 분석 출력 언어 — 입력 (STT locale 'ko') 와 독립. 세션마다 새로 선택
   // (영속화 X). 기본 미선택('') — 게이트로 선택 강제. think / reflection 자동
   // 호출은 useCallback 안에서 ref 로 최신 값을 읽는다 (deps 재생성 회피).
@@ -360,6 +367,11 @@ function ExpandedBody() {
     useFullview('probing');
 
   const isLive = sessionStatus === 'live';
+
+  // 라이브 카드 본문 = "전체보기 유도" 컴팩트 화면 (기본). "Back to setup" 을
+  // 누르면 세팅 뷰로 비파괴 토글 — 세션은 계속 진행(세션 중 입력·언어 변경
+  // 불가 원칙과 일치). 새 세션 시작 시 runStartSession 에서 prompt 로 리셋.
+  const [setupPeek, setSetupPeek] = useState(false);
 
   // 위젯별 동시사용 게이트 (#512) — 세션 start 시 슬롯 획득, 종료 시 반납.
   const gate = useWidgetGate('probing');
@@ -439,6 +451,7 @@ function ExpandedBody() {
   const [context, setContext] = useState<ResearchContext>({
     research_goal: '',
     key_research_question: '',
+    injected_questions: [],
   });
   const [contextHydrated, setContextHydrated] = useState(false);
   // probing_sessions.id — 공유 링크(#477) resource_id(probing_persona). 컨텍스트가
@@ -463,6 +476,7 @@ function ExpandedBody() {
             id?: string | null;
             research_goal?: string;
             key_research_question?: string;
+            injected_questions?: string[] | null;
           };
         };
         if (cancelled) return;
@@ -472,6 +486,7 @@ function ExpandedBody() {
           setContext({
             research_goal: j.row.research_goal ?? '',
             key_research_question: j.row.key_research_question ?? '',
+            injected_questions: j.row.injected_questions ?? [],
           });
         }
       } catch {
@@ -498,6 +513,7 @@ function ExpandedBody() {
               research_goal: contextRef.current.research_goal,
               key_research_question:
                 contextRef.current.key_research_question,
+              injected_questions: contextRef.current.injected_questions,
             }),
           });
           // 저장 직후 probing_sessions.id 확보 — 공유 버튼(#477) 활성화용.
@@ -1445,6 +1461,8 @@ function ExpandedBody() {
     // 때까지 여기서 보류된다. 취소/이탈 시 false → 세션 시작 안 함.
     const admitted = await gate.acquire();
     if (!admitted) return;
+    // 새 세션은 항상 "전체보기 유도" 화면에서 시작 (직전 세션의 setup-peek 잔상 리셋).
+    setSetupPeek(false);
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
   }, [gate, startSession, source, outputLang]);
@@ -1456,14 +1474,14 @@ function ExpandedBody() {
     if (!source || !outputLang) return;
     if (
       (source === 'tab' || source === 'both') &&
-      !isBrowserAudioNoticeSuppressed()
+      !isShareGuideSuppressed()
     ) {
       setBrowserAudioNoticeOpen(true);
       return;
     }
     void runStartSession();
   }, [source, outputLang, runStartSession]);
-  const handleBrowserAudioConfirm = useCallback(() => {
+  const handleShareGuideConfirm = useCallback(() => {
     setBrowserAudioNoticeOpen(false);
     void runStartSession();
   }, [runStartSession]);
@@ -2134,21 +2152,101 @@ function ExpandedBody() {
             />
           );
 
-          // idle — 컨트롤만. (사고흐름/기록 본문은 라이브에서만 의미.)
-          // 컨트롤보드 layout = ControlBoardPanel SSOT (px-4 → px-5 정합 포함).
-          // gap="field" — 슬롯 간 세로 리듬을 cluster gap 이 소유(옛 손코딩 gap-5
-          // 제거, translate/quotes 와 동일 field 리듬으로 통일).
+          // idle — 유스케이스 4-스텝 아코디언 (V2 세팅 PR-B). 옛 평면 컨트롤
+          // 리스트(ProbingControlPanel)를 대체하되, ControlBoardPanel 프레임은
+          // 유지 (.Region = 규격 프레임 + 콘텐츠 자유 — 아코디언 내부 레이아웃은
+          // 위젯 자유). live/전체보기 표면은 아래 분기로 그대로(회귀 0).
           if (!isLive && !isCurrent) {
             return (
-              <ControlBoardPanel gap="field">{controlPanel}</ControlBoardPanel>
+              <ControlBoardPanel gap="none" fill>
+                <ControlBoardPanel.Region fill>
+                  <ProbingSetupAccordion
+                    projectId={selectedProjectId}
+                    onProjectChange={(id) => setSelection('probing', id)}
+                    source={source}
+                    onSourceChange={setSource}
+                    outputLang={outputLang}
+                    onOutputLangChange={setOutputLang}
+                    questions={context.injected_questions}
+                    onQuestionsChange={(next) =>
+                      setContext((prev) => ({
+                        ...prev,
+                        injected_questions: next,
+                      }))
+                    }
+                    questionDraft={questionDraft}
+                    onQuestionDraftChange={setQuestionDraft}
+                  />
+                </ControlBoardPanel.Region>
+              </ControlBoardPanel>
             );
           }
 
-          // 라이브 / 전체보기 open — 컨트롤 상단 고정 + 본문(진행 안내 + 질문 기록).
-          // 사고 흐름·제안 질문 팝업은 전체보기(QuestionPane)로 이전 — 위젯뷰는
-          // 컴팩트 진행 안내 + 전체보기 CTA 만 (PR: probing-widgetview-strip).
-          // active 컨트롤도 idle 과 동일한 ControlBoardPanel 프레임 경유 (손코딩
-          // 상단 바 제거) — idle→active 프레임/컨트롤 위치 불변, 본문은 아래 flex-1.
+          // 라이브 — 카드 본문 = "전체보기 유도" 컴팩트 화면 (세팅 폼 + 질문
+          // 기록은 전체보기로 이관). 실제 진행(AI 사고 흐름·제안 질문)은
+          // 전체보기 QuestionPane 에만. footer(좌 Session in progress · 우
+          // End session)는 유지 — 세션/캡처 로직 회귀 0(본문 표시만 교체).
+          if (isLive) {
+            // Back to setup 비파괴 토글 — 세팅 뷰(세션-잠금, 세션 계속). controlPanel
+            // 이 자체 stop 버튼/상태 footer 를 포함하므로 종료 경로 유지. 상단
+            // 얇은 스트립의 "← 전체보기 유도로" 로 다시 prompt 로 토글.
+            if (setupPeek) {
+              return (
+                <>
+                  <div className="flex shrink-0 items-center border-b border-line-soft px-4 py-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setSetupPeek(false)}
+                    >
+                      {t('live.backToPrompt')}
+                    </Button>
+                  </div>
+                  <ControlBoardPanel active gap="field">
+                    {controlPanel}
+                  </ControlBoardPanel>
+                </>
+              );
+            }
+            return (
+              <div className="flex min-h-0 flex-1 flex-col">
+                {isCurrent ? (
+                  // 전체보기 open — 카드는 모달 뒤에 가려짐. 중복 유도 대신 안내.
+                  <div className="flex min-h-0 flex-1 items-center justify-center px-4 text-center text-sm italic text-mute-soft">
+                    {t('card.workingInFullview')}
+                  </div>
+                ) : (
+                  <WidgetLiveFullviewPrompt
+                    onFullview={openFullview}
+                    onBackToSetup={() => setSetupPeek(true)}
+                    heading={t('live.fullviewHeading')}
+                    sub={t('live.fullviewSubProbing')}
+                    backLabel={t('live.backToSetup')}
+                  />
+                )}
+                {/* footer — 좌 진행 상태 · 우 세션 종료. 라이브 정상 시
+                    "Session in progress", 30분 cap 재연결(갱신) 중엔 그 힌트를
+                    노출. stop 경로는 handleStopSession 로 controlPanel 과
+                    동일(세션 종료 로직 불변). */}
+                <div className="mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-line-soft px-4 py-3">
+                  <span className="text-xs text-mute">
+                    {sessionRenewing
+                      ? t('card.statusRenewing')
+                      : t('live.sessionInProgress')}
+                  </span>
+                  <ChromeButton
+                    size="lg"
+                    onClick={handleStopSession}
+                    disabled={stopDisabled}
+                  >
+                    {t('live.endSession')}
+                  </ChromeButton>
+                </div>
+              </div>
+            );
+          }
+
+          // 전체보기 open (라이브 아님, idle 프리뷰) — 기존 동작 유지.
           return (
             <>
               <ControlBoardPanel active gap="field">
@@ -2263,6 +2361,12 @@ function ExpandedBody() {
             label={t('card.startSession')}
             disabled={startDisabled}
             onClick={handleStartSession}
+            // 아코디언 푸터 좌측 상태 라벨 (프로토 D10). ready = 소스+언어 선택 완료.
+            statusLabel={
+              !source || !outputLang
+                ? t('setup.readyPending')
+                : t('setup.readyGo')
+            }
           />
         )}
       </div>
@@ -2334,9 +2438,10 @@ function ExpandedBody() {
         </WidgetFullviewPanel>,
       )}
 
-      <BrowserAudioNotice
+      <ShareGuidePopup
         open={browserAudioNoticeOpen}
-        onConfirm={handleBrowserAudioConfirm}
+        widget="probing"
+        onConfirm={handleShareGuideConfirm}
         onCancel={() => setBrowserAudioNoticeOpen(false)}
         // both(진행자 mic + 응답자 tab 병렬)는 스피커 에코 위험 — 이어폰 안내 결합.
         note={source === 'both' ? t('card.bothEchoNote') : undefined}
@@ -2401,6 +2506,8 @@ export const probingCard: WidgetContent = {
     cost: 25,
     thumbnail: '/thumbnail/probing.png',
     expandedCols: 3,
+    // Canvas 1c 카드 프레임 opt-in — sky 파스텔 헤더밴드 + 통합 툴바(💎25).
+    cardFrame: true,
   },
   state: 'idle',
   ExpandedBody,

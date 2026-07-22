@@ -86,6 +86,13 @@ type ControlBoardPanelProps = {
   active?: boolean;
   // 클러스터 세로 간격 열거형 (위 ClusterGap 주석 참고). 기본 none.
   gap?: ClusterGap;
+  // fill opt-in — 셋업 아코디언 위젯 전용. 켜면 컨트롤 클러스터가 flex-1 min-h-0
+  // 로 wrapper(idle=flex-1)를 세로로 채운다 → 그 안의 <ControlBoardPanel.Region
+  // fill> + WidgetAccordion(flex-1)이 카드 바닥까지 stretch (좌측 레일 full-height,
+  // 하단 빈 화이트스페이스 제거). 평면 클러스터 위젯(짧은 필드)은 fill 미지정 →
+  // 기존 top-align 자연 높이 그대로(회귀 0). active(wrapper=shrink-0)에서는
+  // wrapper 자체가 자연 높이라 flex-1 이 사실상 no-op — idle 에서만 작동.
+  fill?: boolean;
 };
 
 function cx(...parts: Array<string | false | undefined>): string {
@@ -97,6 +104,7 @@ export function ControlBoardPanel({
   banners,
   active = false,
   gap = 'none',
+  fill = false,
 }: ControlBoardPanelProps) {
   // wrapper — 외곽 padding/폭/정렬은 상태 불변(px-5 pt-10 pb-6 + 상단정렬 +
   // 수평 중앙). active 는 세로 채움 정책만 바꾼다:
@@ -119,7 +127,16 @@ export function ControlBoardPanel({
           {banners}
         </div>
       )}
-      <div className={cx('flex flex-col', clusterWidth, GAP_CLASS[gap])}>
+      <div
+        className={cx(
+          'flex flex-col',
+          clusterWidth,
+          GAP_CLASS[gap],
+          // fill: 클러스터가 wrapper(idle=flex-1)를 세로로 채워 그 안의 fill Region
+          // + 아코디언이 카드 바닥까지 stretch. min-h-0 로 overflow 시 wrapper 스크롤.
+          fill && 'min-h-0 flex-1',
+        )}
+      >
         {children}
       </div>
     </div>
@@ -197,6 +214,11 @@ function InputSlot({
 // .Region — "규격 프레임 + 콘텐츠 자유". 선택적 라벨(Field) + 임의 children
 // (페르소나 그리드·리스트 등). 바깥 규격(cluster 폭 상속 + 슬롯 간 리듬)만 고정,
 // 안은 위젯 자유. 0~n개 배치 가능. 구조는 .Input 과 같고 의미(자유 콘텐츠)만 다름.
+//
+// fill opt-in — 셋업 아코디언 전용. 부모 <ControlBoardPanel fill> 클러스터가
+// flex-1 로 늘어난 만큼, 이 Region 도 flex-1 min-h-0 + flex-col 로 늘어나 자식
+// (WidgetAccordion flex-1)이 카드 바닥까지 stretch 한다. 형제 슬롯이 있어도
+// flex-1 이 남는 공간만 차지(형제는 자연 높이). 미지정이면 자연 높이(회귀 0).
 function RegionSlot({
   label,
   description,
@@ -204,7 +226,8 @@ function RegionSlot({
   htmlFor,
   children,
   className,
-}: LabeledSlotProps) {
+  fill,
+}: LabeledSlotProps & { fill?: boolean }) {
   const inner = label ? (
     <Field
       label={label}
@@ -218,7 +241,10 @@ function RegionSlot({
     children
   );
   return (
-    <div data-ds-slot="region" className={className}>
+    <div
+      data-ds-slot="region"
+      className={cx(fill && 'flex min-h-0 flex-1 flex-col', className)}
+    >
       {inner}
     </div>
   );
