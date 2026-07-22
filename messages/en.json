@@ -955,7 +955,11 @@
       "noResults": "No matches.",
       "aiSummaryTitle": "AI summary",
       "keyThemesTitle": "Key themes",
-      "comingSoon": "Coming soon (later update)."
+      "comingSoon": "Coming soon (later update).",
+      "generate": "Generate AI summary",
+      "generating": "Generating…",
+      "summaryStub": "No AI summary generated yet.",
+      "summaryUnavailable": "Couldn't generate a summary."
     },
     "transcriptsView": {
       "setup": {

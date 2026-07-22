@@ -141,6 +141,23 @@ export function FullviewStatusChip({
   );
 }
 
+// Done 배지 — 완료 상태 표시(§F3 Done badge / CD state 05 헤더). bg success-bg
+// · border 1.4 success-line · text success-text · ✓ in success circle. 상태
+// chip 과 달리 dot 이 아니라 ✓ 원형. 세션/상태 없는 정적 완료 표식.
+export function FullviewDoneBadge({ label }: { label: ReactNode }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.4px] border-success-line bg-success-bg px-3 py-[5px] text-sm font-bold text-success-text">
+      <span
+        aria-hidden
+        className="inline-flex h-[15px] w-[15px] items-center justify-center rounded-full bg-success text-xs text-paper"
+      >
+        ✓
+      </span>
+      {label}
+    </span>
+  );
+}
+
 // End-session 버튼 — border 2 amore-deep · text amore-deep · radius-pill ·
 // fv-shadow-crimson. behavior(위젯 stop 액션 미러)는 소비처가 onClick 으로.
 export function FullviewEndSessionButton({

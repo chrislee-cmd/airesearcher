@@ -955,9 +955,11 @@ export function TranslateConsole({
   // first GET poll comes back. Without it, two rapid clicks on the
   // revise button each fire a POST before the server status flips.
   const [revisionTriggering, setRevisionTriggering] = useState(false);
-  // Driven from the recorder's onstart/onstop events. The value is no longer
-  // read during render (the indicator pill was removed), but the setter is
-  // kept so the recorder lifecycle wiring stays intact.
+  // Whether the MediaRecorder is actively capturing. Driven from the
+  // recorder's onstart/onstop events so the indicator pill renders
+  // without needing to read the ref during render.
+  // recorderActive 값은 읽는 곳이 없고 setter 만 녹음 start/stop 부수효과로
+  // 호출된다 → 미사용 getter 바인딩 제거(동작 불변).
   const [, setRecorderActive] = useState(false);
   // 🚨 Auto-renewal in flight. Drives the subtle "세션 갱신 중…" indicator so
   // the host knows a background handover is happening (the <2s gap is

@@ -11,13 +11,14 @@
 // 등록된 optional 컬럼:
 //   - inferred_speakers (20260629011051, Q&A 문맥 diarization, PR #505)
 //   - meeting_summary   (20260708160620, 회의록 모드 요약 + Todo)
+//   - analysis          (20260722123234, research 모드 AI 요약 + Key themes)
 
 type QueryResult<T> = {
   data: T | null;
   error: { code?: string; message?: string } | null;
 };
 
-const OPTIONAL_COLUMNS = ['inferred_speakers', 'meeting_summary'] as const;
+const OPTIONAL_COLUMNS = ['inferred_speakers', 'meeting_summary', 'analysis'] as const;
 const COLUMN_MISSING_CODE = '42703';
 
 function missingOptionalColumn(message: string): string | null {
