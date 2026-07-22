@@ -4816,7 +4816,12 @@ export function TranslateConsole({
               카드(폭>max-w-2xl)에서도 컨트롤과 좌측 픽셀 정합. (bleed 는 좁은-카드
               inset px-5 에 고정돼, 넓은 카드에선 컨트롤 클러스터보다 왼쪽으로
               튀어나옴 = "좁은 버전 여백" 회귀. PrompterPane 은 클러스터 폭
-              안에서 중앙정렬.) 세로는 데스크/쿼트 산출부 미러(py-5). */}
+              안에서 중앙정렬.) 세로는 데스크/쿼트 산출부 미러(py-5).
+              ⚠️ setupPeek(live) 에서는 렌더 X — CD 셋업 아코디언은 idle 미러라
+              출력부(공유 URL·음성 토글·프롬프터·상태 배너)가 없다. 이 출력부는
+              ended/ending(!live: 녹음 다운로드 등)에서만 노출. live 중 공유/프롬프터는
+              전체보기(fullview)에서 접근. */}
+          {live ? null : (
           <WidgetOutputRegion scroll={false} padY="lg">
             <div className="space-y-4">
           {ttsBlockedBanner}
@@ -4922,7 +4927,9 @@ export function TranslateConsole({
           <PrompterPane lines={promptedLines} empty={t('prompter.empty')} />
         ))}
 
-      {status === 'ended' || (recording && status !== 'live') ? (
+      {/* 이 출력부는 !live 게이트 안이라 status 는 'live' 가 아님(setupPeek 제외).
+          기존 `status !== 'live'` 가드는 여기서 항상 참 → 녹음 존재 여부만 본다. */}
+      {status === 'ended' || recording ? (
         <RecordingDownloadPanel
           sessionId={sessionIdRef.current}
           recording={recording}
@@ -4938,6 +4945,7 @@ export function TranslateConsole({
       ) : null}
             </div>
           </WidgetOutputRegion>
+          )}
         </>
       )}
 
