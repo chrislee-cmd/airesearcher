@@ -467,6 +467,25 @@
      와 동등 — 중복 신설 회피). theme-agnostic 구조값이라 :root 단일 정의. */
   --widget-card-frame-radius: 20px;
   --widget-card-frame-toolbar-radius: 10px;
+
+  /* =======================================================================
+     Fullview §F6 (B) — 셸-스코프 --fv-* (글로벌 승격 금지; 이 풀뷰 셸 안에서만
+     의미). 소비는 arbitrary [var(--fv-*)] (check:design ratchet 이 var() 참조는
+     통과 — raw rounded-[Npx]/shadow-[..] 는 차단하므로 var 가 유일한 로컬 경로).
+     다른 곳에서 재사용되면 그때 글로벌 승격. design-handoff/FULLVIEW-SHELL §F6(B). */
+  --fv-frame-shadow: 8px 8px 0 rgba(29, 27, 32, 0.28);   /* 풀뷰 프레임 (솔리드 memphis-2xl 아님) */
+  --fv-shadow-crimson: 2px 2px 0 var(--color-amore-deep); /* End-session 버튼 (= amore-deep 톤 memphis-sm) */
+  --fv-shadow-modal-amber: 8px 8px 0 var(--color-amber);  /* spotlight 모달 전용 */
+  --fv-title-size: 22px;             /* 풀뷰 헤더 타이틀 (Outfit 800/ls-0.5 는 사용처 클래스) — 29px 카드 타이틀과 구분 */
+  --fv-spotlight-q-size: 31px;       /* spotlight question (Outfit 700) */
+  /* radius — DS 스케일(2/4/14/24/999)이 성겨 off-scale 값들을 var 경유로 로컬 소비.
+     예: rounded-[var(--fv-radius-panel)]. */
+  --fv-radius-nav: 8px;              /* 사이드바 nav item */
+  --fv-radius-close: 9px;            /* close ✕ */
+  --fv-radius-field: 10px;           /* observer link / 입력 필드 */
+  --fv-radius-card: 11px;            /* persona / RQ 카드 */
+  --fv-radius-panel: 12px;           /* 패널 카드 */
+  --fv-radius-panel-lg: 16px;        /* translation 패널 */
 }
 
 /* =========================================================================
@@ -521,9 +540,50 @@
   --color-tag-confusion: var(--raw-tag-confusion);
   --color-tag-positive: var(--raw-tag-positive);
 
+  /* =======================================================================
+     Fullview §F6 (A) — 글로벌 승격 CD 색 (design-handoff/FULLVIEW-SHELL.md §F6).
+     풀뷰 서피스가 드러낸 DS 갭 — 여러 색은 이미 카드 위젯에서도 재현된다.
+     CD `.dc.html` 측정 절대값 = SSOT(AUTHORITY: CD wins, 근사 DS값 다운그레이드
+     금지). CD 는 pop 값만 제공하므로 theme-agnostic @theme 리터럴로 둔다
+     (--shadow-select-glow·--text-* 선례). 네이밍은 기존 DS 정렬: signal 계열은
+     success/warning/error 스템, 파스텔 틴트는 기존 pastel 스템 + -bg 접미. */
+  --color-amore-deep: #c2334f;          /* destructive/emphasis crimson (End-session·Σ total·active dist cell·med-fit) */
+  --color-success-text: #14713a;        /* Done 배지 텍스트 (a11y: 어둡게 유지, #16a34a 로 snap 금지) */
+  --color-success-bg: #f4fbf6;          /* Done/complete 틴트 (= --raw-signal-success-soft 값과 동일; §F6 는 Done 틴트 역할로 success-bg 명명) */
+  --color-success-line: #cdeed8;        /* Done 틴트 보더 */
+  --color-success-bg-soft: #eafaf0;     /* Interpreter OUTPUT 헤더 */
+  --color-rec: #ef4444;                 /* AI UT recording (amore 와 구분) */
+  --color-rec-soft: #ff9a9a;            /* recording edge/label on dark */
+  --color-amber: #e0a83a;               /* spotlight border·confidence 🟡·fill-2 dots */
+  --color-warning-text: #8a5a10;        /* flag/note text on warning-bg */
+  --color-warning-text-deep: #b45309;   /* spotlight meta */
+  --color-warning-line-amber: #f0d78a;  /* flag/note 보더 (vs DS warning-line #ffd9bf) */
+  --color-error-text: #b4443f;          /* failed transcript */
+  --color-error-line: #f0c0c0;          /* failed transcript 보더 */
+  --color-violet: #8b5cf6;              /* Transcript progress·theme count·RQ (§S3 accent; 값은 --raw-signal-progress 와 동일, CD 절대값으로 리터럴) */
+  --color-blue: #2563a8;                /* moderator speaker name */
+  --color-faint: #a3a7ad;               /* mono 캡션/placeholder (텍스트 램프 확장: mute-soft #8a8693 → faint → disabled) */
+  --color-disabled: #b3b7bd;            /* estimated-metric / disabled */
+  --color-line-empty: #c9ccd2;          /* dashed empty-state 보더 · empty fill dots */
+  --color-surface-canvas: #fbfbf9;      /* fullview/neutral 캔버스 bg (노랑 surface-accent 아님) */
+  --color-lav-bg: #f6f2ff;              /* lav 틴트 (transcript summary/rows) */
+  --color-lav-bg-2: #faf7ff;            /* lav 틴트 (transcript processing row) — 구분값 */
+  --color-lav-bg-3: #f3eefe;            /* lav 틴트 (desk RQ head) — 구분값 */
+  --color-lav-text: #6b4aa0;            /* processing status text */
+  --color-peach-bg: #fff7f0;            /* AI UT / peach section 틴트 */
+  --color-rose-bg: #ffeef4;             /* desk exec-head 틴트 */
+  --color-mint-bg: #edf9f0;             /* desk findings-head 틴트 */
+  --color-sun-bg: #fdf6e6;              /* desk quant-head 틴트 */
+  --color-neutral-bg: #f2f2f3;          /* desk appendix-head 틴트 */
+  /* --color-widget-header-cyan (#bfe9ef) SKIP — 기존 --color-cyan(=--raw-pastel-cyan
+     #bfe9ef, bg-cyan) 및 --widget-header-bg-cyan 이 동일값으로 이미 존재(§F6 지시). */
+
   /* Typography */
   --font-sans: var(--raw-font-sans);
   --font-hand: var(--raw-font-hand);
+  /* Fullview §F7.1 (writer 승인) — 기술 캡션/타임스탬프/ID/테이블헤더/배지 전용
+     monospace (CD authority). 프로덕션 본문은 mono 아님 — 스코프 한정 소비. */
+  --font-mono-label: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Radius scale */
   --radius-2xs: var(--raw-radius-2xs);
@@ -560,7 +620,10 @@
   --shadow-memphis-xs: var(--raw-memphis-xs) 0 black;
   --shadow-memphis-xs-amore: var(--raw-memphis-xs) 0 var(--color-amore);
   --shadow-memphis-sm: var(--raw-memphis-sm) 0 black;
-  --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(0, 0, 0, 0.15);
+  /* Fullview §F6 (A) shadow — 값을 CD 절대값(ink/12%)으로 정렬(중복 신설 금지,
+     CD wins). 기존 rgba(0,0,0,.15) → rgba(29,27,32,.12): 렌더 근사라 기존 소비처
+     (ControlTrigger 등) 지각 불가. panel/list 카드용(솔리드 memphis-sm 보다 여림). */
+  --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(29, 27, 32, 0.12);
   --shadow-memphis-md: var(--raw-memphis-md) 0 black;
   --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
   --shadow-memphis-md-amore: var(--raw-memphis-md) 0 var(--color-amore);
