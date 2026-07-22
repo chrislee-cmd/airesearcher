@@ -33,13 +33,16 @@ export type SchedProject = {
   created_at: string;
 };
 
-// A batch is a "group" under a project (PR-C). project_id is optional so a
-// preview DB without the additive column still types.
+// A batch under a project (PR-C). `is_inbox` marks the project's upload pool
+// (not a user-made group); the rest are groups formed by list assignment.
+// project_id/is_inbox are optional so a preview DB without the additive columns
+// still types.
 export type SchedBatch = {
   id: string;
   title: string;
   created_at: string;
   project_id?: string | null;
+  is_inbox?: boolean;
 };
 
 // participant_token drives the public share link (PR4). It is rendered only as
@@ -96,11 +99,6 @@ function stickyStyle(left: number, w: number): CSSProperties {
   return { left, width: w, minWidth: w, maxWidth: w };
 }
 
-// Drop a trailing extension so an uploaded file's name reads as a group label.
-function stripExt(name: string): string {
-  return name.replace(/\.[^.]+$/, '').trim() || name;
-}
-
 export function RecruitingSchedulingClient({
   projects,
   selectedProjectId,
@@ -113,7 +111,6 @@ export function RecruitingSchedulingClient({
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
-  const [groupLabel, setGroupLabel] = useState('');
   const [message, setMessage] = useState<string | null>(null);
 
   // New-project inline creator (replaces the old two-field batch creator).
@@ -160,13 +157,18 @@ export function RecruitingSchedulingClient({
     setChatOpen(true);
   }
 
-  // A group id that actually exists in this project, or '' for "all" — guards
-  // against a stale id lingering after a project switch.
-  const effectiveGroupId = groups.some((g) => g.id === selectedGroupId)
+  // Groups the user can pick = assignment groups only; the inbox pool stays
+  // behind the "전체" option. Ids of every batch (inbox + groups) for scoping.
+  const namedGroups = groups.filter((g) => !g.is_inbox);
+  const namedGroupIds = new Set(namedGroups.map((g) => g.id));
+
+  // A picked group id that actually exists (and is a named group), or '' for
+  // "all" — guards against a stale id lingering after a project switch.
+  const effectiveGroupId = namedGroups.some((g) => g.id === selectedGroupId)
     ? selectedGroupId
     : '';
-  // The calendar is batch-scoped, so it always resolves to one concrete group:
-  // the picked one, or the first when "all" is selected.
+  // The calendar is batch-scoped, so it always resolves to one concrete batch:
+  // the picked group, or the first batch (inbox) when "all" is selected.
   const activeCalendarGroupId = effectiveGroupId || (groups[0]?.id ?? '');
 
   // Extra (non email/name/phone) columns present across the project, preserved
@@ -278,15 +280,27 @@ export function RecruitingSchedulingClient({
     return arr;
   }, [filteredCandidates, sortKey, sortDir, slots, now]);
 
-  // Group sections (그룹별 목록): each visible group with its slice of the
-  // sorted list. When a group is picked, only that section shows.
-  const visibleGroups = effectiveGroupId
-    ? groups.filter((g) => g.id === effectiveGroupId)
-    : groups;
-  const groupSections = visibleGroups.map((g) => ({
-    group: g,
+  // Group sections (그룹별 목록): a section per assignment group, plus an
+  // "미할당" section for candidates still in the inbox pool. When a specific
+  // group is picked, only that section shows.
+  const sectionGroups = effectiveGroupId
+    ? namedGroups.filter((g) => g.id === effectiveGroupId)
+    : namedGroups;
+  const groupSections = sectionGroups.map((g) => ({
+    key: g.id,
+    title: g.title,
     rows: sortedCandidates.filter((c) => c.batch_id === g.id),
   }));
+  // Ungrouped remainder (inbox) — only in the "all" view.
+  const ungroupedRows = effectiveGroupId
+    ? []
+    : sortedCandidates.filter((c) => !namedGroupIds.has(c.batch_id));
+  const allSections = ungroupedRows.length
+    ? [
+        ...groupSections,
+        { key: '__ungrouped__', title: t('ungrouped'), rows: ungroupedRows },
+      ]
+    : groupSections;
 
   // --- Selection (operates on the visible/sorted list) ---
 
@@ -353,15 +367,15 @@ export function RecruitingSchedulingClient({
     }
   }
 
-  // Each upload/import creates a NEW group (batch) under the selected project
-  // (spec contract). Returns the new group id, or null on failure.
-  async function createGroup(title: string): Promise<string | null> {
+  // Uploads/imports land candidates in the project's inbox pool (not a new
+  // group per upload) — groups are made later by assigning list-checked
+  // candidates. Resolve (create-if-missing) the inbox batch id here.
+  async function resolveInbox(): Promise<string | null> {
     if (!selectedProjectId) return null;
-    const res = await fetch('/api/scheduling/batches', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, projectId: selectedProjectId }),
-    });
+    const res = await fetch(
+      `/api/scheduling/projects/${selectedProjectId}/inbox`,
+      { method: 'POST' },
+    );
     if (!res.ok) return null;
     const { batch } = (await res.json()) as { batch: SchedBatch };
     return batch.id;
@@ -372,8 +386,7 @@ export function RecruitingSchedulingClient({
     setUploading(true);
     setMessage(null);
     try {
-      const label = groupLabel.trim() || stripExt(file.name);
-      const batchId = await createGroup(label);
+      const batchId = await resolveInbox();
       if (!batchId) {
         setMessage(t('createFailed'));
         return;
@@ -395,7 +408,6 @@ export function RecruitingSchedulingClient({
         return;
       }
       setMessage(t('uploaded', { count: json.upserted ?? 0 }));
-      setGroupLabel('');
       router.refresh();
     } finally {
       setUploading(false);
@@ -408,8 +420,7 @@ export function RecruitingSchedulingClient({
     setImporting(true);
     setMessage(null);
     try {
-      const label = groupLabel.trim() || t('sheetGroupFallback');
-      const batchId = await createGroup(label);
+      const batchId = await resolveInbox();
       if (!batchId) {
         setMessage(t('createFailed'));
         return;
@@ -444,7 +455,6 @@ export function RecruitingSchedulingClient({
       }
       setMessage(t('uploaded', { count: json.upserted ?? 0 }));
       setSheetUrl('');
-      setGroupLabel('');
       router.refresh();
     } finally {
       setImporting(false);
@@ -606,10 +616,10 @@ export function RecruitingSchedulingClient({
 
   const currentGroup = groups.find((g) => g.id === activeCalendarGroupId) ?? null;
 
-  // Move targets = other groups in the project.
+  // Move targets = existing assignment groups (not the inbox pool).
   const assignBatchOptions = [
     { value: '', label: t('bulkChooseGroup') },
-    ...groups.map((g) => ({ value: g.id, label: g.title })),
+    ...namedGroups.map((g) => ({ value: g.id, label: g.title })),
   ];
 
   const filterKeyOptions = [
@@ -851,20 +861,10 @@ export function RecruitingSchedulingClient({
 
       {selectedProjectId ? (
         <>
-          {/* Source entry — file upload OR Google Sheets import (spec §2). Each
-              ingestion creates a new group under the selected project. */}
+          {/* Source entry — file upload OR Google Sheets import (spec §2).
+              Candidates land in the project's inbox pool; groups are made later
+              by assigning list-checked candidates. */}
           <div className="flex flex-col gap-4">
-            <div className="max-w-md">
-              <Input
-                label={t('groupLabelField')}
-                placeholder={t('groupLabelPlaceholder')}
-                value={groupLabel}
-                onChange={(e) => setGroupLabel(e.target.value)}
-              />
-              <p className="pt-1 text-xs text-mute-soft">
-                {t('groupLabelHelper')}
-              </p>
-            </div>
             <div className="flex flex-col gap-4 md:flex-row">
               <FileDropZone
                 accept=".csv,.xlsx"
@@ -903,9 +903,10 @@ export function RecruitingSchedulingClient({
 
           {message && <p className="text-sm text-ink">{message}</p>}
 
-          {/* Group picker (spec feedback): sits below the upload since groups
-              are produced by uploads. Scopes both the list and the calendar. */}
-          {groups.length > 0 && (
+          {/* Group picker (spec feedback): lists the groups made by assigning
+              list-checked candidates — not the uploads. Scopes both list and
+              calendar. Hidden until at least one group exists. */}
+          {namedGroups.length > 0 && (
             <div className="min-w-[220px]">
               <Select
                 label={t('groupPickerLabel')}
@@ -913,7 +914,7 @@ export function RecruitingSchedulingClient({
                 onChange={(e) => setSelectedGroupId(e.target.value)}
                 options={[
                   { value: '', label: t('groupAll') },
-                  ...groups.map((g) => ({ value: g.id, label: g.title })),
+                  ...namedGroups.map((g) => ({ value: g.id, label: g.title })),
                 ]}
               />
             </div>
@@ -956,11 +957,14 @@ export function RecruitingSchedulingClient({
                   {t('selectAll')}
                 </label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-mute">{t('filterLabel')}</span>
+                  <span className="shrink-0 whitespace-nowrap text-sm text-mute">
+                    {t('filterLabel')}
+                  </span>
                   <Select
                     aria-label={t('filterLabel')}
                     size="sm"
                     fullWidth={false}
+                    className="w-44 truncate"
                     value={filterKey}
                     onChange={(e) => {
                       setFilterKey(e.target.value);
@@ -974,6 +978,7 @@ export function RecruitingSchedulingClient({
                       aria-label={t('filterAnyValue')}
                       size="sm"
                       fullWidth={false}
+                      className="w-44 truncate"
                       value={filterValue}
                       onChange={(e) => setFilterValue(e.target.value)}
                       options={filterValueOptions}
@@ -981,11 +986,14 @@ export function RecruitingSchedulingClient({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-mute">{t('sortLabel')}</span>
+                  <span className="shrink-0 whitespace-nowrap text-sm text-mute">
+                    {t('sortLabel')}
+                  </span>
                   <Select
                     aria-label={t('sortLabel')}
                     size="sm"
                     fullWidth={false}
+                    className="w-44 truncate"
                     value={sortKey}
                     onChange={(e) => setSortKey(e.target.value as SortKey)}
                     options={sortKeyOptions}
@@ -1065,14 +1073,14 @@ export function RecruitingSchedulingClient({
                 renderTable(sortedCandidates)
               ) : (
                 <div className="flex flex-col gap-6">
-                  {groupSections.length === 0 ? (
+                  {allSections.length === 0 ? (
                     <p className="text-sm text-mute">{t('emptyGroups')}</p>
                   ) : (
-                    groupSections.map(({ group, rows }) => (
-                      <div key={group.id} className="flex flex-col gap-2">
+                    allSections.map(({ key, title, rows }) => (
+                      <div key={key} className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <h2 className="text-sm font-semibold text-ink">
-                            {group.title}
+                            {title}
                           </h2>
                           <span className="text-xs text-mute-soft">
                             {t('groupCount', { count: rows.length })}

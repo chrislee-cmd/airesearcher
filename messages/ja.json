@@ -2605,6 +2605,7 @@
     "calendarGroupLabel": "グループを選択",
     "groupPickerLabel": "グループ",
     "groupAll": "すべて",
+    "ungrouped": "未割り当て",
     "bulkChooseGroup": "グループを選択…",
     "bulkNewGroup": "新しいグループ名",
     "newGroupPlaceholder": "グループ名",

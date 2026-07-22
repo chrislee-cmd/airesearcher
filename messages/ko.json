@@ -2512,6 +2512,7 @@
     "calendarGroupLabel": "그룹 선택",
     "groupPickerLabel": "그룹",
     "groupAll": "전체",
+    "ungrouped": "미할당",
     "bulkChooseGroup": "그룹 선택…",
     "bulkNewGroup": "새 그룹 이름",
     "newGroupPlaceholder": "그룹 이름",

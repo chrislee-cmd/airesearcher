@@ -67,13 +67,29 @@ export default async function Page({
         : (projects[0]?.id ?? null);
 
     if (selectedProjectId) {
-      const { data: groupRows } = await admin
+      // is_inbox distinguishes the upload pool from user-made groups; it's
+      // additive so a preview DB may lack it — wide/narrow fallback defaults it
+      // to false (every batch then reads as a group).
+      const wideGroups = await admin
         .from('sched_batches')
-        .select('id, title, created_at, project_id')
+        .select('id, title, created_at, project_id, is_inbox')
         .eq('project_id', selectedProjectId)
         .order('created_at', { ascending: false })
         .limit(500);
-      groups = (groupRows ?? []) as SchedBatch[];
+      if (wideGroups.error) {
+        const { data: groupRows } = await admin
+          .from('sched_batches')
+          .select('id, title, created_at, project_id')
+          .eq('project_id', selectedProjectId)
+          .order('created_at', { ascending: false })
+          .limit(500);
+        groups = (groupRows ?? []).map((g) => ({
+          ...g,
+          is_inbox: false,
+        })) as SchedBatch[];
+      } else {
+        groups = (wideGroups.data ?? []) as SchedBatch[];
+      }
     }
   } else {
     // Batch-only fallback: every batch is a standalone project with itself as

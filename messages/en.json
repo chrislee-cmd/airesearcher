@@ -2512,6 +2512,7 @@
     "calendarGroupLabel": "Select group",
     "groupPickerLabel": "Group",
     "groupAll": "All",
+    "ungrouped": "Ungrouped",
     "bulkChooseGroup": "Select a group…",
     "bulkNewGroup": "New group name",
     "newGroupPlaceholder": "Group name",

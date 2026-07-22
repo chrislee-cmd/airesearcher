@@ -2605,6 +2605,7 @@
     "calendarGroupLabel": "เลือกกลุ่ม",
     "groupPickerLabel": "กลุ่ม",
     "groupAll": "ทั้งหมด",
+    "ungrouped": "ยังไม่จัดกลุ่ม",
     "bulkChooseGroup": "เลือกกลุ่ม…",
     "bulkNewGroup": "ชื่อกลุ่มใหม่",
     "newGroupPlaceholder": "ชื่อกลุ่ม",
