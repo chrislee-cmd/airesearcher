@@ -954,7 +954,11 @@
       "noResults": "검색 결과가 없어요.",
       "aiSummaryTitle": "AI 요약",
       "keyThemesTitle": "핵심 테마",
-      "comingSoon": "곧 제공됩니다 (후속 업데이트)."
+      "comingSoon": "곧 제공됩니다 (후속 업데이트).",
+      "generate": "AI 요약 생성",
+      "generating": "생성 중…",
+      "summaryStub": "아직 AI 요약을 생성하지 않았어요.",
+      "summaryUnavailable": "요약을 생성할 수 없어요."
     },
     "transcriptsView": {
       "setup": {

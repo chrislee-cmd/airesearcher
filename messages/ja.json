@@ -1044,7 +1044,11 @@
       "noResults": "一致する結果がありません。",
       "aiSummaryTitle": "AI要約",
       "keyThemesTitle": "主要テーマ",
-      "comingSoon": "近日公開（今後のアップデート）。"
+      "comingSoon": "近日公開（今後のアップデート）。",
+      "generate": "AI要約を生成",
+      "generating": "生成中…",
+      "summaryStub": "まだAI要約が生成されていません。",
+      "summaryUnavailable": "要約を生成できませんでした。"
     },
     "transcriptsView": {
       "setup": {

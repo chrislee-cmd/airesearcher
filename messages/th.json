@@ -1044,7 +1044,11 @@
       "noResults": "ไม่พบผลลัพธ์",
       "aiSummaryTitle": "สรุปด้วย AI",
       "keyThemesTitle": "ธีมหลัก",
-      "comingSoon": "เร็ว ๆ นี้ (อัปเดตภายหลัง)"
+      "comingSoon": "เร็ว ๆ นี้ (อัปเดตภายหลัง)",
+      "generate": "สร้างสรุปด้วย AI",
+      "generating": "กำลังสร้าง…",
+      "summaryStub": "ยังไม่ได้สร้างสรุปด้วย AI",
+      "summaryUnavailable": "ไม่สามารถสร้างสรุปได้"
     },
     "transcriptsView": {
       "setup": {
