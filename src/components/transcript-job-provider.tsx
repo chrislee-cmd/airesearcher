@@ -152,7 +152,8 @@ export function TranscriptJobProvider({
   }, []);
   const clearUploadProgress = useCallback((tempId: string) => {
     setLocalUploads((prev) => {
-      const { [tempId]: _drop, ...rest } = prev;
+      const rest = { ...prev };
+      delete rest[tempId];
       return rest;
     });
   }, []);
