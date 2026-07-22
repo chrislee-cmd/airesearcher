@@ -27,12 +27,17 @@ import {
   type CSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
 import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
 import { FullviewShellProvider } from '@/components/canvas/shell/fullview-shell-context';
+import {
+  FullviewHeaderSlotProvider,
+  useFullviewHeaderSlot,
+} from '@/components/canvas/shell/fullview-header-slot-context';
 import { FullviewShell } from '@/components/canvas/fullview/fullview-shell';
 import { FullviewHeader } from '@/components/canvas/fullview/fullview-header';
 import { useViewMode } from '@/components/view-mode-provider';
@@ -191,6 +196,31 @@ function defaultPositions(
     col += cols;
   }
   return out;
+}
+
+// 셸 헤더(§F3) + 위젯 주입 액션 bridge. 셸의 <FullviewHeader> 는 제네릭
+// 스캐폴드(타이틀·톤·닫기)만 소유하고, lang pill·End-session 등 위젯 종속
+// 슬롯은 활성 위젯 body 가 FullviewHeaderSlot 로 publish → 여기서 구독해
+// 헤더에 주입. (세션 스냅샷이 카드 subtree 라 헤더에 직접 닿지 못하는 걸 bridge.)
+function FullviewHeaderConnected({
+  title,
+  tone,
+  onClose,
+}: {
+  title: ReactNode;
+  tone?: string;
+  onClose?: () => void;
+}) {
+  const { statusChip, actions } = useFullviewHeaderSlot();
+  return (
+    <FullviewHeader
+      title={title}
+      tone={tone}
+      onClose={onClose}
+      statusChip={statusChip}
+      actions={actions}
+    />
+  );
 }
 
 export function CanvasBoard({
@@ -416,11 +446,6 @@ export function CanvasBoard({
   const [fullviewSlotEl, setFullviewSlotEl] = useState<HTMLElement | null>(
     null,
   );
-  // 풀뷰 V2 (fullviewV2) 셸 헤더 안 위젯-주입 portal 대상 — 좌(타이틀 옆 pill) /
-  // 우(닫기✕ 왼쪽 상태 chip·End-session). V2 셸이 마운트될 때만 non-null.
-  const [headerStartEl, setHeaderStartEl] = useState<HTMLElement | null>(null);
-  const [headerEndEl, setHeaderEndEl] = useState<HTMLElement | null>(null);
-
   // ── 뷰 모드 (캔버스 ⇄ 리스트) ────────────────────────────────────────
   // 라이트/다크처럼 유저 선호 뷰. 'list' 면 캔버스 보드 대신 좌 SidebarNav +
   // 우 단일 위젯 상세(fullview 셸의 풀페이지 버전)를 렌더한다.
@@ -470,9 +495,6 @@ export function CanvasBoard({
       open: isList ? true : fullviewOpen,
       // 리스트 모드면 상세 slot, 캔버스 모드면 모달 slot.
       slotEl: isList ? listSlotEl : fullviewSlotEl,
-      // 헤더 portal 대상 — V2 셸(캔버스 모드)에서만 non-null. 리스트/레거시는 null.
-      headerStartEl: isList ? null : headerStartEl,
-      headerEndEl: isList ? null : headerEndEl,
       chrome: (isList ? 'page' : 'modal') as 'page' | 'modal',
       openFullview,
       switchTo: switchFullview,
@@ -484,8 +506,6 @@ export function CanvasBoard({
       listSlotEl,
       fullviewOpen,
       fullviewSlotEl,
-      headerStartEl,
-      headerEndEl,
       openFullview,
       switchFullview,
       closeFullview,
@@ -1022,6 +1042,7 @@ export function CanvasBoard({
     <WidgetStatesMapProvider>
     <WidgetGateProvider>
     <FullviewShellProvider value={fullviewValue}>
+    <FullviewHeaderSlotProvider>
     <div
       ref={containerRef}
       data-canvas
@@ -1257,9 +1278,12 @@ export function CanvasBoard({
     {/* ── 공유 전체보기 셸 V2 (fullviewV2 opt-in 위젯) ─────────────────
         신규 <FullviewShell> — 프레임+240px 사이드바+헤더 스캐폴드
         (design-handoff/FULLVIEW-SHELL.md §F1~F3). 헤더는 위젯 라벨/톤으로
-        스캐폴드, 본문은 레거시와 동형 portal slot(setFullviewSlotEl). 셸 PR
-        은 플래그 위젯 0건이라 이 분기는 런타임 미도달 → 회귀 0. 위젯별 body
-        전환·헤더 액션(pill/chip/end-session) 주입은 각 위젯 후속 PR 담당. */}
+        스캐폴드하고, lang pill·End-session 등 위젯 종속 슬롯은 활성 위젯
+        body 가 FullviewHeaderSlot 로 publish → FullviewHeaderConnected 가
+        구독해 주입. 본문은 레거시와 동형 portal slot(setFullviewSlotEl) —
+        translate 는 fresh <InterpreterFullview>(CD state 03)를 portal.
+        현재 fullviewV2 위젯 = translate(Interpreter). 나머지 위젯은 아직
+        레거시 wide 모달 경로. */}
     {currentFullviewV2 && currentWidget && (
       <FullviewShell
         open={!isList && fullviewOpen && !!currentWidgetKey}
@@ -1269,16 +1293,10 @@ export function CanvasBoard({
         onSwitch={switchFullview}
         lockedKeys={lockedKeys}
         header={
-          <FullviewHeader
+          <FullviewHeaderConnected
             title={resolveWidgetLabel(tRoot, currentWidget.meta)}
             tone={`var(--widget-header-bg-${currentWidget.meta.accent})`}
             onClose={closeFullview}
-            // 위젯-주입 slot — 셸은 밴드/타이틀/닫기만, 위젯(probing)이 pill·chip·
-            // End-session 을 renderInHeaderStart/End 로 portal (fullview-shell-context).
-            projectPill={
-              <span ref={setHeaderStartEl} className="contents" />
-            }
-            actions={<span ref={setHeaderEndEl} className="contents" />}
           />
         }
       >
@@ -1288,6 +1306,7 @@ export function CanvasBoard({
         />
       </FullviewShell>
     )}
+    </FullviewHeaderSlotProvider>
     </FullviewShellProvider>
     </WidgetGateProvider>
     </WidgetStatesMapProvider>

@@ -1680,6 +1680,15 @@
       "controlHint": "開始・停止・共有はウィジェットカードから操作できます。",
       "backToWidget": "ウィジェットに戻る"
     },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "出力オーディオ",
+      "outputAudioHint": "音声通訳の再生",
+      "observerLink": "オブザーバーリンク",
+      "observerLinkPending": "通訳を開始するとリンクが作成されます",
+      "observerHint": "オブザーバーは通訳をリアルタイムで聴くだけです（閲覧のみ）。"
+    },
     "live": {
       "fullviewHeading": "フルビューをご確認ください",
       "fullviewSubInterpreter": "セッションが開始されました。フルビューで同時通訳をリアルタイムに確認できます。",
