@@ -1560,6 +1560,15 @@
       "controlHint": "Start, stop, and sharing are controlled from the widget card.",
       "backToWidget": "Back to widget"
     },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "Output audio",
+      "outputAudioHint": "Spoken interpretation",
+      "observerLink": "Observer link",
+      "observerLinkPending": "A link is created once interpreting starts",
+      "observerHint": "Observers hear the interpretation live, read-only."
+    },
     "live": {
       "fullviewHeading": "Please check the full view",
       "fullviewSubInterpreter": "The session has started. Track live interpretation in the full view.",

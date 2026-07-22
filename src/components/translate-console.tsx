@@ -4324,6 +4324,16 @@ export function TranslateConsole({
   // state for the eventual "download full transcript" feature (PR-B),
   // but only render the last 30 seconds on the prompter so the screen
   // stays light and the active line stays in the visual center.
+  // Same rolling window as promptedLines but over the source (INPUT) lines,
+  // so the interpreter fullview can stream INPUT and OUTPUT side-by-side.
+  const promptedInputLines = useMemo(
+    () =>
+      inputLines
+        .filter((l) => now - l.ts <= PROMPTER_WINDOW_MS)
+        .slice()
+        .sort((a, b) => (a.ts === b.ts ? a.id.localeCompare(b.id) : a.ts - b.ts)),
+    [inputLines, now],
+  );
   const promptedLines = useMemo(
     () =>
       outputLines
@@ -4346,16 +4356,43 @@ export function TranslateConsole({
   // (standalone /live). This only reads state the console already computes —
   // it never touches the session lifecycle, which is the whole point of the
   // fullview-session-preserve fix.
+  // Stable flip for the host monitor audio — lifted so the fullview rail
+  // toggle (§F4) drives the same gain the inline ChromeButton does.
+  const toggleOutputAudible = useCallback(() => setOutputAudible((v) => !v), []);
   const publishSession = useTranslateSessionPublisher();
   useEffect(() => {
+    const labelOf = (v: string) => LANGS.find((l) => l.value === v)?.label ?? v;
     publishSession({
       sessionId: liveSessionId,
       shareUrl,
       isLive: status === 'live',
       promptedLines,
+      inputLines: promptedInputLines,
       listeners,
+      sourceLangLabel: sourceLang ? labelOf(sourceLang) : '',
+      targetLangLabel: targetLang ? labelOf(targetLang) : '',
+      outputAudible,
+      toggleOutputAudible,
+      copyShareUrl: () => void copyShareUrl(),
+      shareCopied,
+      stop: () => void stop(),
     });
-  }, [publishSession, liveSessionId, shareUrl, status, promptedLines, listeners]);
+  }, [
+    publishSession,
+    liveSessionId,
+    shareUrl,
+    status,
+    promptedLines,
+    promptedInputLines,
+    listeners,
+    sourceLang,
+    targetLang,
+    outputAudible,
+    toggleOutputAudible,
+    copyShareUrl,
+    shareCopied,
+    stop,
+  ]);
 
   // idle(시작 전) 여부 — starting/error 도 시작 CTA 가 노출되는 "세션 전"
   // 화면이므로 idle launcher layout 을 공유한다 (starting 에 layout 이

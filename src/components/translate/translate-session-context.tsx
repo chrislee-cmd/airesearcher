@@ -40,20 +40,49 @@ export type TranslateSessionSnapshot = {
   shareUrl: string | null;
   // Whether interpretation is currently live.
   isLive: boolean;
-  // The translated prompter lines, already windowed + sorted by the
-  // console. Rendered read-only in the fullview via the shared PrompterPane.
+  // The translated (OUTPUT) prompter lines, already windowed + sorted by
+  // the console. Rendered read-only in the fullview OUTPUT panel.
   promptedLines: CaptionLine[];
+  // The source-language (INPUT) lines, same rolling window as promptedLines.
+  // Interpreter fullview (state 03) renders both streams side-by-side; the
+  // console already keeps `inputLines` in state — the fullview twin-panel
+  // was the missing consumer (audit gap: snapshot never carried input).
+  inputLines: CaptionLine[];
   // Current share-link listeners, derived from presence on the console's
   // own broadcast channel. Mirrored read-only in the fullview.
   listeners: Listener[];
+  // Endonym labels of the source / target languages (e.g. 한국어 / English)
+  // for the INPUT/OUTPUT panel headers + header lang pill. '' until picked.
+  sourceLangLabel: string;
+  targetLangLabel: string;
+  // Host-local monitor audio toggle. The gain lives in the console; the
+  // fullview rail mirrors + flips it via `toggleOutputAudible` (§F4 toggle).
+  outputAudible: boolean;
+  toggleOutputAudible: () => void;
+  // Observer-link copy action + its transient "copied" flag (rail button).
+  copyShareUrl: () => void;
+  shareCopied: boolean;
+  // End-session — mirrors the card's existing stop action (header End-session
+  // button). No-op outside a live session.
+  stop: () => void;
 };
+
+const NOOP = () => {};
 
 const EMPTY: TranslateSessionSnapshot = {
   sessionId: null,
   shareUrl: null,
   isLive: false,
   promptedLines: [],
+  inputLines: [],
   listeners: [],
+  sourceLangLabel: '',
+  targetLangLabel: '',
+  outputAudible: false,
+  toggleOutputAudible: NOOP,
+  copyShareUrl: NOOP,
+  shareCopied: false,
+  stop: NOOP,
 };
 
 const SnapshotCtx = createContext<TranslateSessionSnapshot>(EMPTY);
