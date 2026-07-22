@@ -1290,6 +1290,11 @@ export function RecruitingSchedulingClient({
                       selectedThread={chatThread}
                       onSelectThread={setChatThread}
                       onClose={() => setChatOpen(false)}
+                      // 일정 패널 소스 — the full slot set so the panel's own
+                      // scope filter (전체/그룹/개인) resolves any target, not just
+                      // the calendar's currently-filtered group. Click → openEdit.
+                      slots={slots}
+                      onEditSlot={openEdit}
                     />
                   </aside>
                 </>
