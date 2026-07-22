@@ -87,6 +87,7 @@
 
   /* signal */
   --raw-signal-success: #16a34a;
+  --raw-signal-success-soft: #f4fbf6; /* done 성공 카드 체크박스 연초록 틴트 (Canvas 1c transDone) */
   --raw-signal-warning: #fb923c;
   --raw-signal-warning-bg: #fff1e6;
   --raw-signal-warning-line: #ffd9bf;
@@ -203,6 +204,7 @@
 
   /* signal (동일) */
   --raw-signal-success: #16a34a;
+  --raw-signal-success-soft: #f4fbf6;
   --raw-signal-warning: #fb923c;
   --raw-signal-warning-bg: #fff1e6;
   --raw-signal-warning-line: #ffd9bf;
@@ -307,6 +309,7 @@
 
   /* signal — 형광 대비색 */
   --raw-signal-success: #00ff00;
+  --raw-signal-success-soft: #ccffcc;
   --raw-signal-warning: #ff9900;
   --raw-signal-warning-bg: #00ffff;
   --raw-signal-warning-line: #ff00ff;
@@ -507,6 +510,7 @@
 
   /* Signal */
   --color-success: var(--raw-signal-success);
+  --color-success-soft: var(--raw-signal-success-soft);
   --color-warning: var(--raw-signal-warning);
   --color-warning-bg: var(--raw-signal-warning-bg);
   --color-warning-line: var(--raw-signal-warning-line);
@@ -561,6 +565,7 @@
   --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
   --shadow-memphis-md-amore: var(--raw-memphis-md) 0 var(--color-amore);
   --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
+  --shadow-memphis-md-success: var(--raw-memphis-md) 0 var(--color-success); /* done 성공 카드 초록 offset (Canvas 1c transDone) */
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
 

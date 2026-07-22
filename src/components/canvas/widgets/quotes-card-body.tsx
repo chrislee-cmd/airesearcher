@@ -272,6 +272,16 @@ export function QuotesCardBody() {
     trackEvent('widget_viewed', { widget: 'quotes', fullview: true });
     openFullview();
   };
+  // done 성공 카드의 "← Back to setup" — 최초(설정) 화면으로 복귀. fullview
+  // 닫기 리셋과 동일 메커니즘: 완료 job-set 시그니처를 dismissal 로 영속화하면
+  // 승격 effect(위)가 persisted dismissal 을 읽어 dismissedToIdleRef 를 복원 →
+  // 재승격을 막는다. setPhase('idle') 로 즉시 최초 설정 화면 복귀. (ref 를
+  // 직접 변형하지 않아 effect 의 ref 변형과 충돌 없음 — react-compiler clean.)
+  const handleBackToSetup = () => {
+    trackEvent('widget_action', { widget: 'quotes', action: 'back_to_setup' });
+    writePersistedDismissal(userId, doneSignature(job.jobs));
+    setPhase('idle');
+  };
   // Files held between FileDropZone receiving them and the user confirming
   // the language in the modal. Picking the wrong language is the single
   // biggest accuracy regression for transcripts (Korean audio sent to an
@@ -343,7 +353,6 @@ export function QuotesCardBody() {
     const readyPending = readyFiles.length > 0;
     if (inflightJobs || uploadsActive || readyPending) {
       dismissedToIdleRef.current = false;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- promote on external job state
       setPhase('active');
       return;
     }
@@ -833,7 +842,6 @@ export function QuotesCardBody() {
       // 마운트 시 승격 effect 가 이 시그니처와 일치하면 재승격을 막아 idle 을
       // 유지한다. 계정당 키 1개라 다음 dismissal 때 덮어써져 누적되지 않는다.
       writePersistedDismissal(userId, doneSignature(job.jobs));
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset view to idle on fullview close
       setPhase('idle');
     }
   }, [isCurrent, busyUpload, readyFiles.length, job.jobs, job.localUploads, userId]);
@@ -1223,36 +1231,44 @@ export function QuotesCardBody() {
                 )}
               </div>
             ) : showDone ? (
-              // done: StageFlow 완료 hero + "결과 보기" CTA (사용자 결정 3) →
-              // fullview 진입. 파일 추가 업로드 경로(dropzone + 녹음)는 hero
-              // 아래 보존 — 완료 상태에서도 새 전사를 이어서 시작할 수 있다.
-              <div className="flex flex-col items-center gap-6 py-4">
-                <StageFlow
-                  stages={txStages}
-                  complete
-                  activeTone="progress"
-                  completeLabel={tWidgets('transcriptReadyTitle')}
-                  onResult={handleQuotesFullview}
-                  resultLabel={tWidgets('viewAll')}
-                />
-                {/* 파일 추가 업로드 경로 — 인라인 dropzone (idle 컨트롤과 동일
-                    핸들러). 드롭/클릭 → 새 전사 flow. */}
-                <div className="w-full space-y-4">
-                  <ControlDropzone
-                    accept={ACCEPT}
-                    multiple
-                    disabled={busyUpload}
-                    onFiles={(files) => startUploads(files)}
-                    onDropRaw={handleArtifactDrop}
-                    label={tUp('dropHere')}
-                    helperText={tUp('supported')}
-                  />
-                  {/* 완료 상태에서도 직접 녹음으로 새 전사 추가 (#503). */}
-                  <TranscriptRecordButton
-                    disabled={busyUpload}
-                    onRecorded={(file) => startUploads([file])}
-                  />
+              // done: CD `transDone` 초록 성공 카드 (fresh 프레젠테이션 — StageFlow
+              // complete hero 대체, #504). 외형 SSOT = Canvas 1c transDone + 사용자
+              // 지정 타깃: 64×64 ink-보더 체크박스(연초록 틴트 + 초록 memphis 그림자)
+              // + 타이틀 + 서브카피 + INK "Open full view" CTA + "← Back to setup"
+              // 세컨더리(최초 설정 화면 복귀). 하단 "Done · View results" 푸터는
+              // shell WidgetStatusFooter(done) 가 담당.
+              <div className="flex w-full flex-col items-center gap-4 py-5 text-center">
+                {/* 성공 체크박스 — 초록 틴트 bg + 초록 offset 그림자 = 신규 success
+                    토큰(bg-success-soft · shadow-memphis-md-success). radius 는 CD 16
+                    에 근접한 rounded-sm(14) 사용(스펙 근접 지침 · 과잉 토큰 회피). */}
+                <div className="flex h-16 w-16 items-center justify-center rounded-sm border-2 border-ink bg-success-soft text-display font-extrabold text-success shadow-memphis-md-success">
+                  ✓
                 </div>
+                <div className="text-3xl font-extrabold text-ink">
+                  {tWidgets('transcriptReadyTitle')}
+                </div>
+                <p className="max-w-[300px] text-lg leading-relaxed text-mute">
+                  {tWidgets('transcriptReadySubtitle')}
+                </p>
+                {/* 중앙 CTA — "↗ Open full view" INK pill (fullview 진입). shell
+                    Button primary/cta 트리트먼트 재사용, expand 듀오톤 아이콘. */}
+                <Button
+                  variant="primary"
+                  size="cta"
+                  onClick={handleQuotesFullview}
+                  leftIcon={<DuotoneIcon name="fullview" size={16} mono />}
+                  className="normal-case tracking-normal"
+                >
+                  {tWidgets('transcriptOpenFullview')}
+                </Button>
+                {/* ← Back to setup — 최초 설정 화면(idle)으로 복귀 (사용자 지정). */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackToSetup}
+                >
+                  {tWidgets('transcriptBackToSetup')}
+                </Button>
               </div>
             ) : (
               renderControls()
@@ -1380,9 +1396,9 @@ export function QuotesCardBody() {
                   />
                 );
               }
-              // done 블록(컨트롤 영역)이 이미 "전체 보기" CTA 를 제공하므로
-              // 하단 완료 푸터는 생략 — 중복 CTA 회피.
-              if (txDone) return null;
+              // done: CD 타깃대로 하단 "Done · View results" 푸터를 노출한다
+              // (중앙 성공 카드의 "Open full view" 와 병존 — 사용자 지정 화면).
+              // 아래 done 푸터 렌더로 fall through.
               // 멈춤/실패 잡이 있으면 완료로 오인시키지 않는다 — 위 멈춤 섹션이
               // 신호를 담당(재시도/삭제). pending-retry 도 동일.
               if (anyStuck) return null;
