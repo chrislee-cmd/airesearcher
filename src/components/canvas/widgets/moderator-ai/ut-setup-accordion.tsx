@@ -166,18 +166,11 @@ export function UtSetupAccordion({
         : targetUrl || t('setup.step4Short'),
       summaryIcon: <DuotoneIcon name="target" size={15} />,
       body: (
+        // CD utOpen(L369~373) 정합 — 모드 무관 고정 순서 URL → task.
+        // 이전엔 guest task 를 URL 앞, host task 를 URL 뒤에 둔 두 per-mode
+        // 블록이라 순서가 역전됐다. 단일 블록으로 합쳐 순서 통일 —
+        // 모드별 정당한 차이(URL disabled/ariaLabel, task label/placeholder/게이트)만 유지.
         <div className="flex flex-col gap-4">
-          {isGuest && (
-            <Field label={t('remote.task.label')}>
-              <Textarea
-                id={`ut-task-${surface}`}
-                value={taskGoal}
-                onChange={(e) => onTaskGoal(e.target.value)}
-                placeholder={t('remote.task.placeholder')}
-                rows={3}
-              />
-            </Field>
-          )}
           <UrlAddField
             id={`ut-url-${surface}`}
             value={targetUrl}
@@ -187,19 +180,19 @@ export function UtSetupAccordion({
             removeLabel={t('url.remove')}
             ariaLabel={isGuest ? t('remote.url.label') : t('url.label')}
           />
-          {/* host STEP4 — URL 하단 과제 입력(옵셔널, 분석 컨텍스트). 시작 게이트는
-              URL·언어만 필수 — 과제는 비어도 시작 가능. */}
-          {!isGuest && (
-            <Field label={t('host.task.label')}>
-              <Textarea
-                id={`ut-host-task-${surface}`}
-                value={taskGoal}
-                onChange={(e) => onTaskGoal(e.target.value)}
-                placeholder={t('host.task.placeholder')}
-                rows={3}
-              />
-            </Field>
-          )}
+          {/* 과제 입력 — 단일 블록, URL 뒤 무조건. guest=참가자 과제(필수,
+              게이트) / host=테스트 과제(옵셔널, 분석 컨텍스트). state 는 공통 taskGoal. */}
+          <Field label={isGuest ? t('remote.task.label') : t('host.task.label')}>
+            <Textarea
+              id={`ut-task-${surface}`}
+              value={taskGoal}
+              onChange={(e) => onTaskGoal(e.target.value)}
+              placeholder={
+                isGuest ? t('remote.task.placeholder') : t('host.task.placeholder')
+              }
+              rows={3}
+            />
+          </Field>
         </div>
       ),
     },
