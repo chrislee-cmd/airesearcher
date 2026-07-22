@@ -1,21 +1,24 @@
-// POST /api/scheduling/public/[token]/messages
+// POST /api/scheduling/public/[token]/messages   (token = project share_token)
 //   { body } → inserts a private message from the participant to the admin.
 //
 // A participant can ONLY send private (scope='private', candidate_id = their
 // own resolved id, sender_role='participant', sender_user_id=null). There is no
 // way to post a broadcast or to target another candidate — the scope and
-// candidate id are derived from the token server-side, never from the request
-// body (IDOR / privilege defense). Mirrors the admin POST guards
+// candidate id are derived from the gate cookie server-side, never from the
+// request body (IDOR / privilege defense). Mirrors the admin POST guards
 // (empty/too-long body) so both sides reject the same inputs.
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { resolveSchedToken } from '@/lib/scheduling/public';
+import {
+  resolveShareToken,
+  resolveCandidateInProject,
+} from '@/lib/scheduling/public';
 import {
   MAX_MESSAGE_LENGTH,
   SCHED_MESSAGE_COLUMNS,
 } from '@/lib/scheduling/messages';
 import {
-  participantGateStatus,
+  verifyParticipantGate,
   participantGateCookieName,
 } from '@/lib/scheduling/participant-gate';
 
@@ -26,22 +29,24 @@ export async function POST(
   ctx: { params: Promise<{ token: string }> },
 ) {
   const { token } = await ctx.params;
-  const gate = await resolveSchedToken(token);
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const resolved = await resolveShareToken(token);
+  if ('error' in resolved) {
+    return NextResponse.json(
+      { error: resolved.error },
+      { status: resolved.status },
+    );
   }
-  const { admin, candidate } = gate;
+  const { admin, project } = resolved;
 
-  // Same phone-tail gate as the read route — a leaked link can't post either.
-  // No phone on file → 'blocked' (distinct code); missing/invalid cookie →
-  // 'required'.
+  // Same gate as the read route — a leaked link can't post either. The signed
+  // cookie must yield a candidate still in this project; otherwise gate_required.
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(participantGateCookieName(token))?.value;
-  const gateStatus = participantGateStatus(candidate.phone, token, cookieValue);
-  if (gateStatus === 'blocked') {
-    return NextResponse.json({ error: 'gate_no_phone' }, { status: 401 });
-  }
-  if (gateStatus === 'required') {
+  const gate = verifyParticipantGate(token, cookieValue);
+  const candidate = gate
+    ? await resolveCandidateInProject(admin, project.id, gate.candidateId)
+    : null;
+  if (!candidate) {
     return NextResponse.json({ error: 'gate_required' }, { status: 401 });
   }
 

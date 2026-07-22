@@ -2953,6 +2953,13 @@
     "gateError": "That doesn't match. Please check and try again.",
     "gateRateLimited": "Too many attempts. Please try again later.",
     "gateNoPhoneTitle": "This link can't be opened",
-    "gateNoPhoneBody": "There's no phone number on file to verify your identity. Please contact the person who shared this link."
+    "gateNoPhoneBody": "There's no phone number on file to verify your identity. Please contact the person who shared this link.",
+    "gateNoMatch": "No matching person found. Check the number or contact the person who shared this link.",
+    "collisionTitle": "Select yourself",
+    "collisionBody": "Several people share the same last digits. Please pick your name.",
+    "collisionUnnamed": "Unnamed",
+    "fullPhoneTitle": "Enter your full phone number",
+    "fullPhoneBody": "To tell you apart, please enter your full phone number.",
+    "fullPhoneLabel": "Phone number"
   }
 }
