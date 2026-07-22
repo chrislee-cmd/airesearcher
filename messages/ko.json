@@ -1560,6 +1560,15 @@
       "controlHint": "통역 시작 · 중지 · 공유는 위젯 카드에서 조작하세요.",
       "backToWidget": "위젯으로 돌아가기"
     },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "출력 오디오",
+      "outputAudioHint": "음성 통역 재생",
+      "observerLink": "옵저버 링크",
+      "observerLinkPending": "통역을 시작하면 링크가 생성됩니다",
+      "observerHint": "옵저버는 통역을 실시간으로 듣기만 할 수 있어요."
+    },
     "live": {
       "fullviewHeading": "전체 보기를 확인하세요",
       "fullviewSubInterpreter": "세션이 시작되었습니다. 전체 보기에서 실시간 통역을 확인하세요.",
