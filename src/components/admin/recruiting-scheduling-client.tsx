@@ -1210,6 +1210,10 @@ export function RecruitingSchedulingClient({
                     <SchedulingChatPanel
                       batchId={activeCalendarGroupId}
                       candidates={calendarCandidateOptions}
+                      groups={namedGroups.map((g) => ({
+                        id: g.id,
+                        title: g.title,
+                      }))}
                       layout="sidebar"
                       selectedThread={chatThread}
                       onSelectThread={setChatThread}

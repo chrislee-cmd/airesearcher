@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useSchedMessages } from '@/hooks/use-sched-messages';
 import {
@@ -15,10 +16,14 @@ import {
 } from '@/lib/scheduling/messages';
 
 export type ChatCandidate = { id: string; label: string };
+export type ChatGroup = { id: string; title: string };
 
 type Props = {
   batchId: string;
   candidates: ChatCandidate[];
+  // The project's named groups (assignment groups, not the inbox pool), for the
+  // broadcast composer's 그룹별 reach picker. Omitted / empty → only 전체 reach.
+  groups?: ChatGroup[];
   // Controlled thread selection (PR-B unified view). When provided, the parent
   // owns which thread is open — clicking a confirmed candidate elsewhere in the
   // page drives this. Omit both for the standalone two-pane behavior with its
@@ -38,6 +43,7 @@ type Props = {
 export function SchedulingChatPanel({
   batchId,
   candidates,
+  groups = [],
   selectedThread: controlledThread,
   onSelectThread,
   layout = 'panel',
@@ -58,6 +64,19 @@ export function SchedulingChatPanel({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Broadcast compose axes (only used when the broadcast thread is selected):
+  //   announceMode — 공지(announcement, banner) vs 발송(chat, bubble)
+  //   reachMode    — 전체(all) vs 그룹별(one group)
+  //   groupTarget  — the batch id when reachMode==='group'; defaults to the
+  //                  group in focus (batchId) if it's a named group, else the first.
+  const [announceMode, setAnnounceMode] = useState<'announcement' | 'chat'>(
+    'announcement',
+  );
+  const [reachMode, setReachMode] = useState<'all' | 'group'>('all');
+  const [groupTarget, setGroupTarget] = useState<string>(() =>
+    groups.some((g) => g.id === batchId) ? batchId : (groups[0]?.id ?? ''),
+  );
 
   const { broadcast, byCandidate } = useMemo(
     () => groupMessages(messages),
@@ -94,12 +113,17 @@ export function SchedulingChatPanel({
     if (el) el.scrollTop = el.scrollHeight;
   }, [threadMessages.length, selectedThread]);
 
+  // Group reach needs a concrete target; block send until one is chosen.
+  const groupReachReady = reachMode === 'all' || !!groupTarget;
+
   async function send() {
     const text = draft.trim();
     if (!text || sending) return;
+    if (isBroadcast && !groupReachReady) return;
     setSending(true);
     setError(null);
     const scope: MessageScope = isBroadcast ? 'broadcast' : 'private';
+    const batchTarget = reachMode === 'group' ? groupTarget : null;
     try {
       const res = await fetch('/api/scheduling/messages', {
         method: 'POST',
@@ -107,7 +131,12 @@ export function SchedulingChatPanel({
         body: JSON.stringify({
           scope,
           body: text,
-          ...(isBroadcast ? {} : { candidate_id: selectedThread }),
+          ...(isBroadcast
+            ? {
+                is_announcement: announceMode === 'announcement',
+                ...(batchTarget ? { batch_id: batchTarget } : {}),
+              }
+            : { candidate_id: selectedThread }),
         }),
       });
       if (!res.ok) {
@@ -171,6 +200,62 @@ export function SchedulingChatPanel({
 
       <div className="border-t border-line-soft p-3">
         {error && <p className="mb-2 text-sm text-warning">{error}</p>}
+
+        {/* Broadcast compose mode: [공지 | 발송] × [전체 | 그룹별 ▾]. Private
+            threads keep the plain composer (no selector). */}
+        {isBroadcast && (
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Button
+                size="xs"
+                variant={
+                  announceMode === 'announcement' ? 'secondary' : 'ghost'
+                }
+                onClick={() => setAnnounceMode('announcement')}
+              >
+                {t('chatModeAnnouncement')}
+              </Button>
+              <Button
+                size="xs"
+                variant={announceMode === 'chat' ? 'secondary' : 'ghost'}
+                onClick={() => setAnnounceMode('chat')}
+              >
+                {t('chatModeSend')}
+              </Button>
+            </div>
+            <span className="text-mute-soft">·</span>
+            <div className="flex items-center gap-1">
+              <Button
+                size="xs"
+                variant={reachMode === 'all' ? 'secondary' : 'ghost'}
+                onClick={() => setReachMode('all')}
+              >
+                {t('chatReachAll')}
+              </Button>
+              {groups.length > 0 && (
+                <Button
+                  size="xs"
+                  variant={reachMode === 'group' ? 'secondary' : 'ghost'}
+                  onClick={() => setReachMode('group')}
+                >
+                  {t('chatReachGroup')}
+                </Button>
+              )}
+            </div>
+            {reachMode === 'group' && groups.length > 0 && (
+              <Select
+                aria-label={t('chatGroupPickerLabel')}
+                size="sm"
+                fullWidth={false}
+                className="w-40 truncate"
+                value={groupTarget}
+                onChange={(e) => setGroupTarget(e.target.value)}
+                options={groups.map((g) => ({ value: g.id, label: g.title }))}
+              />
+            )}
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <Textarea
             aria-label={t('chatComposerLabel')}
@@ -195,7 +280,9 @@ export function SchedulingChatPanel({
           <Button
             variant="primary"
             onClick={() => void send()}
-            disabled={!draft.trim() || sending}
+            disabled={
+              !draft.trim() || sending || (isBroadcast && !groupReachReady)
+            }
           >
             {sending ? t('chatSending') : t('chatSend')}
           </Button>

@@ -66,14 +66,18 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
     [t],
   );
 
-  // Server withholds cancelled slots and other candidates' private messages, so
-  // here we only split broadcast vs. this candidate's own private thread. Any
-  // non-broadcast message is guaranteed to be this participant's own.
+  // The server already scopes rows to this participant (own private + global +
+  // own-group broadcasts), so here we only split by render style:
+  //   * announcement broadcasts → banner list
+  //   * chat broadcasts (발송) + own private → chat bubbles, oldest→newest
+  // is_announcement is undefined only on a pre-migration preview row, which we
+  // treat as an announcement (banner) — the legacy behavior.
   const { announcements, thread } = useMemo(() => {
     const announcements: SchedMessage[] = [];
     const thread: SchedMessage[] = [];
     for (const m of messages) {
-      if (m.scope === 'broadcast' || m.candidate_id == null) announcements.push(m);
+      const isBroadcast = m.scope === 'broadcast' || m.candidate_id == null;
+      if (isBroadcast && m.is_announcement !== false) announcements.push(m);
       else thread.push(m);
     }
     return { announcements, thread };
