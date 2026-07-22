@@ -142,10 +142,15 @@ export function RecruitingSchedulingClient({
   const [draft, setDraft] = useState<SlotDraft | null>(null);
   const [editorBatchId, setEditorBatchId] = useState('');
 
-  // Which group is in focus. '' = 전체 (all groups). Drives both the list scope
-  // and the (batch-scoped) calendar scope. Derived below so a project switch
-  // (new `groups`) never leaves it pointing at a stale group id.
+  // Which group is in focus for the LIST. '' = 전체 (all groups). Derived below
+  // so a project switch (new `groups`) never leaves it on a stale group id.
   const [selectedGroupId, setSelectedGroupId] = useState('');
+
+  // Calendar owns its OWN group filter, independent of the list. The calendar is
+  // group-agnostic: it spans every group by default ('' = 전체) and the nested
+  // picker only narrows the view. This keeps the calendar a top-level surface
+  // rather than something bound to a single group.
+  const [calendarGroupId, setCalendarGroupId] = useState('');
 
   // Chat sidebar (unified calendar view). `chatThread` is a candidate id or the
   // broadcast sentinel; `chatOpen` toggles the right rail.
@@ -167,9 +172,16 @@ export function RecruitingSchedulingClient({
   const effectiveGroupId = namedGroups.some((g) => g.id === selectedGroupId)
     ? selectedGroupId
     : '';
-  // The calendar is batch-scoped, so it always resolves to one concrete batch:
-  // the picked group, or the first batch (inbox) when "all" is selected.
-  const activeCalendarGroupId = effectiveGroupId || (groups[0]?.id ?? '');
+  // Calendar filter, validated against existing named groups; '' = 전체 (span
+  // all groups). Independent of the list's `effectiveGroupId`.
+  const effectiveCalendarGroupId = namedGroups.some(
+    (g) => g.id === calendarGroupId,
+  )
+    ? calendarGroupId
+    : '';
+  // A concrete batch id the calendar can hand to batch-scoped children (chat,
+  // title, slot create). Falls back to the first batch when spanning all groups.
+  const activeCalendarGroupId = effectiveCalendarGroupId || (groups[0]?.id ?? '');
 
   // Extra (non email/name/phone) columns present across the project, preserved
   // in `fields`. Union so a candidate missing a key still renders an empty cell.
@@ -551,7 +563,7 @@ export function RecruitingSchedulingClient({
     const cand = candidateId
       ? candidates.find((c) => c.id === candidateId)
       : null;
-    setEditorBatchId(cand?.batch_id ?? activeCalendarGroupId);
+    setEditorBatchId(cand?.batch_id ?? effectiveCalendarGroupId);
     setDraft({
       mode: 'individual',
       title: '',
@@ -566,7 +578,7 @@ export function RecruitingSchedulingClient({
   }
 
   function openEdit(slot: SchedSlot) {
-    setEditorBatchId(slot.batch_id ?? activeCalendarGroupId);
+    setEditorBatchId(slot.batch_id ?? effectiveCalendarGroupId);
     setDraft({
       id: slot.id,
       mode: 'individual',
@@ -585,38 +597,51 @@ export function RecruitingSchedulingClient({
     router.refresh();
   }
 
-  // --- Calendar scoping (batch-scoped behavior preserved, spec constraint) ---
-  // With a single group the slot narrow-fallback may leave batch_id null, so
-  // don't filter it out; with multiple groups scope by the active group.
-  const singleGroup = groups.length <= 1;
-  const calendarSlots = singleGroup
-    ? slots
-    : slots.filter((s) => s.batch_id === activeCalendarGroupId);
-  const groupCandidates = singleGroup
-    ? candidates
-    : candidates.filter((c) => c.batch_id === activeCalendarGroupId);
-  const editorSlots = singleGroup
-    ? slots
-    : slots.filter((s) => s.batch_id === editorBatchId);
-  const editorCandidates = singleGroup
-    ? candidates
-    : candidates.filter((c) => c.batch_id === editorBatchId);
+  // --- Calendar scoping ---
+  // The calendar spans every group by default ('' = 전체); the nested filter
+  // narrows it to one group. No single-group special-case is needed — 전체
+  // already shows every slot, including narrow-fallback rows with a null batch.
+  const calendarSlots = effectiveCalendarGroupId
+    ? slots.filter((s) => s.batch_id === effectiveCalendarGroupId)
+    : slots;
+  const calendarScopedCandidates = effectiveCalendarGroupId
+    ? candidates.filter((c) => c.batch_id === effectiveCalendarGroupId)
+    : candidates;
+  // The editor's candidate list / overlap check follow the batch being created
+  // into (a candidate's own group, or the calendar filter); '' spans all.
+  const editorSlots = editorBatchId
+    ? slots.filter((s) => s.batch_id === editorBatchId)
+    : slots;
+  const editorCandidates = editorBatchId
+    ? candidates.filter((c) => c.batch_id === editorBatchId)
+    : candidates;
 
-  const calendarCandidateOptions = groupCandidates.map((c) => ({
-    id: c.id,
-    label: candidateLabel(c),
-  }));
   const editorCandidateOptions = editorCandidates.map((c) => ({
     id: c.id,
     label: candidateLabel(c),
   }));
 
-  // Confirmed attendees of the active group only (spec §2) — calendar roster.
-  const confirmedCandidates = groupCandidates.filter(
+  // Confirmed attendees within the calendar's current scope — roster.
+  const confirmedCandidates = calendarScopedCandidates.filter(
     (c) => c.status === 'confirmed',
   );
 
-  const currentGroup = groups.find((g) => g.id === activeCalendarGroupId) ?? null;
+  // The group whose title heads the calendar — only when a specific group is
+  // filtered (전체 has no single title).
+  const currentGroup =
+    groups.find((g) => g.id === effectiveCalendarGroupId) ?? null;
+
+  // Chat is inherently per-group. In 전체 mode a per-candidate thread resolves to
+  // that candidate's own group; broadcast (and the fallback) uses the calendar's
+  // resolved batch. Chat's roster is scoped to that same batch for coherence.
+  const chatCandidate =
+    chatThread && chatThread !== BROADCAST_THREAD_ID
+      ? (candidates.find((c) => c.id === chatThread) ?? null)
+      : null;
+  const chatBatchId = chatCandidate?.batch_id ?? activeCalendarGroupId;
+  const chatCandidateOptions = candidates
+    .filter((c) => c.batch_id === chatBatchId)
+    .map((c) => ({ id: c.id, label: candidateLabel(c) }));
   // Every assignment group + its active-candidate count — feeds the slot
   // editor's group-mode picker so fan-out can target any group. Non-cancelled
   // only, mirroring the server-side fan-out filter.
@@ -916,9 +941,10 @@ export function RecruitingSchedulingClient({
           {message && <p className="text-sm text-ink">{message}</p>}
 
           {/* Group picker (spec feedback): lists the groups made by assigning
-              list-checked candidates — not the uploads. Scopes both list and
-              calendar. Hidden until at least one group exists. */}
-          {namedGroups.length > 0 && (
+              list-checked candidates — not the uploads. Scopes the LIST only;
+              the calendar owns its own nested filter (below). Hidden until at
+              least one group exists, and on the calendar tab. */}
+          {namedGroups.length > 0 && tab === 'list' && (
             <div className="min-w-[220px]">
               <Select
                 label={t('groupPickerLabel')}
@@ -1106,17 +1132,36 @@ export function RecruitingSchedulingClient({
               )}
             </>
           ) : (
-            // Unified calendar view (PR-B): free-text title + calendar +
+            // Unified calendar view (PR-B): a nested group filter + calendar +
             // confirmed-attendee roster on the left; chat opens in the right
-            // rail. Scoped to one group (spec constraint — batch_id behavior
-            // preserved); a group picker selects which when the project has
-            // more than one.
+            // rail. The calendar spans every group by default ('' = 전체); the
+            // filter narrows it. A specific group also surfaces its editable
+            // title as the calendar heading.
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
               <div className="flex min-w-0 flex-1 flex-col gap-4">
-                {activeCalendarGroupId && (
+                {/* Nested calendar scope filter — 전체 (all groups) + each
+                    group. Only shown when the project actually has groups. */}
+                {namedGroups.length > 0 && (
+                  <div className="min-w-[220px]">
+                    <Select
+                      label={t('groupPickerLabel')}
+                      value={effectiveCalendarGroupId}
+                      onChange={(e) => setCalendarGroupId(e.target.value)}
+                      options={[
+                        { value: '', label: t('groupAll') },
+                        ...namedGroups.map((g) => ({
+                          value: g.id,
+                          label: g.title,
+                        })),
+                      ]}
+                    />
+                  </div>
+                )}
+
+                {effectiveCalendarGroupId && (
                   <BatchTitleField
-                    key={activeCalendarGroupId}
-                    batchId={activeCalendarGroupId}
+                    key={effectiveCalendarGroupId}
+                    batchId={effectiveCalendarGroupId}
                     title={currentGroup?.title ?? ''}
                     onSaved={() => router.refresh()}
                   />
@@ -1211,7 +1256,7 @@ export function RecruitingSchedulingClient({
               </div>
 
               {/* Chat rail — inline sidebar (lg+) / overlay drawer (mobile). */}
-              {chatOpen && activeCalendarGroupId && (
+              {chatOpen && chatBatchId && (
                 <>
                   <div
                     className="fixed inset-0 z-modal bg-ink/20 lg:hidden"
@@ -1220,8 +1265,8 @@ export function RecruitingSchedulingClient({
                   />
                   <aside className="fixed inset-y-0 right-0 z-modal flex w-full max-w-md flex-col border-l border-line bg-paper lg:static lg:z-auto lg:h-[36rem] lg:w-96 lg:max-w-none lg:shrink-0 lg:rounded-sm lg:border">
                     <SchedulingChatPanel
-                      batchId={activeCalendarGroupId}
-                      candidates={calendarCandidateOptions}
+                      batchId={chatBatchId}
+                      candidates={chatCandidateOptions}
                       layout="sidebar"
                       selectedThread={chatThread}
                       onSelectThread={setChatThread}
