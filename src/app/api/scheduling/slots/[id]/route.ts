@@ -33,6 +33,10 @@ export async function PATCH(
   const b = body as Record<string, unknown>;
 
   const patch: Record<string, string | null> = {};
+  if ('title' in b) {
+    patch.title =
+      typeof b.title === 'string' && b.title.trim() ? b.title.trim() : null;
+  }
   if ('start_at' in b) {
     const d = new Date(typeof b.start_at === 'string' ? b.start_at : '');
     if (Number.isNaN(d.getTime())) {
@@ -76,12 +80,29 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let { data, error } = await admin
     .from('sched_slots')
     .update(patch)
     .eq('id', id)
     .select('id, candidate_id, start_at, end_at, status, location, note')
     .maybeSingle();
+
+  // Preview DB without the title column yet — retry the edit without title so
+  // time/status/location/note edits still land (title is PR-B additive).
+  if (error && 'title' in patch) {
+    const { title: _title, ...rest } = patch;
+    void _title;
+    if (Object.keys(rest).length > 0) {
+      const retry = await admin
+        .from('sched_slots')
+        .update(rest)
+        .eq('id', id)
+        .select('id, candidate_id, start_at, end_at, status, location, note')
+        .maybeSingle();
+      data = retry.data;
+      error = retry.error;
+    }
+  }
 
   if (error) {
     return NextResponse.json({ error: 'update_failed' }, { status: 500 });

@@ -7,7 +7,13 @@ export type SlotStatus = (typeof SLOT_STATUSES)[number];
 
 export type SchedSlot = {
   id: string;
-  candidate_id: string;
+  // Null for a standalone titled event with no candidate attached (PR-B).
+  candidate_id: string | null;
+  // Direct batch scope so candidate-less events still belong to a batch (PR-B).
+  // May be null on rows created before the migration / on preview DBs.
+  batch_id: string | null;
+  // Free-text event label (PR-B). Blank → fall back to the candidate name.
+  title: string | null;
   start_at: string; // ISO / timestamptz (UTC)
   end_at: string;
   status: SlotStatus;
