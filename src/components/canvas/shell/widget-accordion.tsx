@@ -305,13 +305,19 @@ export function WidgetAccordion({
   const firstIncomplete = steps.findIndex((_, index) => !isComplete(index));
 
   return (
-    <div className="relative flex flex-col gap-6">
+    // full-height flex column — 셋업 body 를 채우는 fill variant(ControlBoardPanel
+    // fill → cluster/Region flex-1)일 때 flex-1 min-h-0 로 카드 바닥까지 stretch,
+    // 그렇지 않으면(부모가 비-flex) 자연 높이로 degrade(회귀 0). 레일 positioning
+    // context 가 body 전체를 span 하도록 relative 유지.
+    <div className="relative flex min-h-0 flex-1 flex-col gap-6">
       {/* 좌측 세로 레일 — 노드 중심(left-3 = 24px 노드 폭의 절반)을 관통하는
-          연속선. 노드 배경이 이 선을 덮어 "레일에 매달린 노드" 표현. 첫/마지막
-          노드 중심(top-3/bottom-3)에서 시작·종료해 위아래로 삐져나오지 않는다. */}
+          연속선. 노드 배경이 이 선을 덮어 "레일에 매달린 노드" 표현. 첫 노드
+          중심(top-3)에서 시작하고, 카드 바닥까지 이어진다(bottom-2 ≈ CD Rail
+          8px inset). fill variant 아래에서 아코디언이 카드를 채우면 레일이
+          마지막 노드 아래로도 바닥까지 연속(빈 화이트스페이스 제거). */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-3 top-3 bottom-3 w-0.5 -translate-x-1/2 bg-line"
+        className="pointer-events-none absolute left-3 top-3 bottom-2 w-0.5 -translate-x-1/2 bg-line"
       />
       {steps.map((config, index) => {
         const complete = isComplete(index);

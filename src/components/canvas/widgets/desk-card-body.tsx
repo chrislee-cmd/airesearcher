@@ -713,7 +713,7 @@ export function DeskCardBody() {
   // 수집 범위(+견적)를 소유한다. 잡 생성·mode·scope 값은 여기 상태를 그대로
   // 배선(회귀 0). 실행 CTA 는 아래 WidgetPrimaryCta(우측 중앙 고정 앵커).
   const controlsForm = (
-    <ControlBoardPanel.Region>
+    <ControlBoardPanel.Region fill>
       <DeskSetupAccordion
         projectId={projectId}
         onProjectChange={(id) => setSelection('desk', id)}
@@ -745,7 +745,7 @@ export function DeskCardBody() {
         {/* 컨트롤 패널 — 실행 중에도 값 조정 후 재실행이 가능하도록 항상 노출.
             idle(산출물 없음) 에는 카드 정중앙(수직+수평 center)에 띄워 통일
             launcher 룩. active 진입 시 상단 고정 + 아래 산출물. */}
-        <ControlBoardPanel active={active}>
+        <ControlBoardPanel active={active} fill>
           {revealFlowActive ? (
               // active: 컨트롤+CTA 완전 대체 → StageFlow 공정 플로우차트 hero
               // (사용자 결정 2). 좁은 카드 대응 vertical. 진행 로그(이벤트)는
