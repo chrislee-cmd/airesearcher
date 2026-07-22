@@ -139,7 +139,34 @@
     "fullview": {
       "reviewTitle": "AI UT · รีวิว",
       "reviewBadge": "รีวิวหลังเซสชัน",
-      "reviewMeta": "ผู้เข้าร่วม {count} คน · {duration} · PREVIEW"
+      "reviewMeta": "ผู้เข้าร่วม {count} คน · {duration} · PREVIEW",
+      "projectFallback": "ยังไม่เลือกโปรเจกต์"
+    },
+    "fv": {
+      "live": {
+        "thinkAloud": "สตรีมพูดความคิด",
+        "thinkAloudWaiting": "กำลังรอเสียงพูดของผู้เข้าร่วม…",
+        "urlPlaceholder": "URL เป้าหมาย",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "กำลังรอหน้าจอผู้เข้าร่วม",
+        "recTag": "REC",
+        "micOn": "เปิดไมค์",
+        "cursorTracked": "ติดตามเคอร์เซอร์",
+        "taskLabel": "งานที่มอบหมาย",
+        "taskEmpty": "ไม่มีงานที่มอบหมาย",
+        "endSession": "จบเซสชัน"
+      },
+      "review": {
+        "insightReport": "รายงานอินไซต์",
+        "taskHeading": "งาน: {task}",
+        "taskFallback": "ไม่มีงานที่มอบหมาย",
+        "insightRunning": "กำลังสร้างรายงานอินไซต์…",
+        "keyClips": "คลิปสำคัญ · {count}",
+        "behavioralMetrics": "เมตริกพฤติกรรม",
+        "estimatedMeta": "(ประมาณ · ความเชื่อมั่น {pct}%)",
+        "utteranceLog": "บันทึกคำพูดทั้งหมด",
+        "turns": "{turns} เทิร์น"
+      }
     },
     "unsupported": "เบราว์เซอร์นี้ไม่รองรับการบันทึกหน้าจอ กรุณาใช้เบราว์เซอร์เดสก์ท็อปเวอร์ชันล่าสุด เช่น Chrome หรือ Edge",
     "result": {

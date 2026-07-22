@@ -139,7 +139,34 @@
     "fullview": {
       "reviewTitle": "AI UT · レビュー",
       "reviewBadge": "セッション後レビュー",
-      "reviewMeta": "参加者 {count}名 · {duration} · PREVIEW"
+      "reviewMeta": "参加者 {count}名 · {duration} · PREVIEW",
+      "projectFallback": "プロジェクト未選択"
+    },
+    "fv": {
+      "live": {
+        "thinkAloud": "思考発話ストリーム",
+        "thinkAloudWaiting": "参加者の発話を待機中…",
+        "urlPlaceholder": "対象URL",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "参加者の画面を待機中",
+        "recTag": "REC",
+        "micOn": "マイクオン",
+        "cursorTracked": "カーソル追跡中",
+        "taskLabel": "指定タスク",
+        "taskEmpty": "タスク未指定",
+        "endSession": "セッション終了"
+      },
+      "review": {
+        "insightReport": "インサイトレポート",
+        "taskHeading": "タスク: {task}",
+        "taskFallback": "タスク未指定",
+        "insightRunning": "インサイトレポートを生成中…",
+        "keyClips": "キークリップ · {count}",
+        "behavioralMetrics": "行動メトリクス",
+        "estimatedMeta": "(推定 · 信頼度{pct}%)",
+        "utteranceLog": "発話全文ログ",
+        "turns": "{turns}ターン"
+      }
     },
     "unsupported": "このブラウザは画面共有録画に対応していません。ChromeやEdgeなど最新のデスクトップブラウザをご使用ください。",
     "result": {
