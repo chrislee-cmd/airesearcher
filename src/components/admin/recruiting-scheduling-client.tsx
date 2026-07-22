@@ -166,15 +166,10 @@ export function RecruitingSchedulingClient({
   // rather than something bound to a single group.
   const [calendarGroupId, setCalendarGroupId] = useState('');
 
-  // Chat sidebar (unified calendar view). `chatThread` is a candidate id or the
-  // broadcast sentinel; `chatOpen` toggles the right rail.
-  const [chatOpen, setChatOpen] = useState(false);
+  // Chat rail (CD frame 02) is a permanent right column of the calendar tab.
+  // `chatThread` is a candidate id or the broadcast sentinel; the chat panel's
+  // own reach sub-picker drives thread selection.
   const [chatThread, setChatThread] = useState<string>(BROADCAST_THREAD_ID);
-
-  function openChat(threadId: string) {
-    setChatThread(threadId);
-    setChatOpen(true);
-  }
 
   // The project in focus — its share_token drives the master-link bar.
   const selectedProject =
@@ -617,9 +612,6 @@ export function RecruitingSchedulingClient({
   const calendarSlots = effectiveCalendarGroupId
     ? slots.filter((s) => s.batch_id === effectiveCalendarGroupId)
     : slots;
-  const calendarScopedCandidates = effectiveCalendarGroupId
-    ? candidates.filter((c) => c.batch_id === effectiveCalendarGroupId)
-    : candidates;
   // The editor's candidate list / overlap check follow the batch being created
   // into (a candidate's own group, or the calendar filter); '' spans all.
   const editorSlots = editorBatchId
@@ -633,18 +625,6 @@ export function RecruitingSchedulingClient({
     id: c.id,
     label: candidateLabel(c),
   }));
-
-  // Confirmed attendees within the calendar's current scope — roster.
-  const confirmedCandidates = calendarScopedCandidates.filter(
-    (c) => c.status === 'confirmed',
-  );
-
-  // batch_id → group name, so the roster can tag which group each attendee
-  // belongs to (esp. in 전체 mode where the list spans groups). Inbox pool has
-  // no group tag.
-  const groupNameById = new Map(
-    namedGroups.map((g) => [g.id, g.title] as const),
-  );
 
   // The group whose title heads the calendar — only when a specific group is
   // filtered (전체 has no single title).
@@ -1274,41 +1254,24 @@ export function RecruitingSchedulingClient({
               )}
             </>
           ) : (
-            // Unified calendar view (PR-B): a nested group filter + calendar +
-            // confirmed-attendee roster on the left; chat opens in the right
-            // rail. The calendar spans every group by default ('' = 전체); the
-            // filter narrows it. A specific group also surfaces its editable
-            // title as the calendar heading.
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-              <div className="flex min-w-0 flex-1 flex-col gap-4">
-                {/* Nested calendar scope filter — 전체 (all groups) + each
-                    group. Only shown when the project actually has groups. */}
-                {namedGroups.length > 0 && (
-                  <div className="min-w-[220px]">
-                    <Select
-                      label={t('groupPickerLabel')}
-                      value={effectiveCalendarGroupId}
-                      onChange={(e) => setCalendarGroupId(e.target.value)}
-                      options={[
-                        { value: '', label: t('groupAll') },
-                        ...namedGroups.map((g) => ({
-                          value: g.id,
-                          label: g.title,
-                        })),
-                      ]}
-                    />
-                  </div>
-                )}
-
-                {effectiveCalendarGroupId && (
+            // Unified calendar view (CD frame 02) — one Memphis two-pane card:
+            // colored-time-block calendar (left) + a permanent chat rail (396px,
+            // right). The calendar spans every group by default ('' = 전체); the
+            // in-toolbar Group pill narrows it. A filtered group still surfaces
+            // its editable title above the card (BatchTitleField contract).
+            <div className="flex flex-col gap-4">
+              {effectiveCalendarGroupId && (
+                <div className="max-w-md">
                   <BatchTitleField
                     key={effectiveCalendarGroupId}
                     batchId={effectiveCalendarGroupId}
                     title={currentGroup?.title ?? ''}
                     onSaved={() => router.refresh()}
                   />
-                )}
+                </div>
+              )}
 
+              <div className="flex flex-col overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md lg:h-[680px] lg:flex-row">
                 <SchedulingCalendar
                   slots={calendarSlots}
                   candidateName={(id) =>
@@ -1318,102 +1281,27 @@ export function RecruitingSchedulingClient({
                   onViewChange={setCalendarView}
                   onCreateAt={(start) => openCreate(start)}
                   onEditSlot={openEdit}
+                  groupFilter={
+                    namedGroups.length > 0
+                      ? {
+                          ariaLabel: t('calendarGroupLabel'),
+                          value: effectiveCalendarGroupId,
+                          onChange: setCalendarGroupId,
+                          options: [
+                            { value: '', label: t('groupAll') },
+                            ...namedGroups.map((g) => ({
+                              value: g.id,
+                              label: g.title,
+                            })),
+                          ],
+                        }
+                      : undefined
+                  }
                 />
 
-                {/* Confirmed attendees, inline in the same view (spec §2). */}
-                <div className="flex flex-col gap-2 rounded-sm border border-line p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-ink">
-                      {t('confirmedHeading', {
-                        count: confirmedCandidates.length,
-                      })}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => openChat(BROADCAST_THREAD_ID)}
-                    >
-                      {t('confirmedBroadcastCta')}
-                    </Button>
-                  </div>
-                  {confirmedCandidates.length === 0 ? (
-                    <p className="text-sm text-mute-soft">
-                      {t('confirmedEmpty')}
-                    </p>
-                  ) : (
-                    <ul className="flex flex-col divide-y divide-line-soft">
-                      {confirmedCandidates.map((c) => {
-                        const next = nextSlotForCandidate(c.id, slots, now);
-                        const contact = contactValue(c);
-                        const active = chatOpen && chatThread === c.id;
-                        const groupName = groupNameById.get(c.batch_id);
-                        return (
-                          <li key={c.id}>
-                            {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
-                            <button
-                              type="button"
-                              onClick={() => openChat(c.id)}
-                              className={[
-                                'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
-                                active ? 'bg-paper-soft' : 'hover:bg-paper-soft',
-                              ].join(' ')}
-                            >
-                              <span className="min-w-0 flex-1">
-                                <span className="flex items-center gap-2">
-                                  <span className="truncate text-sm text-ink">
-                                    {candidateLabel(c)}
-                                  </span>
-                                  {groupName && (
-                                    <span className="shrink-0 rounded-xs border border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs text-mute">
-                                      {groupName}
-                                    </span>
-                                  )}
-                                </span>
-                                {contact && (
-                                  <span className="block truncate text-xs text-mute-soft">
-                                    {contact}
-                                  </span>
-                                )}
-                              </span>
-                              <span className="shrink-0 text-xs text-mute">
-                                {next ? (
-                                  <span className="flex items-center gap-1.5">
-                                    <span
-                                      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                                        next.status === 'confirmed'
-                                          ? 'bg-success'
-                                          : next.status === 'cancelled'
-                                            ? 'bg-mute-soft'
-                                            : 'bg-amore'
-                                      }`}
-                                    />
-                                    {slotTimeFmt.format(new Date(next.start_at))}
-                                  </span>
-                                ) : (
-                                  t('confirmedNoSlot')
-                                )}
-                              </span>
-                              <span className="shrink-0 text-xs text-amore">
-                                {t('confirmedChatCta')}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              {/* Chat rail — inline sidebar (lg+) / overlay drawer (mobile). */}
-              {chatOpen && chatBatchId && (
-                <>
-                  <div
-                    className="fixed inset-0 z-modal bg-ink/20 lg:hidden"
-                    onClick={() => setChatOpen(false)}
-                    aria-hidden
-                  />
-                  <aside className="fixed inset-y-0 right-0 z-modal flex w-full max-w-md flex-col border-l border-line bg-paper lg:static lg:z-auto lg:h-[36rem] lg:w-96 lg:max-w-none lg:shrink-0 lg:rounded-sm lg:border">
+                {/* Permanent chat rail — CD frame 02 border-between the panes. */}
+                {chatBatchId && (
+                  <aside className="flex min-h-[540px] flex-col border-t-[3px] border-ink lg:min-h-0 lg:w-[396px] lg:shrink-0 lg:border-l-[3px] lg:border-t-0">
                     <SchedulingChatPanel
                       batchId={chatBatchId}
                       candidates={chatCandidateOptions}
@@ -1424,7 +1312,7 @@ export function RecruitingSchedulingClient({
                       layout="sidebar"
                       selectedThread={chatThread}
                       onSelectThread={setChatThread}
-                      onClose={() => setChatOpen(false)}
+                      totalCount={candidates.length}
                       // 일정 패널 소스 — the full slot set so the panel's own
                       // scope filter (전체/그룹/개인) resolves any target, not just
                       // the calendar's currently-filtered group. Click → openEdit.
@@ -1432,8 +1320,8 @@ export function RecruitingSchedulingClient({
                       onEditSlot={openEdit}
                     />
                   </aside>
-                </>
-              )}
+                )}
+              </div>
             </div>
           )}
             </>

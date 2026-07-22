@@ -2851,6 +2851,18 @@
     }
   },
   "RecruitingScheduling": {
+    "calClickHint": "คลิกช่องเพื่อสร้างช่วงเวลา 30 นาที",
+    "chatKindLabel": "ประเภทข้อความ",
+    "chatReachLabel": "ผู้รับ",
+    "chatReachAllHint": "ไม่ต้องระบุกลุ่มย่อย ส่งถึงผู้สมัครทั้ง {count} คนในโปรเจกต์นี้",
+    "chatReachGroupQuestion": "กลุ่มไหน?",
+    "chatReachIndividualQuestion": "ผู้สมัครคนไหน?",
+    "chatReachIndividualHint": "ค่าเริ่มต้นคือเธรดที่เปิดอยู่ เลือกใครก็ได้เพื่อเริ่มเธรดส่วนตัวใหม่",
+    "chatSlotEdit": "แก้ไข",
+    "slotTitleHelper": "ข้อความอิสระ · แสดงบนตารางของผู้เข้าร่วมและบล็อกปฏิทิน",
+    "slotSectionTarget": "เป้าหมาย",
+    "slotSectionTime": "เวลา",
+    "slotSectionDetails": "รายละเอียด",
     "title": "การจัดตารางสัมภาษณ์ผู้สมัคร",
     "subtitle": "เลือกหรือสร้างโปรเจกต์ใหม่ แล้วเพิ่มกลุ่มผู้สมัครผ่านการอัปโหลดหรือ Sheets",
     "projectLabel": "โปรเจกต์",

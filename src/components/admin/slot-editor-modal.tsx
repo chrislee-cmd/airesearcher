@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -54,9 +54,13 @@ type Props = {
   onSaved: () => void;
 };
 
-// Create / edit / cancel a single interview slot. Times are entered in the
-// admin's local timezone (datetime-local) and converted to UTC ISO on save.
-// Double-booking is surfaced as a soft warning only (spec: no hard block).
+const OUTFIT = 'var(--font-outfit), var(--font-sans)';
+
+// Create / edit / cancel a single interview slot (CD frame 03). Fresh Memphis
+// build: sun-banded header + grouped Target / Time / Details cards over the
+// shared <Modal> primitive (backdrop / focus / scroll-lock reused). Times are
+// entered in the admin's local timezone (datetime-local) and converted to UTC
+// ISO on save. Double-booking is a soft warning only (no hard block).
 export function SlotEditorModal({
   open,
   onClose,
@@ -85,13 +89,12 @@ export function SlotEditorModal({
 
   // Seed local form state from the incoming draft each time the modal opens.
   // Keyed by draftKey so a fresh open re-seeds; reset on close so re-editing the
-  // *same* slot after a save still re-seeds (an id-only key would match the
-  // stale seededFor and skip).
-  const draftKey = draft ? (draft.id ?? `new:${draft.candidateId}:${draft.startLocal}`) : null;
+  // *same* slot after a save still re-seeds.
+  const draftKey = draft
+    ? (draft.id ?? `new:${draft.candidateId}:${draft.startLocal}`)
+    : null;
   if (open && draft && seededFor !== draftKey) {
     setMode(draft.mode);
-    // Default the group picker to the calendar's active group when present,
-    // otherwise the first available group.
     setGroupId(
       groupOptions.some((g) => g.id === batchId)
         ? batchId
@@ -133,9 +136,9 @@ export function SlotEditorModal({
     if (saving) return;
     const startIso = fromLocalInputValue(startLocal);
     const endIso = fromLocalInputValue(endLocal);
-    // Group mode fans out to the batch's candidates, so it needs neither a title
-    // nor a candidate — just a non-empty group. Individual mode needs a title OR
-    // a candidate (PR-B). Both need valid times.
+    // Group mode fans out to the batch's candidates (needs neither title nor
+    // candidate — just a non-empty group). Individual needs a title OR a
+    // candidate (PR-B). Both need valid times.
     if (isGroup) {
       if (groupCount === 0) {
         setError(t('slotGroupEmpty'));
@@ -197,8 +200,6 @@ export function SlotEditorModal({
             ),
           });
       if (!res.ok) {
-        // Surface the empty-group case distinctly so the admin knows to add
-        // candidates rather than assume a generic save failure.
         if (isGroup) {
           const body = (await res.json().catch(() => null)) as {
             error?: string;
@@ -243,7 +244,7 @@ export function SlotEditorModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={isEditing ? t('slotEditTitle') : t('slotCreateTitle')}
+      labelledBy="slot-editor-title"
       size="md"
       footer={
         <div className="flex w-full items-center justify-between gap-2">
@@ -255,7 +256,7 @@ export function SlotEditorModal({
             <span />
           )}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
+            <Button variant="secondary" onClick={onClose} disabled={saving}>
               {t('slotCancel')}
             </Button>
             <Button variant="primary" onClick={save} disabled={saving}>
@@ -265,103 +266,211 @@ export function SlotEditorModal({
         </div>
       }
     >
+      {/* Sun header band — bleeds past the Modal body padding to the panel edge. */}
+      <div
+        className="-mx-5 -mt-4 mb-4 flex items-center gap-2.5 border-b-2 border-ink px-5 py-3.5"
+        style={{ background: 'var(--widget-header-bg-sun)' }}
+      >
+        <span className="text-lg" aria-hidden>
+          ✏️
+        </span>
+        <h2
+          id="slot-editor-title"
+          className="min-w-0 flex-1 truncate text-ink"
+          style={{ fontFamily: OUTFIT, fontSize: 18, fontWeight: 800 }}
+        >
+          {isEditing ? t('slotEditTitle') : t('slotCreateTitle')}
+        </h2>
+      </div>
+
       <div className="flex flex-col gap-4">
-        <Input
-          label={t('slotTitle')}
-          placeholder={t('slotTitlePlaceholder')}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-
-        {/* Assignment mode — create-only. Editing an existing slot is always
-            per-candidate, so the toggle is hidden there. */}
-        {!isEditing && (
-          <Select
-            label={t('slotAssignMode')}
-            value={mode}
-            onChange={(e) => setMode(e.target.value as SlotAssignMode)}
-            options={[
-              { value: 'individual', label: t('slotModeIndividual') },
-              { value: 'group', label: t('slotModeGroup') },
-            ]}
-          />
-        )}
-
-        {isGroup ? (
-          <div className="flex flex-col gap-2">
-            <Select
-              label={t('slotGroupSelect')}
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              options={groupOptions.map((g) => ({
-                value: g.id,
-                label: g.name || t('slotUntitled'),
-              }))}
-            />
-            <p className="text-sm text-mute">
-              {t('slotGroupHelper', { count: groupCount })}
-            </p>
-          </div>
-        ) : (
-          <Select
-            label={t('slotCandidateOptional')}
-            value={candidateId}
-            onChange={(e) => setCandidateId(e.target.value)}
-            options={[
-              { value: '', label: t('slotCandidateNone') },
-              ...candidates.map((c) => ({ value: c.id, label: c.label })),
-            ]}
-            disabled={isEditing}
-          />
-        )}
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Title — free text, at the top (CD frame 03). */}
+        <div>
           <Input
-            label={t('slotStart')}
-            type="datetime-local"
-            value={startLocal}
-            onChange={(e) => setStartLocal(e.target.value)}
+            label={t('slotTitle')}
+            placeholder={t('slotTitlePlaceholder')}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
-          <Input
-            label={t('slotEnd')}
-            type="datetime-local"
-            value={endLocal}
-            onChange={(e) => setEndLocal(e.target.value)}
-          />
+          <p className="mt-1.5 text-xs text-mute-soft">{t('slotTitleHelper')}</p>
         </div>
 
-        <Select
-          label={t('slotStatus')}
-          value={status}
-          onChange={(e) => setStatus(e.target.value as SlotStatus)}
-          options={[
-            { value: 'proposed', label: t('statusProposed') },
-            { value: 'confirmed', label: t('statusConfirmed') },
-            { value: 'cancelled', label: t('statusCancelled') },
-          ]}
-        />
+        {/* Target — assign mode + candidate/group. */}
+        <Section label={t('slotSectionTarget')}>
+          {!isEditing && (
+            <div>
+              <div className="mb-1.5 text-xs font-bold text-mute">
+                {t('slotAssignMode')}
+              </div>
+              <Segmented
+                ariaLabel={t('slotAssignMode')}
+                value={mode}
+                onChange={setMode}
+                options={[
+                  { value: 'individual', label: t('slotModeIndividual') },
+                  { value: 'group', label: t('slotModeGroup') },
+                ]}
+              />
+            </div>
+          )}
 
-        <Input
-          label={t('slotLocation')}
-          placeholder={t('slotLocationPlaceholder')}
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        />
+          {isGroup ? (
+            <div>
+              <Select
+                label={t('slotGroupSelect')}
+                value={groupId}
+                onChange={(e) => setGroupId(e.target.value)}
+                options={groupOptions.map((g) => ({
+                  value: g.id,
+                  label: g.name || t('slotUntitled'),
+                }))}
+              />
+              <p className="mt-1.5 text-xs text-mute">
+                {t('slotGroupHelper', { count: groupCount })}
+              </p>
+            </div>
+          ) : (
+            <Select
+              label={t('slotCandidateOptional')}
+              value={candidateId}
+              onChange={(e) => setCandidateId(e.target.value)}
+              options={[
+                { value: '', label: t('slotCandidateNone') },
+                ...candidates.map((c) => ({ value: c.id, label: c.label })),
+              ]}
+              disabled={isEditing}
+            />
+          )}
+        </Section>
 
-        <Textarea
-          label={t('slotNote')}
-          rows={3}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
+        {/* Time — start/end + soft overlap warning. */}
+        <Section label={t('slotSectionTime')}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Input
+              label={t('slotStart')}
+              type="datetime-local"
+              value={startLocal}
+              onChange={(e) => setStartLocal(e.target.value)}
+            />
+            <Input
+              label={t('slotEnd')}
+              type="datetime-local"
+              value={endLocal}
+              onChange={(e) => setEndLocal(e.target.value)}
+            />
+          </div>
+          {overlaps.length > 0 && (
+            <div
+              className={[
+                'flex items-start gap-2 border-[1.5px] border-warning-line bg-warning-bg px-3 py-2.5',
+                // design-allow-hardcoded -- CD frame 03 overlap-warning radius 10px (documented outlier band, PROJECT.md §9); no exact DS radius token in the 8–10 band
+                'rounded-[10px]',
+              ].join(' ')}
+            >
+              <span className="text-sm" aria-hidden>
+                ⚠️
+              </span>
+              <p className="text-xs leading-relaxed text-warning">
+                {t('slotOverlapWarn', { count: overlaps.length })}
+              </p>
+            </div>
+          )}
+        </Section>
 
-        {overlaps.length > 0 && (
-          <p className="rounded-xs border border-warning-line bg-warning-bg px-3 py-2 text-sm text-warning">
-            {t('slotOverlapWarn', { count: overlaps.length })}
-          </p>
-        )}
+        {/* Details — status / location / note. */}
+        <Section label={t('slotSectionDetails')}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Select
+              label={t('slotStatus')}
+              value={status}
+              onChange={(e) => setStatus(e.target.value as SlotStatus)}
+              options={[
+                { value: 'proposed', label: t('statusProposed') },
+                { value: 'confirmed', label: t('statusConfirmed') },
+                { value: 'cancelled', label: t('statusCancelled') },
+              ]}
+            />
+            <Input
+              label={t('slotLocation')}
+              placeholder={t('slotLocationPlaceholder')}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          <Textarea
+            label={t('slotNote')}
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </Section>
+
         {error && <p className="text-sm text-warning">{error}</p>}
       </div>
     </Modal>
+  );
+}
+
+// Grouped section card (CD frame 03) — 2px ink frame, mono uppercase head band,
+// hard-shadow. Wraps a labeled cluster of fields.
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-sm-faint">
+      <div className="border-b-[1.5px] border-line bg-paper-soft px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+        {label}
+      </div>
+      <div className="flex flex-col gap-3 p-3">{children}</div>
+    </div>
+  );
+}
+
+// Memphis segmented control (ink-fill active segment).
+function Segmented<T extends string>({
+  ariaLabel,
+  value,
+  onChange,
+  options,
+}: {
+  ariaLabel: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly { value: T; label: ReactNode }[];
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className={[
+        'inline-flex overflow-hidden border-[1.5px] border-ink',
+        // design-allow-hardcoded -- CD frame 03 assign-mode segmented radius 9px (documented outlier band, PROJECT.md §9); no exact DS radius token between rounded-xs(4) and rounded-sm(14)
+        'rounded-[9px]',
+      ].join(' ')}
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          // eslint-disable-next-line react/forbid-elements -- CD Memphis segmented pill (ink-fill active seg); a per-Button border/shadow/radius can't compose into one unified control
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.value)}
+            className={[
+              'px-4 py-1.5 text-sm font-bold transition-colors',
+              active ? 'bg-ink text-paper' : 'bg-paper text-mute hover:text-ink',
+            ].join(' ')}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
