@@ -271,6 +271,11 @@ function SlotRow({
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line-soft bg-paper px-4 py-3">
       <div className="flex flex-col gap-0.5">
+        {slot.title?.trim() && (
+          <span className="text-sm font-semibold text-ink">
+            {slot.title}
+          </span>
+        )}
         <span className="text-sm font-medium text-ink">
           {dateFmt.format(start)}
         </span>
