@@ -79,6 +79,11 @@ export type FunnelStage = {
 // making its first-ever appearance (new) or has been seen on an earlier day.
 export type LandingTrendPoint = {
   name: string;
+  // Full Asia/Seoul day (YYYY-MM-DD) behind the short `name` (MM-DD) axis
+  // label. Carried in the chart payload so a data-point click can request
+  // that day's individual-visit detail (card #499) without reconstructing
+  // the year on the client (year-boundary safe).
+  day: string;
   newVisitors: number;
   returning: number;
 };
@@ -118,6 +123,46 @@ export type LandingTraffic = {
   retention: RetentionStage[];
   // False when landing_visits isn't reachable on this env (migration not yet
   // applied) — the UI shows a "capture 대기" hint instead of empty charts.
+  available: boolean;
+};
+
+/* ── Landing visit detail (card #499) ─────────────────────────────────────
+   Individual visits behind one day of the 접속자 추이 chart. Unlike the
+   aggregate dashboard (counts only), this is a super-admin drill-down that
+   surfaces the raw `landing_visits` rows for a single Asia/Seoul day when an
+   operator clicks a data point. Every field the table actually stores —
+   country·referrer(host)·UTM 5종·session·시각 — is exposed; there is no raw
+   IP (privacy design, country only) and user_agent is deliberately withheld
+   (device/UA is not part of the operator-facing scope). Super-admin gated at
+   the route, same as the aggregate report. */
+
+// One landing_visits row, camelCased for the drawer. Empty stored values
+// ('' or null both occur) are normalised to null → the UI renders '—'.
+export type LandingVisitRow = {
+  createdAt: string;
+  country: string | null;
+  referrerHost: string | null;
+  referrer: string | null;
+  path: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmTerm: string | null;
+  utmContent: string | null;
+  sessionId: string | null;
+};
+
+export type LandingVisitDetail = {
+  day: string; // echoed Asia/Seoul YYYY-MM-DD
+  // Rows actually returned (== rows.length). When `capped` is true more exist
+  // on that day than the cap; the summaries below reflect the shown rows only.
+  total: number;
+  capped: boolean;
+  topCountries: SourceItem[];
+  topSources: SourceItem[]; // by source label (referrer host / utm / 직접)
+  rows: LandingVisitRow[];
+  // False when landing_visits is unreachable on this env → UI shows the same
+  // "capture 대기" hint the aggregate cards use.
   available: boolean;
 };
 
@@ -611,6 +656,7 @@ async function computeLandingTraffic(
     const key = seoulDay(d.toISOString());
     trend.push({
       name: key.slice(5),
+      day: key,
       newVisitors: byDayNew.get(key)?.size ?? 0,
       returning: byDayRet.get(key)?.size ?? 0,
     });
@@ -711,6 +757,114 @@ async function computeLandingTraffic(
     sources: { totalVisits, buckets },
     retention,
     available: true,
+  };
+}
+
+// Hard ceiling on rows returned for a single day's drill-down. A day with
+// more visits than this is capped (the UI says so) — keeps the drawer bounded
+// even on a spike day without paging complexity. Recent-first, so the cap
+// keeps the most recent visits.
+const LANDING_DETAIL_MAX = 500;
+
+// Matches an Asia/Seoul calendar day as produced by seoulDay (YYYY-MM-DD).
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isValidLandingDay(day: string | null): day is string {
+  return typeof day === 'string' && DAY_RE.test(day);
+}
+
+// Card #499 — individual visits for one Asia/Seoul day. `day` must already be
+// validated (isValidLandingDay); the route rejects malformed input with 400.
+// The Seoul day [00:00, next 00:00) maps to a UTC range via the +09:00 offset,
+// so the query stays a plain indexed created_at range (landing_visits has a
+// created_at desc index).
+export async function getLandingVisitDetail(
+  day: string,
+  limit = LANDING_DETAIL_MAX,
+): Promise<LandingVisitDetail> {
+  const db = createAdminClient();
+  const cap = Math.min(Math.max(1, Math.floor(limit) || LANDING_DETAIL_MAX), LANDING_DETAIL_MAX);
+
+  const base: LandingVisitDetail = {
+    day,
+    total: 0,
+    capped: false,
+    topCountries: [],
+    topSources: [],
+    rows: [],
+    available: true,
+  };
+
+  // Seoul-local day bounds → UTC instants. The product's home tz is fixed
+  // (+09:00, no DST), so a static offset is exact.
+  const start = new Date(`${day}T00:00:00+09:00`);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+  let data: Record<string, unknown>[];
+  try {
+    // Fetch cap+1 so we can tell "exactly cap" from "more than cap exist".
+    const res = await db
+      .from('landing_visits')
+      .select(
+        'created_at, country, referrer, referrer_host, path, utm_source, utm_medium, utm_campaign, utm_term, utm_content, session_id',
+      )
+      .gte('created_at', start.toISOString())
+      .lt('created_at', end.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(cap + 1);
+    if (res.error) throw new Error(res.error.message);
+    data = (res.data ?? []) as unknown as Record<string, unknown>[];
+  } catch {
+    // Table missing on this env (migration not applied) → capture 대기.
+    return { ...base, available: false };
+  }
+
+  const capped = data.length > cap;
+  const shown = capped ? data.slice(0, cap) : data;
+
+  const rows: LandingVisitRow[] = shown.map((r) => ({
+    createdAt: r.created_at as string,
+    country: nonEmpty(r.country),
+    referrerHost: nonEmpty(r.referrer_host),
+    referrer: nonEmpty(r.referrer),
+    path: nonEmpty(r.path),
+    utmSource: nonEmpty(r.utm_source),
+    utmMedium: nonEmpty(r.utm_medium),
+    utmCampaign: nonEmpty(r.utm_campaign),
+    utmTerm: nonEmpty(r.utm_term),
+    utmContent: nonEmpty(r.utm_content),
+    sessionId: nonEmpty(r.session_id),
+  }));
+
+  // Summaries over the shown rows — top countries + top sources (reuses the
+  // same source-labelling as the aggregate 유입 소스 card for consistency).
+  const countryAgg = new Map<string, number>();
+  const sourceAgg = new Map<string, number>();
+  for (const r of shown) {
+    const c = nonEmpty(r.country);
+    if (c) countryAgg.set(c, (countryAgg.get(c) ?? 0) + 1);
+    const bucket = sourceBucket(r);
+    const label =
+      bucket === 'direct'
+        ? '직접 유입'
+        : bucket === 'campaign'
+          ? (nonEmpty(r.utm_source) ?? '캠페인')
+          : (nonEmpty(r.referrer_host) ?? '기타');
+    sourceAgg.set(label, (sourceAgg.get(label) ?? 0) + 1);
+  }
+  const topN = (m: Map<string, number>): SourceItem[] =>
+    [...m.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+  return {
+    ...base,
+    total: rows.length,
+    capped,
+    topCountries: topN(countryAgg),
+    topSources: topN(sourceAgg),
+    rows,
   };
 }
 
