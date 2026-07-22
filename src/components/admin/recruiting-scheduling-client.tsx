@@ -626,6 +626,13 @@ export function RecruitingSchedulingClient({
     (c) => c.status === 'confirmed',
   );
 
+  // batch_id → group name, so the roster can tag which group each attendee
+  // belongs to (esp. in 전체 mode where the list spans groups). Inbox pool has
+  // no group tag.
+  const groupNameById = new Map(
+    namedGroups.map((g) => [g.id, g.title] as const),
+  );
+
   // The group whose title heads the calendar — only when a specific group is
   // filtered (전체 has no single title).
   const currentGroup =
@@ -1204,6 +1211,7 @@ export function RecruitingSchedulingClient({
                         const next = nextSlotForCandidate(c.id, slots, now);
                         const contact = contactValue(c);
                         const active = chatOpen && chatThread === c.id;
+                        const groupName = groupNameById.get(c.batch_id);
                         return (
                           <li key={c.id}>
                             {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
@@ -1216,8 +1224,15 @@ export function RecruitingSchedulingClient({
                               ].join(' ')}
                             >
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm text-ink">
-                                  {candidateLabel(c)}
+                                <span className="flex items-center gap-2">
+                                  <span className="truncate text-sm text-ink">
+                                    {candidateLabel(c)}
+                                  </span>
+                                  {groupName && (
+                                    <span className="shrink-0 rounded-xs border border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs text-mute">
+                                      {groupName}
+                                    </span>
+                                  )}
                                 </span>
                                 {contact && (
                                   <span className="block truncate text-xs text-mute-soft">
