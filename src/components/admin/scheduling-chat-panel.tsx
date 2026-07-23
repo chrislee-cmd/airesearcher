@@ -83,6 +83,9 @@ export function SchedulingChatPanel({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Assigned-schedule panel — collapsed by default to keep the rail compact;
+  // the toggle carries a count badge (공간 압축, 사용자 요청).
+  const [slotsOpen, setSlotsOpen] = useState(false);
 
   // Compose hierarchy state (see the legacy header note — logic unchanged):
   //   announceMode  — 공지글(announcement, banner) vs 채팅 메세지(chat, bubble)
@@ -137,19 +140,46 @@ export function SchedulingChatPanel({
   // Assigned-schedule slots for the current compose scope.
   const scopedSlots = useMemo(() => {
     if (!slots) return [];
+    let scoped: SchedSlot[];
     if (reachScope === 'group')
-      return groupTarget
+      scoped = groupTarget
         ? slotsForScope(slots, { kind: 'group', batchId: groupTarget })
         : [];
-    if (reachScope === 'personal')
-      return isBroadcast
+    else if (reachScope === 'personal')
+      scoped = isBroadcast
         ? []
         : slotsForScope(slots, {
             kind: 'personal',
             candidateId: selectedThread,
           });
-    return slotsForScope(slots, { kind: 'all' });
-  }, [slots, reachScope, groupTarget, isBroadcast, selectedThread]);
+    else scoped = slotsForScope(slots, { kind: 'all' });
+    // Dedup by display unit — group slots fan out per candidate, repeating the
+    // same time + label. Key on the label as rendered (title, else candidate
+    // name / broadcast) so identical rows collapse to one representative; the
+    // click still opens that representative slot's editor.
+    const seen = new Set<string>();
+    const unique: SchedSlot[] = [];
+    for (const s of scoped) {
+      const label =
+        s.title ||
+        (s.candidate_id
+          ? (candidateLabelById.get(s.candidate_id) ?? t('unnamedCandidate'))
+          : t('chatBroadcast'));
+      const key = `${s.start_at}__${label}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(s);
+    }
+    return unique;
+  }, [
+    slots,
+    reachScope,
+    groupTarget,
+    isBroadcast,
+    selectedThread,
+    candidateLabelById,
+    t,
+  ]);
 
   // Auto-scroll to the newest message on thread change / new message arrival.
   const listRef = useRef<HTMLDivElement>(null);
@@ -261,20 +291,25 @@ export function SchedulingChatPanel({
         )}
       </div>
 
-      {/* Hierarchy: kind segment → reach radios → target sub-picker (02B). */}
-      <div className="flex shrink-0 flex-col gap-2.5 border-b border-line-soft px-4 py-3">
-        <Segmented
-          ariaLabel={t('chatKindLabel')}
-          value={kind}
-          onChange={pickKind}
-          fullWidth
-          options={[
-            { value: 'announcement', label: `📢 ${t('chatKindAnnouncement')}` },
-            { value: 'chat', label: `💬 ${t('chatKindChat')}` },
-          ]}
-        />
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      {/* Hierarchy — compacted (사용자 승인 CD 이탈, spec 수정2): the kind segment
+          and the reach radios share one wrapping row; the 전체 hint collapses to
+          a single inline line and the 그룹/개인 target Select reveals inline only
+          when that reach is chosen. All states (kind 2 · reach 3 · target 2)
+          stay reachable — only the vertical footprint shrinks. */}
+      <div className="flex shrink-0 flex-col gap-2 border-b border-line-soft px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Segmented
+            ariaLabel={t('chatKindLabel')}
+            value={kind}
+            onChange={pickKind}
+            options={[
+              {
+                value: 'announcement',
+                label: `📢 ${t('chatKindAnnouncement')}`,
+              },
+              { value: 'chat', label: `💬 ${t('chatKindChat')}` },
+            ]}
+          />
           <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
             {t('chatReachLabel')}
           </span>
@@ -299,65 +334,66 @@ export function SchedulingChatPanel({
           )}
         </div>
 
-        {/* Sub-picker reveal (02B): All=dashed hint · Group/Individual=Select. */}
+        {/* Sub-picker reveal (02B): All=one-line hint · Group/Individual=Select. */}
         {reachScope === 'all' && (
-          <div
-            className={[
-              'border-[1.5px] border-dashed border-line bg-paper-soft px-3 py-2.5 text-sm leading-relaxed text-mute',
-              // design-allow-hardcoded -- CD frame 02B dashed-hint radius 10px (documented outlier band, PROJECT.md §9); no exact DS radius token in the 8–10 band
-              'rounded-[10px]',
-            ].join(' ')}
-          >
+          <p className="text-xs leading-relaxed text-mute-soft">
             {t('chatReachAllHint', { count: allCount })}
-          </div>
+          </p>
         )}
         {reachScope === 'group' && groups.length > 0 && (
-          <div>
-            <div className="mb-1 text-xs font-bold text-mute">
-              {t('chatReachGroupQuestion')}
-            </div>
-            <Select
-              aria-label={t('chatGroupPickerLabel')}
-              size="sm"
-              className="w-full"
-              value={groupTarget}
-              onChange={(e) => setGroupTarget(e.target.value)}
-              options={groups.map((g) => ({ value: g.id, label: g.title }))}
-            />
-          </div>
+          <Select
+            aria-label={t('chatGroupPickerLabel')}
+            size="sm"
+            className="w-full"
+            value={groupTarget}
+            onChange={(e) => setGroupTarget(e.target.value)}
+            options={groups.map((g) => ({ value: g.id, label: g.title }))}
+          />
         )}
         {reachScope === 'personal' && candidates.length > 0 && (
-          <div>
-            <div className="mb-1 text-xs font-bold text-mute">
-              {t('chatReachIndividualQuestion')}
-            </div>
-            <Select
-              aria-label={t('chatPersonalPickerLabel')}
-              size="sm"
-              className="w-full"
-              value={isBroadcast ? '' : selectedThread}
-              onChange={(e) => selectThread(e.target.value)}
-              options={candidates.map((c) => ({ value: c.id, label: c.label }))}
-            />
-            <div className="mt-1.5 text-xs leading-relaxed text-mute-soft">
-              {t('chatReachIndividualHint')}
-            </div>
-          </div>
+          <Select
+            aria-label={t('chatPersonalPickerLabel')}
+            size="sm"
+            className="w-full"
+            value={isBroadcast ? '' : selectedThread}
+            onChange={(e) => selectThread(e.target.value)}
+            options={candidates.map((c) => ({ value: c.id, label: c.label }))}
+          />
         )}
       </div>
 
-      {/* Slots in scope — scope-filtered assigned slots, click → edit. */}
+      {/* Slots in scope — collapsible (default collapsed, spec 수정2): a
+          disclosure toggle carrying a count badge; the list expands on demand
+          so the rail stays compact. Values are deduped in scopedSlots. */}
       {slots && (
         <div className="shrink-0 border-b border-line-soft">
-          <div className="px-4 pb-1.5 pt-2.5 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
-            {t('chatScheduleHeading')}
-          </div>
-          {scopedSlots.length === 0 ? (
-            <p className="px-4 pb-2.5 text-xs text-mute-soft">
-              {t('chatScheduleEmpty')}
-            </p>
-          ) : (
-            <ul className="max-h-[118px] overflow-y-auto">
+          {/* eslint-disable-next-line react/forbid-elements -- full-width disclosure toggle (heading + count badge + chevron); Button primitive chrome unsuitable for a bare list header */}
+          <button
+            type="button"
+            aria-expanded={slotsOpen}
+            onClick={() => setSlotsOpen((v) => !v)}
+            className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-paper-soft"
+          >
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+              {t('chatScheduleHeading')}
+            </span>
+            <span className="inline-flex min-w-5 items-center justify-center rounded-pill border-2 border-ink bg-paper px-1.5 py-px font-mono text-xs font-bold text-ink">
+              {scopedSlots.length}
+            </span>
+            <span
+              className={`ml-auto text-xs text-mute transition-transform ${slotsOpen ? 'rotate-180' : ''}`}
+              aria-hidden
+            >
+              ▾
+            </span>
+          </button>
+          {slotsOpen &&
+            (scopedSlots.length === 0 ? (
+              <p className="px-4 pb-2.5 text-xs text-mute-soft">
+                {t('chatScheduleEmpty')}
+              </p>
+            ) : (
+              <ul className="max-h-[118px] overflow-y-auto">
               {scopedSlots.map((s) => {
                 const label =
                   s.title ||
@@ -392,8 +428,8 @@ export function SchedulingChatPanel({
                   </li>
                 );
               })}
-            </ul>
-          )}
+              </ul>
+            ))}
         </div>
       )}
 
