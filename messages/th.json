@@ -3039,6 +3039,7 @@
     "confirmedEmpty": "ยังไม่มีผู้เข้าร่วมที่ยืนยัน ยืนยันผู้สมัครจากรายการ",
     "confirmedNoSlot": "ไม่มีช่วงเวลา",
     "confirmedChatCta": "แชท",
+    "chatUnreadBadge": "ข้อความจากผู้เข้าร่วมที่ยังไม่ได้อ่าน",
     "confirmedBroadcastCta": "ประกาศทั้งหมด",
     "chatClose": "ปิด",
     "chatMaxPanels": "เปิดแชทได้สูงสุด 4 รายการพร้อมกัน",

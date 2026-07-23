@@ -2946,6 +2946,7 @@
     "confirmedEmpty": "아직 확정된 인원이 없습니다. 리스트에서 후보자를 확정하세요.",
     "confirmedNoSlot": "슬롯 없음",
     "confirmedChatCta": "채팅",
+    "chatUnreadBadge": "읽지 않은 참석자 메세지",
     "confirmedBroadcastCta": "전체 공지",
     "chatClose": "닫기",
     "chatMaxPanels": "채팅은 최대 4개까지 열 수 있어요.",
