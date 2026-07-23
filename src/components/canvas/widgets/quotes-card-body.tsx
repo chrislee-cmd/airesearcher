@@ -1491,6 +1491,20 @@ export function QuotesCardBody() {
               resultJob={resultJob}
               onOpenResult={setResultJob}
               onBackToList={() => setResultJob(null)}
+              // 완료 job 관리 액션 — 전부 기존 상태/핸들러 배선(재구현 0).
+              // 벌크 삭제 confirm 모달(:1643)은 page chrome 과 공유.
+              actions={{
+                selected,
+                toggleSelect,
+                selectVisible: (ids, on) =>
+                  setSelected(on ? new Set(ids) : new Set()),
+                clearSelection,
+                bulkDownload,
+                requestBulkDelete: () => setBulkDeleteOpen(true),
+                bulkBusy,
+                deleteJob,
+                retryJob,
+              }}
             />,
           )}
         </>

@@ -18,10 +18,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { ShareMenu } from '@/components/ui/share-menu';
 import type { TranscriptJob } from '@/components/transcript-job-provider';
 import type { TranscriptTurn } from '@/lib/transcripts/turns';
 import type { TranscriptAnalysis } from '@/lib/transcripts/analysis';
 import { languageBadge, minutesFromSeconds, stripExt } from './transcript-format';
+import { TranscriptPreview, type TranscriptSource } from './transcript-preview';
+
+const DOCX_MIME =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 type TurnView = 'speaker' | 'timestamp';
 
@@ -288,6 +294,7 @@ export function TranscriptDetail({
   onBack: () => void;
 }) {
   const t = useTranslations('Features.transcriptResult');
+  const tView = useTranslations('Features.transcriptsView');
   const locale = useLocale();
 
   const [turns, setTurns] = useState<TranscriptTurn[] | null>(null);
@@ -296,6 +303,12 @@ export function TranscriptDetail({
   const [errored, setErrored] = useState(false);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<TurnView>('speaker');
+  // 정제본/원본 소스 토글 (레거시 JobRow 동형). export 링크 + Google Docs
+  // 공유 + 미리보기가 모두 이 값을 따른다. 기본 clean (다운로드 라우트 기본과
+  // 일치 — 토글 전에는 ?source 쿼리 없음).
+  const [source, setSource] = useState<TranscriptSource>('clean');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const downloadSuffix = source === 'raw' ? '?source=raw' : '';
 
   useEffect(() => {
     let cancelled = false;
@@ -346,6 +359,7 @@ export function TranscriptDetail({
   }, [turns, query]);
 
   return (
+    <>
     <div className="flex min-h-0 flex-1">
       {/* 좌 · 전사록 */}
       <div className="flex min-w-0 flex-1 flex-col border-r-2 border-ink">
@@ -434,28 +448,72 @@ export function TranscriptDetail({
 
         <div>
           <RailLabel>{t('exportTitle')}</RailLabel>
-          <div className="flex gap-2">
-            {/* 라벨 = 파일 포맷 토큰(.docx/.txt/.srt) — 로케일 불변, CD 그대로. */}
+          {/* 라벨 = 파일 포맷 토큰(.docx/.md/.txt/.srt) — 로케일 불변. 링크는
+              소스 토글(정제본/원본)을 따른다(download 라우트 재사용). */}
+          <div className="grid grid-cols-2 gap-2">
             <ExportCard
-              href={`/api/transcripts/jobs/${job.id}/download/docx`}
+              href={`/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`}
               emoji="📄"
               label=".docx"
             />
             <ExportCard
-              href={`/api/transcripts/jobs/${job.id}/download/txt`}
+              href={`/api/transcripts/jobs/${job.id}/download/md${downloadSuffix}`}
+              emoji="📑"
+              label=".md"
+            />
+            <ExportCard
+              href={`/api/transcripts/jobs/${job.id}/download/txt${downloadSuffix}`}
               emoji="📝"
               label=".txt"
             />
             <ExportCard
-              href={`/api/transcripts/jobs/${job.id}/download/srt`}
+              href={`/api/transcripts/jobs/${job.id}/download/srt${downloadSuffix}`}
               emoji="🎬"
               label=".srt"
             />
+          </div>
+          {/* Google Docs 공유(서버 빌드 docx blob 재사용 → Drive 변환) +
+              미리보기 토글(preview 라우트 재사용, 소스 토글은 모달 안). */}
+          <div className="mt-2.5 flex items-center gap-2">
+            <ShareMenu
+              align="start"
+              items={[
+                {
+                  destination: 'google-docs',
+                  title: displayName,
+                  getBlob: async () => {
+                    const r = await fetch(
+                      `/api/transcripts/jobs/${job.id}/download/docx${downloadSuffix}`,
+                    );
+                    return { blob: await r.blob(), mimeType: DOCX_MIME };
+                  },
+                },
+              ]}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPreviewOpen(true)}
+            >
+              {tView('preview')}
+            </Button>
           </div>
         </div>
 
         <AnalysisRail job={job} />
       </aside>
     </div>
+
+    {/* docx 미리보기 모달 — rail 폭(340) 이 docx 프리뷰에 부족해 full-width
+        모달로(레거시 previewMode='modal' 동형). 소스 토글은 모달 안. */}
+    <Modal
+      open={previewOpen}
+      onClose={() => setPreviewOpen(false)}
+      title={displayName}
+      size="lg"
+    >
+      <TranscriptPreview id={job.id} source={source} setSource={setSource} />
+    </Modal>
+    </>
   );
 }
