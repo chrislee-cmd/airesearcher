@@ -3047,7 +3047,16 @@
     "calendarExpand": "ขยายปฏิทิน",
     "confirmedToggleLabel": "สลับรายชื่อผู้ยืนยัน",
     "rosterCollapseHint": "ย่อ",
-    "rosterExpandHint": "ขยาย"
+    "rosterExpandHint": "ขยาย",
+    "communicatingChip": "กำลังติดต่อ",
+    "bulkCommunicating": "ทำเป็นกำลังติดต่อ",
+    "bulkCommunicated": "ทำเครื่องหมาย {count} คนเป็นกำลังติดต่อแล้ว",
+    "bulkCommunicatingFailed": "ไม่สามารถทำเป็นกำลังติดต่อได้",
+    "statusFilterLabel": "สถานะ",
+    "statusFilterAll": "ทั้งหมด",
+    "candStatusPending": "รอดำเนินการ",
+    "candStatusConfirmed": "ยืนยันแล้ว",
+    "candStatusCommunicating": "กำลังติดต่อ"
   },
   "SchedulingParticipant": {
     "title": "ตารางสัมภาษณ์ของคุณ",

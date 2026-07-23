@@ -2954,7 +2954,16 @@
     "calendarExpand": "Expand calendar",
     "confirmedToggleLabel": "Toggle confirmed roster",
     "rosterCollapseHint": "Collapse",
-    "rosterExpandHint": "Expand"
+    "rosterExpandHint": "Expand",
+    "communicatingChip": "In contact",
+    "bulkCommunicating": "Mark in contact",
+    "bulkCommunicated": "{count} marked in contact.",
+    "bulkCommunicatingFailed": "Failed to mark in contact.",
+    "statusFilterLabel": "Status",
+    "statusFilterAll": "All",
+    "candStatusPending": "Pending",
+    "candStatusConfirmed": "Confirmed",
+    "candStatusCommunicating": "In contact"
   },
   "SchedulingParticipant": {
     "title": "Your interview schedule",

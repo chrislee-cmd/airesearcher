@@ -271,6 +271,11 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
                 void send();
               }
             }}
+            // 16px floor prevents iOS Safari's focus auto-zoom (< 16px inputs
+            // trigger it), which was zooming the participant view and pushing the
+            // send button off-screen. Inline fontSize is this file's CD idiom and
+            // overrides the Textarea primitive's text-lg (13px) base.
+            style={{ fontSize: 16 }}
             className="min-h-11 !rounded-sm !border-2 !border-ink resize-none"
           />
           <IconButton

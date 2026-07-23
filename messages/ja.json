@@ -3047,7 +3047,16 @@
     "calendarExpand": "カレンダーを展開",
     "confirmedToggleLabel": "確定者リストの開閉",
     "rosterCollapseHint": "折りたたむ",
-    "rosterExpandHint": "展開"
+    "rosterExpandHint": "展開",
+    "communicatingChip": "連絡中",
+    "bulkCommunicating": "連絡中にする",
+    "bulkCommunicated": "{count}名を連絡中にしました。",
+    "bulkCommunicatingFailed": "連絡中への変更に失敗しました。",
+    "statusFilterLabel": "ステータス",
+    "statusFilterAll": "すべて",
+    "candStatusPending": "保留中",
+    "candStatusConfirmed": "確定",
+    "candStatusCommunicating": "連絡中"
   },
   "SchedulingParticipant": {
     "title": "面接スケジュール",
