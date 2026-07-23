@@ -20,6 +20,10 @@ import { useEffect, useRef } from 'react';
 import { ProbingPersonaGrid, type ProbingReflectionData } from './probing-persona-grid';
 import { ProbingThinkingRail } from './probing-thinking-rail';
 import { ProbingSpotlight } from './probing-spotlight';
+import {
+  ProbingInjectField,
+  type ProbingBackfillFeedback,
+} from '../../widgets/probing/inject-field';
 import type {
   HistoryQuestion,
   PopupQuestion,
@@ -56,6 +60,9 @@ export function ProbingFullviewBody({
   isLive,
   hasTranscript,
   gridRef,
+  onInject,
+  injectDisabled = false,
+  backfillFeedback = null,
   thinkingEvents,
   thinkingStreaming,
   history,
@@ -76,6 +83,11 @@ export function ProbingFullviewBody({
   isLive: boolean;
   hasTranscript: boolean;
   gridRef?: React.Ref<HTMLDivElement>;
+  // "추가 질문 주입" — rail 상단 필드. onInject = handleInjectQuestion(호스트)
+  // 로 좌 grid 위젯 생성 + backfill + AI think one-shot (일반 위젯과 동일 배선).
+  onInject: (question: string) => void;
+  injectDisabled?: boolean;
+  backfillFeedback?: ProbingBackfillFeedback | null;
   // thinking rail
   thinkingEvents: ThinkingEvent[];
   thinkingStreaming: boolean;
@@ -109,15 +121,28 @@ export function ProbingFullviewBody({
           hasTranscript={hasTranscript}
           gridRef={gridRef}
         />
-        <ProbingThinkingRail
-          thinkingEvents={thinkingEvents}
-          thinkingStreaming={thinkingStreaming}
-          history={history}
-          nowMs={nowMs}
-          onHistoryCopy={onHistoryCopy}
-          onHistoryToggleStar={onHistoryToggleStar}
-          onHistoryDelete={onHistoryDelete}
-        />
+        {/* 우 rail 컬럼 = "추가 질문 주입" 필드(상단) + thinking/history 레일.
+            legacy question-pane 에서 inject 가 우패널 상단(thinking 위)에 있던
+            배치를 미러 — V2 는 goal 편집이 컨트롤 패널로 이전돼 rail 최상단이
+            자연스러운 자리. ThinkingRail(flex-[3]) 은 그대로, body 에서 감싼다. */}
+        <div className="flex min-h-0 flex-[3] flex-col bg-paper">
+          <div className="border-b-2 border-line-soft px-4 py-3">
+            <ProbingInjectField
+              onInject={onInject}
+              disabled={injectDisabled}
+              backfillFeedback={backfillFeedback}
+            />
+          </div>
+          <ProbingThinkingRail
+            thinkingEvents={thinkingEvents}
+            thinkingStreaming={thinkingStreaming}
+            history={history}
+            nowMs={nowMs}
+            onHistoryCopy={onHistoryCopy}
+            onHistoryToggleStar={onHistoryToggleStar}
+            onHistoryDelete={onHistoryDelete}
+          />
+        </div>
       </div>
 
       {showSpotlight && activePopup && (

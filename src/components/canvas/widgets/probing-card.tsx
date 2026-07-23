@@ -2529,6 +2529,12 @@ function ExpandedBody() {
                   isLive={isLive}
                   hasTranscript={hasTranscript}
                   gridRef={personaGridRef}
+                  // "추가 질문 주입" 배선 — questionPaneProps(L2133) 미러.
+                  // 공유 handleInjectQuestion(L1773) 재사용: 위젯 생성 + backfill
+                  // + AI think. 백엔드 변경 0.
+                  onInject={handleInjectQuestion}
+                  injectDisabled={!contextHydrated}
+                  backfillFeedback={backfillFeedback}
                   thinkingEvents={thinkingEvents}
                   thinkingStreaming={thinkingStreaming}
                   history={history}
