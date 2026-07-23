@@ -377,8 +377,9 @@ export function RecruitingSchedulingClient({
 
   // --- Chat panel orchestration (수정4) ---
 
-  // Open (or focus) a thread panel. Already-open → no-op (it's visible). At the
-  // cap → block the 5th with a hint toast; no eviction (conservative per spec).
+  // Open (or focus) a thread in a NEW tile — driven by the roster rows + the
+  // broadcast CTA. Already-open → no-op (it's visible). At the cap → block the
+  // 5th with a hint toast; no eviction (conservative per spec).
   function openThread(id: string) {
     if (openThreads.includes(id)) return;
     if (openThreads.length >= MAX_CHAT_PANELS) {
@@ -390,6 +391,20 @@ export function RecruitingSchedulingClient({
         ? prev
         : [...prev, id],
     );
+  }
+
+  // Switch ONE tile's thread in place — driven by a panel's own reach/kind/개인
+  // switcher, so each tile behaves exactly like the single-window rail (the
+  // controlled thread flows back here → resolveChatContext re-scopes its batch).
+  // Thread ids stay unique across tiles (they're React keys); if the target is
+  // already shown in another tile, keep it there instead of duplicating.
+  function switchThread(index: number, id: string) {
+    setOpenThreads((prev) => {
+      if (prev[index] === id || prev.includes(id)) return prev;
+      const next = [...prev];
+      next[index] = id;
+      return next;
+    });
   }
 
   function closeThread(id: string) {
@@ -1413,10 +1428,11 @@ export function RecruitingSchedulingClient({
                           }))}
                           layout="sidebar"
                           selectedThread={thread}
-                          // Multi-window: the panel's own reach switcher opens
-                          // (or focuses) another thread rather than swapping in
-                          // place — each tile stays anchored to its thread.
-                          onSelectThread={openThread}
+                          // Multi-window: the panel's own reach/kind/개인 switcher
+                          // re-targets THIS tile in place (single-window parity),
+                          // not a new tile — so every control stays live. New
+                          // tiles come from the roster rows + broadcast CTA.
+                          onSelectThread={(id) => switchThread(i, id)}
                           onClose={() => closeThread(thread)}
                           totalCount={candidates.length}
                           // 일정 패널 소스 — the full slot set so the panel's own
