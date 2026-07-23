@@ -121,6 +121,7 @@ type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 // specific caller without re-deploying with extra instrumentation.
 type CleanupCaller =
   | 'start_error_session'
+  | 'start_cancelled'
   | 'start_error_mic'
   | 'start_error_livekit'
   | 'start_error_webrtc'
@@ -2446,13 +2447,6 @@ export function TranslateConsole({
     startInFlightRef.current = true;
     // 새 세션은 항상 "전체보기 유도" 화면에서 시작 (직전 세션의 setup-peek 잔상 리셋).
     setSetupPeek(false);
-    // 위젯 동시사용 게이트 — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가
-    // 뜨고 admitted 로 바뀔 때까지 여기서 보류된다(자동 진행). 취소 시 false.
-    const admitted = await gate.acquire();
-    if (!admitted) {
-      startInFlightRef.current = false;
-      return;
-    }
     // RESET dedup memory on every Start (per-slot per-kind buckets).
     // Cross-session dedup proved too brittle — see the original PR
     // comment kept below for context.
@@ -2527,103 +2521,15 @@ export function TranslateConsole({
     // 2-voice slot mapping applies (dual-source only).
     runningCaptureModeRef.current = captureModeAtStart;
 
-    // Arm the connect watchdog. Any path that succeeds clears it (live
-    // reached). Any path that fails has already called cleanup(), which
-    // also clears it. The fallback fires only when start() makes no
-    // forward progress for CONNECT_TIMEOUT_MS — typically a silent
-    // hang in room.connect / publishTrack / openai SDP fetch / ICE
-    // gathering. We log the last-known PC/DC state so the diagnostic
-    // window points at the right stage.
-    if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
-    connectWatchdogRef.current = setTimeout(() => {
-      connectWatchdogRef.current = null;
-      console.warn('[translate] connect timeout', {
-        mic: {
-          pc: pcRef.current.mic?.connectionState ?? null,
-          ice: pcRef.current.mic?.iceConnectionState ?? null,
-          dc: dcRef.current.mic?.readyState ?? null,
-        },
-        tab: {
-          pc: pcRef.current.tab?.connectionState ?? null,
-          ice: pcRef.current.tab?.iceConnectionState ?? null,
-          dc: dcRef.current.tab?.readyState ?? null,
-        },
-        hasRoom: !!roomRef.current,
-      });
-      setError('translate_timeout');
-      setStatus('error');
-      cleanup('start_error_webrtc', 'translate_timeout');
-      startInFlightRef.current = false;
-    }, CONNECT_TIMEOUT_MS);
-
-    // 1) Create the translate_sessions row + grab the first OpenAI
-    //    ephemeral + LiveKit token bundle in one call.
-    let bundle: SessionBundle;
-    try {
-      const res = await fetch('/api/translate/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source_lang: sourceLang,
-          target_lang: targetLang,
-          // Recording is always on (default save). The host no longer
-          // chooses — the 75-credit start lump already pays for it.
-          record_enabled: true,
-          // Layer B — canonical spellings for the post-process / revise
-          // passes. Empty array is the default (old behaviour).
-          glossary,
-        }),
-      });
-      const json = (await res.json()) as SessionBundle | { error: string };
-      if (!res.ok || 'error' in json) {
-        throw new Error((json as { error: string }).error ?? 'session_failed');
-      }
-      bundle = json;
-      // 차감 broadcast (optimistic) — 세션 생성 즉시 start lump(75) 만큼 우측
-      // 상단을 -N count-down (연결 대기 동안 즉각 피드백). 실제 과금은 go-live 의
-      // /start 가 하고, 그 응답 balance 로 아래에서 authoritative 재동기화한다
-      // (하이브리드 C). 연결 실패 시 서버는 미과금이라 다음 refresh 에 self-heal.
-      notifyDeduction('translate', TRANSLATE_START_LUMP_CREDITS);
-      // Analytics — 통역 세션 시작. capture_mode 는 표준 job_started 스키마에
-      // metadata 필드가 없어(spec 2/6 재사용, 미수정) 동반 widget_action 으로
-      // 기록한다. 'mic-only'/'tab-only'/'both' → 'mic'/'tab'/'both' 정규화.
-      trackEvent('job_started', { widget: 'translate', job_type: 'session' });
-      trackEvent('widget_action', {
-        widget: 'translate',
-        action: 'session_start',
-        metadata: {
-          capture_mode:
-            captureModeAtStart === 'mic-only'
-              ? 'mic'
-              : captureModeAtStart === 'tab-only'
-                ? 'tab'
-                : 'both',
-        },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'session_failed');
-      setStatus('error');
-      if (connectWatchdogRef.current) {
-        clearTimeout(connectWatchdogRef.current);
-        connectWatchdogRef.current = null;
-      }
-      startInFlightRef.current = false;
-      return;
-    }
-
-    sessionIdRef.current = bundle.session.id;
-    setLiveSessionId(bundle.session.id);
-    console.info('[translate] session ok — acquiring sources', {
-      captureMode: captureModeAtStart,
-      sessionId: bundle.session.id,
-      slots: slotsToStart,
-    });
-
-    // 2) Acquire media per slot. Tab-mode slots run getDisplayMedia +
-    //    24 kHz mono WebAudio resample (see prior comment block). Mic
-    //    slots run getUserMedia. In `both` mode both prompts fire in
-    //    sequence within the original Start gesture — Chrome will pop
-    //    them one after the other.
+    // 1) Acquire media per slot FIRST — the getDisplayMedia picker must fire
+    //    as the first await inside the click gesture so a cold session fetch
+    //    (below) can't expire the user gesture (transient activation) and
+    //    stall/deny the picker. UT use-ut-session is the reference: picker →
+    //    session row. Tab-mode slots run getDisplayMedia + 24 kHz mono
+    //    WebAudio resample (see prior comment block). Mic slots run
+    //    getUserMedia. In `both` mode both prompts fire in sequence within
+    //    the original Start gesture — Chrome pops them one after the other.
+    //    Cancelling the picker creates no gate/session row → orphan 0.
     type WebkitWindow = Window &
       typeof globalThis & {
         webkitAudioContext?: typeof AudioContext;
@@ -2754,7 +2660,114 @@ export function TranslateConsole({
       return;
     }
 
-    // 3) Shared output AudioContext (a single context for both slots'
+    // 2) Widget concurrency gate — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가
+    //    뜨고 admitted 로 바뀔 때까지 보류된다(자동 진행). 취소 시 false. picker 를
+    //    이미 통과했으므로 미승인/취소 시 방금 획득한 미디어(display+mic)를 정리해
+    //    스트림 누수를 막는다.
+    const admitted = await gate.acquire();
+    if (!admitted) {
+      cleanup('start_cancelled');
+      startInFlightRef.current = false;
+      return;
+    }
+
+    // 3) Arm the connect watchdog — only AFTER media capture + gate admit.
+    //    The picker (user-controlled selection time) must sit OUTSIDE this
+    //    network watchdog; otherwise a slow tab selection trips the 50s
+    //    timeout and tears the session down (the reported bug). Any path
+    //    that succeeds clears it (live reached); any path that fails calls
+    //    cleanup(), which also clears it. The fallback fires only when the
+    //    post-capture connect (session fetch / room.connect / publishTrack /
+    //    SDP / ICE) makes no forward progress for CONNECT_TIMEOUT_MS.
+    if (connectWatchdogRef.current) clearTimeout(connectWatchdogRef.current);
+    connectWatchdogRef.current = setTimeout(() => {
+      connectWatchdogRef.current = null;
+      console.warn('[translate] connect timeout', {
+        mic: {
+          pc: pcRef.current.mic?.connectionState ?? null,
+          ice: pcRef.current.mic?.iceConnectionState ?? null,
+          dc: dcRef.current.mic?.readyState ?? null,
+        },
+        tab: {
+          pc: pcRef.current.tab?.connectionState ?? null,
+          ice: pcRef.current.tab?.iceConnectionState ?? null,
+          dc: dcRef.current.tab?.readyState ?? null,
+        },
+        hasRoom: !!roomRef.current,
+      });
+      setError('translate_timeout');
+      setStatus('error');
+      cleanup('start_error_webrtc', 'translate_timeout');
+      startInFlightRef.current = false;
+    }, CONNECT_TIMEOUT_MS);
+
+    // 4) Create the translate_sessions row + grab the first OpenAI ephemeral
+    //    + LiveKit token bundle in one call. picker/gate 를 이미 통과했으므로
+    //    이 fetch 가 실패하면 catch 의 cleanup() 이 획득한 미디어를 stop 한다
+    //    (신규 실패경로 — 스트림 누수 방지).
+    let bundle: SessionBundle;
+    try {
+      const res = await fetch('/api/translate/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_lang: sourceLang,
+          target_lang: targetLang,
+          // Recording is always on (default save). The host no longer
+          // chooses — the 75-credit start lump already pays for it.
+          record_enabled: true,
+          // Layer B — canonical spellings for the post-process / revise
+          // passes. Empty array is the default (old behaviour).
+          glossary,
+        }),
+      });
+      const json = (await res.json()) as SessionBundle | { error: string };
+      if (!res.ok || 'error' in json) {
+        throw new Error((json as { error: string }).error ?? 'session_failed');
+      }
+      bundle = json;
+      // 차감 broadcast (optimistic) — 세션 생성 즉시 start lump(75) 만큼 우측
+      // 상단을 -N count-down (연결 대기 동안 즉각 피드백). 실제 과금은 go-live 의
+      // /start 가 하고, 그 응답 balance 로 아래에서 authoritative 재동기화한다
+      // (하이브리드 C). 연결 실패 시 서버는 미과금이라 다음 refresh 에 self-heal.
+      notifyDeduction('translate', TRANSLATE_START_LUMP_CREDITS);
+      // Analytics — 통역 세션 시작. capture_mode 는 표준 job_started 스키마에
+      // metadata 필드가 없어(spec 2/6 재사용, 미수정) 동반 widget_action 으로
+      // 기록한다. 'mic-only'/'tab-only'/'both' → 'mic'/'tab'/'both' 정규화.
+      trackEvent('job_started', { widget: 'translate', job_type: 'session' });
+      trackEvent('widget_action', {
+        widget: 'translate',
+        action: 'session_start',
+        metadata: {
+          capture_mode:
+            captureModeAtStart === 'mic-only'
+              ? 'mic'
+              : captureModeAtStart === 'tab-only'
+                ? 'tab'
+                : 'both',
+        },
+      });
+    } catch (e) {
+      // ⚠️ picker/gate 통과 후 실패 — 획득한 display(+mic) track 을 cleanup 이
+      // stop 한다(watchdog 도 함께 해제). 안 하면 스트림 누수.
+      const reason = e instanceof Error ? e.message : 'session_failed';
+      setError(reason);
+      setStatus('error');
+      cleanup('start_error_session', reason);
+      startInFlightRef.current = false;
+      return;
+    }
+
+    sessionIdRef.current = bundle.session.id;
+    setLiveSessionId(bundle.session.id);
+    console.info('[translate] session ok — sources already acquired', {
+      captureMode: captureModeAtStart,
+      sessionId: bundle.session.id,
+      slots: slotsToStart,
+      liveSlots,
+    });
+
+    // 5) Shared output AudioContext (a single context for both slots'
     //    output mixing + the recording graph). Created up front so the
     //    LiveKit publish + recorder wiring can happen before either
     //    OpenAI session lands its first TTS track.
@@ -2777,7 +2790,7 @@ export function TranslateConsole({
       return;
     }
 
-    // 4) Build the shared OUTPUT mixer destination (LiveKit publish)
+    // 6) Build the shared OUTPUT mixer destination (LiveKit publish)
     //    and the recording destinations. Both slots' TTS sources will
     //    plug in here as their ontrack events fire.
     audioDestRef.current = ctx.createMediaStreamDestination();
@@ -2931,7 +2944,7 @@ export function TranslateConsole({
       }
     }
 
-    // 5) LiveKit connect + publish ONE 'input' track (mixed across
+    // 7) LiveKit connect + publish ONE 'input' track (mixed across
     //    live slots). The translated 'output' publish lands later when
     //    the first slot's ontrack fires — same as the legacy single
     //    pipeline, just gated against the shared mixer. With custom TTS
@@ -3001,7 +3014,7 @@ export function TranslateConsole({
       return;
     }
 
-    // 6) Per-slot OpenAI Realtime pipeline. Each slot gets its own
+    // 8) Per-slot OpenAI Realtime pipeline. Each slot gets its own
     //    RTCPeerConnection + data channel + ephemeral client_secret.
     //    The FIRST slot reuses `bundle.openai.client_secret`; the
     //    SECOND (in `both` mode) hits POST /sessions/[id]/ephemeral to

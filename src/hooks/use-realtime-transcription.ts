@@ -1324,12 +1324,44 @@ export function useRealtimeTranscription(opts?: {
       // start() 전체 경과의 기준점.
       const startedWallAt = Date.now();
 
-      // 1) 서버 세션 — client_secret 발급 + start-lump credit 차감. both 라도
+      // 1) capture — 슬롯별 media 획득을 서버 fetch 보다 먼저 한다. getDisplayMedia
+      // 는 유저 클릭 제스처의 transient activation 안에서 첫 await 로 호출돼야
+      // 콜드 fetch 지연에 제스처가 만료되지 않는다(UT use-ut-session 레퍼런스).
+      // 순서: tab 먼저(picker 가 먼저 뜨게), 그다음 mic. both 모드는 두 프롬프트가
+      // 원 Start 제스처 안에서 순차로. 사용자 조작 구간이라 watchdog 은 아직 정지.
+      // 부수효과: 유저가 picker 를 취소하면 서버 세션 row 자체가 안 생긴다(orphan 0).
+      const acquired: SourceSlot[] = [];
+      if (slots.includes('tab')) {
+        if (await acquireSlot('tab')) acquired.push('tab');
+      }
+      if (slots.includes('mic')) {
+        if (await acquireSlot('mic')) acquired.push('mic');
+      }
+      if (acquired.length === 0) {
+        // 모든 슬롯 캡처 실패(권한 거부/취소/탭오디오 미공유). slotError 는
+        // acquireSlot 이 이미 세팅 — top-level 에러로 승격.
+        const reason =
+          mode === 'tab'
+            ? 'tab_audio_failed'
+            : mode === 'mic'
+              ? 'microphone_denied'
+              : 'session_start_failed';
+        setError(reason);
+        endReasonRef.current = 'error';
+        setStatus('error');
+        cleanup();
+        startInFlightRef.current = false;
+        return;
+      }
+
+      // 2) 서버 세션 — client_secret 발급 + start-lump credit 차감. both 라도
       // 세션 1개분만 과금: 첫 호출이 start-lump 를 차감하고 session_id 를 받고,
       // 둘째 슬롯은 그 session_id 를 재사용해 client_secret 만 추가 발급받는다
       // (spend_credits 멱등 — renewal 과 동일). source 는 계측용(mic/tab/both).
       //
       // 자체 AbortController 8s — 서버가 hang 하면 명시적 `session_timeout`.
+      // ⚠️ picker 를 이미 통과했으므로 이 fetch 가 실패하면 catch 의 cleanup() 이
+      // 방금 획득한 capture 스트림(tab/mic)을 stop 한다(스트림 누수 방지).
       for (const slot of slots) phaseRef.current[slot] = 'session_fetch';
       const secrets: Partial<Record<SourceSlot, string>> = {};
       try {
@@ -1417,21 +1449,32 @@ export function useRealtimeTranscription(opts?: {
         return;
       }
 
-      // 2) capture — 슬롯별 media 획득. 순서: tab 먼저(picker 가 먼저 뜨게),
-      // 그다음 mic. both 모드는 두 프롬프트가 원 Start 제스처 안에서 순차로.
-      // 사용자 조작 구간이라 watchdog 은 아직 정지.
-      const acquired: SourceSlot[] = [];
-      if (slots.includes('tab')) {
-        if (secrets.tab && (await acquireSlot('tab'))) acquired.push('tab');
+      // 3) connect — 캡처됐고 secret 도 발급된 슬롯만 병렬 연결. graceful: 일부
+      // 슬롯만 성공해도 그 슬롯으로 세션 진행. 캡처는 됐지만 secret 이 없는
+      // 슬롯(both 모드 둘째 세션 fetch 실패)은 여기서 그 슬롯 capture 만 stop 해
+      // 스트림 누수를 막고 slotError 를 남긴다.
+      for (const slot of acquired) {
+        if (secrets[slot]) continue;
+        const cap = captureStreamRef.current[slot];
+        if (cap) {
+          cap.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {
+              /* already stopped */
+            }
+          });
+          captureStreamRef.current[slot] = null;
+        }
+        if (slot === 'tab' && tabSilenceTimerRef.current) {
+          clearInterval(tabSilenceTimerRef.current);
+          tabSilenceTimerRef.current = null;
+        }
+        setSlotError((prev) => ({ ...prev, [slot]: 'session_failed' }));
       }
-      if (slots.includes('mic')) {
-        if (secrets.mic && (await acquireSlot('mic'))) acquired.push('mic');
-      }
-
-      // 3) connect — 획득된 슬롯만 병렬 연결. graceful: 일부 슬롯만 성공해도
-      // 그 슬롯으로 세션 진행.
+      const connectable = acquired.filter((slot) => Boolean(secrets[slot]));
       const results = await Promise.all(
-        acquired.map(async (slot) => ({
+        connectable.map(async (slot) => ({
           slot,
           ok: await connectSlot(slot, secrets[slot] as string),
         })),
