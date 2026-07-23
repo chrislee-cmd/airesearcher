@@ -30,7 +30,14 @@ type ReachScope = 'all' | 'group' | 'personal';
 
 type Props = {
   batchId: string;
+  // Group-scoped roster (this tile's batch). Retained for thread-title
+  // resolution + the 전체 count fallback.
   candidates: ChatCandidate[];
+  // The 개인 reach picker's candidate pool. Unlike `candidates` (one group), this
+  // is the CONFIRMED-everyone list across the whole project — a private chat can
+  // target any confirmed person regardless of group (spec 항목1). Falls back to
+  // `candidates` when omitted (single-group callers).
+  personalCandidates?: ChatCandidate[];
   // The project's named groups (assignment groups, not the inbox pool), for the
   // 그룹 reach picker. Omitted / empty → only 전체 (and 개인) reach.
   groups?: ChatGroup[];
@@ -61,6 +68,7 @@ type Props = {
 export function SchedulingChatPanel({
   batchId,
   candidates,
+  personalCandidates,
   groups = [],
   selectedThread: controlledThread,
   onSelectThread,
@@ -72,6 +80,11 @@ export function SchedulingChatPanel({
   const t = useTranslations('RecruitingScheduling');
   const { messages, loading, refetch, editMessage, deleteMessage } =
     useSchedMessages(batchId);
+
+  // 개인 reach targets = confirmed-everyone when the parent supplies it, else the
+  // group roster (back-compat). Used for the personal picker options, its radio
+  // visibility, and the 개인 landing target.
+  const personalOptions = personalCandidates ?? candidates;
 
   const [internalThread, setInternalThread] =
     useState<string>(BROADCAST_THREAD_ID);
@@ -113,9 +126,12 @@ export function SchedulingChatPanel({
 
   const candidateLabelById = useMemo(() => {
     const map = new Map<string, string>();
+    // Merge both pools so a personal thread targeting a confirmed candidate from
+    // another group (spec 항목1) still resolves its display name.
     for (const c of candidates) map.set(c.id, c.label);
+    for (const c of personalOptions) map.set(c.id, c.label);
     return map;
-  }, [candidates]);
+  }, [candidates, personalOptions]);
 
   const groupTitleById = useMemo(() => {
     const map = new Map<string, string>();
@@ -216,7 +232,7 @@ export function SchedulingChatPanel({
     if (scope === 'personal') {
       setAnnounceMode('chat');
       // Land on a concrete candidate so the private thread + send have a target.
-      if (isBroadcast && candidates[0]) selectThread(candidates[0].id);
+      if (isBroadcast && personalOptions[0]) selectThread(personalOptions[0].id);
       return;
     }
     setBroadcastReach(scope);
@@ -368,7 +384,7 @@ export function SchedulingChatPanel({
               onSelect={() => pickReach('group')}
             />
           )}
-          {kind === 'chat' && candidates.length > 0 && (
+          {kind === 'chat' && personalOptions.length > 0 && (
             <Radio
               label={t('chatReachPersonal')}
               selected={reachScope === 'personal'}
@@ -393,14 +409,17 @@ export function SchedulingChatPanel({
             options={groups.map((g) => ({ value: g.id, label: g.title }))}
           />
         )}
-        {reachScope === 'personal' && candidates.length > 0 && (
+        {reachScope === 'personal' && personalOptions.length > 0 && (
           <Select
             aria-label={t('chatPersonalPickerLabel')}
             size="sm"
             className="w-full"
             value={isBroadcast ? '' : selectedThread}
             onChange={(e) => selectThread(e.target.value)}
-            options={candidates.map((c) => ({ value: c.id, label: c.label }))}
+            options={personalOptions.map((c) => ({
+              value: c.id,
+              label: c.label,
+            }))}
           />
         )}
       </div>
@@ -537,22 +556,28 @@ export function SchedulingChatPanel({
               </div>
             );
 
-            // Edit/delete action pair, shown on editable messages when not editing.
+            // Edit/delete action pair, shown on editable messages when not
+            // editing. Borderless `plain` glyphs (not the boxed `ghost` variant,
+            // which renders a hard 2px square — the "각진 네모" the spec drops) with
+            // a soft round hover chip; reveal-on-hover of the message (falls to a
+            // low opacity so they stay tappable/keyboard-reachable, not hidden).
             const actions = editable && !isEditing && (
-              <span className="flex shrink-0 items-center gap-0.5">
+              <span className="flex shrink-0 items-center gap-0.5 opacity-60 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                 <IconButton
                   aria-label={t('chatMsgEdit')}
-                  variant="ghost"
+                  variant="plain"
                   size="sm"
                   onClick={() => startEdit(m)}
+                  className="rounded-full text-sm hover:bg-ink/10"
                 >
                   ✎
                 </IconButton>
                 <IconButton
                   aria-label={t('chatMsgDelete')}
-                  variant="ghost"
+                  variant="plain"
                   size="sm"
                   onClick={() => void removeMessage(m.id)}
+                  className="rounded-full text-sm hover:bg-ink/10"
                 >
                   🗑
                 </IconButton>
@@ -567,7 +592,7 @@ export function SchedulingChatPanel({
               return (
                 <div
                   key={m.id}
-                  className="overflow-hidden rounded-sm border-2 border-ink bg-warning-bg shadow-memphis-md-amber"
+                  className="group overflow-hidden rounded-sm border-2 border-ink bg-warning-bg shadow-memphis-md-amber"
                 >
                   <div
                     className="flex items-center gap-1.5 border-b-2 border-ink px-3 py-1.5"
@@ -599,7 +624,7 @@ export function SchedulingChatPanel({
             return (
               <div
                 key={m.id}
-                className={fromAdmin ? 'flex justify-end' : 'flex justify-start'}
+                className={`group flex ${fromAdmin ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={[

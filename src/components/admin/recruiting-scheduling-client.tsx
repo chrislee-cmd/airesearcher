@@ -89,6 +89,10 @@ const MAX_CHAT_PANELS = 4;
 // heads sky/mint/neutral). Inbox section heads neutral (paper-soft) separately.
 const HEAD_TINTS = ['bg-sky', 'bg-mint', 'bg-lav', 'bg-peach', 'bg-cyan'] as const;
 
+// Coarse per-candidate status (sched_candidates.status) — bulk-set from the
+// list, distinct from a slot's proposed/confirmed/cancelled lifecycle.
+type CandidateStatus = 'pending' | 'confirmed' | 'communicating';
+
 // Chat lives in a right-rail sidebar of the calendar view now (PR-B); the
 // standalone 'chat' tab is gone.
 type ViewTab = 'list' | 'calendar';
@@ -168,9 +172,10 @@ export function RecruitingSchedulingClient({
   const [draft, setDraft] = useState<SlotDraft | null>(null);
   const [editorBatchId, setEditorBatchId] = useState('');
 
-  // Which group is in focus for the LIST. '' = 전체 (all groups). Derived below
-  // so a project switch (new `groups`) never leaves it on a stale group id.
-  const [selectedGroupId, setSelectedGroupId] = useState('');
+  // LIST status filter (recsched 항목5) — replaces the old per-group narrowing
+  // picker. '' = 전체 (every status); otherwise the coarse per-candidate status.
+  // The calendar keeps its own group scope (calendarGroupId) untouched.
+  const [statusFilter, setStatusFilter] = useState<'' | CandidateStatus>('');
 
   // Calendar owns its OWN group filter, independent of the list. The calendar is
   // group-agnostic: it spans every group by default ('' = 전체) and the nested
@@ -219,13 +224,8 @@ export function RecruitingSchedulingClient({
   const namedGroups = groups.filter((g) => !g.is_inbox);
   const namedGroupIds = new Set(namedGroups.map((g) => g.id));
 
-  // A picked group id that actually exists (and is a named group), or '' for
-  // "all" — guards against a stale id lingering after a project switch.
-  const effectiveGroupId = namedGroups.some((g) => g.id === selectedGroupId)
-    ? selectedGroupId
-    : '';
   // Calendar filter, validated against existing named groups; '' = 전체 (span
-  // all groups). Independent of the list's `effectiveGroupId`.
+  // all groups). Independent of the list (which filters by status now, 항목5).
   const effectiveCalendarGroupId = namedGroups.some(
     (g) => g.id === calendarGroupId,
   )
@@ -261,6 +261,19 @@ export function RecruitingSchedulingClient({
     // candidateLabel closes over t; candidates is the real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates]);
+
+  // 개인 채팅 대상 = 확정된 전원(그룹 무관, spec 항목1). The chat panel's group roster
+  // (resolveChatContext) only lists one group's people; the 개인 reach picker
+  // instead targets any confirmed candidate across the whole project.
+  const confirmedChatCandidates = useMemo(
+    () =>
+      candidates
+        .filter((c) => c.status === 'confirmed')
+        .map((c) => ({ id: c.id, label: candidateLabel(c) })),
+    // candidateLabel closes over t; candidates is the real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [candidates],
+  );
 
   const statusLabel = useMemo(
     () =>
@@ -301,13 +314,15 @@ export function RecruitingSchedulingClient({
     ).sort();
   }, [candidates, filterKey]);
 
-  // List scope: only the picked group's candidates, or every group when "all".
+  // List scope (항목5): filter by the picked candidate status, or every status
+  // when '' (전체). Group is no longer a list-scoping axis — the grouped view
+  // still sections by group, and the calendar keeps its own group filter.
   const scopedCandidates = useMemo(
     () =>
-      effectiveGroupId
-        ? candidates.filter((c) => c.batch_id === effectiveGroupId)
+      statusFilter
+        ? candidates.filter((c) => c.status === statusFilter)
         : candidates,
-    [candidates, effectiveGroupId],
+    [candidates, statusFilter],
   );
 
   const filteredCandidates = useMemo(() => {
@@ -345,20 +360,18 @@ export function RecruitingSchedulingClient({
   }, [filteredCandidates, sortKey, sortDir, slots, now]);
 
   // Group sections (그룹별 목록): a section per assignment group, plus an
-  // "미할당" section for candidates still in the inbox pool. When a specific
-  // group is picked, only that section shows.
-  const sectionGroups = effectiveGroupId
-    ? namedGroups.filter((g) => g.id === effectiveGroupId)
-    : namedGroups;
-  const groupSections = sectionGroups.map((g) => ({
+  // "미할당" section for candidates still in the inbox pool. Every group shows —
+  // the list's only narrowing axis is the status filter (항목5), applied upstream
+  // in scopedCandidates.
+  const groupSections = namedGroups.map((g) => ({
     key: g.id,
     title: g.title,
     rows: sortedCandidates.filter((c) => c.batch_id === g.id),
   }));
-  // Ungrouped remainder (inbox) — only in the "all" view.
-  const ungroupedRows = effectiveGroupId
-    ? []
-    : sortedCandidates.filter((c) => !namedGroupIds.has(c.batch_id));
+  // Ungrouped remainder (inbox pool).
+  const ungroupedRows = sortedCandidates.filter(
+    (c) => !namedGroupIds.has(c.batch_id),
+  );
   const allSections = ungroupedRows.length
     ? [
         ...groupSections,
@@ -593,6 +606,36 @@ export function RecruitingSchedulingClient({
         return;
       }
       notifyOk(t('bulkConfirmed', { count: json.updated ?? 0 }));
+      clearSelection();
+      router.refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  // Bulk "소통중" — sets status='communicating' on the checked rows (recsched
+  // 항목4). Mirrors confirmSelected; goes through the generalized set-status route.
+  async function communicatingSelected() {
+    if (selected.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/scheduling/candidates/set-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateIds: [...selected],
+          status: 'communicating',
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        updated?: number;
+        error?: string;
+      };
+      if (!res.ok) {
+        notifyErr(t('bulkCommunicatingFailed'));
+        return;
+      }
+      notifyOk(t('bulkCommunicated', { count: json.updated ?? 0 }));
       clearSelection();
       router.refresh();
     } finally {
@@ -905,6 +948,11 @@ export function RecruitingSchedulingClient({
                               {t('confirmedChip')}
                             </span>
                           )}
+                          {c.status === 'communicating' && (
+                            <span className="shrink-0 rounded-xs border border-amore/30 bg-amore-bg px-1.5 py-px text-xs font-extrabold text-amore">
+                              {t('communicatingChip')}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td
@@ -1207,23 +1255,26 @@ export function RecruitingSchedulingClient({
                     { value: 'grouped', label: t('listModeGrouped') },
                   ]}
                 />
-                {namedGroups.length > 0 && (
-                  <Select
-                    aria-label={t('groupPickerLabel')}
-                    size="sm"
-                    fullWidth={false}
-                    className="w-40 truncate"
-                    value={effectiveGroupId}
-                    onChange={(e) => setSelectedGroupId(e.target.value)}
-                    options={[
-                      { value: '', label: t('groupAll') },
-                      ...namedGroups.map((g) => ({
-                        value: g.id,
-                        label: g.title,
-                      })),
-                    ]}
-                  />
-                )}
+                {/* 상태별 필터 (항목5) — 그룹별 피커를 대체. 전체 / 대기 / 확정 / 소통중. */}
+                <Select
+                  aria-label={t('statusFilterLabel')}
+                  size="sm"
+                  fullWidth={false}
+                  className="w-40 truncate"
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as '' | CandidateStatus)
+                  }
+                  options={[
+                    { value: '', label: t('statusFilterAll') },
+                    { value: 'pending', label: t('candStatusPending') },
+                    { value: 'confirmed', label: t('candStatusConfirmed') },
+                    {
+                      value: 'communicating',
+                      label: t('candStatusCommunicating'),
+                    },
+                  ]}
+                />
                 <label className="flex items-center gap-2 text-sm text-ink">
                   <Checkbox
                     aria-label={t('selectAll')}
@@ -1310,6 +1361,14 @@ export function RecruitingSchedulingClient({
                     disabled={bulkBusy}
                   >
                     {t('bulkConfirm')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={communicatingSelected}
+                    disabled={bulkBusy}
+                  >
+                    {t('bulkCommunicating')}
                   </Button>
                   <Button
                     size="sm"
@@ -1532,6 +1591,8 @@ export function RecruitingSchedulingClient({
                         <SchedulingChatPanel
                           batchId={ctx.batchId}
                           candidates={ctx.candidateOptions}
+                          // 개인 피커는 확정 전원(그룹 무관) — spec 항목1.
+                          personalCandidates={confirmedChatCandidates}
                           groups={namedGroups.map((g) => ({
                             id: g.id,
                             title: g.title,

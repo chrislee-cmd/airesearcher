@@ -2954,7 +2954,16 @@
     "calendarExpand": "캘린더 펼치기",
     "confirmedToggleLabel": "확정 인원 접기/펼치기",
     "rosterCollapseHint": "접기",
-    "rosterExpandHint": "펼치기"
+    "rosterExpandHint": "펼치기",
+    "communicatingChip": "소통중",
+    "bulkCommunicating": "소통중",
+    "bulkCommunicated": "{count}명 소통중으로 변경됨.",
+    "bulkCommunicatingFailed": "소통중 처리에 실패했습니다.",
+    "statusFilterLabel": "상태",
+    "statusFilterAll": "전체",
+    "candStatusPending": "대기",
+    "candStatusConfirmed": "확정",
+    "candStatusCommunicating": "소통중"
   },
   "SchedulingParticipant": {
     "title": "인터뷰 일정",
