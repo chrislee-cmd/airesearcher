@@ -2938,7 +2938,11 @@
     "confirmedNoSlot": "No slot",
     "confirmedChatCta": "Chat",
     "confirmedBroadcastCta": "Broadcast",
-    "chatClose": "Close"
+    "chatClose": "Close",
+    "chatMaxPanels": "You can open up to 4 chats at once.",
+    "calendarFold": "Collapse calendar",
+    "calendarExpand": "Expand calendar",
+    "confirmedToggleLabel": "Toggle confirmed roster"
   },
   "SchedulingParticipant": {
     "title": "Your interview schedule",
