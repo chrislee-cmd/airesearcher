@@ -564,6 +564,12 @@
   --radius-sm: var(--raw-radius-sm);
   --radius-md: var(--raw-radius-md);
   --radius-pill: var(--raw-radius-pill);
+  /* ModeCard(default) 프레임 radius — Canvas 1c 델타(MODECARD-FIX.md, proposed).
+     13px 는 DS radius 스케일(4/14/24) off-scale 인 CD 절대값이라, 가장 가까운
+     radius-sm(14)로 굽히지 않고(AUTHORITY) 전용 토큰으로 승격 → rounded-mode-card.
+     비-canvas 표면(예: /design-system 데모) 외형용. canvas 안에서는 memphis
+     globals(--raw-radius-canvas-button)가 governs (제약: canvas override 그대로). */
+  --radius-mode-card: 13px;
 
   /* Font-size scale (B-1, option C — conservative consolidation).
      Bucket boundaries derived from frequency audit of 781 text-[Npx]
@@ -609,6 +615,12 @@
      rgba = amore(--raw-accent-pink #ff5c8a) .16 알파 — 색 원자는 토큰 정의 층
      (globals.css)에만 존재하고 JSX 는 `shadow-select-glow` utility 로만 소비. */
   --shadow-select-glow: 0 4px 12px rgba(255, 92, 138, 0.16);
+
+  /* ModeCard(default) 고정 높이 — Canvas 1c 델타(MODECARD-FIX.md, proposed).
+     카드 높이가 subtitle 줄수에 따라 flex 로 늘어나 그리드 정렬이 깨지던 버그를
+     고정 128 로 봉인(box-border, flex column, top-align + clamp). 유틸 네임스페이스
+     밖이라 h-[var(--mode-card-h)] 로 소비. 값 SSOT — 한 곳 변경 → 전 그리드 반영. */
+  --mode-card-h: 128px;
 }
 
 /* =========================================================================

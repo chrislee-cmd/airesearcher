@@ -206,7 +206,9 @@
       "sectionLabel": "Test method",
       "groupAria": "Choose test method",
       "hostTitle": "Test on my device",
-      "guestTitle": "Test on participant device"
+      "guestTitle": "Test on participant device",
+      "hostDesc": "Share your screen and run it yourself",
+      "guestDesc": "Invite participants to run it on their own device"
     },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
