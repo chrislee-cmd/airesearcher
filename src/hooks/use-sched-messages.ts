@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { SchedMessage } from '@/lib/scheduling/messages';
 
@@ -22,6 +22,12 @@ export function useSchedMessages(batchId: string | null): {
   const [loading, setLoading] = useState(false);
   // Guards against a slow response for an old batch overwriting a newer one.
   const reqIdRef = useRef(0);
+  // Per-instance channel suffix. Multiple chat panels can now share the same
+  // batch (수정4 멀티창) — a batch-only channel name would collide, and Supabase
+  // rejects a second `.on('postgres_changes')` on an already-subscribed channel
+  // ("cannot add postgres_changes callbacks ... after subscribe()"). useId gives
+  // each hook instance a stable, unique topic. Colons stripped (topic-safe).
+  const channelSuffix = useId().replace(/:/g, '');
 
   const refetch = useCallback(async () => {
     if (!batchId) return;
@@ -62,7 +68,7 @@ export function useSchedMessages(batchId: string | null): {
     if (!batchId) return;
     const supabase = createClient();
     const ch = supabase
-      .channel(`sched-messages-${batchId}`)
+      .channel(`sched-messages-${batchId}-${channelSuffix}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sched_messages' },
@@ -74,7 +80,7 @@ export function useSchedMessages(batchId: string | null): {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [batchId, refetch]);
+  }, [batchId, refetch, channelSuffix]);
 
   // Polling fallback — covers a dropped/failed realtime channel.
   useEffect(() => {
