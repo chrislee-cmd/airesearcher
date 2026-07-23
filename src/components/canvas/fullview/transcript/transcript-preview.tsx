@@ -21,10 +21,14 @@ export function TranscriptPreview({
   id,
   source,
   setSource,
+  inline = false,
 }: {
   id: string;
   source: TranscriptSource;
   setSource: (s: TranscriptSource) => void;
+  // inline=true → 모달이 아니라 상세 중앙 패널에 직접 렌더(문서형 전사 폴백).
+  // 자체 max-h/스크롤을 벗고 부모 스크롤 컨테이너에 맡긴다.
+  inline?: boolean;
 }) {
   const tView = useTranslations('Features.transcriptsView');
   const [html, setHtml] = useState<string | null>(null);
@@ -83,7 +87,11 @@ export function TranscriptPreview({
         <div className="text-sm text-mute-soft">{tView('loadingPreview')}</div>
       ) : (
         <div
-          className="docx-preview max-h-[60vh] overflow-y-auto text-md leading-[1.7] text-ink-2"
+          className={
+            inline
+              ? 'docx-preview text-md leading-[1.7] text-ink-2'
+              : 'docx-preview max-h-[60vh] overflow-y-auto text-md leading-[1.7] text-ink-2'
+          }
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}
