@@ -358,6 +358,15 @@ export function TranscriptDetail({
     );
   }, [turns, query]);
 
+  // 파서가 구조화 turn 을 0개 반환 = `[HH:MM:SS] 화자: …` STT 형식이 아닌
+  // 문서형 전사(업로드된 인터뷰 문서 — 프로필 표·헤딩·산문 Q&A). turn-stream
+  // 으로는 표현 불가라 중앙 패널이 비었었다("No turns to show"). 이 경우 preview
+  // 와 동일한 문서 렌더(markdown→HTML)를 중앙 패널에 인라인해 내용을 노출한다.
+  // 검색·화자/타임스탬프 토글은 turn 전용이라 이때 숨긴다.
+  const documentFallback =
+    !loading && !errored && turns !== null && turns.length === 0;
+  const showTurnTools = (turns?.length ?? 0) > 0;
+
   return (
     <>
     <div className="flex min-h-0 flex-1">
@@ -374,46 +383,52 @@ export function TranscriptDetail({
           >
             ‹
           </button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-pill border-[1.5px] border-line bg-paper-soft px-3.5 py-2">
-            <span aria-hidden className="text-lg text-mute-soft">
-              🔍
-            </span>
-            {/* eslint-disable-next-line react/forbid-elements -- CD state 05 검색은 rounded-pill·paper-soft·🔍 prefix inline 필드 — Input primitive(border-line·rounded-sm 박스)와 시각 불일치. CD 전용 chrome. */}
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('searchPlaceholder')}
-              aria-label={t('searchPlaceholder')}
-              className="min-w-0 flex-1 bg-transparent text-lg text-ink placeholder:text-faint focus:outline-none"
-            />
-          </div>
-          {/* eslint-disable-next-line react/forbid-elements -- CD state 05 화자별/타임스탬프 토글 pill(rounded-pill outline, active=ink/inactive=mute-soft) — Button primitive variant 와 불일치. aria-pressed 로 상태 노출. */}
-          <button
-            type="button"
-            aria-pressed={view === 'speaker'}
-            onClick={() => setView('speaker')}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-2 text-md ${
-              view === 'speaker'
-                ? 'border-ink font-bold text-ink'
-                : 'border-line font-semibold text-mute-soft'
-            }`}
-          >
-            🗣️ {t('bySpeaker')}
-          </button>
-          {/* eslint-disable-next-line react/forbid-elements -- 위 토글과 동일 CD chrome 쌍. */}
-          <button
-            type="button"
-            aria-pressed={view === 'timestamp'}
-            onClick={() => setView('timestamp')}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-2 text-md ${
-              view === 'timestamp'
-                ? 'border-ink font-bold text-ink'
-                : 'border-line font-semibold text-mute-soft'
-            }`}
-          >
-            🕐 {t('byTimestamp')}
-          </button>
+          {/* 검색·화자/타임스탬프 토글은 구조화 turn 이 있을 때만 — 문서형
+              전사(turn 0)엔 무의미해 숨긴다(back 버튼은 항상 유지). */}
+          {showTurnTools && (
+            <>
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-pill border-[1.5px] border-line bg-paper-soft px-3.5 py-2">
+                <span aria-hidden className="text-lg text-mute-soft">
+                  🔍
+                </span>
+                {/* eslint-disable-next-line react/forbid-elements -- CD state 05 검색은 rounded-pill·paper-soft·🔍 prefix inline 필드 — Input primitive(border-line·rounded-sm 박스)와 시각 불일치. CD 전용 chrome. */}
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t('searchPlaceholder')}
+                  aria-label={t('searchPlaceholder')}
+                  className="min-w-0 flex-1 bg-transparent text-lg text-ink placeholder:text-faint focus:outline-none"
+                />
+              </div>
+              {/* eslint-disable-next-line react/forbid-elements -- CD state 05 화자별/타임스탬프 토글 pill(rounded-pill outline, active=ink/inactive=mute-soft) — Button primitive variant 와 불일치. aria-pressed 로 상태 노출. */}
+              <button
+                type="button"
+                aria-pressed={view === 'speaker'}
+                onClick={() => setView('speaker')}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-2 text-md ${
+                  view === 'speaker'
+                    ? 'border-ink font-bold text-ink'
+                    : 'border-line font-semibold text-mute-soft'
+                }`}
+              >
+                🗣️ {t('bySpeaker')}
+              </button>
+              {/* eslint-disable-next-line react/forbid-elements -- 위 토글과 동일 CD chrome 쌍. */}
+              <button
+                type="button"
+                aria-pressed={view === 'timestamp'}
+                onClick={() => setView('timestamp')}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-2 text-md ${
+                  view === 'timestamp'
+                    ? 'border-ink font-bold text-ink'
+                    : 'border-line font-semibold text-mute-soft'
+                }`}
+              >
+                🕐 {t('byTimestamp')}
+              </button>
+            </>
+          )}
         </div>
 
         {/* turn 스트림 */}
@@ -422,6 +437,14 @@ export function TranscriptDetail({
             <p className="py-10 text-center text-xl text-mute-soft">{t('loading')}</p>
           ) : errored ? (
             <p className="py-10 text-center text-xl text-mute-soft">{t('error')}</p>
+          ) : documentFallback ? (
+            // 문서형 전사 — turn 스트림 대신 preview 와 동일한 문서를 인라인 렌더.
+            <TranscriptPreview
+              id={job.id}
+              source={source}
+              setSource={setSource}
+              inline
+            />
           ) : filtered.length === 0 ? (
             <p className="py-10 text-center text-xl text-mute-soft">
               {query ? t('noResults') : t('empty')}
