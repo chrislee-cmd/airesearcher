@@ -2,9 +2,12 @@ import type { ReactNode } from 'react';
 import { headers, cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { routing } from '@/i18n/routing';
-import { resolveSchedToken } from '@/lib/scheduling/public';
 import {
-  participantGateStatus,
+  resolveShareToken,
+  resolveCandidateInProject,
+} from '@/lib/scheduling/public';
+import {
+  verifyParticipantGate,
   participantGateCookieName,
 } from '@/lib/scheduling/participant-gate';
 import { ParticipantSchedule } from '@/components/scheduling/participant-schedule';
@@ -12,11 +15,13 @@ import { ParticipantPhoneGate } from '@/components/scheduling/participant-phone-
 import { ParticipantScheduleNotice } from '@/components/scheduling/participant-schedule-notice';
 import enMessages from '../../../../messages/en.json';
 
-// Anon participant page for the recruiting-scheduling share link (PR4). Route
-// lives at `/schedule/[token]` (outside `[locale]`) because the admin link
-// generator emits `${origin}/schedule/${token}` — locale-free, anonymous. The
-// participant_token IS the authorization; a dead/invalid token shows only a
-// notice (no data leak).
+// Anon participant page for the recruiting-scheduling COMMON share link. Route
+// lives at `/schedule/[token]` (outside `[locale]`) where `token` is the
+// PROJECT share_token — locale-free, anonymous, one link for the whole project
+// (BUILD-SPEC §5.1). The share_token identifies the project only (unguessable
+// uuid, no data by itself); a dead/invalid token shows only a notice (no leak).
+// Identity is proven inside via the phone-tail gate, which binds the resolved
+// candidate id into a signed cookie.
 //
 // i18n: this route is outside next-intl's `[locale]` segment, so there is no
 // ambient request locale or provider. We negotiate the locale per request
@@ -78,30 +83,40 @@ export default async function Page({
   const locale = await negotiateLocale();
   const messages = await loadMessages(locale);
 
-  const gate = await resolveSchedToken(token);
+  const resolved = await resolveShareToken(token);
 
-  // Phone-tail entry gate. A candidate with a phone on file must prove the tail
-  // before their schedule/chat renders (a leaked link alone isn't enough). No
-  // phone on file → gate skipped, token scope stays the only protection. The
-  // gate screen is deliberately generic — it never reveals whose link this is
-  // (mirrors the invalid-notice's no-leak stance) until identity is proven.
-  const cookieStore = await cookies();
-  const gateCookie =
-    'error' in gate
-      ? undefined
-      : cookieStore.get(participantGateCookieName(token))?.value;
-
+  // Phone-tail entry gate. The common link is anonymous, so identity is unknown
+  // at load: unless a valid cookie already proved (and bound) a candidate, we
+  // always show the gate. The gate itself never reveals whose project this is —
+  // the visitor types their phone tail; the verify route matches it against the
+  // project's candidates and issues the candidate-bound cookie (or a name pick
+  // on a tail collision). No-phone candidates simply never match → no entry
+  // (no-phone policy is enforced by the match, not a page-level block).
   let body: ReactNode;
-  if ('error' in gate) {
+  if ('error' in resolved) {
     body = <ParticipantScheduleNotice />;
-  } else if (
-    participantGateStatus(gate.candidate.phone, token, gateCookie) === 'required'
-  ) {
-    body = <ParticipantPhoneGate token={token} />;
   } else {
-    body = (
-      <ParticipantSchedule token={token} candidateName={gate.candidate.name} />
-    );
+    const cookieStore = await cookies();
+    const gateCookie = cookieStore.get(
+      participantGateCookieName(token),
+    )?.value;
+    const gate = verifyParticipantGate(token, gateCookie);
+    const candidate = gate
+      ? await resolveCandidateInProject(
+          resolved.admin,
+          resolved.project.id,
+          gate.candidateId,
+        )
+      : null;
+    if (candidate) {
+      body = (
+        <ParticipantSchedule token={token} candidateName={candidate.name} />
+      );
+    } else {
+      // No valid cookie, or the bound candidate no longer belongs to the
+      // project → re-gate.
+      body = <ParticipantPhoneGate token={token} />;
+    }
   }
 
   return (
