@@ -27,15 +27,26 @@ import {
   type CSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from 'react';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
 import { SidebarNav } from '@/components/canvas/shell/sidebar-nav';
 import { FullviewShellProvider } from '@/components/canvas/shell/fullview-shell-context';
+import {
+  FullviewHeaderSlotProvider,
+  useFullviewHeaderSlot,
+} from '@/components/canvas/shell/fullview-header-slot-context';
+import { FullviewShell } from '@/components/canvas/fullview/fullview-shell';
+import { FullviewHeader } from '@/components/canvas/fullview/fullview-header';
 import { useViewMode } from '@/components/view-mode-provider';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
-import type { WidgetContent } from '@/components/canvas/widget-types';
+import {
+  resolveWidgetLabel,
+  type WidgetContent,
+} from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
 import { WidgetNavigator } from './widget-navigator';
 
@@ -185,6 +196,31 @@ function defaultPositions(
     col += cols;
   }
   return out;
+}
+
+// 셸 헤더(§F3) + 위젯 주입 액션 bridge. 셸의 <FullviewHeader> 는 제네릭
+// 스캐폴드(타이틀·톤·닫기)만 소유하고, lang pill·End-session 등 위젯 종속
+// 슬롯은 활성 위젯 body 가 FullviewHeaderSlot 로 publish → 여기서 구독해
+// 헤더에 주입. (세션 스냅샷이 카드 subtree 라 헤더에 직접 닿지 못하는 걸 bridge.)
+function FullviewHeaderConnected({
+  title,
+  tone,
+  onClose,
+}: {
+  title: ReactNode;
+  tone?: string;
+  onClose?: () => void;
+}) {
+  const { statusChip, actions } = useFullviewHeaderSlot();
+  return (
+    <FullviewHeader
+      title={title}
+      tone={tone}
+      onClose={onClose}
+      statusChip={statusChip}
+      actions={actions}
+    />
+  );
 }
 
 export function CanvasBoard({
@@ -410,7 +446,6 @@ export function CanvasBoard({
   const [fullviewSlotEl, setFullviewSlotEl] = useState<HTMLElement | null>(
     null,
   );
-
   // ── 뷰 모드 (캔버스 ⇄ 리스트) ────────────────────────────────────────
   // 라이트/다크처럼 유저 선호 뷰. 'list' 면 캔버스 보드 대신 좌 SidebarNav +
   // 우 단일 위젯 상세(fullview 셸의 풀페이지 버전)를 렌더한다.
@@ -423,6 +458,7 @@ export function CanvasBoard({
   // portal 패턴을 그대로 리스트로 이식한다.
   const { mode: viewMode } = useViewMode();
   const isList = viewMode === 'list';
+  const tRoot = useTranslations();
   // 리스트 상세 pane(우측) DOM — 리스트 모드에서 위젯 본문이 portal 될 대상.
   const [listSlotEl, setListSlotEl] = useState<HTMLElement | null>(null);
 
@@ -442,6 +478,15 @@ export function CanvasBoard({
   // "준비중" hero 가 뜬다).
   const effectiveCurrentKey =
     currentWidgetKey ?? (isList ? (widgets[0]?.key ?? null) : null);
+
+  // 풀뷰 V2 opt-in — 현재 위젯 meta 의 fullviewV2 플래그. true 면 캔버스 모드
+  // 전체보기를 레거시 <Modal>+SidebarNav 대신 신규 <FullviewShell> 로 렌더한다.
+  // 셸 PR 은 플래그 위젯 0건 → 항상 레거시 경로 → 회귀 0. (리스트 모드는 아직
+  // 레거시 SidebarNav 를 공유하며, 위젯 전환 후 별도 PR 에서 정리.)
+  const currentWidget = currentWidgetKey
+    ? (widgetByKey[currentWidgetKey] ?? null)
+    : null;
+  const currentFullviewV2 = !!currentWidget?.meta.fullviewV2;
 
   const fullviewValue = useMemo(
     () => ({
@@ -997,6 +1042,7 @@ export function CanvasBoard({
     <WidgetStatesMapProvider>
     <WidgetGateProvider>
     <FullviewShellProvider value={fullviewValue}>
+    <FullviewHeaderSlotProvider>
     <div
       ref={containerRef}
       data-canvas
@@ -1201,31 +1247,66 @@ export function CanvasBoard({
       </div>
     )}
 
-    {/* ── 공유 전체보기 모달 ─────────────────────────────────────────
+    {/* ── 공유 전체보기 모달 (레거시 경로) ───────────────────────────
         단일 Modal: 좌 SidebarNav (위젯 전환) + 우 slot (현재 위젯 본문이
         portal 됨). 헤더(제목/닫기×)는 각 위젯의 WidgetFullviewPanel 이
         소유 → 동적 subtitle 유지. size="wide" — 90vw×90vh, Memphis 팝업
         (backdrop 보이는 모달, 프로빙 어시스턴트 원래 톤). backdrop /
         Esc 닫기는 Modal 이 처리. 리스트 모드에선 상세가 이미 풀페이지라
-        모달은 열지 않는다. */}
-    <Modal
-      open={!isList && fullviewOpen && !!currentWidgetKey}
-      onClose={closeFullview}
-      size="wide"
-    >
-      <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-        <SidebarNav
-          widgets={widgets}
-          current={currentWidgetKey}
-          onSwitch={switchFullview}
-          lockedKeys={lockedKeys}
-        />
+        모달은 열지 않는다. fullviewV2 위젯은 아래 신규 셸로 분기. */}
+    {!currentFullviewV2 && (
+      <Modal
+        open={!isList && fullviewOpen && !!currentWidgetKey}
+        onClose={closeFullview}
+        size="wide"
+      >
+        <div className="flex h-full min-h-0 flex-1 overflow-hidden">
+          <SidebarNav
+            widgets={widgets}
+            current={currentWidgetKey}
+            onSwitch={switchFullview}
+            lockedKeys={lockedKeys}
+          />
+          <div
+            ref={setFullviewSlotEl}
+            className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          />
+        </div>
+      </Modal>
+    )}
+
+    {/* ── 공유 전체보기 셸 V2 (fullviewV2 opt-in 위젯) ─────────────────
+        신규 <FullviewShell> — 프레임+240px 사이드바+헤더 스캐폴드
+        (design-handoff/FULLVIEW-SHELL.md §F1~F3). 헤더는 위젯 라벨/톤으로
+        스캐폴드하고, lang pill·End-session 등 위젯 종속 슬롯은 활성 위젯
+        body 가 FullviewHeaderSlot 로 publish → FullviewHeaderConnected 가
+        구독해 주입. 본문은 레거시와 동형 portal slot(setFullviewSlotEl) —
+        translate 는 fresh <InterpreterFullview>(CD state 03)를 portal.
+        현재 fullviewV2 위젯 = translate(Interpreter). 나머지 위젯은 아직
+        레거시 wide 모달 경로. */}
+    {currentFullviewV2 && currentWidget && (
+      <FullviewShell
+        open={!isList && fullviewOpen && !!currentWidgetKey}
+        onClose={closeFullview}
+        widgets={widgets}
+        activeKey={currentWidgetKey}
+        onSwitch={switchFullview}
+        lockedKeys={lockedKeys}
+        header={
+          <FullviewHeaderConnected
+            title={resolveWidgetLabel(tRoot, currentWidget.meta)}
+            tone={`var(--widget-header-bg-${currentWidget.meta.accent})`}
+            onClose={closeFullview}
+          />
+        }
+      >
         <div
           ref={setFullviewSlotEl}
           className="flex min-w-0 flex-1 flex-col overflow-hidden"
         />
-      </div>
-    </Modal>
+      </FullviewShell>
+    )}
+    </FullviewHeaderSlotProvider>
     </FullviewShellProvider>
     </WidgetGateProvider>
     </WidgetStatesMapProvider>

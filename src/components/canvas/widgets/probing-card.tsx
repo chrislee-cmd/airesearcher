@@ -44,7 +44,17 @@ import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-p
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetLiveFullviewPrompt } from '@/components/canvas/shell/widget-live-fullview-prompt';
-import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import {
+  useFullview,
+  useFullviewChrome,
+} from '@/components/canvas/shell/fullview-shell-context';
+import {
+  FullviewProjectPill,
+  FullviewStatusChip,
+  FullviewEndSessionButton,
+} from '@/components/canvas/fullview/fullview-header';
+import { ProbingFullviewBody } from '@/components/canvas/fullview/probing/probing-fullview-body';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { useWidgetGate } from '@/components/widget-gate-provider';
@@ -236,6 +246,17 @@ function useNowTick(intervalMs = 1000): number {
   return now;
 }
 
+// 풀뷰 V2 헤더 LIVE chip 경과시간 — mm:ss (1시간 이상이면 h:mm:ss).
+function formatElapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
 function segmentsText(segments: TranscriptionSegment[]): string {
   return segments
     .map((s) => s.text.trim())
@@ -363,8 +384,16 @@ function ExpandedBody() {
   // 카드(ExpandedBody)는 모달이 열려 있어도 항상 마운트되므로
   // useRealtimeTranscription 세션이 위젯 swap·모달 close 후에도 보존된다
   // (옛 위젯별 모달 + provider hoist 불필요).
-  const { isCurrent, renderInSlot, openFullview, close } =
-    useFullview('probing');
+  const {
+    isCurrent,
+    renderInSlot,
+    renderInHeaderStart,
+    renderInHeaderEnd,
+    openFullview,
+    close,
+  } = useFullview('probing');
+  // 풀뷰 V2 셸(캔버스 모달)이면 'modal', 리스트 페이지면 'page'. V2 body 분기.
+  const fullviewChrome = useFullviewChrome();
 
   const isLive = sessionStatus === 'live';
 
@@ -372,6 +401,20 @@ function ExpandedBody() {
   // 누르면 세팅 뷰로 비파괴 토글 — 세션은 계속 진행(세션 중 입력·언어 변경
   // 불가 원칙과 일치). 새 세션 시작 시 runStartSession 에서 prompt 로 리셋.
   const [setupPeek, setSetupPeek] = useState(false);
+
+  // 풀뷰 V2 헤더 LIVE chip 경과시간 기준점 — 라이브 진입 시각(파생 state).
+  // sessionStatus 는 hook 외부 전이라 이벤트 훅이 없어 effect 로 1회 캡처한다
+  // (fullview open/close 와 무관하게 세션 동안 유지, idle/error 시 클리어).
+  const [liveStartedAt, setLiveStartedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (sessionStatus === 'live') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 라이브 진입 시각 1회 캡처(파생 state). sessionStatus 는 외부 hook 전이라 render/event 로 대체 불가.
+      setLiveStartedAt((prev) => prev ?? Date.now());
+    } else if (sessionStatus === 'idle' || sessionStatus === 'error') {
+       
+      setLiveStartedAt(null);
+    }
+  }, [sessionStatus]);
 
   // 위젯별 동시사용 게이트 (#512) — 세션 start 시 슬롯 획득, 종료 시 반납.
   const gate = useWidgetGate('probing');
@@ -536,6 +579,11 @@ function ExpandedBody() {
   // null → 아래 useProbingPersonaConfig 가 로컬 localStorage fallback 으로 동작.
   const { getSelection, setSelection } = useProjectSelection();
   const selectedProjectId = getSelection('probing');
+  // 풀뷰 V2 헤더 프로젝트 pill 표시명 — 미선택/미매칭이면 폴백 라벨.
+  const { projects } = useInterviewV2Projects();
+  const fullviewProjectName =
+    projects.find((p) => p.id === selectedProjectId)?.name ??
+    t('fv.projectFallback');
 
   // ─── 페르소나 섹션 구성 (PR: probing-custom-section-ui / #542) ───
   // custom 섹션 정의 + 기본 8 개별 숨김을 선택 프로젝트별 DB(미선택 시
@@ -697,6 +745,8 @@ function ExpandedBody() {
             why: popup.rationale,
             // undefined 면 JSON.stringify 가 키를 생략 → 서버는 null 저장(옛 동작).
             transcript_cutoff: transcriptCutoff,
+            // 풀뷰 V2 Spotlight — 중요도 영속화(새로고침 후 history 보존).
+            importance: popup.importance,
           }),
         });
       } catch {
@@ -2391,72 +2441,161 @@ function ExpandedBody() {
         )}
       </div>
 
-      {renderInSlot(
-        <WidgetFullviewPanel
-          title={t('card.fullviewTitle')}
-          subtitle={
-            context.research_goal?.trim()
-              ? context.research_goal
-              : isLive
-                ? t('card.fullviewSubtitleLive')
-                : t('card.fullviewSubtitleIdle')
-          }
-          onClose={close}
-          headerAction={
-            <>
-              {/* 세션 원본 녹음(#554) 다운로드 — 녹음이 준비되면 노출. STT/PDF
-                  와 독립된 부가물. 업로드 중엔 비활성 로딩 상태. */}
-              {recording.status === 'ready' && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleDownloadRecording}
-                  title={t('card.downloadRecordingTitle')}
-                >
-                  {t('card.downloadRecording')}
-                </Button>
-              )}
-              {recording.status === 'uploading' && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading
-                  loadingLabel={t('card.savingRecording')}
-                  disabled
-                >
-                  {t('card.savingRecording')}
-                </Button>
-              )}
-              {/* 링크로 공유(#477) — 초대 게이트 링크. PDF 내보내기와 구분되는
-                  quiet chrome. 컨텍스트가 저장돼야(probingSessionId) 활성화. */}
-              <ShareInviteButton
-                resourceType="probing_persona"
-                resourceId={probingSessionId}
-                onBeforeOpen={snapshotPersonaForShare}
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handlePdfExportClick}
-                loading={pdfExporting}
-                loadingLabel={t('card.exporting')}
-                title={
-                  isLive
-                    ? t('card.pdfExportTitleLive')
-                    : t('card.pdfExportTitleIdle')
-                }
-              >
-                {isLive ? t('card.pdfExportCtaLive') : t('card.pdfExportCtaIdle')}
-              </Button>
-            </>
-          }
-        >
-          <ProbingFullView
-            reflectionProps={reflectionPaneProps}
-            questionProps={questionPaneProps}
+      {/* 세션 원본 녹음 다운로드 / 공유 초대 / PDF 내보내기 — 레거시·V2 공용
+          헤더 액션. V2(모달)는 FullviewShell 헤더 end 슬롯으로 portal, 레거시
+          (리스트/page)는 WidgetFullviewPanel headerAction 으로. */}
+      {(() => {
+        const recordingDownload =
+          recording.status === 'ready' ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadRecording}
+              title={t('card.downloadRecordingTitle')}
+            >
+              {t('card.downloadRecording')}
+            </Button>
+          ) : recording.status === 'uploading' ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              loading
+              loadingLabel={t('card.savingRecording')}
+              disabled
+            >
+              {t('card.savingRecording')}
+            </Button>
+          ) : null;
+        const shareInvite = (
+          <ShareInviteButton
+            resourceType="probing_persona"
+            resourceId={probingSessionId}
+            onBeforeOpen={snapshotPersonaForShare}
           />
-        </WidgetFullviewPanel>,
-      )}
+        );
+
+        // ── 풀뷰 V2 (캔버스 모달) ── FullviewShell 로 렌더. 본문은 fresh
+        // ProbingFullviewBody, 헤더는 pill(좌) + 액션(우) 슬롯으로 portal.
+        if (fullviewChrome === 'modal') {
+          return (
+            <>
+              {renderInHeaderStart(
+                <FullviewProjectPill name={fullviewProjectName} />,
+              )}
+              {renderInHeaderEnd(
+                <>
+                  {/* 부가 액션(녹음·공유)은 CD-primary(상태 chip·End-session)
+                      좌측 quiet chrome 으로 유지 — 기능 회귀 0. */}
+                  {recordingDownload}
+                  {shareInvite}
+                  {isLive && (
+                    <FullviewStatusChip
+                      // 경과시간 = now(useNowTick 매초) − 라이브 진입 시각.
+                      label={`LIVE ${formatElapsed(
+                        liveStartedAt ? now - liveStartedAt : 0,
+                      )}`}
+                      tone="live"
+                    />
+                  )}
+                  {isLive ? (
+                    // End-session(amore-deep) = 세션 종료 + 페르소나 내보내기
+                    // 확인 흐름(기존 handlePdfExportClick). 확인 모달이 내보내기를
+                    // 명시한다. CD §F3 End-session 크림슨 pill.
+                    <FullviewEndSessionButton
+                      onClick={handlePdfExportClick}
+                      label={t('live.endSession')}
+                    />
+                  ) : (
+                    // 비라이브(세션 종료 후 리뷰) — 내보내기만 노출(종료할 세션
+                    // 없음). CD 는 라이브 상태만 그리므로 idle 은 secondary CTA.
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handlePdfExportClick}
+                      loading={pdfExporting}
+                      loadingLabel={t('card.exporting')}
+                      title={t('card.pdfExportTitleIdle')}
+                    >
+                      {t('card.pdfExportCtaIdle')}
+                    </Button>
+                  )}
+                </>,
+              )}
+              {renderInSlot(
+                <ProbingFullviewBody
+                  reflection={reflection}
+                  customSections={customSections}
+                  hiddenKeys={hiddenDefaultKeys}
+                  isLive={isLive}
+                  hasTranscript={hasTranscript}
+                  gridRef={personaGridRef}
+                  // "추가 질문 주입" 배선 — questionPaneProps(L2133) 미러.
+                  // 공유 handleInjectQuestion(L1773) 재사용: 위젯 생성 + backfill
+                  // + AI think. 백엔드 변경 0.
+                  onInject={handleInjectQuestion}
+                  injectDisabled={!contextHydrated}
+                  backfillFeedback={backfillFeedback}
+                  thinkingEvents={thinkingEvents}
+                  thinkingStreaming={thinkingStreaming}
+                  history={history}
+                  nowMs={now}
+                  onHistoryCopy={handleHistoryCopy}
+                  onHistoryToggleStar={handleHistoryToggleStar}
+                  onHistoryDelete={handleHistoryDelete}
+                  activePopup={activePopup}
+                  onPopupCopy={handlePopupCopy}
+                  onPopupPin={handlePopupPin}
+                  onPopupDismiss={handlePopupManualDismiss}
+                  onPopupAutoDismiss={handlePopupAutoDismiss}
+                />,
+              )}
+            </>
+          );
+        }
+
+        // ── 레거시 (리스트/page) ── 아직 V2 전환 전 표면. WidgetFullviewPanel
+        // + ProbingFullView 그대로(회귀 0, 위젯 전환 후 별도 PR 에서 정리).
+        return renderInSlot(
+          <WidgetFullviewPanel
+            title={t('card.fullviewTitle')}
+            subtitle={
+              context.research_goal?.trim()
+                ? context.research_goal
+                : isLive
+                  ? t('card.fullviewSubtitleLive')
+                  : t('card.fullviewSubtitleIdle')
+            }
+            onClose={close}
+            headerAction={
+              <>
+                {recordingDownload}
+                {shareInvite}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handlePdfExportClick}
+                  loading={pdfExporting}
+                  loadingLabel={t('card.exporting')}
+                  title={
+                    isLive
+                      ? t('card.pdfExportTitleLive')
+                      : t('card.pdfExportTitleIdle')
+                  }
+                >
+                  {isLive
+                    ? t('card.pdfExportCtaLive')
+                    : t('card.pdfExportCtaIdle')}
+                </Button>
+              </>
+            }
+          >
+            <ProbingFullView
+              reflectionProps={reflectionPaneProps}
+              questionProps={questionPaneProps}
+            />
+          </WidgetFullviewPanel>,
+        );
+      })()}
 
       <ShareGuidePopup
         open={browserAudioNoticeOpen}
@@ -2528,6 +2667,10 @@ export const probingCard: WidgetContent = {
     expandedCols: 3,
     // Canvas 1c 카드 프레임 opt-in — sky 파스텔 헤더밴드 + 통합 툴바(💎25).
     cardFrame: true,
+    // 풀뷰 V2 opt-in (pr-fullview-probing) — 캔버스 전체보기를 레거시 모달 대신
+    // 공유 FullviewShell(프레임+사이드바+헤더 §F1~F3)로 렌더. body = fresh
+    // ProbingFullviewBody(페르소나 그리드+thinking rail+Spotlight, CD state 01·02).
+    fullviewV2: true,
   },
   state: 'idle',
   ExpandedBody,

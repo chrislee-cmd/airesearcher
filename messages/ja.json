@@ -139,7 +139,35 @@
     "fullview": {
       "reviewTitle": "AI UT · レビュー",
       "reviewBadge": "セッション後レビュー",
-      "reviewMeta": "参加者 {count}名 · {duration} · PREVIEW"
+      "reviewMeta": "参加者 {count}名 · {duration} · PREVIEW",
+      "projectFallback": "プロジェクト未選択"
+    },
+    "fv": {
+      "distCellAria": "{gender} × {age} {count}名 フィルター",
+      "live": {
+        "thinkAloud": "思考発話ストリーム",
+        "thinkAloudWaiting": "参加者の発話を待機中…",
+        "urlPlaceholder": "対象URL",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "参加者の画面を待機中",
+        "recTag": "REC",
+        "micOn": "マイクオン",
+        "cursorTracked": "カーソル追跡中",
+        "taskLabel": "指定タスク",
+        "taskEmpty": "タスク未指定",
+        "endSession": "セッション終了"
+      },
+      "review": {
+        "insightReport": "インサイトレポート",
+        "taskHeading": "タスク: {task}",
+        "taskFallback": "タスク未指定",
+        "insightRunning": "インサイトレポートを生成中…",
+        "keyClips": "キークリップ · {count}",
+        "behavioralMetrics": "行動メトリクス",
+        "estimatedMeta": "(推定 · 信頼度{pct}%)",
+        "utteranceLog": "発話全文ログ",
+        "turns": "{turns}ターン"
+      }
     },
     "unsupported": "このブラウザは画面共有録画に対応していません。ChromeやEdgeなど最新のデスクトップブラウザをご使用ください。",
     "result": {
@@ -1019,7 +1047,11 @@
       "noResults": "一致する結果がありません。",
       "aiSummaryTitle": "AI要約",
       "keyThemesTitle": "主要テーマ",
-      "comingSoon": "近日公開（今後のアップデート）。"
+      "comingSoon": "近日公開（今後のアップデート）。",
+      "generate": "AI要約を生成",
+      "generating": "生成中…",
+      "summaryStub": "まだAI要約が生成されていません。",
+      "summaryUnavailable": "要約を生成できませんでした。"
     },
     "transcriptsView": {
       "setup": {
@@ -1385,6 +1417,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "セクション",
+      "judgmentLog": "AI 判断ログ",
+      "expandedKeywords": "拡張された類似キーワード",
+      "toExplore": "追加で確認すべき点:",
+      "jobSelectAria": "以前の成果物を選択",
+      "loading": "読み込み中",
+      "loadFailedTitle": "レポートを読み込めませんでした",
+      "loadFailedDesc": "接続を確認してからもう一度お試しください。",
+      "notDoneTitle": "この実行は完了していません",
+      "notDoneDesc": "上のドロップダウンから完了した成果物を選んでください。",
+      "emptyTitle": "まだ完了したレポートがありません",
+      "emptyDesc": "検索を実行するとここにレポートが表示されます。",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "項目",
+        "value": "数値",
+        "source": "出典",
+        "tier": "tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "プロジェクト",
@@ -1654,6 +1708,15 @@
     "fullview": {
       "controlHint": "開始・停止・共有はウィジェットカードから操作できます。",
       "backToWidget": "ウィジェットに戻る"
+    },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "出力オーディオ",
+      "outputAudioHint": "音声通訳の再生",
+      "observerLink": "オブザーバーリンク",
+      "observerLinkPending": "通訳を開始するとリンクが作成されます",
+      "observerHint": "オブザーバーは通訳をリアルタイムで聴くだけです（閲覧のみ）。"
     },
     "live": {
       "fullviewHeading": "フルビューをご確認ください",
@@ -2650,7 +2713,8 @@
       "inject": "挿入",
       "backfillRunning": "🔍 関連コンテンツを検索中…",
       "backfillDone": "✓ 会話から {count} 件の発言を自動入力しました",
-      "backfillEmpty": "⚠ 関連コンテンツが見つかりませんでした — AIはこのウィジェットを埋める質問を優先します"
+      "backfillEmpty": "⚠ 関連コンテンツが見つかりませんでした — AIはこのウィジェットを埋める質問を優先します",
+      "fullviewHelper": "回答者にすぐ届きます — スポットライトとして一度表示され、質問履歴に記録されます。"
     },
     "thinking": {
       "header": "AIの推論",
@@ -2742,6 +2806,14 @@
       "cancel": "キャンセル",
       "add": "追加"
     },
+    "fv": {
+      "personaBuilding": "回答者ペルソナ · リアルタイム生成中",
+      "thinkingHeader": "AI の思考ストリーム",
+      "spotlightHint": "重要度の高い質問は全画面のスポットライトで表示されます →",
+      "historyHeader": "質問履歴",
+      "spotlightAutosave": "15秒後に履歴へ自動保存 · カーソルを合わせると一時停止",
+      "projectFallback": "プロジェクト"
+    },
     "canvasBody": {
       "liveHint": "セッション進行中 · フルビューでAIの推論と提案された質問をご確認ください",
       "startHint": "セッションを開始する",
@@ -2768,6 +2840,60 @@
     "offlineNote": "1台のマイクで部屋全体を収録 · 話者の区別なし"
   },
   "Recruiting": {
+    "fv": {
+      "criteriaTitle": "参加者条件",
+      "criteriaCount": "{count}件",
+      "criteriaEmpty": "カード本文で資料を分析すると、参加者条件がここに要約されます。",
+      "required": "必須",
+      "distTitle": "分布統計",
+      "distTotal": "計 {count}",
+      "filterRemove": "フィルター解除",
+      "filterClearAll": "すべてリセット",
+      "distNoFormTitle": "公開されたフォームがありません",
+      "distNoFormDesc": "フォームを公開すると、性別・年齢の分布がここに表示されます。",
+      "distNoAxisTitle": "分布を作成する設問がありません",
+      "distNoAxisDesc": "クロス集計には性別・年齢（生年）の設問が必要です。",
+      "distNoResponsesTitle": "集計する回答がまだありません",
+      "distNoResponsesDesc": "回答が届くと、性別×年齢層の分布がここに表示されます。",
+      "distAxisHeader": "性別 \\ 年齢",
+      "distFixedNote": "回答の100%で固定 — フィルターはセルを強調するだけで、この数値は変わりません。",
+      "csvTitle": "回答全体をCSVでダウンロードします（氏名・電話などの個人情報は除外）",
+      "refresh": "更新",
+      "criteriaMissingBanner": "このフォームには保存された参加者条件がありません。",
+      "criteriaRepublish": "条件を再公開する",
+      "formSelect": "フォームを選択",
+      "noFormChip": "公開フォームなし",
+      "tablistLabel": "回答の表示方法",
+      "tabSummary": "適合度サマリー",
+      "tabRaw": "全データ",
+      "fitHigh": "高",
+      "fitMedium": "中",
+      "fitLow": "低",
+      "fitNoneTitle": "参加者条件が設定されていないため、適合度は判定していません。",
+      "filterAll": "すべて",
+      "judgingUpdating": "判定を更新中…",
+      "judgeError": "適合度の判定を読み込めませんでした：{error}",
+      "retry": "再試行",
+      "noFormSelectTitle": "公開フォームを選択してください",
+      "noFormSelectDesc": "回答のあるフォームを選ぶと、回答者ごとの適合度判定がここに表示されます。",
+      "noJudgeTitle": "判定する回答がまだありません",
+      "noJudgeDesc": "フォームのリンクを共有し、回答が届くと回答者ごとの適合度判定が表示されます。",
+      "noFilterMatchTitle": "この適合度の回答はありません",
+      "noFilterMatchDesc": "フィルターを「すべて」に切り替えると、全回答者が再表示されます。",
+      "colRespondent": "回答者",
+      "colGender": "性別",
+      "colAge": "年齢",
+      "colRegion": "居住地",
+      "colFitReason": "適合度・根拠",
+      "footerAll": "{count} 件の回答 · 高 {high} · 中 {medium} · 低 {low} · 氏名・電話は除外",
+      "footerFiltered": "{shown} / {total} 件の回答を表示",
+      "footerEmpty": "氏名・電話などの個人情報は判定に使用されますが表示されません。",
+      "judgingLabel": "回答者ごとの適合度を判定中…",
+      "flagDuplicate": "重複回答",
+      "flagShort": "短答の疑い",
+      "flagContradict": "矛盾する回答",
+      "flagNonsense": "無意味な回答"
+    },
     "setup": {
       "chipRequired": "必須",
       "standardBadge": "標準",

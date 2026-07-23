@@ -116,6 +116,10 @@ function scanText(text: string): { category: Category; match: string }[] {
   const out: { category: Category; match: string }[] = [];
 
   for (const m of text.matchAll(RE_SHADOW)) {
+    // var() 참조는 하드코드 아님 — rounded-[var(--x)]·[box-shadow:var(--x)] 와
+    // 동일 원칙(파일 상단 "제외" 주석). 승격 그림자 토큰을 shadow-[var(--fv-*)]
+    // 로 소비하는 경로(globals.css §F6(B))를 통과시킨다.
+    if (hasToken(m[0])) continue;
     out.push({ category: 'shadow', match: m[0] });
   }
   for (const m of text.matchAll(RE_COLOR)) {

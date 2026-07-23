@@ -139,7 +139,35 @@
     "fullview": {
       "reviewTitle": "AI UT · 리뷰",
       "reviewBadge": "세션 후 리뷰",
-      "reviewMeta": "참가자 {count}명 · {duration} · PREVIEW"
+      "reviewMeta": "참가자 {count}명 · {duration} · PREVIEW",
+      "projectFallback": "프로젝트 미선택"
+    },
+    "fv": {
+      "distCellAria": "{gender} × {age} {count}명 필터",
+      "live": {
+        "thinkAloud": "생각 말하기 스트림",
+        "thinkAloudWaiting": "참가자 발화를 기다리는 중…",
+        "urlPlaceholder": "대상 URL",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "참가자 화면 대기 중",
+        "recTag": "REC",
+        "micOn": "마이크 켜짐",
+        "cursorTracked": "커서 추적 중",
+        "taskLabel": "지정된 과제",
+        "taskEmpty": "지정된 과제 없음",
+        "endSession": "세션 종료"
+      },
+      "review": {
+        "insightReport": "인사이트 리포트",
+        "taskHeading": "과제: {task}",
+        "taskFallback": "지정된 과제 없음",
+        "insightRunning": "인사이트 리포트 생성 중…",
+        "keyClips": "핵심 클립 · {count}",
+        "behavioralMetrics": "행동 메트릭",
+        "estimatedMeta": "(추정 · 신뢰도 {pct}%)",
+        "utteranceLog": "발화 전문 로그",
+        "turns": "{turns}턴"
+      }
     },
     "unsupported": "이 브라우저는 화면 공유 녹화를 지원하지 않아요. 데스크톱 Chrome·Edge 등 최신 브라우저에서 이용해 주세요.",
     "result": {
@@ -929,7 +957,11 @@
       "noResults": "검색 결과가 없어요.",
       "aiSummaryTitle": "AI 요약",
       "keyThemesTitle": "핵심 테마",
-      "comingSoon": "곧 제공됩니다 (후속 업데이트)."
+      "comingSoon": "곧 제공됩니다 (후속 업데이트).",
+      "generate": "AI 요약 생성",
+      "generating": "생성 중…",
+      "summaryStub": "아직 AI 요약을 생성하지 않았어요.",
+      "summaryUnavailable": "요약을 생성할 수 없어요."
     },
     "transcriptsView": {
       "setup": {
@@ -1295,6 +1327,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "섹션",
+      "judgmentLog": "AI 판단 로그",
+      "expandedKeywords": "확장된 유사 키워드",
+      "toExplore": "더 살펴볼 것:",
+      "jobSelectAria": "이전 산출물 선택",
+      "loading": "불러오는 중",
+      "loadFailedTitle": "리포트를 불러오지 못했습니다",
+      "loadFailedDesc": "네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
+      "notDoneTitle": "이 산출물은 완료되지 않았습니다",
+      "notDoneDesc": "위 드롭다운에서 완료된 다른 산출물을 선택해 주세요.",
+      "emptyTitle": "아직 완료된 리포트가 없습니다",
+      "emptyDesc": "검색을 실행하면 결과 리포트를 여기서 볼 수 있어요.",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "주제",
+        "value": "수치",
+        "source": "출처",
+        "tier": "tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "프로젝트",
@@ -1561,6 +1615,15 @@
     "fullview": {
       "controlHint": "통역 시작 · 중지 · 공유는 위젯 카드에서 조작하세요.",
       "backToWidget": "위젯으로 돌아가기"
+    },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "출력 오디오",
+      "outputAudioHint": "음성 통역 재생",
+      "observerLink": "옵저버 링크",
+      "observerLinkPending": "통역을 시작하면 링크가 생성됩니다",
+      "observerHint": "옵저버는 통역을 실시간으로 듣기만 할 수 있어요."
     },
     "live": {
       "fullviewHeading": "전체 보기를 확인하세요",
@@ -2557,7 +2620,8 @@
       "inject": "주입",
       "backfillRunning": "🔍 관련 내용 찾는 중…",
       "backfillDone": "✓ 대화에서 {count}개 발화 자동 채움",
-      "backfillEmpty": "⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다"
+      "backfillEmpty": "⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다",
+      "fullviewHelper": "응답자에게 즉시 전달됩니다 — 스포트라이트로 한 번 표시되고 질문 기록에 남습니다."
     },
     "thinking": {
       "header": "AI 의 사고 흐름",
@@ -2649,6 +2713,14 @@
       "cancel": "취소",
       "add": "추가"
     },
+    "fv": {
+      "personaBuilding": "응답자 페르소나 · 실시간 생성 중",
+      "thinkingHeader": "AI 사고 흐름",
+      "spotlightHint": "중요 질문은 전체 화면 스포트라이트로 표시됩니다 →",
+      "historyHeader": "질문 기록",
+      "spotlightAutosave": "15초 후 기록에 자동 저장 · 마우스를 올리면 정지",
+      "projectFallback": "프로젝트"
+    },
     "canvasBody": {
       "liveHint": "세션 진행 중 · 전체 보기에서 AI 사고 흐름과 제안 질문을 확인하세요",
       "startHint": "세션을 시작하세요",
@@ -2675,6 +2747,60 @@
     "offlineNote": "한 기기 마이크로 방 전체를 담아요 · 화자 구분 없음"
   },
   "Recruiting": {
+    "fv": {
+      "criteriaTitle": "참여자 조건",
+      "criteriaCount": "{count}개",
+      "criteriaEmpty": "카드 본문에서 자료를 분석하면 참여자 조건이 여기에 요약됩니다.",
+      "required": "필수",
+      "distTitle": "분포 통계",
+      "distTotal": "총 {count}",
+      "filterRemove": "필터 제거",
+      "filterClearAll": "전체 초기화",
+      "distNoFormTitle": "발행된 설문이 없습니다",
+      "distNoFormDesc": "설문을 발행하면 성별 · 연령 분포가 여기에 표시됩니다.",
+      "distNoAxisTitle": "분포를 만들 문항이 없습니다",
+      "distNoAxisDesc": "설문에 성별 · 연령(출생년도) 문항이 있어야 교차 분포를 계산할 수 있어요.",
+      "distNoResponsesTitle": "아직 집계할 응답이 없습니다",
+      "distNoResponsesDesc": "응답이 들어오면 성별 × 연령대 분포가 여기에 표시됩니다.",
+      "distAxisHeader": "성별 \\ 연령",
+      "distFixedNote": "응답 100% 기준 고정 — 필터는 셀을 강조할 뿐 이 수치를 바꾸지 않습니다.",
+      "csvTitle": "응답 전체를 CSV 로 내려받습니다 (이름·전화 등 개인정보 제외)",
+      "refresh": "새로고침",
+      "criteriaMissingBanner": "이 설문에는 저장된 참여자 조건이 없습니다.",
+      "criteriaRepublish": "조건 다시 발행하기",
+      "formSelect": "설문 선택",
+      "noFormChip": "발행된 설문 없음",
+      "tablistLabel": "응답 보기 방식",
+      "tabSummary": "부합도 요약",
+      "tabRaw": "전체 데이터",
+      "fitHigh": "높음",
+      "fitMedium": "중간",
+      "fitLow": "낮음",
+      "fitNoneTitle": "참여자 조건이 설정되지 않아 부합도를 판단하지 않았습니다.",
+      "filterAll": "전체",
+      "judgingUpdating": "판단 갱신 중…",
+      "judgeError": "부합도 판단을 불러오지 못했어요: {error}",
+      "retry": "다시 시도",
+      "noFormSelectTitle": "발행된 설문을 선택하세요",
+      "noFormSelectDesc": "응답이 있는 설문을 고르면 응답자별 부합도 판단이 여기에 표시됩니다.",
+      "noJudgeTitle": "아직 판단할 응답이 없습니다",
+      "noJudgeDesc": "설문 링크를 공유해 응답이 들어오면 응답자별 부합도 판단이 표시됩니다.",
+      "noFilterMatchTitle": "해당 부합도의 응답이 없습니다",
+      "noFilterMatchDesc": "필터를 '전체' 로 바꾸면 모든 응답자가 다시 표시됩니다.",
+      "colRespondent": "응답자",
+      "colGender": "성별",
+      "colAge": "연령",
+      "colRegion": "거주지",
+      "colFitReason": "부합도 · 근거",
+      "footerAll": "{count} 응답 · 높음 {high} · 중간 {medium} · 낮음 {low} · 이름·전화 제외",
+      "footerFiltered": "{shown} / {total} 응답 표시",
+      "footerEmpty": "이름·전화 등 개인정보는 판단에 반영되나 표시되지 않습니다.",
+      "judgingLabel": "응답자별 부합도를 판단하는 중…",
+      "flagDuplicate": "중복 응답",
+      "flagShort": "단답 의심",
+      "flagContradict": "모순 응답",
+      "flagNonsense": "무의미 응답"
+    },
     "setup": {
       "chipRequired": "필수",
       "standardBadge": "표준",
