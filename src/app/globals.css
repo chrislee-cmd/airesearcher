@@ -501,6 +501,7 @@
   --fv-radius-card: 11px;            /* persona / RQ 카드 */
   --fv-radius-panel: 12px;           /* 패널 카드 */
   --fv-radius-panel-lg: 16px;        /* translation 패널 */
+  --fv-radius-inject: 22px;          /* probing inject 필드·버튼 (CD Widget Fullview Comps · AddRow 미러) */
 }
 
 /* =========================================================================

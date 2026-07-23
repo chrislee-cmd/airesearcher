@@ -20,10 +20,8 @@ import { useEffect, useRef } from 'react';
 import { ProbingPersonaGrid, type ProbingReflectionData } from './probing-persona-grid';
 import { ProbingThinkingRail } from './probing-thinking-rail';
 import { ProbingSpotlight } from './probing-spotlight';
-import {
-  ProbingInjectField,
-  type ProbingBackfillFeedback,
-} from '../../widgets/probing/inject-field';
+import { ProbingFullviewInject } from './probing-fullview-inject';
+import type { ProbingBackfillFeedback } from '../../widgets/probing/inject-field';
 import type {
   HistoryQuestion,
   PopupQuestion,
@@ -126,13 +124,11 @@ export function ProbingFullviewBody({
             배치를 미러 — V2 는 goal 편집이 컨트롤 패널로 이전돼 rail 최상단이
             자연스러운 자리. ThinkingRail(flex-[3]) 은 그대로, body 에서 감싼다. */}
         <div className="flex min-h-0 flex-[3] flex-col bg-paper">
-          <div className="border-b-2 border-line-soft px-4 py-3">
-            <ProbingInjectField
-              onInject={onInject}
-              disabled={injectDisabled}
-              backfillFeedback={backfillFeedback}
-            />
-          </div>
+          <ProbingFullviewInject
+            onInject={onInject}
+            disabled={injectDisabled}
+            backfillFeedback={backfillFeedback}
+          />
           <ProbingThinkingRail
             thinkingEvents={thinkingEvents}
             thinkingStreaming={thinkingStreaming}
