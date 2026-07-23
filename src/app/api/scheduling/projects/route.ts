@@ -19,7 +19,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('sched_projects')
-    .select('id, title, created_at')
+    .select('id, title, share_token, created_at')
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) {
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from('sched_projects')
     .insert({ owner_user_id: user!.id, title })
-    .select('id, title, created_at')
+    .select('id, title, share_token, created_at')
     .single();
 
   if (error) {

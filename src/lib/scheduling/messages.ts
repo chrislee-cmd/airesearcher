@@ -32,13 +32,17 @@ export type SchedMessage = {
   // a preview DB that predates the migration still satisfies it.
   is_announcement: boolean;
   batch_id: string | null;
+  // Set by the [id] PATCH route when a message is edited (round-3); null on a row
+  // that was never edited or read from a preview DB predating the additive column.
+  // The "수정됨" marker shows only when this is present and later than created_at.
+  updated_at: string | null;
 };
 
 // The wide column list — includes the broadcast-mode columns. Reads that select
 // this MUST pair it with a narrow fallback (SCHED_MESSAGE_COLUMNS_NARROW +
 // widenNarrowMessage) so a preview DB without the additive columns still serves.
 export const SCHED_MESSAGE_COLUMNS =
-  'id, candidate_id, scope, sender_role, sender_user_id, body, created_at, is_announcement, batch_id';
+  'id, candidate_id, scope, sender_role, sender_user_id, body, created_at, is_announcement, batch_id, updated_at';
 
 // Pre-broadcast-modes column set, used as the fallback when the wide select
 // errors on a DB that predates the migration.
@@ -50,9 +54,13 @@ export const SCHED_MESSAGE_COLUMNS_NARROW =
 // (everyone) — this is exactly what preserves the legacy "전체 공지" rendering.
 export function widenNarrowMessage(row: Record<string, unknown>): SchedMessage {
   return {
-    ...(row as Omit<SchedMessage, 'is_announcement' | 'batch_id'>),
+    ...(row as Omit<
+      SchedMessage,
+      'is_announcement' | 'batch_id' | 'updated_at'
+    >),
     is_announcement: true,
     batch_id: null,
+    updated_at: null,
   };
 }
 

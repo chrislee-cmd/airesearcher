@@ -118,6 +118,20 @@
   --cd-disabled-bg: #eceef1;                                /* disabled pill bg */
   --cd-disabled-fg: #a3a7ad;                                /* disabled pill fg */
 
+  /* ── recsched 리디자인 슬롯 상태 원자 (design-handoff/recruiting-scheduling
+     BUILD-SPEC §2, CD `.dc.html` 실측) ─────────────────────────────────────
+     캘린더 컬러 타임블록. 색 대부분은 @theme 에서 기존 토큰 alias 로 재사용하고
+     (border=amore/success·bg=success-soft/paper-soft·dot=amore/success/mute-soft),
+     기존에 정확 매칭이 없는 CD 절대값 2개만 여기서 raw 원자로 추가(AUTHORITY —
+     가까운 기존 토큰으로 다운그레이드 금지). 블록 그림자는 블록색 저알파 hard
+     offset(.dc.html 실측 0.4/0.35/0.1) — util 하드코드(`shadow-[Npx…]`) 대신
+     var 로 인라인 소비(--cd-amore-shadow 와 동일 sanctioned 패턴). */
+  --raw-slot-proposed-bg: #ffeef4;                          /* CD 전용 로즈(기존 pink-bg #ffe1eb 아님) */
+  --raw-slot-cancelled-border: rgba(29, 27, 32, 0.2);       /* ink/20 (정확 매칭 없음) */
+  --slot-proposed-shadow: 3px 3px 0 rgba(255, 92, 138, 0.4);  /* amore(#ff5c8a) 0.4 */
+  --slot-confirmed-shadow: 3px 3px 0 rgba(22, 163, 74, 0.35); /* success(#16a34a) 0.35 */
+  --slot-cancelled-shadow: 3px 3px 0 rgba(29, 27, 32, 0.1);   /* ink 0.1 */
+
   /* radius scale */
   --raw-radius-2xs: 2px;
   --raw-radius-xs: 4px;
@@ -467,6 +481,12 @@
      와 동등 — 중복 신설 회피). theme-agnostic 구조값이라 :root 단일 정의. */
   --widget-card-frame-radius: 20px;
   --widget-card-frame-toolbar-radius: 10px;
+
+  /* fullview/recsched 셸 인풋·필드 radius (BUILD-SPEC §1 — field 10~11).
+     rounded-{xs(4),sm(14)} 사이라 정확 매칭 토큰이 없어 CD 절대값을 전용 토큰으로
+     승격(AUTHORITY — 가까운 rounded-xs/sm 로 다운그레이드 금지). `rounded-[var(
+     --fv-radius-field)]` 로 소비. theme-agnostic 구조값이라 :root 단일 정의. */
+  --fv-radius-field: 10px;
 }
 
 /* =========================================================================
@@ -521,6 +541,19 @@
   --color-tag-confusion: var(--raw-tag-confusion);
   --color-tag-positive: var(--raw-tag-positive);
 
+  /* recsched 슬롯 상태색 (BUILD-SPEC §2) — border/bg/dot semantic alias.
+     대부분 기존 토큰 재사용(주석 = CD 절대값), 신규 원자는 raw 2개(proposed-bg·
+     cancelled-border)뿐. `bg-slot-*`·`border-slot-*`·`text-slot-*-dot` util 로 bind. */
+  --color-slot-proposed-border: var(--color-amore);                 /* #ff5c8a */
+  --color-slot-proposed-bg: var(--raw-slot-proposed-bg);            /* #ffeef4 (신규 raw) */
+  --color-slot-proposed-dot: var(--color-amore);                    /* #ff5c8a */
+  --color-slot-confirmed-border: var(--color-success);              /* #16a34a */
+  --color-slot-confirmed-bg: var(--color-success-soft);             /* #f4fbf6 */
+  --color-slot-confirmed-dot: var(--color-success);                 /* #16a34a */
+  --color-slot-cancelled-border: var(--raw-slot-cancelled-border);  /* ink/20 (신규 raw) */
+  --color-slot-cancelled-bg: var(--color-paper-soft);               /* #f7f7f5 */
+  --color-slot-cancelled-dot: var(--color-mute-soft);               /* #8a8693 */
+
   /* Typography */
   --font-sans: var(--raw-font-sans);
   --font-hand: var(--raw-font-hand);
@@ -565,7 +598,8 @@
   --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
   --shadow-memphis-md-amore: var(--raw-memphis-md) 0 var(--color-amore);
   --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
-  --shadow-memphis-md-success: var(--raw-memphis-md) 0 var(--color-success); /* done 성공 카드 초록 offset (Canvas 1c transDone) */
+  --shadow-memphis-md-success: var(--raw-memphis-md) 0 var(--color-success); /* done 성공 카드 초록 offset (Canvas 1c transDone) · recsched 토스트(BUILD-SPEC §2)도 재사용 */
+  --shadow-memphis-md-amber: var(--raw-memphis-md) 0 var(--color-tag-confusion); /* recsched 공지배너 amber offset (BUILD-SPEC §2) — amber #e0a83a = tag-confusion 과 동일 값 재사용(중복 민팅 회피) */
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
 

@@ -1,15 +1,18 @@
-// 참여자 진입 게이트 — 후보자가 전화 뒷자리로 본인임을 증명하면 발급하는
-// 짧은 수명의 token-바인딩 서명 쿠키. (recruiting-scheduling 참여자 뷰)
+// 참여자 진입 게이트 — 공통 링크 방문자가 전화 뒷자리로 본인(=한 명의 후보자)
+// 임을 증명하면 발급하는 짧은 수명의 서명 쿠키. (recruiting-scheduling 참여자 뷰)
 //
-// 왜 필요한가: 665 의 participant_token 은 "후보자 1명 스코프"(서버 service-role)
-// 이라 다른 후보자 데이터는 새지 않지만, 링크만 있으면 누구나 그 후보자 것을
-// 본다. 이 게이트는 진입 시 candidate.phone 뒷자리 6자리를 대조해 "링크 소지 =
-// 열람"을 "본인 = 열람"으로 좁힌다(링크 유출 방어). 전화 미등록 후보는 대조할
-// 시크릿이 없어 진입 차단('blocked') — 뒷자리 게이트 필수화.
+// 왜 필요한가: 링크가 per-candidate 토큰에서 **프로젝트 공통 링크 1개**(share_token)
+// 로 바뀌었다(BUILD-SPEC §5.1). 이제 URL 은 프로젝트만 가리키고 익명이라, 방문자가
+// 누구인지는 URL 이 아니라 **전화 뒷 6자리 매칭**으로 서버가 확정한다. 매칭으로
+// 확정한 candidate.id 를 이 쿠키에 서명해 담아, 이후 데이터/메시지 라우트가
+// 요청 body 가 아니라 **쿠키의 candidate 로만** 스코프한다(IDOR 방어). 전화 미등록
+// 후보는 대조할 뒷자리가 없어 어떤 입력에도 매칭되지 않아 진입 불가(no-phone 차단
+// 승계). 시크릿이 6자리라 실질 방어는 verify 라우트의 rate-limit.
 //
 // 🔒 보안:
 //   * 서명 키는 서버 전용 SUPABASE_SERVICE_ROLE_KEY (클라 노출 없음).
-//   * 페이로드에 token 을 섞어 서명하므로 다른 링크로 쿠키 재사용 불가.
+//   * 페이로드에 shareToken + candidateId 를 섞어 서명 → 다른 링크/후보로 쿠키
+//     재사용 불가. 방문자가 임의 candidateId 를 주입할 수 없다(서명 필요).
 //   * 만료(exp)를 담아 탈취 시 노출 창을 제한 — 세션이 아니라 짧은 재열람 창.
 //   * 전화번호(뒷자리 포함)는 절대 쿠키/클라에 넣지 않는다 — 대조는 서버 전용.
 // share/viewer-cookie.ts 의 이메일 게이트와 같은 HMAC 패턴을 전화 뒷자리용으로
@@ -24,10 +27,10 @@ export const PARTICIPANT_GATE_TTL_MIN = 30;
 /** 대조하는 전화 뒷자리 길이. 표시는 ##-#### 로 그루핑(입력은 숫자 6자리). */
 export const PHONE_TAIL_LEN = 6;
 
-/** 쿠키 이름 — token 별로 분리해 여러 링크가 서로 덮어쓰지 않게 한다. */
-export function participantGateCookieName(token: string): string {
-  // participant_token 은 uuid text(36자, hex+hyphen) — 쿠키명에 안전.
-  return `sp_${token}`;
+/** 쿠키 이름 — shareToken(프로젝트) 별로 분리해 여러 링크가 서로 덮어쓰지 않게 한다. */
+export function participantGateCookieName(shareToken: string): string {
+  // share_token 은 uuid text(36자, hex+hyphen) — 쿠키명에 안전.
+  return `sp_${shareToken}`;
 }
 
 /**
@@ -71,55 +74,51 @@ function sign(payload: string): string {
 }
 
 /**
- * `${expMs}` 를 서명해 `${payload}.${sig}` 문자열로 반환.
- * token 을 서명 입력에 섞어 쿠키가 해당 링크에만 유효하도록 바인딩한다.
+ * 매칭으로 확정한 candidateId 를 담아 서명한 쿠키 값 `${candidateId}.${exp}.${sig}`
+ * 를 반환. shareToken + candidateId 를 서명 입력에 섞어, 다른 링크/후보로 쿠키를
+ * 재사용하거나 방문자가 임의 candidateId 를 위조할 수 없게 바인딩한다.
  */
-export function signParticipantGate(token: string): string {
+export function signParticipantGate(
+  shareToken: string,
+  candidateId: string,
+): string {
   const exp = Date.now() + PARTICIPANT_GATE_TTL_MIN * 60 * 1000;
-  const payload = String(exp);
-  const sig = sign(`${token}.${payload}`);
+  const payload = `${candidateId}.${exp}`;
+  const sig = sign(`${shareToken}.${payload}`);
   return `${payload}.${sig}`;
 }
 
 /**
- * 쿠키 값 검증 — 서명·만료·token 바인딩 확인. 유효하면 true.
- * 무효/만료/변조/누락이면 false.
+ * 쿠키 값 검증 — 서명·만료·shareToken 바인딩 확인. 유효하면 서명으로 담긴
+ * candidateId 를 돌려준다(그 방문자가 본인 확인을 통과한 후보). 무효/만료/변조/
+ * 누락이면 null. candidateId 는 서명이 보증하므로(서버가 매칭 성공 시에만 발급)
+ * 신뢰할 수 있으나, 데이터 라우트는 그 candidate 가 여전히 프로젝트에 속하는지
+ * 한 번 더 확인한다(defense in depth).
  */
 export function verifyParticipantGate(
-  token: string,
+  shareToken: string,
   value: string | undefined,
-): boolean {
-  if (!value) return false;
+): { candidateId: string } | null {
+  if (!value) return null;
   const lastDot = value.lastIndexOf('.');
-  if (lastDot <= 0) return false;
-  const payload = value.slice(0, lastDot);
+  if (lastDot <= 0) return null;
+  const payload = value.slice(0, lastDot); // `${candidateId}.${exp}`
   const sig = value.slice(lastDot + 1);
 
-  const expected = sign(`${token}.${payload}`);
+  const expected = sign(`${shareToken}.${payload}`);
   const sigBuf = Buffer.from(sig);
   const expBuf = Buffer.from(expected);
   if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-    return false;
+    return null;
   }
 
-  const expMs = Number(payload);
-  if (!Number.isFinite(expMs) || expMs <= Date.now()) return false;
-  return true;
-}
-
-/**
- * 이 후보자에 대해 게이트를 강제해야 하는가 + 통과했는가.
- *   * 전화 미등록(tail null) → 대조할 시크릿이 없어 본인 확인 불가 → 'blocked'.
- *     전화 없는 후보는 진입 자체를 막는다(2026-07-22 정책 반전: 예전엔 토큰만으로
- *     통과시켰으나, 뒷자리 게이트 필수화로 전화 미등록 = 차단).
- *   * 전화 등록 + 유효 쿠키 → 'pass'.
- *   * 전화 등록 + 쿠키 없음/무효 → 'required'(뒷자리 화면).
- */
-export function participantGateStatus(
-  candidatePhone: string | null | undefined,
-  token: string,
-  cookieValue: string | undefined,
-): 'pass' | 'required' | 'blocked' {
-  if (!phoneTail(candidatePhone)) return 'blocked';
-  return verifyParticipantGate(token, cookieValue) ? 'pass' : 'required';
+  // candidateId is a uuid (no dots) and exp is a number (no dots), so the last
+  // dot in the payload cleanly separates the two.
+  const sep = payload.lastIndexOf('.');
+  if (sep <= 0) return null;
+  const candidateId = payload.slice(0, sep);
+  const expMs = Number(payload.slice(sep + 1));
+  if (!candidateId) return null;
+  if (!Number.isFinite(expMs) || expMs <= Date.now()) return null;
+  return { candidateId };
 }

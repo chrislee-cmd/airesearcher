@@ -1,52 +1,62 @@
-// GET /api/scheduling/public/[token]
+// GET /api/scheduling/public/[token]   (token = project share_token)
 //   → { candidate: { name }, slots: [...own], messages: [...broadcast + own] }
 //
-// Anon participant entry point for the recruiting-scheduling share link (PR4).
-// participant_token IS the authorization. The token resolves to exactly ONE
-// candidate; every query below is scoped to that candidate id server-side —
-// the client never sends a candidate id, so another participant's slots or
-// private thread can never leak (IDOR defense). Cancelled slots are withheld
-// (a withdrawn time only confuses the participant). Mirrors the shape the admin
-// panel consumes so the participant components can reuse the same helpers.
+// Anon participant entry point for the recruiting-scheduling COMMON link. The
+// share_token resolves the project; the signed gate cookie (set by /verify after
+// a phone-tail match) yields the ONE candidate id. Every query below is scoped
+// to that id server-side — the client never sends a candidate id, so another
+// participant's slots or private thread can never leak (IDOR defense). Cancelled
+// slots are withheld (a withdrawn time only confuses the participant). Mirrors
+// the shape the admin panel consumes so the participant components can reuse the
+// same helpers.
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { resolveSchedToken } from '@/lib/scheduling/public';
+import {
+  resolveShareToken,
+  resolveCandidateInProject,
+} from '@/lib/scheduling/public';
 import {
   SCHED_MESSAGE_COLUMNS,
   SCHED_MESSAGE_COLUMNS_NARROW,
   widenNarrowMessage,
 } from '@/lib/scheduling/messages';
 import {
-  participantGateStatus,
+  verifyParticipantGate,
   participantGateCookieName,
 } from '@/lib/scheduling/participant-gate';
 
 export const runtime = 'nodejs';
 
-const SLOT_COLUMNS = 'id, candidate_id, start_at, end_at, status, location, note';
+// `title` is surfaced so the participant's slot cards can show the free-text
+// event label (BUILD-SPEC §5.5), falling back to the candidate name when blank.
+const SLOT_COLUMNS =
+  'id, candidate_id, title, start_at, end_at, status, location, note';
 
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ token: string }> },
 ) {
   const { token } = await ctx.params;
-  const gate = await resolveSchedToken(token);
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const resolved = await resolveShareToken(token);
+  if ('error' in resolved) {
+    return NextResponse.json(
+      { error: resolved.error },
+      { status: resolved.status },
+    );
   }
-  const { admin, candidate } = gate;
+  const { admin, project } = resolved;
 
-  // Phone-tail gate: a candidate with a phone on file must have proved the tail
-  // (valid signed cookie). Without it we refuse — a leaked link alone can't read
-  // the schedule/chat. No phone on file → 'blocked' (tail can't be verified), a
-  // distinct 401 code so the client shows the host-contact notice, not the gate.
+  // Gate: the signed cookie must yield a candidate that still belongs to this
+  // project. Without it we refuse — a leaked link alone can't read the
+  // schedule/chat. Missing/invalid/expired cookie → gate_required (the client
+  // shows the phone-tail gate).
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(participantGateCookieName(token))?.value;
-  const gateStatus = participantGateStatus(candidate.phone, token, cookieValue);
-  if (gateStatus === 'blocked') {
-    return NextResponse.json({ error: 'gate_no_phone' }, { status: 401 });
-  }
-  if (gateStatus === 'required') {
+  const gate = verifyParticipantGate(token, cookieValue);
+  const candidate = gate
+    ? await resolveCandidateInProject(admin, project.id, gate.candidateId)
+    : null;
+  if (!candidate) {
     return NextResponse.json({ error: 'gate_required' }, { status: 401 });
   }
 
