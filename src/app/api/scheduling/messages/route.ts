@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfBatch,
+  ownerOfCandidate,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 import {
   isMessageScope,
   MAX_MESSAGE_LENGTH,
@@ -52,11 +56,8 @@ async function readMessages(
 //   ?candidate_id=<id>   → one private thread
 //   (neither)            → broadcast only (global + every group)
 export async function GET(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -69,6 +70,12 @@ export async function GET(request: Request) {
   // Single private thread. No batch_id predicate, so wide and narrow filters
   // match; readMessages still handles the column-absent select fallback.
   if (candidateId) {
+    if (!access.superadmin) {
+      const owner = await ownerOfCandidate(admin, candidateId);
+      if (!ownerAllowed(access, owner)) {
+        return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+    }
     const filter = `candidate_id.eq.${candidateId}`;
     const messages = await readMessages(admin, filter, filter, 5000);
     if (!messages) {
@@ -86,6 +93,12 @@ export async function GET(request: Request) {
   // rather than a PostgREST embed — sched_messages and sched_batches have no
   // direct FK (§7.10).
   if (batchId) {
+    if (!access.superadmin) {
+      const owner = await ownerOfBatch(admin, batchId);
+      if (!ownerAllowed(access, owner)) {
+        return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+    }
     const { data: candRows, error: candErr } = await admin
       .from('sched_candidates')
       .select('id')
@@ -118,7 +131,15 @@ export async function GET(request: Request) {
     );
   }
 
-  // Broadcast only (global + every group).
+  // Broadcast only (global + every group). Global/group broadcasts carry no
+  // owner link, so an unscoped read would leak other tenants' announcements —
+  // an org member must scope by batch. Return empty here (super-admin unchanged).
+  if (!access.superadmin) {
+    return NextResponse.json(
+      { messages: [] },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
   const filter = 'candidate_id.is.null';
   const messages = await readMessages(admin, filter, filter, 5000);
   if (!messages) {
@@ -137,11 +158,8 @@ export async function GET(request: Request) {
 //   { scope: 'private', candidate_id, body }
 //        → 1:1 thread (is_announcement/batch_id ignored — always announcement/global).
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -185,7 +203,13 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // For private, confirm the candidate exists (clean 404 vs. FK error).
+  // A global broadcast (batch_id null) reaches every tenant's participants, so
+  // an org member must target a batch they own — super-admin keeps the global.
+  if (!access.superadmin && scope === 'broadcast' && !batchId) {
+    return NextResponse.json({ error: 'batch_required' }, { status: 400 });
+  }
+
+  // For private, confirm the candidate exists (clean 404 vs. FK error) + scope.
   if (scope === 'private') {
     const { data: candidate } = await admin
       .from('sched_candidates')
@@ -198,9 +222,18 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
+    if (!access.superadmin) {
+      const owner = await ownerOfCandidate(admin, candidateId!);
+      if (!ownerAllowed(access, owner)) {
+        return NextResponse.json(
+          { error: 'candidate_not_found' },
+          { status: 404 },
+        );
+      }
+    }
   }
 
-  // For a group send, confirm the batch exists (clean 400 vs. FK error).
+  // For a group send, confirm the batch exists (clean 400 vs. FK error) + scope.
   if (batchId) {
     const { data: batch } = await admin
       .from('sched_batches')
@@ -210,6 +243,12 @@ export async function POST(request: Request) {
     if (!batch) {
       return NextResponse.json({ error: 'batch_not_found' }, { status: 400 });
     }
+    if (!access.superadmin) {
+      const owner = await ownerOfBatch(admin, batchId);
+      if (!ownerAllowed(access, owner)) {
+        return NextResponse.json({ error: 'batch_not_found' }, { status: 400 });
+      }
+    }
   }
 
   const baseRow = {
@@ -217,7 +256,7 @@ export async function POST(request: Request) {
     scope,
     // PR3 is admin-only; participant send is PR4.
     sender_role: 'admin' as const,
-    sender_user_id: user!.id,
+    sender_user_id: access.userId,
     body: text,
   };
 

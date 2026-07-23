@@ -9,9 +9,12 @@
 // randomUUID() matches the column default so the new token has the same shape.
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfProject,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 
 export const runtime = 'nodejs';
 
@@ -19,11 +22,8 @@ export async function POST(
   _request: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -33,6 +33,12 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+  if (!access.superadmin) {
+    const owner = await ownerOfProject(admin, id);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'project_not_found' }, { status: 404 });
+    }
+  }
   const { data, error } = await admin
     .from('sched_projects')
     .update({ share_token: randomUUID() })

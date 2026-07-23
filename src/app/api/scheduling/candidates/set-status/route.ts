@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  accessibleCandidateIds,
+} from '@/lib/scheduling/access';
 
 export const runtime = 'nodejs';
 
@@ -14,11 +16,8 @@ const ALLOWED_STATUSES = ['pending', 'confirmed', 'communicating'] as const;
 type CandidateStatus = (typeof ALLOWED_STATUSES)[number];
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -47,10 +46,14 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  const allowedIds = await accessibleCandidateIds(admin, access, candidateIds);
+  if (allowedIds.length === 0) {
+    return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
+  }
   const { data, error } = await admin
     .from('sched_candidates')
     .update({ status })
-    .in('id', candidateIds)
+    .in('id', allowedIds)
     .select('id');
   if (error) {
     return NextResponse.json({ error: 'update_failed' }, { status: 500 });

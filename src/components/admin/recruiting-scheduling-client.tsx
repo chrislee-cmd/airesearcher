@@ -25,6 +25,10 @@ import {
   type SlotDraft,
 } from '@/components/admin/slot-editor-modal';
 import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
+import {
+  CollabShareButton,
+  type CollabMember,
+} from '@/components/scheduling/collab-share';
 import { useSchedUnread } from '@/hooks/use-sched-unread';
 import { BROADCAST_THREAD_ID } from '@/lib/scheduling/messages';
 import {
@@ -77,6 +81,12 @@ type Props = {
   groups: SchedBatch[];
   candidates: SchedCandidate[];
   slots: SchedSlot[];
+  // Collaborator share — present only when the viewer owns/admins an org (they
+  // may invite). null for viewers who can't manage membership.
+  collab: {
+    orgId: string;
+    members: CollabMember[];
+  } | null;
 };
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -128,6 +138,7 @@ export function RecruitingSchedulingClient({
   groups,
   candidates,
   slots,
+  collab,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const router = useRouter();
@@ -1128,6 +1139,9 @@ export function RecruitingSchedulingClient({
           >
             {t('newProjectCta')}
           </Button>
+          {collab ? (
+            <CollabShareButton orgId={collab.orgId} members={collab.members} />
+          ) : null}
         </header>
 
         <div className="flex flex-col gap-5 p-[26px]">

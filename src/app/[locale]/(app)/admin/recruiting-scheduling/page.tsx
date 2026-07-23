@@ -2,8 +2,9 @@ import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getCurrentUser } from '@/lib/supabase/user';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { getSchedulingAccess } from '@/lib/scheduling/access';
+import { getActiveOrg } from '@/lib/org';
+import type { CollabMember } from '@/components/scheduling/collab-share';
 import {
   RecruitingSchedulingClient,
   type SchedProject,
@@ -34,8 +35,14 @@ export default async function Page({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const user = await getCurrentUser();
-  if (!isSuperAdminEmail(user?.email)) notFound();
+  // Gate opened from super-admin-only to super-admin OR org member. Org members
+  // are tenancy-scoped to data owned by someone who shares an org with them
+  // (sched_* tables have owner_user_id, not org_id — code-level scoping is the
+  // hard precondition for opening the gate). getSchedulingAccess also claims any
+  // pending invite for this email on first visit.
+  const access = await getSchedulingAccess();
+  if (!access) notFound();
+  const ownerIds = access.superadmin ? null : access.ownerUserIds;
 
   // Touch the RLS-scoped client so an auth refresh happens in the normal path;
   // the actual reads use the service-role admin client (mirrors invitations).
@@ -49,16 +56,20 @@ export default async function Page({
   // §5.1). It's additive (migration auto-applies on merge to main only), so a
   // preview DB may lack the column — the wide select then errors and we fall
   // back to the pre-share_token column set (master-link bar simply hides).
-  const projectsRes = await admin
+  let projectsWide = admin
     .from('sched_projects')
-    .select('id, title, created_at, share_token')
+    .select('id, title, created_at, share_token');
+  if (ownerIds) projectsWide = projectsWide.in('owner_user_id', ownerIds);
+  const projectsRes = await projectsWide
     .order('created_at', { ascending: false })
     .limit(200);
 
+  let projectsNarrowQ = admin
+    .from('sched_projects')
+    .select('id, title, created_at');
+  if (ownerIds) projectsNarrowQ = projectsNarrowQ.in('owner_user_id', ownerIds);
   const projectsNarrow = projectsRes.error
-    ? await admin
-        .from('sched_projects')
-        .select('id, title, created_at')
+    ? await projectsNarrowQ
         .order('created_at', { ascending: false })
         .limit(200)
     : null;
@@ -108,9 +119,11 @@ export default async function Page({
   } else {
     // Batch-only fallback: every batch is a standalone project with itself as
     // its single group.
-    const { data: batchRows } = await admin
+    let batchQ = admin
       .from('sched_batches')
-      .select('id, title, created_at')
+      .select('id, title, created_at');
+    if (ownerIds) batchQ = batchQ.in('owner_user_id', ownerIds);
+    const { data: batchRows } = await batchQ
       .order('created_at', { ascending: false })
       .limit(200);
     const batches = (batchRows ?? []) as SchedBatch[];
@@ -196,6 +209,47 @@ export default async function Page({
     }
   }
 
+  // Collaborator share — shown only to an org owner/admin (they may invite +
+  // remove). The invite reuses POST /api/members/invite (role=member, full
+  // access) which now also sends the real invite email.
+  let collab: { orgId: string; members: CollabMember[] } | null = null;
+  const org = await getActiveOrg();
+  if (org && (org.role === 'owner' || org.role === 'admin')) {
+    const { data: memberRows } = await admin
+      .from('organization_members')
+      .select('user_id, invited_email, role')
+      .eq('org_id', org.org_id)
+      .order('created_at', { ascending: true });
+    const rows = (memberRows ?? []) as {
+      user_id: string | null;
+      invited_email: string | null;
+      role: string;
+    }[];
+    // Resolve emails in a second step — organization_members and profiles share
+    // no direct FK, so a PostgREST embed would silently return nothing (§7.10).
+    const userIds = rows
+      .map((r) => r.user_id)
+      .filter((v): v is string => !!v);
+    const emailById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profs } = await admin
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds);
+      for (const p of (profs ?? []) as { id: string; email: string | null }[]) {
+        emailById.set(p.id, p.email ?? '');
+      }
+    }
+    const members: CollabMember[] = rows.map((r) => ({
+      userId: r.user_id,
+      email: r.user_id
+        ? emailById.get(r.user_id) ?? ''
+        : r.invited_email ?? '',
+      role: r.role,
+    }));
+    collab = { orgId: org.org_id, members };
+  }
+
   return (
     <RecruitingSchedulingClient
       projects={projects}
@@ -203,6 +257,7 @@ export default async function Page({
       groups={groups}
       candidates={candidates}
       slots={slots}
+      collab={collab}
     />
   );
 }

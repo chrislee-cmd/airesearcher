@@ -2978,6 +2978,30 @@
       "ctaPublishing": "発行中…"
     }
   },
+  "CollabShare": {
+    "button": "コラボレーター",
+    "title": "コラボレーターと共有",
+    "notice": "招待された人は組織メンバーとして、このワークスペースとスケジューリングにフルアクセスできます。",
+    "emailLabel": "メール",
+    "emailPlaceholder": "teammate@example.com",
+    "invite": "招待",
+    "inviting": "招待中…",
+    "invited": "招待メールを送信しました。",
+    "invitedNoEmail": "招待は追加されましたが、メール送信に失敗しました。再試行してください。",
+    "invalidEmail": "有効なメールアドレスを入力してください。",
+    "inviteError": "招待に失敗しました。",
+    "forbidden": "招待する権限がありません。",
+    "collaboratorsLabel": "現在のコラボレーター",
+    "empty": "まだコラボレーターがいません。",
+    "remove": "削除",
+    "removeConfirm": "{email} を削除しますか？",
+    "removeError": "削除に失敗しました。",
+    "ownerTag": "オーナー",
+    "pendingTag": "保留中",
+    "done": "完了",
+    "emailSubject": "{inviter} さんが「{org}」に招待しました",
+    "emailBody": "{inviter} さんが Research-Canvas の「{org}」への共同作業に招待しました。\n\n共有ワークスペースとスケジューリングにフルアクセスできます。\n\n招待を承認してサインイン: {url}"
+  },
   "RecruitingScheduling": {
     "calClickHint": "セルをクリックして30分の枠を作成",
     "chatKindLabel": "メッセージの種類",

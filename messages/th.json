@@ -2978,6 +2978,30 @@
       "ctaPublishing": "กำลังเผยแพร่…"
     }
   },
+  "CollabShare": {
+    "button": "ผู้ร่วมงาน",
+    "title": "แชร์กับผู้ร่วมงาน",
+    "notice": "ผู้ที่ได้รับเชิญจะเข้าร่วมเป็นสมาชิกองค์กรและเข้าถึงเวิร์กสเปซและการจัดตารางเวลาได้เต็มรูปแบบ",
+    "emailLabel": "อีเมล",
+    "emailPlaceholder": "teammate@example.com",
+    "invite": "เชิญ",
+    "inviting": "กำลังเชิญ…",
+    "invited": "ส่งอีเมลคำเชิญแล้ว",
+    "invitedNoEmail": "เพิ่มคำเชิญแล้ว แต่ส่งอีเมลไม่สำเร็จ โปรดลองอีกครั้ง",
+    "invalidEmail": "กรุณากรอกอีเมลที่ถูกต้อง",
+    "inviteError": "ไม่สามารถส่งคำเชิญได้",
+    "forbidden": "คุณไม่มีสิทธิ์เชิญ",
+    "collaboratorsLabel": "ผู้ร่วมงานปัจจุบัน",
+    "empty": "ยังไม่มีผู้ร่วมงาน",
+    "remove": "ลบ",
+    "removeConfirm": "ลบ {email} หรือไม่?",
+    "removeError": "ลบไม่สำเร็จ",
+    "ownerTag": "เจ้าของ",
+    "pendingTag": "รอดำเนินการ",
+    "done": "เสร็จสิ้น",
+    "emailSubject": "{inviter} เชิญคุณเข้าร่วม \"{org}\"",
+    "emailBody": "{inviter} เชิญคุณให้ทำงานร่วมกันใน \"{org}\" บน Research-Canvas\n\nคุณจะได้รับสิทธิ์เข้าถึงเต็มรูปแบบทั้งเวิร์กสเปซที่แชร์และการจัดตารางเวลา\n\nยอมรับคำเชิญและเข้าสู่ระบบ: {url}"
+  },
   "RecruitingScheduling": {
     "calClickHint": "คลิกช่องเพื่อสร้างช่วงเวลา 30 นาที",
     "chatKindLabel": "ประเภทข้อความ",

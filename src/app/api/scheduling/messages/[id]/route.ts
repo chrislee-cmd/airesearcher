@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfMessage,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 import {
   MAX_MESSAGE_LENGTH,
   SCHED_MESSAGE_COLUMNS,
@@ -30,11 +33,8 @@ export async function PATCH(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -58,6 +58,12 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+  if (!access.superadmin) {
+    const owner = await ownerOfMessage(admin, id);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'message_not_found' }, { status: 404 });
+    }
+  }
 
   // Wide update — set body + edit stamp, broadcast-only. Returns the wide row.
   const wide = await admin
@@ -109,15 +115,18 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const admin = createAdminClient();
+  if (!access.superadmin) {
+    const owner = await ownerOfMessage(admin, id);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'message_not_found' }, { status: 404 });
+    }
+  }
   const { data, error } = await admin
     .from('sched_messages')
     .delete()
