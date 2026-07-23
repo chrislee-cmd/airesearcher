@@ -1,14 +1,20 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, type CSSProperties } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs } from '@/components/ui/tabs';
 import { FileDropZone } from '@/components/ui/file-drop-zone';
+import { useToast } from '@/components/toast-provider';
 import {
   SchedulingCalendar,
   type CalendarView,
@@ -31,6 +37,9 @@ export type SchedProject = {
   id: string;
   title: string;
   created_at: string;
+  // Project-shared master link token (BUILD-SPEC §5.1). Optional so a preview DB
+  // without the additive column still types; the master-link bar hides when null.
+  share_token?: string | null;
 };
 
 // A batch under a project (PR-C). `is_inbox` marks the project's upload pool
@@ -70,6 +79,14 @@ type Props = {
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
+// Chat rail round2 (수정4) — how many thread panels can tile at once. 5th open is
+// blocked with a hint toast (no eviction — conservative default per spec).
+const MAX_CHAT_PANELS = 4;
+
+// Pastel tints cycled across By-group (01B) section heads (BUILD-SPEC §1 — group
+// heads sky/mint/neutral). Inbox section heads neutral (paper-soft) separately.
+const HEAD_TINTS = ['bg-sky', 'bg-mint', 'bg-lav', 'bg-peach', 'bg-cyan'] as const;
+
 // Chat lives in a right-rail sidebar of the calendar view now (PR-B); the
 // standalone 'chat' tab is gone.
 type ViewTab = 'list' | 'calendar';
@@ -108,10 +125,15 @@ export function RecruitingSchedulingClient({
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const router = useRouter();
+  const toast = useToast();
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
+  // Flash feedback now runs through the shared toast layer (BUILD-SPEC §5.6) —
+  // the old inline `message` <p> + window.confirm/alert are replaced. Success =
+  // neutral 'info' toast, failures = 'warn'.
+  const notifyOk = (msg: string) => toast.push(msg, { tone: 'info' });
+  const notifyErr = (msg: string) => toast.push(msg, { tone: 'warn' });
 
   // New-project inline creator (replaces the old two-field batch creator).
   const [showNewProject, setShowNewProject] = useState(false);
@@ -127,6 +149,8 @@ export function RecruitingSchedulingClient({
 
   // List controls (PR-C): view segment + field filter + sort.
   const [listMode, setListMode] = useState<ListMode>('all');
+  // Which grouped-view (01B) section has its inline rename field open. '' = none.
+  const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [filterKey, setFilterKey] = useState('');
   const [filterValue, setFilterValue] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('');
@@ -142,20 +166,33 @@ export function RecruitingSchedulingClient({
   const [draft, setDraft] = useState<SlotDraft | null>(null);
   const [editorBatchId, setEditorBatchId] = useState('');
 
-  // Which group is in focus. '' = 전체 (all groups). Drives both the list scope
-  // and the (batch-scoped) calendar scope. Derived below so a project switch
-  // (new `groups`) never leaves it pointing at a stale group id.
+  // Which group is in focus for the LIST. '' = 전체 (all groups). Derived below
+  // so a project switch (new `groups`) never leaves it on a stale group id.
   const [selectedGroupId, setSelectedGroupId] = useState('');
 
-  // Chat sidebar (unified calendar view). `chatThread` is a candidate id or the
-  // broadcast sentinel; `chatOpen` toggles the right rail.
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatThread, setChatThread] = useState<string>(BROADCAST_THREAD_ID);
+  // Calendar owns its OWN group filter, independent of the list. The calendar is
+  // group-agnostic: it spans every group by default ('' = 전체) and the nested
+  // picker only narrows the view. This keeps the calendar a top-level surface
+  // rather than something bound to a single group.
+  const [calendarGroupId, setCalendarGroupId] = useState('');
 
-  function openChat(threadId: string) {
-    setChatThread(threadId);
-    setChatOpen(true);
-  }
+  // Chat rail (CD frame 02) — round2 (수정4): up to MAX_CHAT_PANELS chat tiles
+  // open at once, tiled horizontally. Each tile is keyed by a STABLE tileId (not
+  // its thread) so a tile can freely switch threads — even to broadcast while
+  // another tile is already broadcast — without a React key collision, and so a
+  // tile's local state (draft/kind/reach) stays glued to that tile across close.
+  // Broadcast opens by default (single-window parity — never empty on first paint).
+  const tileSeqRef = useRef(1);
+  const [chatTiles, setChatTiles] = useState<
+    { tileId: string; thread: string }[]
+  >([{ tileId: 't0', thread: BROADCAST_THREAD_ID }]);
+  // Confirmed-roster disclosure (수정1) + calendar horizontal fold (수정3).
+  const [rosterOpen, setRosterOpen] = useState(true);
+  const [calendarFolded, setCalendarFolded] = useState(false);
+
+  // The project in focus — its share_token drives the master-link bar.
+  const selectedProject =
+    projects.find((p) => p.id === selectedProjectId) ?? null;
 
   // Groups the user can pick = assignment groups only; the inbox pool stays
   // behind the "전체" option. Ids of every batch (inbox + groups) for scoping.
@@ -167,9 +204,16 @@ export function RecruitingSchedulingClient({
   const effectiveGroupId = namedGroups.some((g) => g.id === selectedGroupId)
     ? selectedGroupId
     : '';
-  // The calendar is batch-scoped, so it always resolves to one concrete batch:
-  // the picked group, or the first batch (inbox) when "all" is selected.
-  const activeCalendarGroupId = effectiveGroupId || (groups[0]?.id ?? '');
+  // Calendar filter, validated against existing named groups; '' = 전체 (span
+  // all groups). Independent of the list's `effectiveGroupId`.
+  const effectiveCalendarGroupId = namedGroups.some(
+    (g) => g.id === calendarGroupId,
+  )
+    ? calendarGroupId
+    : '';
+  // A concrete batch id the calendar can hand to batch-scoped children (chat,
+  // title, slot create). Falls back to the first batch when spanning all groups.
+  const activeCalendarGroupId = effectiveCalendarGroupId || (groups[0]?.id ?? '');
 
   // Extra (non email/name/phone) columns present across the project, preserved
   // in `fields`. Union so a candidate missing a key still renders an empty cell.
@@ -340,13 +384,46 @@ export function RecruitingSchedulingClient({
     setAssignBatchId('');
   }
 
+  // --- Chat panel orchestration (수정4) ---
+
+  // Open a thread in a NEW tile — driven by the roster rows + the broadcast CTA.
+  // If a tile already shows that thread → focus (no dup). At the cap → block the
+  // 5th with a hint toast; no eviction (conservative per spec).
+  function openTile(thread: string) {
+    if (chatTiles.some((c) => c.thread === thread)) return;
+    if (chatTiles.length >= MAX_CHAT_PANELS) {
+      notifyErr(t('chatMaxPanels'));
+      return;
+    }
+    const tileId = `t${tileSeqRef.current++}`;
+    setChatTiles((prev) =>
+      prev.some((c) => c.thread === thread) || prev.length >= MAX_CHAT_PANELS
+        ? prev
+        : [...prev, { tileId, thread }],
+    );
+  }
+
+  // Re-target ONE tile's thread in place — driven by a panel's own reach/kind/개인
+  // switcher, so each tile behaves exactly like the single-window rail (the
+  // controlled thread flows back here → resolveChatContext re-scopes its batch).
+  // Unconditional: tiles are keyed by tileId, so duplicate threads are harmless
+  // (this is why a personal tile can switch to broadcast even if one's open).
+  function switchTile(tileId: string, thread: string) {
+    setChatTiles((prev) =>
+      prev.map((c) => (c.tileId === tileId ? { ...c, thread } : c)),
+    );
+  }
+
+  function closeTile(tileId: string) {
+    setChatTiles((prev) => prev.filter((c) => c.tileId !== tileId));
+  }
+
   // --- Project + group creation / source ingestion ---
 
   async function createProject() {
     const title = newProjectTitle.trim();
     if (!title || creatingProject) return;
     setCreatingProject(true);
-    setMessage(null);
     try {
       const res = await fetch('/api/scheduling/projects', {
         method: 'POST',
@@ -354,7 +431,7 @@ export function RecruitingSchedulingClient({
         body: JSON.stringify({ title }),
       });
       if (!res.ok) {
-        setMessage(t('projectCreateFailed'));
+        notifyErr(t('projectCreateFailed'));
         return;
       }
       const { project } = (await res.json()) as { project: SchedProject };
@@ -384,11 +461,10 @@ export function RecruitingSchedulingClient({
   async function uploadFile(file: File) {
     if (!selectedProjectId || uploading) return;
     setUploading(true);
-    setMessage(null);
     try {
       const batchId = await resolveInbox();
       if (!batchId) {
-        setMessage(t('createFailed'));
+        notifyErr(t('createFailed'));
         return;
       }
       const body = new FormData();
@@ -402,12 +478,12 @@ export function RecruitingSchedulingClient({
         error?: string;
       };
       if (!res.ok) {
-        setMessage(
+        notifyErr(
           json.error === 'no_candidates' ? t('noCandidates') : t('uploadFailed'),
         );
         return;
       }
-      setMessage(t('uploaded', { count: json.upserted ?? 0 }));
+      notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
       router.refresh();
     } finally {
       setUploading(false);
@@ -418,11 +494,10 @@ export function RecruitingSchedulingClient({
     const url = sheetUrl.trim();
     if (!url || !selectedProjectId || importing) return;
     setImporting(true);
-    setMessage(null);
     try {
       const batchId = await resolveInbox();
       if (!batchId) {
-        setMessage(t('createFailed'));
+        notifyErr(t('createFailed'));
         return;
       }
       const res = await fetch(
@@ -445,15 +520,15 @@ export function RecruitingSchedulingClient({
         json.error === 'google_not_connected' ||
         json.error === 'reconsent_required'
       ) {
-        setMessage(t('sheetsConnectPrompt'));
+        notifyOk(t('sheetsConnectPrompt'));
         window.location.href = '/api/recruiting/google/start?share=1';
         return;
       }
       if (!res.ok) {
-        setMessage(sheetErrorMessage(json.error));
+        notifyErr(sheetErrorMessage(json.error));
         return;
       }
-      setMessage(t('uploaded', { count: json.upserted ?? 0 }));
+      notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
       setSheetUrl('');
       router.refresh();
     } finally {
@@ -479,7 +554,6 @@ export function RecruitingSchedulingClient({
   async function confirmSelected() {
     if (selected.size === 0 || bulkBusy) return;
     setBulkBusy(true);
-    setMessage(null);
     try {
       const res = await fetch('/api/scheduling/candidates/confirm', {
         method: 'POST',
@@ -491,10 +565,10 @@ export function RecruitingSchedulingClient({
         error?: string;
       };
       if (!res.ok) {
-        setMessage(t('bulkConfirmFailed'));
+        notifyErr(t('bulkConfirmFailed'));
         return;
       }
-      setMessage(t('bulkConfirmed', { count: json.updated ?? 0 }));
+      notifyOk(t('bulkConfirmed', { count: json.updated ?? 0 }));
       clearSelection();
       router.refresh();
     } finally {
@@ -507,7 +581,6 @@ export function RecruitingSchedulingClient({
     const title = assignTitle.trim();
     if (!title && !assignBatchId) return;
     setBulkBusy(true);
-    setMessage(null);
     try {
       const res = await fetch('/api/scheduling/candidates/assign-batch', {
         method: 'POST',
@@ -525,7 +598,7 @@ export function RecruitingSchedulingClient({
         error?: string;
       };
       if (!res.ok) {
-        setMessage(
+        notifyErr(
           json.error === 'duplicate_in_target'
             ? t('bulkDuplicateInTarget')
             : t('bulkAssignFailed'),
@@ -551,8 +624,9 @@ export function RecruitingSchedulingClient({
     const cand = candidateId
       ? candidates.find((c) => c.id === candidateId)
       : null;
-    setEditorBatchId(cand?.batch_id ?? activeCalendarGroupId);
+    setEditorBatchId(cand?.batch_id ?? effectiveCalendarGroupId);
     setDraft({
+      mode: 'individual',
       title: '',
       candidateId: candidateId ?? '',
       startLocal: toLocalInputValue(base.toISOString()),
@@ -565,9 +639,10 @@ export function RecruitingSchedulingClient({
   }
 
   function openEdit(slot: SchedSlot) {
-    setEditorBatchId(slot.batch_id ?? activeCalendarGroupId);
+    setEditorBatchId(slot.batch_id ?? effectiveCalendarGroupId);
     setDraft({
       id: slot.id,
+      mode: 'individual',
       title: slot.title ?? '',
       candidateId: slot.candidate_id ?? '',
       startLocal: toLocalInputValue(slot.start_at),
@@ -583,38 +658,95 @@ export function RecruitingSchedulingClient({
     router.refresh();
   }
 
-  // --- Calendar scoping (batch-scoped behavior preserved, spec constraint) ---
-  // With a single group the slot narrow-fallback may leave batch_id null, so
-  // don't filter it out; with multiple groups scope by the active group.
-  const singleGroup = groups.length <= 1;
-  const calendarSlots = singleGroup
-    ? slots
-    : slots.filter((s) => s.batch_id === activeCalendarGroupId);
-  const groupCandidates = singleGroup
-    ? candidates
-    : candidates.filter((c) => c.batch_id === activeCalendarGroupId);
-  const editorSlots = singleGroup
-    ? slots
-    : slots.filter((s) => s.batch_id === editorBatchId);
-  const editorCandidates = singleGroup
-    ? candidates
-    : candidates.filter((c) => c.batch_id === editorBatchId);
+  // --- Calendar scoping ---
+  // The calendar spans every group by default ('' = 전체); the nested filter
+  // narrows it to one group. No single-group special-case is needed — 전체
+  // already shows every slot, including narrow-fallback rows with a null batch.
+  const calendarSlots = effectiveCalendarGroupId
+    ? slots.filter((s) => s.batch_id === effectiveCalendarGroupId)
+    : slots;
+  const calendarScopedCandidates = effectiveCalendarGroupId
+    ? candidates.filter((c) => c.batch_id === effectiveCalendarGroupId)
+    : candidates;
+  // Confirmed attendees within the calendar's current scope — the roster below
+  // the calendar card (restored — #1161 Memphis rewrite dropped this block).
+  const confirmedCandidates = calendarScopedCandidates.filter(
+    (c) => c.status === 'confirmed',
+  );
+  // Confirmed roster as read-only group sections — the same 그룹뷰 shape as the
+  // list view's by-group cards, but built from confirmedCandidates and scoped to
+  // the calendar's current group. Empty groups are dropped so the roster only
+  // lists groups that actually have confirmed attendees; the 미할당 pool collects
+  // confirmed candidates not in any named group (전체 mode only).
+  const confirmedSections = [
+    ...namedGroups
+      .filter(
+        (g) => !effectiveCalendarGroupId || g.id === effectiveCalendarGroupId,
+      )
+      .map((g) => ({
+        key: g.id,
+        title: g.title,
+        rows: confirmedCandidates.filter((c) => c.batch_id === g.id),
+      })),
+    ...(effectiveCalendarGroupId
+      ? []
+      : [
+          {
+            key: '__ungrouped__',
+            title: t('ungrouped'),
+            rows: confirmedCandidates.filter(
+              (c) => !namedGroupIds.has(c.batch_id),
+            ),
+          },
+        ]),
+  ].filter((s) => s.rows.length > 0);
+  // The editor's candidate list / overlap check follow the batch being created
+  // into (a candidate's own group, or the calendar filter); '' spans all.
+  const editorSlots = editorBatchId
+    ? slots.filter((s) => s.batch_id === editorBatchId)
+    : slots;
+  const editorCandidates = editorBatchId
+    ? candidates.filter((c) => c.batch_id === editorBatchId)
+    : candidates;
 
-  const calendarCandidateOptions = groupCandidates.map((c) => ({
-    id: c.id,
-    label: candidateLabel(c),
-  }));
   const editorCandidateOptions = editorCandidates.map((c) => ({
     id: c.id,
     label: candidateLabel(c),
   }));
 
-  // Confirmed attendees of the active group only (spec §2) — calendar roster.
-  const confirmedCandidates = groupCandidates.filter(
-    (c) => c.status === 'confirmed',
-  );
+  // The group whose title heads the calendar — only when a specific group is
+  // filtered (전체 has no single title).
+  const currentGroup =
+    groups.find((g) => g.id === effectiveCalendarGroupId) ?? null;
 
-  const currentGroup = groups.find((g) => g.id === activeCalendarGroupId) ?? null;
+  // Chat is inherently per-group. A per-candidate thread resolves to that
+  // candidate's own group; broadcast (and the fallback) uses the calendar's
+  // resolved batch. Each open panel resolves its OWN batch + roster so the send
+  // scope (510 payload) / 일정 패널 stay coherent per thread (수정4 multi-window).
+  function resolveChatContext(threadId: string): {
+    batchId: string;
+    candidateOptions: { id: string; label: string }[];
+  } {
+    const cand =
+      threadId && threadId !== BROADCAST_THREAD_ID
+        ? (candidates.find((c) => c.id === threadId) ?? null)
+        : null;
+    const batchId = cand?.batch_id ?? activeCalendarGroupId;
+    const candidateOptions = candidates
+      .filter((c) => c.batch_id === batchId)
+      .map((c) => ({ id: c.id, label: candidateLabel(c) }));
+    return { batchId, candidateOptions };
+  }
+  // Every assignment group + its active-candidate count — feeds the slot
+  // editor's group-mode picker so fan-out can target any group. Non-cancelled
+  // only, mirroring the server-side fan-out filter.
+  const groupModeOptions = namedGroups.map((g) => ({
+    id: g.id,
+    name: g.title,
+    count: candidates.filter(
+      (c) => c.batch_id === g.id && c.status !== 'cancelled',
+    ).length,
+  }));
 
   // Move targets = existing assignment groups (not the inbox pool).
   const assignBatchOptions = [
@@ -640,314 +772,429 @@ export function RecruitingSchedulingClient({
   ];
 
   // One table body, shared by the flat and grouped views. `rows` is already
-  // filtered + sorted; the header checkbox toggles exactly these rows.
-  function renderTable(rows: SchedCandidate[]) {
-    return (
+  // filtered + sorted; the header checkbox toggles exactly these rows. Memphis
+  // skin (BUILD-SPEC §1): 2px ink framed card, mono uppercase header on
+  // paper-soft, sticky-3col geometry preserved (CONTEXTFORCD §5.9). The
+  // per-candidate share-link column is gone — the link is one project-shared
+  // master link now (BUILD-SPEC §5.1).
+  // `readOnly` (수정: 확정 로스터 그룹뷰) drops every mutation affordance —
+  // checkbox/select-all, slot assign/edit — and appends a chat CTA column so the
+  // confirmed roster reuses the exact list-view group table as a read-only view.
+  // The list view calls renderTable without it, so its behavior is unchanged.
+  function renderTable(rows: SchedCandidate[], framed = true, readOnly = false) {
+    const body = (
       <div className="overflow-x-auto">
-        {/* border-separate (not collapse): under border-collapse, z-index on
-            sticky <td> is ignored in Chrome so scrolling columns bleed through
-            the frozen ones. Row borders move onto the cells via thead/tbody
-            variants since <tr> borders don't paint in separate mode. */}
-        <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
-          <thead className="[&_th]:border-b [&_th]:border-line">
-            <tr className="text-left text-mute">
-              <th
-                className="sticky z-table-cell-sticky bg-paper px-3 py-2"
-                style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
-              >
-                <Checkbox
-                  aria-label={t('selectAll')}
-                  checked={rowsAllSelected(rows)}
-                  onChange={() => toggleRows(rows)}
-                />
-              </th>
-              <th
-                className="sticky z-table-cell-sticky bg-paper px-3 py-2 font-medium"
-                style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
-              >
-                {t('colName')}
-              </th>
-              <th
-                className="sticky z-table-cell-sticky border-r border-line bg-paper px-3 py-2 font-medium"
-                style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
-              >
-                {t('colContact')}
-              </th>
-              <th className="px-3 py-2 font-medium">{t('colEmail')}</th>
-              {fieldColumns.map((col) => (
-                <th key={col} className="px-3 py-2 font-medium">
-                  {col}
-                </th>
-              ))}
-              <th className="px-3 py-2 font-medium">{t('colSlot')}</th>
-              <th className="px-3 py-2 font-medium">{t('colShareLink')}</th>
-            </tr>
-          </thead>
-          <tbody className="[&_td]:border-b [&_td]:border-line-soft">
-            {rows.length === 0 ? (
-              <tr>
-                <td
-                  className="px-3 py-6 text-center text-mute"
-                  colSpan={6 + fieldColumns.length}
+          {/* border-separate (not collapse): under border-collapse, z-index on
+              sticky <td> is ignored in Chrome so scrolling columns bleed through
+              the frozen ones. Row borders move onto the cells via thead/tbody
+              variants since <tr> borders don't paint in separate mode. */}
+          <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
+            <thead className="[&_th]:border-b-2 [&_th]:border-ink [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
+              <tr className="text-left">
+                {!readOnly && (
+                  <th
+                    className="sticky z-table-cell-sticky px-3 py-2.5"
+                    style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                  >
+                    <Checkbox
+                      aria-label={t('selectAll')}
+                      checked={rowsAllSelected(rows)}
+                      onChange={() => toggleRows(rows)}
+                    />
+                  </th>
+                )}
+                <th
+                  className="sticky z-table-cell-sticky px-3.5 py-2.5"
+                  style={stickyStyle(
+                    readOnly ? 0 : STICKY_LEFT.name,
+                    STICKY_W.name,
+                  )}
                 >
-                  {t('emptyCandidates')}
-                </td>
+                  {t('colName')}
+                </th>
+                <th
+                  className="sticky z-table-cell-sticky border-r-2 border-ink px-3.5 py-2.5"
+                  style={stickyStyle(
+                    readOnly ? STICKY_W.name : STICKY_LEFT.contact,
+                    STICKY_W.contact,
+                  )}
+                >
+                  {t('colContact')}
+                </th>
+                <th className="px-4 py-2.5">{t('colEmail')}</th>
+                {fieldColumns.map((col) => (
+                  <th key={col} className="px-4 py-2.5">
+                    {col}
+                  </th>
+                ))}
+                <th className="px-4 py-2.5">{t('colSlot')}</th>
+                {readOnly && (
+                  <th className="px-4 py-2.5">{t('confirmedChatCta')}</th>
+                )}
               </tr>
-            ) : (
-              rows.map((c) => {
-                const next = nextSlotForCandidate(c.id, slots, now);
-                const checked = selected.has(c.id);
-                const contact = contactValue(c);
-                return (
-                  <tr key={c.id}>
-                    <td
-                      className="sticky z-table-cell-sticky bg-paper px-3 py-2"
-                      style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
-                    >
-                      <Checkbox
-                        aria-label={t('selectRow')}
-                        checked={checked}
-                        onChange={() => toggleOne(c.id)}
-                      />
-                    </td>
-                    <td
-                      className="sticky z-table-cell-sticky bg-paper px-3 py-2 text-ink"
-                      style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate" title={c.name ?? undefined}>
-                          {c.name ?? '—'}
-                        </span>
-                        {c.status === 'confirmed' && (
-                          <span className="shrink-0 rounded-xs bg-success px-1 py-0.5 text-xs text-paper">
-                            {t('confirmedChip')}
-                          </span>
+            </thead>
+            <tbody className="[&_td]:border-b [&_td]:border-line-soft">
+              {rows.length === 0 ? (
+                <tr>
+                  <td
+                    className="px-3 py-6 text-center text-mute"
+                    colSpan={5 + fieldColumns.length}
+                  >
+                    {t('emptyCandidates')}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((c) => {
+                  const next = nextSlotForCandidate(c.id, slots, now);
+                  const checked = selected.has(c.id);
+                  const contact = contactValue(c);
+                  return (
+                    <tr key={c.id} className="group">
+                      {!readOnly && (
+                        <td
+                          className="sticky z-table-cell-sticky bg-paper px-3 py-2.5 transition-colors group-hover:bg-paper-soft"
+                          style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                        >
+                          <Checkbox
+                            aria-label={t('selectRow')}
+                            checked={checked}
+                            onChange={() => toggleOne(c.id)}
+                          />
+                        </td>
+                      )}
+                      <td
+                        className="sticky z-table-cell-sticky bg-paper px-3.5 py-2.5 text-ink transition-colors group-hover:bg-paper-soft"
+                        style={stickyStyle(
+                          readOnly ? 0 : STICKY_LEFT.name,
+                          STICKY_W.name,
                         )}
-                      </div>
-                    </td>
-                    <td
-                      className="sticky z-table-cell-sticky border-r border-line bg-paper px-3 py-2 text-ink"
-                      style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
-                    >
-                      <div className="truncate" title={contact ?? undefined}>
-                        {contact ?? '—'}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-ink">
-                      <div
-                        className="truncate"
-                        style={{ maxWidth: DATA_CELL_MAX }}
-                        title={c.email ?? undefined}
                       >
-                        {c.email ?? '—'}
-                      </div>
-                    </td>
-                    {fieldColumns.map((col) => (
-                      <td key={col} className="px-3 py-2 text-mute">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="truncate font-bold"
+                            title={c.name ?? undefined}
+                          >
+                            {c.name ?? '—'}
+                          </span>
+                          {c.status === 'confirmed' && (
+                            <span className="shrink-0 rounded-xs border border-success/30 bg-success-soft px-1.5 py-px text-xs font-extrabold text-success">
+                              {t('confirmedChip')}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td
+                        className="sticky z-table-cell-sticky border-r-2 border-ink bg-paper px-3.5 py-2.5 font-mono text-md text-ink-2 transition-colors group-hover:bg-paper-soft"
+                        style={stickyStyle(
+                          readOnly ? STICKY_W.name : STICKY_LEFT.contact,
+                          STICKY_W.contact,
+                        )}
+                      >
+                        <div className="truncate" title={contact ?? undefined}>
+                          {contact ?? '—'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-mute">
                         <div
                           className="truncate"
                           style={{ maxWidth: DATA_CELL_MAX }}
-                          title={c.fields[col] || undefined}
+                          title={c.email ?? undefined}
                         >
-                          {c.fields[col] || ''}
+                          {c.email ?? '—'}
                         </div>
                       </td>
-                    ))}
-                    <td className="px-3 py-2">
-                      {next ? (
-                        <Button
-                          variant="link"
-                          size="xs"
-                          onClick={() => openEdit(next)}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <span
-                              className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                                next.status === 'confirmed'
-                                  ? 'bg-success'
-                                  : next.status === 'cancelled'
-                                    ? 'bg-mute-soft'
-                                    : 'bg-amore'
-                              }`}
-                            />
-                            <span>
-                              {slotTimeFmt.format(new Date(next.start_at))}
+                      {fieldColumns.map((col) => (
+                        <td key={col} className="px-4 py-2.5 text-mute">
+                          <div
+                            className="truncate"
+                            style={{ maxWidth: DATA_CELL_MAX }}
+                            title={c.fields[col] || undefined}
+                          >
+                            {c.fields[col] || ''}
+                          </div>
+                        </td>
+                      ))}
+                      <td className="px-4 py-2.5">
+                        {readOnly ? (
+                          // Read-only roster: slot as static text, no assign/edit.
+                          next ? (
+                            <span className="flex items-center gap-1.5 text-sm">
+                              <span
+                                className={`inline-block h-2 w-2 shrink-0 rounded-full ${slotDotClass(next.status)}`}
+                              />
+                              <span className="font-bold text-ink">
+                                {slotTimeFmt.format(new Date(next.start_at))}
+                              </span>
+                              <span className="text-mute-soft">
+                                · {statusLabel[next.status]}
+                              </span>
                             </span>
-                            <span className="text-mute-soft">
-                              · {statusLabel[next.status]}
+                          ) : (
+                            <span className="text-sm text-mute-soft">
+                              {t('confirmedNoSlot')}
                             </span>
-                          </span>
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="link"
-                          size="xs"
-                          onClick={() => openCreate(undefined, c.id)}
-                        >
-                          {t('assignSlot')}
-                        </Button>
+                          )
+                        ) : next ? (
+                          <Button
+                            variant="link"
+                            size="xs"
+                            onClick={() => openEdit(next)}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className={`inline-block h-2 w-2 shrink-0 rounded-full ${slotDotClass(next.status)}`}
+                              />
+                              <span className="font-bold">
+                                {slotTimeFmt.format(new Date(next.start_at))}
+                              </span>
+                              <span className="text-mute-soft">
+                                · {statusLabel[next.status]}
+                              </span>
+                            </span>
+                          </Button>
+                        ) : (
+                          // eslint-disable-next-line react/forbid-elements -- CD dashed "assign" pill (frame 01); Button chrome (solid border/shadow/radius) unsuitable for the ghost dashed-outline treatment
+                          <button
+                            type="button"
+                            onClick={() => openCreate(undefined, c.id)}
+                            className="inline-flex items-center gap-1.5 rounded-pill border border-dashed border-line px-2.5 py-1 text-sm text-mute transition-colors hover:border-ink hover:text-ink"
+                          >
+                            {t('assignSlot')}
+                          </button>
+                        )}
+                      </td>
+                      {readOnly && (
+                        <td className="px-4 py-2.5">
+                          <Button
+                            variant="link"
+                            size="xs"
+                            onClick={() => openTile(c.id)}
+                          >
+                            {t('confirmedChatCta')}
+                          </Button>
+                        </td>
                       )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <ShareLinkCell
-                        candidateId={c.id}
-                        token={c.participant_token}
-                        onReissued={() => router.refresh()}
-                      />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+                    </tr>
+                  );
+                })
+              )}
           </tbody>
         </table>
       </div>
     );
+    // Grouped sections (01B) supply their own Memphis card frame, so the table
+    // renders unframed inside them; the flat "all" view frames it here.
+    return framed ? (
+      <div className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md">
+        {body}
+      </div>
+    ) : (
+      body
+    );
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-ink">{t('title')}</h1>
-        <p className="text-sm text-mute">{t('subtitle')}</p>
-      </div>
-
-      {/* Top layer — project picker (spec §1). The old batch selector + create
-          fields are gone; a project is now the unit of work. */}
-      <div className="flex flex-wrap items-end gap-3 border-b border-line pb-6">
-        <div className="min-w-[220px]">
-          <Select
-            label={t('projectLabel')}
-            value={selectedProjectId ?? ''}
-            onChange={(e) => selectProject(e.target.value)}
-            options={projects.map((p) => ({ value: p.id, label: p.title }))}
-            disabled={projects.length === 0}
+    <div className="mx-auto w-full max-w-[1360px] p-6">
+      {/* Memphis screen frame (BUILD-SPEC §1) — 3px ink · radius 14 · hard 8px
+          offset shadow. This establishes the redesign client shell (frame + sun
+          header + project pill + view tabs) that the calendar/chat specs build
+          on. Legacy flat editorial (1px border-line / shadow-0) is replaced. */}
+      <div className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper-soft shadow-memphis-2xl">
+        {/* Sun header band — recruiting widget identity (WIDGET-SHELL §S3, sun).
+            Tone + Outfit display consumed via CSS var (the sanctioned shell
+            pattern — no bg/font utility exists for these), mirroring the canvas
+            fullview panel. */}
+        <header
+          className="flex flex-wrap items-center gap-3 border-b-[3px] border-ink px-[26px] py-[15px]"
+          style={{ background: 'var(--widget-header-bg-sun)' }}
+        >
+          <span className="text-2xl" aria-hidden>
+            🧲
+          </span>
+          <h1
+            className="min-w-0 flex-1 truncate text-ink"
+            style={{
+              fontFamily: 'var(--font-outfit), var(--font-sans)',
+              fontSize: 23,
+              fontWeight: 800,
+              letterSpacing: '-0.5px',
+            }}
+          >
+            {t('title')}
+          </h1>
+          <SegmentedControl
+            ariaLabel={t('viewTabsLabel')}
+            value={tab}
+            onChange={(v) => setTab(v as ViewTab)}
+            options={[
+              { value: 'list', label: t('tabList') },
+              { value: 'calendar', label: t('tabCalendar') },
+            ]}
           />
-        </div>
-        {showNewProject ? (
-          <div className="flex items-end gap-2">
-            <Input
-              label={t('newProjectLabel')}
-              placeholder={t('newProjectPlaceholder')}
-              value={newProjectTitle}
-              onChange={(e) => setNewProjectTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') createProject();
-              }}
+          {/* Project pill (dropdown) — full-nav project switch. */}
+          <div className="min-w-[180px]">
+            <Select
+              aria-label={t('projectLabel')}
+              size="sm"
+              fullWidth={false}
+              className="w-full"
+              value={selectedProjectId ?? ''}
+              onChange={(e) => selectProject(e.target.value)}
+              options={projects.map((p) => ({ value: p.id, label: p.title }))}
+              disabled={projects.length === 0}
             />
-            <Button
-              variant="primary"
-              onClick={createProject}
-              disabled={!newProjectTitle.trim() || creatingProject}
-            >
-              {creatingProject ? t('creating') : t('create')}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setShowNewProject(false);
-                setNewProjectTitle('');
-              }}
-            >
-              {t('cancel')}
-            </Button>
           </div>
-        ) : (
-          <Button variant="secondary" onClick={() => setShowNewProject(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowNewProject((v) => !v)}
+          >
             {t('newProjectCta')}
           </Button>
-        )}
-      </div>
+        </header>
 
-      {selectedProjectId ? (
-        <>
-          {/* Source entry — file upload OR Google Sheets import (spec §2).
-              Candidates land in the project's inbox pool; groups are made later
-              by assigning list-checked candidates. */}
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 md:flex-row">
-              <FileDropZone
-                accept=".csv,.xlsx"
-                maxSizeBytes={MAX_UPLOAD_BYTES}
-                disabled={uploading}
-                onFiles={(files) => {
-                  if (files[0]) uploadFile(files[0]);
+        <div className="flex flex-col gap-5 p-[26px]">
+          {/* Inline new-project creator — revealed by the header "+ New
+              project" pill. */}
+          {showNewProject && (
+            <div className="flex flex-wrap items-end gap-2 rounded-sm border-2 border-ink bg-paper p-4 shadow-memphis-sm">
+              <Input
+                label={t('newProjectLabel')}
+                placeholder={t('newProjectPlaceholder')}
+                value={newProjectTitle}
+                onChange={(e) => setNewProjectTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') createProject();
                 }}
-                onError={() => setMessage(t('fileTooLarge'))}
-                label={uploading ? t('uploading') : t('uploadLabel')}
-                helperText={t('uploadHelper')}
-                className="flex-1 px-6 py-12"
               />
-              <div className="flex flex-1 flex-col gap-2 rounded-sm border border-line px-6 py-6">
-                <p className="text-sm font-medium text-ink">{t('sheetsTitle')}</p>
-                <p className="text-sm text-mute">{t('sheetsHelper')}</p>
-                <Input
-                  aria-label={t('sheetsUrlLabel')}
-                  placeholder={t('sheetsUrlPlaceholder')}
-                  value={sheetUrl}
-                  onChange={(e) => setSheetUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') importSheet();
-                  }}
-                />
-                <Button
-                  variant="secondary"
-                  onClick={importSheet}
-                  disabled={importing || !sheetUrl.trim()}
-                >
-                  {importing ? t('sheetsImporting') : t('sheetsImport')}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {message && <p className="text-sm text-ink">{message}</p>}
-
-          {/* Group picker (spec feedback): lists the groups made by assigning
-              list-checked candidates — not the uploads. Scopes both list and
-              calendar. Hidden until at least one group exists. */}
-          {namedGroups.length > 0 && (
-            <div className="min-w-[220px]">
-              <Select
-                label={t('groupPickerLabel')}
-                value={effectiveGroupId}
-                onChange={(e) => setSelectedGroupId(e.target.value)}
-                options={[
-                  { value: '', label: t('groupAll') },
-                  ...namedGroups.map((g) => ({ value: g.id, label: g.title })),
-                ]}
-              />
+              <Button
+                variant="primary"
+                onClick={createProject}
+                disabled={!newProjectTitle.trim() || creatingProject}
+              >
+                {creatingProject ? t('creating') : t('create')}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowNewProject(false);
+                  setNewProjectTitle('');
+                }}
+              >
+                {t('cancel')}
+              </Button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Tabs
-              aria-label={t('viewTabsLabel')}
-              value={tab}
-              onValueChange={(v) => setTab(v as ViewTab)}
-              items={[
-                { value: 'list', label: t('tabList') },
-                { value: 'calendar', label: t('tabCalendar') },
-              ]}
-            />
-            <Button variant="primary" size="sm" onClick={() => openCreate()}>
-              {t('slotAdd')}
-            </Button>
-          </div>
-
-          {tab === 'list' ? (
+          {selectedProjectId ? (
             <>
-              {/* View segment + list controls (spec §3, §4). */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <Tabs
-                  aria-label={t('listModeLabel')}
+              {/* Source intake 2-up (spec §2) — CSV/XLSX dropzone (already
+                  Memphis) + Google Sheets card. Candidates land in the inbox
+                  pool; groups are made by assigning list-checked candidates. */}
+              <div>
+                <div className="mb-3 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+                  {t('loadCandidates')}
+                </div>
+                <div className="flex flex-col gap-4 md:flex-row">
+                  <FileDropZone
+                    accept=".csv,.xlsx"
+                    maxSizeBytes={MAX_UPLOAD_BYTES}
+                    disabled={uploading}
+                    onFiles={(files) => {
+                      if (files[0]) uploadFile(files[0]);
+                    }}
+                    onError={() => notifyErr(t('fileTooLarge'))}
+                    label={uploading ? t('uploading') : t('uploadLabel')}
+                    helperText={t('uploadHelper')}
+                    className="flex-1 px-6 py-10"
+                  />
+                  <div className="flex flex-1 flex-col gap-3 rounded-sm border-2 border-ink bg-paper px-5 py-4 shadow-memphis-sm">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-mint text-base"
+                        aria-hidden
+                      >
+                        📗
+                      </span>
+                      <p
+                        className="text-lg font-extrabold text-ink"
+                        style={{
+                          fontFamily: 'var(--font-outfit), var(--font-sans)',
+                        }}
+                      >
+                        {t('sheetsTitle')}
+                      </p>
+                    </div>
+                    <p className="text-md leading-relaxed text-mute">
+                      {t('sheetsHelper')}
+                    </p>
+                    <div className="flex items-end gap-2">
+                      <div className="min-w-0 flex-1">
+                        <Input
+                          aria-label={t('sheetsUrlLabel')}
+                          placeholder={t('sheetsUrlPlaceholder')}
+                          value={sheetUrl}
+                          onChange={(e) => setSheetUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') importSheet();
+                          }}
+                        />
+                      </div>
+                      <Button
+                        variant="secondary"
+                        onClick={importSheet}
+                        disabled={importing || !sheetUrl.trim()}
+                      >
+                        {importing ? t('sheetsImporting') : t('sheetsImport')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Master schedule link bar (BUILD-SPEC §5.1) — one project-shared
+                  link, replacing the per-candidate share column. Hidden when the
+                  DB has no share_token yet (preview before migration). */}
+              {selectedProject?.share_token && (
+                <MasterLinkBar
+                  shareToken={selectedProject.share_token}
+                  onCopied={() => notifyOk(t('masterLinkCopied'))}
+                />
+              )}
+
+              {tab === 'list' ? (
+            <>
+              {/* All/By-group segment + group scope + filter + sort + add slot
+                  (spec §3, §4). The All/By-group toggle lives in the list
+                  controls (frame 01); the top-level List/Calendar toggle lives
+                  in the header. */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-y-2 border-line-soft py-3">
+                <SegmentedControl
+                  ariaLabel={t('listModeLabel')}
                   value={listMode}
-                  onValueChange={(v) => setListMode(v as ListMode)}
-                  items={[
+                  onChange={(v) => setListMode(v as ListMode)}
+                  options={[
                     { value: 'all', label: t('listModeAll') },
                     { value: 'grouped', label: t('listModeGrouped') },
                   ]}
                 />
+                {namedGroups.length > 0 && (
+                  <Select
+                    aria-label={t('groupPickerLabel')}
+                    size="sm"
+                    fullWidth={false}
+                    className="w-40 truncate"
+                    value={effectiveGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                    options={[
+                      { value: '', label: t('groupAll') },
+                      ...namedGroups.map((g) => ({
+                        value: g.id,
+                        label: g.title,
+                      })),
+                    ]}
+                  />
+                )}
                 <label className="flex items-center gap-2 text-sm text-ink">
                   <Checkbox
                     aria-label={t('selectAll')}
@@ -1010,11 +1257,21 @@ export function RecruitingSchedulingClient({
                     </Button>
                   )}
                 </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => openCreate()}
+                >
+                  {t('slotAdd')}
+                </Button>
               </div>
 
+              {/* Bulk action bar (BUILD-SPEC §1) — amber warning surface + amber
+                  hard shadow when rows are selected. */}
               {selected.size > 0 && (
-                <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-paper-soft px-3 py-2">
-                  <span className="text-sm text-ink">
+                <div className="flex flex-wrap items-center gap-2 rounded-sm border-2 border-ink bg-warning-bg px-4 py-3 shadow-memphis-md-amber">
+                  <span className="text-md font-extrabold text-ink">
                     {t('bulkSelected', { count: selected.size })}
                   </span>
                   <Button
@@ -1072,158 +1329,303 @@ export function RecruitingSchedulingClient({
               {listMode === 'all' ? (
                 renderTable(sortedCandidates)
               ) : (
-                <div className="flex flex-col gap-6">
+                // By-group view (01B): a Memphis card per section — pastel-tinted
+                // head (name + count pill + Rename) over the roster table. The
+                // "미할당"(inbox) section heads neutral; its rows are assigned via
+                // the bulk bar (select → Send to group).
+                <div className="flex flex-col gap-4">
                   {allSections.length === 0 ? (
-                    <p className="text-sm text-mute">{t('emptyGroups')}</p>
+                    <p className="text-md text-mute">{t('emptyGroups')}</p>
                   ) : (
-                    allSections.map(({ key, title, rows }) => (
-                      <div key={key} className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-sm font-semibold text-ink">
-                            {title}
-                          </h2>
-                          <span className="text-xs text-mute-soft">
-                            {t('groupCount', { count: rows.length })}
-                          </span>
+                    allSections.map(({ key, title, rows }, i) => {
+                      const isInbox = key === '__ungrouped__';
+                      return (
+                        <div
+                          key={key}
+                          className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                        >
+                          <div
+                            className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                              isInbox
+                                ? 'bg-paper-soft'
+                                : HEAD_TINTS[i % HEAD_TINTS.length]
+                            }`}
+                          >
+                            <span className="text-base" aria-hidden>
+                              {isInbox ? '📥' : '📁'}
+                            </span>
+                            {!isInbox && renamingKey === key ? (
+                              <div className="min-w-[220px] flex-1">
+                                <BatchTitleField
+                                  key={key}
+                                  batchId={key}
+                                  title={title}
+                                  onSaved={() => {
+                                    setRenamingKey(null);
+                                    router.refresh();
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <span
+                                className="min-w-0 flex-1 truncate font-extrabold text-ink"
+                                style={{
+                                  fontFamily:
+                                    'var(--font-outfit), var(--font-sans)',
+                                  fontSize: 16,
+                                }}
+                              >
+                                {title}
+                              </span>
+                            )}
+                            <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                              {rows.length}
+                            </span>
+                            {!isInbox && (
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                onClick={() =>
+                                  setRenamingKey((k) => (k === key ? null : key))
+                                }
+                              >
+                                {t('groupRename')}
+                              </Button>
+                            )}
+                          </div>
+                          {renderTable(rows, false)}
                         </div>
-                        {renderTable(rows)}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
             </>
           ) : (
-            // Unified calendar view (PR-B): free-text title + calendar +
-            // confirmed-attendee roster on the left; chat opens in the right
-            // rail. Scoped to one group (spec constraint — batch_id behavior
-            // preserved); a group picker selects which when the project has
-            // more than one.
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-              <div className="flex min-w-0 flex-1 flex-col gap-4">
-                {activeCalendarGroupId && (
+            // Unified calendar view (CD frame 02) — one Memphis two-pane card:
+            // colored-time-block calendar (left) + a permanent chat rail (396px,
+            // right). The calendar spans every group by default ('' = 전체); the
+            // in-toolbar Group pill narrows it. A filtered group still surfaces
+            // its editable title above the card (BatchTitleField contract).
+            <div className="flex flex-col gap-4">
+              {effectiveCalendarGroupId && (
+                <div className="max-w-md">
                   <BatchTitleField
-                    key={activeCalendarGroupId}
-                    batchId={activeCalendarGroupId}
+                    key={effectiveCalendarGroupId}
+                    batchId={effectiveCalendarGroupId}
                     title={currentGroup?.title ?? ''}
                     onSaved={() => router.refresh()}
                   />
+                </div>
+              )}
+
+              {/* Height bumped ~1.5× (수정2, 680→1020) so more of the day is
+                  visible at once and the chat tiles have vertical room. */}
+              <div className="flex flex-col overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md lg:h-[1020px] lg:flex-row">
+                {/* Calendar pane — collapsible horizontally on desktop (수정3) to
+                    free width for the chat tiles. Always shown on mobile (the
+                    panes stack there, so folding a horizontal pane is moot). */}
+                {!calendarFolded && (
+                  <SchedulingCalendar
+                    slots={calendarSlots}
+                    candidateName={(id) =>
+                      candidateNameById.get(id) ?? t('unnamedCandidate')
+                    }
+                    view={calendarView}
+                    onViewChange={setCalendarView}
+                    onCreateAt={(start) => openCreate(start)}
+                    onEditSlot={openEdit}
+                    groupFilter={
+                      namedGroups.length > 0
+                        ? {
+                            ariaLabel: t('calendarGroupLabel'),
+                            value: effectiveCalendarGroupId,
+                            onChange: setCalendarGroupId,
+                            options: [
+                              { value: '', label: t('groupAll') },
+                              ...namedGroups.map((g) => ({
+                                value: g.id,
+                                label: g.title,
+                              })),
+                            ],
+                          }
+                        : undefined
+                    }
+                  />
                 )}
 
-                <SchedulingCalendar
-                  slots={calendarSlots}
-                  candidateName={(id) =>
-                    candidateNameById.get(id) ?? t('unnamedCandidate')
+                {/* Fold rail (수정3) — desktop handle collapsing/expanding the
+                    calendar pane. Hidden on mobile (panes already stack). */}
+                {/* eslint-disable-next-line react/forbid-elements -- full-height vertical fold handle; Button primitive chrome unsuitable for a rail toggle */}
+                <button
+                  type="button"
+                  onClick={() => setCalendarFolded((v) => !v)}
+                  aria-label={
+                    calendarFolded ? t('calendarExpand') : t('calendarFold')
                   }
-                  view={calendarView}
-                  onViewChange={setCalendarView}
-                  onCreateAt={(start) => openCreate(start)}
-                  onEditSlot={openEdit}
-                />
+                  className="hidden shrink-0 flex-col items-center justify-center gap-3 bg-paper-soft transition-colors hover:bg-paper lg:flex lg:w-9 lg:border-l-2 lg:border-ink"
+                >
+                  <span className="text-lg font-bold text-ink" aria-hidden>
+                    {calendarFolded ? '›' : '‹'}
+                  </span>
+                  {calendarFolded && (
+                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft [writing-mode:vertical-rl]">
+                      {t('calendarExpand')}
+                    </span>
+                  )}
+                </button>
 
-                {/* Confirmed attendees, inline in the same view (spec §2). */}
-                <div className="flex flex-col gap-2 rounded-sm border border-line p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-ink">
+                {/* Chat pane — up to 4 tiled thread panels (수정4). Expanded: the
+                    pane caps its width + scrolls horizontally so the calendar
+                    keeps room; folded: it fills the freed width. Each panel
+                    resolves its own batch/roster and closes independently. */}
+                <div
+                  className={[
+                    'flex w-full flex-col overflow-x-auto border-t-2 border-ink lg:min-h-0 lg:flex-row lg:border-t-0',
+                    calendarFolded
+                      ? 'lg:min-w-0 lg:flex-1'
+                      : 'lg:w-auto lg:max-w-[768px] lg:shrink-0',
+                  ].join(' ')}
+                >
+                  {chatTiles.map(({ tileId, thread }, i) => {
+                    const ctx = resolveChatContext(thread);
+                    if (!ctx.batchId) return null;
+                    return (
+                      <aside
+                        key={tileId}
+                        className={[
+                          'flex min-h-[540px] w-full flex-col lg:min-h-0 lg:w-[360px] lg:shrink-0',
+                          i > 0
+                            ? 'border-t-2 border-ink lg:border-l-2 lg:border-t-0'
+                            : '',
+                        ].join(' ')}
+                      >
+                        <SchedulingChatPanel
+                          batchId={ctx.batchId}
+                          candidates={ctx.candidateOptions}
+                          groups={namedGroups.map((g) => ({
+                            id: g.id,
+                            title: g.title,
+                          }))}
+                          layout="sidebar"
+                          selectedThread={thread}
+                          // Multi-window: the panel's own reach/kind/개인 switcher
+                          // re-targets THIS tile in place (single-window parity),
+                          // not a new tile — so every control stays live. New
+                          // tiles come from the roster rows + broadcast CTA.
+                          onSelectThread={(id) => switchTile(tileId, id)}
+                          onClose={() => closeTile(tileId)}
+                          totalCount={candidates.length}
+                          // 일정 패널 소스 — the full slot set so the panel's own
+                          // scope filter (전체/그룹/개인) resolves any target, not
+                          // just the calendar's filtered group. Click → openEdit.
+                          slots={slots}
+                          onEditSlot={openEdit}
+                        />
+                      </aside>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Confirmed roster — the final-confirmed attendees within the
+                  calendar's current scope. Restored below the two-pane card
+                  (#1161 Memphis rewrite dropped this block). Clicking a row
+                  opens that attendee's chat thread in the rail; the header CTA
+                  opens the broadcast thread. */}
+              <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
+                <div className="flex items-center justify-between gap-2">
+                  {/* Roster disclosure toggle (수정1) — the whole heading bar is
+                      the fold control; the count stays visible when collapsed.
+                      Boxed chevron + hover surface make the affordance obvious. */}
+                  {/* eslint-disable-next-line react/forbid-elements -- disclosure toggle (heading + boxed chevron); Button primitive chrome unsuitable for a bare list header */}
+                  <button
+                    type="button"
+                    aria-expanded={rosterOpen}
+                    aria-label={t('confirmedToggleLabel')}
+                    onClick={() => setRosterOpen((v) => !v)}
+                    className="-mx-1.5 -my-1 flex min-w-0 flex-1 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
+                      aria-hidden
+                    >
+                      ▾
+                    </span>
+                    <span className="truncate text-sm font-bold text-ink">
                       {t('confirmedHeading', {
                         count: confirmedCandidates.length,
                       })}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => openChat(BROADCAST_THREAD_ID)}
-                    >
-                      {t('confirmedBroadcastCta')}
-                    </Button>
-                  </div>
-                  {confirmedCandidates.length === 0 ? (
+                    </span>
+                    <span className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+                      {rosterOpen ? t('rosterCollapseHint') : t('rosterExpandHint')}
+                    </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => openTile(BROADCAST_THREAD_ID)}
+                  >
+                    {t('confirmedBroadcastCta')}
+                  </Button>
+                </div>
+                {rosterOpen &&
+                  (confirmedCandidates.length === 0 ? (
                     <p className="text-sm text-mute-soft">
                       {t('confirmedEmpty')}
                     </p>
                   ) : (
-                    <ul className="flex flex-col divide-y divide-line-soft">
-                      {confirmedCandidates.map((c) => {
-                        const next = nextSlotForCandidate(c.id, slots, now);
-                        const contact = contactValue(c);
-                        const active = chatOpen && chatThread === c.id;
+                    // Read-only 그룹뷰 (라운드3): a Memphis card per group, pastel
+                    // head + count pill (no Rename), holding the list-view table in
+                    // read-only mode — full user columns, no select/edit, chat CTA
+                    // per row (openTile → multi-window rail, 수정4).
+                    <div className="flex flex-col gap-4">
+                      {confirmedSections.map(({ key, title, rows }, i) => {
+                        const isInbox = key === '__ungrouped__';
                         return (
-                          <li key={c.id}>
-                            {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
-                            <button
-                              type="button"
-                              onClick={() => openChat(c.id)}
-                              className={[
-                                'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
-                                active ? 'bg-paper-soft' : 'hover:bg-paper-soft',
-                              ].join(' ')}
+                          <div
+                            key={key}
+                            className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                          >
+                            <div
+                              className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                                isInbox
+                                  ? 'bg-paper-soft'
+                                  : HEAD_TINTS[i % HEAD_TINTS.length]
+                              }`}
                             >
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm text-ink">
-                                  {candidateLabel(c)}
-                                </span>
-                                {contact && (
-                                  <span className="block truncate text-xs text-mute-soft">
-                                    {contact}
-                                  </span>
-                                )}
+                              <span className="text-base" aria-hidden>
+                                {isInbox ? '📥' : '📁'}
                               </span>
-                              <span className="shrink-0 text-xs text-mute">
-                                {next ? (
-                                  <span className="flex items-center gap-1.5">
-                                    <span
-                                      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                                        next.status === 'confirmed'
-                                          ? 'bg-success'
-                                          : next.status === 'cancelled'
-                                            ? 'bg-mute-soft'
-                                            : 'bg-amore'
-                                      }`}
-                                    />
-                                    {slotTimeFmt.format(new Date(next.start_at))}
-                                  </span>
-                                ) : (
-                                  t('confirmedNoSlot')
-                                )}
+                              <span
+                                className="min-w-0 flex-1 truncate font-extrabold text-ink"
+                                style={{
+                                  fontFamily:
+                                    'var(--font-outfit), var(--font-sans)',
+                                  fontSize: 16,
+                                }}
+                              >
+                                {title}
                               </span>
-                              <span className="shrink-0 text-xs text-amore">
-                                {t('confirmedChatCta')}
+                              <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                                {rows.length}
                               </span>
-                            </button>
-                          </li>
+                            </div>
+                            {renderTable(rows, false, true)}
+                          </div>
                         );
                       })}
-                    </ul>
-                  )}
-                </div>
+                    </div>
+                  ))}
               </div>
-
-              {/* Chat rail — inline sidebar (lg+) / overlay drawer (mobile). */}
-              {chatOpen && activeCalendarGroupId && (
-                <>
-                  <div
-                    className="fixed inset-0 z-modal bg-ink/20 lg:hidden"
-                    onClick={() => setChatOpen(false)}
-                    aria-hidden
-                  />
-                  <aside className="fixed inset-y-0 right-0 z-modal flex w-full max-w-md flex-col border-l border-line bg-paper lg:static lg:z-auto lg:h-[36rem] lg:w-96 lg:max-w-none lg:shrink-0 lg:rounded-sm lg:border">
-                    <SchedulingChatPanel
-                      batchId={activeCalendarGroupId}
-                      candidates={calendarCandidateOptions}
-                      layout="sidebar"
-                      selectedThread={chatThread}
-                      onSelectThread={setChatThread}
-                      onClose={() => setChatOpen(false)}
-                    />
-                  </aside>
-                </>
-              )}
             </div>
           )}
-        </>
-      ) : (
-        <p className="text-sm text-mute">{t('selectProjectFirst')}</p>
-      )}
+            </>
+          ) : (
+            <p className="text-md text-mute">{t('selectProjectFirst')}</p>
+          )}
+        </div>
+      </div>
 
       <SlotEditorModal
         open={editorOpen}
@@ -1231,6 +1633,7 @@ export function RecruitingSchedulingClient({
         draft={draft}
         candidates={editorCandidateOptions}
         batchId={editorBatchId}
+        groupOptions={groupModeOptions}
         allSlots={editorSlots}
         onSaved={onSaved}
       />
@@ -1306,59 +1709,105 @@ function roundToNextHalfHour(d: Date): Date {
   return c;
 }
 
-// Copy the candidate's public `/schedule/<token>` link, plus a reissue action
-// that rotates the token (invalidating any previously shared link). The URL is
-// built from window.location.origin at click time so it always matches the
-// deployment the admin is on.
-function ShareLinkCell({
-  candidateId,
-  token,
-  onReissued,
+// Master schedule link bar (BUILD-SPEC §5.1) — one project-shared link that
+// replaces the per-candidate ShareLinkCell. The relative `/schedule/<token>` is
+// shown in the field (no origin → no hydration mismatch); the absolute URL is
+// built from window.location.origin at copy time so it matches the deployment.
+function MasterLinkBar({
+  shareToken,
+  onCopied,
 }: {
-  candidateId: string;
-  token: string;
-  onReissued: () => void;
+  shareToken: string;
+  onCopied: () => void;
 }) {
   const t = useTranslations('RecruitingScheduling');
-  const [copied, setCopied] = useState(false);
-  const [reissuing, setReissuing] = useState(false);
+  const relative = `/schedule/${shareToken}`;
 
-  async function copyLink() {
-    const url = `${window.location.origin}/schedule/${token}`;
+  async function copy() {
+    const abs =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${relative}`
+        : relative;
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(abs);
+      onCopied();
     } catch {
       // Clipboard blocked (insecure context / permission) — no-op; the admin
-      // can still open the page manually.
-    }
-  }
-
-  async function reissue() {
-    if (reissuing) return;
-    if (!window.confirm(t('shareReissueConfirm'))) return;
-    setReissuing(true);
-    try {
-      const res = await fetch(
-        `/api/scheduling/candidates/${candidateId}/reissue-token`,
-        { method: 'POST' },
-      );
-      if (res.ok) onReissued();
-    } finally {
-      setReissuing(false);
+      // can still read the URL from the field.
     }
   }
 
   return (
-    <span className="flex items-center gap-2">
-      <Button variant="link" size="xs" onClick={copyLink}>
-        {copied ? t('shareCopied') : t('shareCopy')}
+    <div className="flex flex-wrap items-center gap-3 rounded-sm border-2 border-ink bg-sky px-4 py-3 shadow-memphis-md">
+      <span className="text-lg" aria-hidden>
+        🔗
+      </span>
+      <div className="min-w-0">
+        <div className="text-md font-extrabold text-ink">
+          {t('masterLinkTitle')}
+        </div>
+        <div className="text-sm text-mute">{t('masterLinkHelper')}</div>
+      </div>
+      <div className="min-w-[180px] flex-1 truncate rounded-[var(--fv-radius-field)] border-[1.5px] border-ink bg-paper px-3 py-2 font-mono text-md text-ink">
+        {relative}
+      </div>
+      <Button variant="secondary" size="sm" onClick={copy}>
+        {t('masterLinkCopy')}
       </Button>
-      <span className="text-mute-soft">·</span>
-      <Button variant="link" size="xs" onClick={reissue} disabled={reissuing}>
-        {reissuing ? t('shareReissuing') : t('shareReissue')}
-      </Button>
-    </span>
+    </div>
   );
+}
+
+// Memphis segmented control (BUILD-SPEC §1) — pill container with an ink-fill
+// active segment. The editorial <Tabs> primitive is an underline tab (flat), so
+// a fresh Memphis pill is built here per CD (AUTHORITY: don't downgrade to the
+// flat primitive). role=tablist/tab keeps it AT-legible.
+function SegmentedControl<T extends string>({
+  ariaLabel,
+  value,
+  onChange,
+  options,
+}: {
+  ariaLabel: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly { value: T; label: ReactNode }[];
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className="inline-flex shrink-0 overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm"
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          // eslint-disable-next-line react/forbid-elements -- CD Memphis segmented pill (ink-fill active seg); the Button primitive's per-button border/shadow/radius can't compose into one unified segmented control
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.value)}
+            className={[
+              'px-4 py-1.5 text-md font-bold transition-colors',
+              active ? 'bg-ink text-paper' : 'bg-paper text-mute hover:text-ink',
+            ].join(' ')}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Next-slot dot color by status — binds the recsched slot-status tokens
+// (globals.css §2, BUILD-SPEC §2) rather than raw signal colors.
+function slotDotClass(status: SlotStatus): string {
+  return status === 'confirmed'
+    ? 'bg-slot-confirmed-dot'
+    : status === 'cancelled'
+      ? 'bg-slot-cancelled-dot'
+      : 'bg-slot-proposed-dot';
 }

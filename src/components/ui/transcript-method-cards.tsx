@@ -73,7 +73,10 @@ export function TranscriptMethodCards({
               // padding 13x11 · border 2 고정(상태 무관 → 선택 시 폭 변화 shift 0).
               // radius 는 토큰 rounded-sm(14px). 선택 = amore border-2 + soft glow
               // (shadow-select-glow) — CaptureUseCaseCards 와 동일.
-              'relative flex flex-col gap-1.5 rounded-sm border-2 bg-paper px-[11px] py-[13px] text-left',
+              // 높이 = 고정 128 (MODECARD-FIX 델타) — subtitle 줄수에 따라 flex 로
+              // 늘어나 그리드 정렬이 깨지던 버그 봉인. box-border + flex-col
+              // justify-start(top-align) + 텍스트 clamp + overflow-hidden.
+              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border-2 bg-paper box-border px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
@@ -104,8 +107,8 @@ export function TranscriptMethodCards({
             <span aria-hidden className="flex leading-none">
               {opt.icon}
             </span>
-            <span className="text-sm font-medium text-ink">{opt.title}</span>
-            <span className="text-xs text-mute">{opt.subtitle}</span>
+            <span className="line-clamp-2 text-sm font-medium text-ink">{opt.title}</span>
+            <span className="line-clamp-2 text-xs text-mute">{opt.subtitle}</span>
           </button>
         );
       })}

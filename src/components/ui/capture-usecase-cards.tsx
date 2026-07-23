@@ -90,7 +90,12 @@ export function CaptureUseCaseCards({
               // 1px 차, 디자인 하드코드 게이트(check:design)상 토큰만 허용이라
               // 보수적으로 근접 토큰 선택. 선택 = amore border-2 + soft glow
               // (shadow-select-glow, R6 proposed) — 기존 memphis 하드 오프셋 대체.
-              'relative flex flex-col gap-1.5 rounded-sm border-2 bg-paper px-[11px] py-[13px] text-left',
+              // 높이 = 고정 128 (MODECARD-FIX 델타). 카드 높이가 title/desc 줄수에
+              // 따라 flex 로 늘어나 같은 행(2-card UT 제목1줄 vs 3-card 인터뷰
+              // 제목+설명)의 높이가 어긋나던 버그를 봉인 — box-border + flex-col
+              // justify-start(top-align, 남는 공간은 하단 균일 패딩) + 텍스트 clamp.
+              // overflow-hidden 으로 선택 note 초과분도 프레임 밖 유출 방지.
+              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border-2 bg-paper box-border px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
@@ -121,20 +126,22 @@ export function CaptureUseCaseCards({
             <span aria-hidden className="flex leading-none">
               {opt.icon}
             </span>
-            <span className="text-sm font-medium text-ink">{opt.title}</span>
+            {/* title 최대 2줄 clamp (고정 128 안에서 넘침 방지, MODECARD-FIX). */}
+            <span className="line-clamp-2 text-sm font-medium text-ink">{opt.title}</span>
             {opt.desc ? (
-              // 인터뷰 방식 3-카드 — 친근한 한 줄 설명(R15).
-              <span className="text-xs text-mute">{opt.desc}</span>
+              // 인터뷰 방식 3-카드 — 친근한 한 줄 설명(R15). 단일 문자열 → 2줄 clamp.
+              <span className="line-clamp-2 text-xs text-mute">{opt.desc}</span>
             ) : opt.hostVia || opt.guestVia ? (
               // 레거시 2줄 표기(진행자/참석자 라우팅). desc·hostVia·guestVia 셋 다
               // 없으면 제목만 렌더(1라인 카드 — moderator-ai 테스트 방식 2-카드).
+              // 각 프래그먼트 1줄 clamp (MODECARD-FIX 멀티-프래그먼트 규칙).
               <span className="flex flex-col gap-0.5 text-xs text-mute">
-                <span>{opt.hostVia}</span>
-                <span>{opt.guestVia}</span>
+                <span className="line-clamp-1">{opt.hostVia}</span>
+                <span className="line-clamp-1">{opt.guestVia}</span>
               </span>
             ) : null}
             {selected && opt.note && (
-              <span className="mt-0.5 text-xs text-mute-soft">{opt.note}</span>
+              <span className="mt-0.5 line-clamp-2 text-xs text-mute-soft">{opt.note}</span>
             )}
           </button>
         );

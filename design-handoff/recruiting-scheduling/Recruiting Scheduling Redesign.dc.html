@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:8px;height:8px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}
+a{color:#c2334f;}a:hover{color:#9e2740;}</style>
+</helmet>
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:44px;display:flex;flex-direction:column;align-items:flex-start;gap:16px;">
+
+  <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px;">
+    <div style="font-family:'Outfit',sans-serif;font-size:27px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">Recruiting · Scheduling — Memphis redesign</div>
+    <div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#8a8693;line-height:1.6;max-width:900px;">Flat editorial legacy → Memphis system (3px ink border · 4px4px0 shadow · Outfit · pastel header). §6 fixes: announcement→banner · calendar→colored time-blocks · chat hierarchy→segmented · slot editor→grouped · loading/toast layer. Recruiting tone = sun <span style="color:#1d1b20;font-weight:700;">#ffe8a8</span>. Data/flow contracts preserved (§5).</div>
+  </div>
+
+  <!-- ============ 01 ADMIN · LIST VIEW ============ -->
+  <div style="width:1360px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">01</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Admin · List view</div><div style="font-size:12px;color:#8a8693;">project picker · source intake · filters · sticky-3col table · bulk bar</div></div>
+    <div style="width:1360px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #1d1b20;background:#ffe8a8;padding:15px 26px;">
+        <span style="font-size:22px;">🧲</span>
+        <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Recruiting · Scheduling</div></div>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid #1d1b20;border-radius:999px;padding:6px 14px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:13px;font-weight:700;color:#1d1b20;">Checkout UX study</span><span style="font-size:9px;color:#1d1b20;">▼</span></div>
+        <div style="display:inline-flex;align-items:center;gap:7px;border:2px solid #1d1b20;background:#fff;border-radius:999px;padding:7px 15px;font-size:13px;font-weight:800;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">+ New project</div>
+      </div>
+      <div class="sc" style="max-height:1080px;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:20px;">
+        <!-- source intake 2-up -->
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:11px;">Load candidates</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div style="border:3px dashed #1d1b20;border-radius:14px;background:#fff;padding:26px;display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;box-shadow:4px 4px 0 rgba(29,27,32,0.16);"><div style="width:52px;height:52px;border:2px solid #1d1b20;border-radius:13px;background:#ffe8a8;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:2px 2px 0 #1d1b20;">📄</div><div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#1d1b20;">Drop a CSV or Excel file</div><div style="font-size:12.5px;color:#8a8693;">or click to browse · .csv .xlsx · up to 10&nbsp;MB · emails auto-merge</div></div>
+            <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;padding:20px;display:flex;flex-direction:column;gap:11px;box-shadow:2px 2px 0 rgba(29,27,32,0.14);"><div style="display:flex;align-items:center;gap:9px;"><div style="width:34px;height:34px;border:2px solid #1d1b20;border-radius:9px;background:#cdebd9;display:flex;align-items:center;justify-content:center;font-size:16px;">📗</div><div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:#1d1b20;">Import from Google Sheets</div></div><div style="font-size:12px;color:#8a8693;line-height:1.5;">Paste a shareable Sheets URL — we pull rows into the inbox pool.</div><div style="display:flex;gap:8px;"><div style="flex:1;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#a3a7ad;background:#f7f7f5;border:1.5px solid rgba(29,27,32,0.14);border-radius:11px;padding:10px 13px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">https://docs.google.com/spreadsheets/…</div><div style="background:#1d1b20;color:#fff;border-radius:11px;padding:10px 16px;font-weight:700;font-size:13px;flex-shrink:0;">Import</div></div></div>
+          </div>
+        </div>
+
+        <!-- master link (one shared link for everyone) -->
+        <div style="display:flex;align-items:center;gap:13px;border:2px solid #1d1b20;border-radius:12px;background:#cfe6ff;padding:12px 16px;box-shadow:3px 3px 0 #1d1b20;"><span style="font-size:18px;">🔗</span><div style="min-width:0;"><div style="font-size:12.5px;font-weight:800;color:#1d1b20;">Master schedule link</div><div style="font-size:11px;color:#5b5965;">One link for everyone — participants verify with the last 6 digits of their phone.</div></div><div style="flex:1;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#1d1b20;background:#fff;border:1.5px solid #1d1b20;border-radius:10px;padding:9px 13px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">rc.app/schedule/checkout-ux</div><div style="border:2px solid #1d1b20;background:#fff;border-radius:10px;padding:9px 15px;font-size:12.5px;font-weight:800;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;flex-shrink:0;">Copy</div></div>
+
+        <!-- toast (new state) + flash -->
+        <div style="display:flex;align-items:center;gap:11px;align-self:flex-start;background:#f4fbf6;border:2px solid #1d1b20;border-radius:12px;padding:10px 16px;box-shadow:3px 3px 0 #16a34a;"><span style="width:20px;height:20px;border-radius:50%;background:#16a34a;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">✓</span><span style="font-size:13px;font-weight:700;color:#14713a;">24 candidates imported into the inbox pool.</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;margin-left:6px;">toast · new</span></div>
+
+        <!-- list controls -->
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;border-top:1px solid rgba(29,27,32,0.1);border-bottom:1px solid rgba(29,27,32,0.1);padding:13px 0;">
+          <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:7px 15px;font-size:12.5px;font-weight:800;background:#1d1b20;color:#fff;">All candidates</div><div style="padding:7px 15px;font-size:12.5px;font-weight:600;color:#5b5965;background:#fff;">By group</div></div>
+          <div style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid #1d1b20;border-radius:11px;background:#fff;padding:8px 13px;font-size:12.5px;font-weight:600;color:#1d1b20;">Group: All ▾</div>
+          <div style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid rgba(29,27,32,0.16);border-radius:11px;background:#fff;padding:8px 13px;font-size:12.5px;color:#8a8693;">Filter: Field ▾</div>
+          <div style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid rgba(29,27,32,0.16);border-radius:11px;background:#fff;padding:8px 13px;font-size:12.5px;color:#8a8693;">Sort: Name ↑</div>
+          <div style="margin-left:auto;display:flex;gap:8px;"><div style="display:inline-flex;align-items:center;gap:6px;border:2px solid #1d1b20;background:#fff;border-radius:999px;padding:7px 15px;font-size:12.5px;font-weight:800;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">+ Add slot</div></div>
+        </div>
+
+        <!-- bulk action bar (selected state) -->
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:11px;background:#fff1e6;border:2px solid #1d1b20;border-radius:12px;padding:11px 16px;box-shadow:3px 3px 0 #e0a83a;"><span style="font-size:13px;font-weight:800;color:#1d1b20;">3 selected</span><div style="width:1px;height:18px;background:rgba(29,27,32,0.18);"></div><div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">✓ Confirm</div><div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">→ Send to group</div><div style="font-size:12px;font-weight:600;color:#8a8693;margin-left:2px;">Clear</div></div>
+
+        <!-- candidate table -->
+        <div style="border:2px solid #1d1b20;border-radius:12px;overflow:hidden;box-shadow:3px 3px 0 rgba(29,27,32,0.14);">
+          <div class="sc" style="overflow-x:auto;">
+            <table style="border-collapse:separate;border-spacing:0;white-space:nowrap;font-size:13px;min-width:100%;">
+              <thead><tr>
+                <th style="position:sticky;left:0;z-index:3;width:44px;background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 12px;"><span style="width:15px;height:15px;border:1.6px solid #1d1b20;border-radius:4px;display:inline-block;vertical-align:middle;"></span></th>
+                <th style="position:sticky;left:44px;z-index:3;width:168px;background:#f7f7f5;border-bottom:2px solid #1d1b20;text-align:left;padding:11px 14px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Name</th>
+                <th style="position:sticky;left:212px;z-index:3;width:184px;background:#f7f7f5;border-bottom:2px solid #1d1b20;border-right:2px solid #1d1b20;text-align:left;padding:11px 14px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;box-shadow:3px 0 6px -2px rgba(29,27,32,0.18);">Contact</th>
+                <sc-for list="{{ tableCols }}" as="c" hint-placeholder-count="4"><th style="background:#f7f7f5;border-bottom:2px solid #1d1b20;text-align:left;padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">{{ c }}</th></sc-for>
+              </tr></thead>
+              <tbody><sc-for list="{{ rows }}" as="r" hint-placeholder-count="6"><tr style="border-bottom:1px solid rgba(29,27,32,0.08);">
+                <td style="position:sticky;left:0;z-index:2;background:{{ r.stickyBg }};border-bottom:1px solid rgba(29,27,32,0.08);padding:11px 12px;"><span style="width:15px;height:15px;border:1.6px solid {{ r.checkBorder }};border-radius:4px;background:{{ r.checkBg }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">{{ r.checkMark }}</span></td>
+                <td style="position:sticky;left:44px;z-index:2;background:{{ r.stickyBg }};border-bottom:1px solid rgba(29,27,32,0.08);padding:11px 14px;"><div style="display:flex;align-items:center;gap:7px;"><span style="font-weight:700;color:#1d1b20;">{{ r.name }}</span><sc-if value="{{ r.confirmed }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:800;color:#14713a;background:#f4fbf6;border:1px solid #cdeed8;border-radius:5px;padding:1px 6px;">확정</span></sc-if></div></td>
+                <td style="position:sticky;left:212px;z-index:2;background:{{ r.stickyBg }};border-bottom:1px solid rgba(29,27,32,0.08);border-right:2px solid #1d1b20;padding:11px 14px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#2a262f;box-shadow:3px 0 6px -2px rgba(29,27,32,0.14);">{{ r.phone }}</td>
+                <td style="padding:11px 16px;color:#5b5965;">{{ r.email }}</td>
+                <td style="padding:11px 16px;color:#8a8693;">{{ r.field1 }}</td>
+                <td style="padding:11px 16px;color:#8a8693;">{{ r.field2 }}</td>
+                <td style="padding:11px 16px;"><sc-if value="{{ r.hasSlot }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:{{ r.slotDot }};"></span><span style="font-weight:700;color:#c2334f;">{{ r.slotTime }}</span></span></sc-if><sc-if value="{{ r.noSlot }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:5px;border:1.4px dashed rgba(29,27,32,0.22);border-radius:999px;padding:3px 10px;font-size:11.5px;color:#8a8693;">배정</span></sc-if></td>
+              </tr></sc-for></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 01B ADMIN · BY GROUP ============ -->
+  <div style="width:1360px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">01B</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Admin · By group</div><div style="font-size:12px;color:#8a8693;">grouped sections · per-batch roster · inbox pool</div></div>
+    <div style="width:1360px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #1d1b20;background:#ffe8a8;padding:15px 26px;">
+        <span style="font-size:22px;">🧲</span>
+        <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Recruiting · Scheduling</div></div>
+        <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:6px 15px;font-size:12.5px;font-weight:600;color:#5b5965;background:#fff;">All candidates</div><div style="padding:6px 15px;font-size:12.5px;font-weight:800;background:#1d1b20;color:#fff;">By group</div></div>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid #1d1b20;border-radius:999px;padding:6px 14px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:13px;font-weight:700;color:#1d1b20;">Checkout UX study</span><span style="font-size:9px;color:#1d1b20;">▼</span></div>
+      </div>
+      <div class="sc" style="max-height:1080px;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:18px;">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+        <div style="border:2px solid #1d1b20;border-radius:12px;overflow:hidden;box-shadow:3px 3px 0 rgba(29,27,32,0.14);">
+          <div style="display:flex;align-items:center;gap:11px;border-bottom:2px solid #1d1b20;background:{{ g.headBg }};padding:11px 16px;"><span style="font-size:16px;">{{ g.icon }}</span><span style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#1d1b20;">{{ g.name }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#5b5965;background:#fff;border:1.4px solid #1d1b20;border-radius:999px;padding:2px 9px;">{{ g.count }}</span><div style="margin-left:auto;display:flex;gap:7px;"><sc-if value="{{ g.isInbox }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;font-weight:700;color:#1d1b20;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:4px 11px;box-shadow:2px 2px 0 #1d1b20;">→ Assign to group</span></sc-if><sc-if value="{{ g.isBatch }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;font-weight:600;color:#5b5965;border:1.5px solid rgba(29,27,32,0.16);border-radius:999px;padding:4px 11px;">Rename</span></sc-if></div></div>
+          <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid rgba(29,27,32,0.07);"><span style="width:15px;height:15px;border:1.6px solid #1d1b20;border-radius:4px;flex-shrink:0;"></span><div style="width:150px;flex-shrink:0;display:flex;align-items:center;gap:7px;"><span style="font-weight:700;color:#1d1b20;font-size:13px;">{{ p.name }}</span><sc-if value="{{ p.confirmed }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:800;color:#14713a;background:#f4fbf6;border:1px solid #cdeed8;border-radius:5px;padding:1px 6px;">확정</span></sc-if></div><span style="width:150px;flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#2a262f;">{{ p.phone }}</span><span style="flex:1;font-size:12.5px;color:#8a8693;">{{ p.meta }}</span><sc-if value="{{ p.hasSlot }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:{{ p.slotDot }};"></span><span style="font-weight:700;color:#c2334f;font-size:12.5px;">{{ p.slotTime }}</span></span></sc-if><sc-if value="{{ p.noSlot }}" hint-placeholder-val="{{ false }}"><span style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;border:1.4px dashed rgba(29,27,32,0.22);border-radius:999px;padding:3px 10px;font-size:11.5px;color:#8a8693;">배정</span></sc-if></div></sc-for>
+        </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 02 ADMIN · CALENDAR + CHAT ============ -->
+  <div style="width:1360px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">02</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Admin · Calendar + Chat</div><div style="font-size:12px;color:#8a8693;">colored time-blocks · roster · segmented chat hierarchy · announcement banner</div></div>
+    <div style="width:1360px;height:860px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:12px;border-bottom:3px solid #1d1b20;background:#ffe8a8;padding:15px 26px;flex-shrink:0;">
+        <span style="font-size:22px;">🗓️</span>
+        <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">Scheduling calendar</div></div>
+        <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:6px 14px;font-size:12.5px;font-weight:600;color:#5b5965;background:#fff;">List</div><div style="padding:6px 14px;font-size:12.5px;font-weight:800;background:#1d1b20;color:#fff;">Calendar</div></div>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:2px solid #1d1b20;border-radius:999px;padding:6px 14px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:13px;">📁</span><span style="font-size:13px;font-weight:700;color:#1d1b20;">Checkout UX study</span><span style="font-size:9px;color:#1d1b20;">▼</span></div>
+      </div>
+      <div style="flex:1;min-height:0;display:flex;">
+        <!-- calendar column -->
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:3px solid #1d1b20;">
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:2px solid #1d1b20;background:#fff;flex-shrink:0;">
+            <div style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid #1d1b20;border-radius:11px;background:#fff;padding:7px 12px;font-size:12.5px;font-weight:600;color:#1d1b20;">Group: All ▾</div>
+            <div style="font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:#1d1b20;">Jul 20 – 26</div>
+            <div style="display:flex;gap:5px;"><div style="width:30px;height:30px;border:1.5px solid #1d1b20;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:2px 2px 0 #1d1b20;">‹</div><div style="padding:0 12px;height:30px;border:1.5px solid #1d1b20;border-radius:8px;background:#fff;display:flex;align-items:center;font-size:12px;font-weight:700;box-shadow:2px 2px 0 #1d1b20;">Today</div><div style="width:30px;height:30px;border:1.5px solid #1d1b20;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:2px 2px 0 #1d1b20;">›</div></div>
+            <div style="margin-left:auto;display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:5px 13px;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;">Week</div><div style="padding:5px 13px;font-size:12px;font-weight:600;color:#5b5965;background:#fff;">Day</div></div>
+          </div>
+          <!-- weekday header -->
+          <div style="display:grid;grid-template-columns:46px repeat(7,1fr);border-bottom:2px solid #1d1b20;background:#f7f7f5;flex-shrink:0;"><div></div><sc-for list="{{ weekDays }}" as="d" hint-placeholder-count="7"><div style="padding:7px 4px;text-align:center;border-left:1px solid rgba(29,27,32,0.1);"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;font-weight:700;">{{ d.dow }}</div><div style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:{{ d.color }};">{{ d.date }}</div></div></sc-for></div>
+          <!-- grid -->
+          <div class="sc" style="flex:1;min-height:0;overflow-y:auto;position:relative;">
+            <div style="display:grid;grid-template-columns:46px repeat(7,1fr);position:relative;">
+              <div style="display:flex;flex-direction:column;">
+                <sc-for list="{{ hours }}" as="h" hint-placeholder-count="7"><div style="height:80px;border-bottom:1px solid rgba(29,27,32,0.08);padding:3px 6px;text-align:right;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#a3a7ad;">{{ h }}</div></sc-for>
+              </div>
+              <sc-for list="{{ dayCols }}" as="col" hint-placeholder-count="7"><div style="border-left:1px solid rgba(29,27,32,0.1);position:relative;"><sc-for list="{{ hours }}" as="h" hint-placeholder-count="7"><div style="height:80px;border-bottom:1px solid rgba(29,27,32,0.06);"></div></sc-for><sc-for list="{{ col.slots }}" as="s" hint-placeholder-count="1"><div style="position:absolute;left:3px;right:3px;top:{{ s.top }}px;height:{{ s.height }}px;border:2px solid {{ s.border }};border-radius:9px;background:{{ s.bg }};box-shadow:2px 2px 0 {{ s.shadow }};padding:5px 7px;overflow:hidden;"><div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span style="width:7px;height:7px;border-radius:50%;background:{{ s.dot }};flex-shrink:0;"></span><span style="font-size:11px;font-weight:800;color:{{ s.textColor }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ s.label }}</span></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:{{ s.timeColor }};">{{ s.time }}</div></div></sc-for></div></sc-for>
+            </div>
+          </div>
+          <!-- legend -->
+          <div style="display:flex;align-items:center;gap:16px;padding:10px 20px;border-top:2px solid #1d1b20;background:#f7f7f5;flex-shrink:0;"><sc-for list="{{ legend }}" as="lg" hint-placeholder-count="3"><div style="display:inline-flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;border:1.5px solid {{ lg.border }};background:{{ lg.bg }};"></span><span style="font-size:11.5px;font-weight:600;color:#5b5965;">{{ lg.label }}</span></div></sc-for><div style="margin-left:auto;font-size:11px;color:#a3a7ad;">Click a cell to create a 30-min slot</div></div>
+        </div>
+        <!-- chat rail -->
+        <div style="width:396px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:2px solid #1d1b20;background:#e7defe;flex-shrink:0;"><span style="width:34px;height:34px;border:2px solid #1d1b20;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:2px 2px 0 #1d1b20;">J</span><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#1d1b20;">지민 · Batch A</div><div style="font-size:11px;color:#5b5965;">confirmed · thread</div></div><span style="font-size:16px;color:#8a8693;">✕</span></div>
+          <!-- hierarchy: segmented controls -->
+          <div style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,0.1);display:flex;flex-direction:column;gap:9px;flex-shrink:0;">
+            <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="flex:1;text-align:center;padding:6px 0;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;">📢 Announcement</div><div style="flex:1;text-align:center;padding:6px 0;font-size:12px;font-weight:600;color:#5b5965;background:#fff;">💬 Chat</div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:1px 2px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Reach</span><div style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#1d1b20;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #1d1b20;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#1d1b20;"></span></span>All</div><div style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#5b5965;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.28);flex-shrink:0;"></span>Group</div><div style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#a3a7ad;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.2);flex-shrink:0;"></span>Individual</div></div>
+          </div>
+          <!-- schedule panel -->
+          <div style="border-bottom:1px solid rgba(29,27,32,0.1);flex-shrink:0;"><div style="padding:9px 16px 6px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Slots in scope</div><div class="sc" style="max-height:118px;overflow-y:auto;"><sc-for list="{{ scopeSlots }}" as="s" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:9px;padding:9px 16px;border-top:1px solid rgba(29,27,32,0.07);"><span style="width:8px;height:8px;border-radius:50%;background:{{ s.dot }};flex-shrink:0;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#1d1b20;font-weight:700;">{{ s.time }}</span><span style="flex:1;font-size:12px;color:#5b5965;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ s.label }}</span><span style="font-size:11px;color:#c2334f;font-weight:700;">Edit</span></div></sc-for></div></div>
+          <!-- messages: announcement banner vs chat bubbles -->
+          <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:13px;">
+            <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff1e6;box-shadow:3px 3px 0 #e0a83a;overflow:hidden;"><div style="display:flex;align-items:center;gap:7px;background:#ffe8a8;border-bottom:2px solid #1d1b20;padding:6px 12px;"><span style="font-size:12px;">📢</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">ANNOUNCEMENT · ALL</span></div><div style="padding:11px 13px;font-size:13px;line-height:1.55;color:#2a262f;">Interviews start next Monday. Please confirm your slot by Friday 6&nbsp;PM 🙏</div><div style="padding:0 13px 9px;font-size:10.5px;color:#8a8693;">You · Jul 21, 10:04</div></div>
+            <div style="align-self:flex-start;max-width:85%;border:1.5px solid rgba(29,27,32,0.14);border-radius:13px;border-bottom-left-radius:4px;background:#fff;padding:10px 13px;box-shadow:2px 2px 0 rgba(29,27,32,0.08);"><div style="font-size:13px;line-height:1.5;color:#2a262f;">Is the Tuesday 2 PM slot still open?</div><div style="font-size:10.5px;color:#a3a7ad;margin-top:4px;">지민 · 10:12</div></div>
+            <div style="align-self:flex-end;max-width:85%;border:2px solid #1d1b20;border-radius:13px;border-bottom-right-radius:4px;background:#ffe0ec;padding:10px 13px;box-shadow:2px 2px 0 #1d1b20;"><div style="font-size:13px;line-height:1.5;color:#2a262f;">Yes! I just held it for you — confirm when ready.</div><div style="font-size:10.5px;color:#8a8693;margin-top:4px;">You · 10:14</div></div>
+          </div>
+          <!-- composer -->
+          <div style="border-top:2px solid #1d1b20;padding:12px;display:flex;gap:9px;align-items:flex-end;flex-shrink:0;background:#fff;"><div style="flex:1;border:2px solid #1d1b20;border-radius:12px;background:#fff;padding:9px 12px;font-size:12.5px;color:#a3a7ad;min-height:44px;">Write a message…</div><div style="width:44px;height:44px;border:2px solid #1d1b20;border-radius:12px;background:#1d1b20;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:2px 2px 0 rgba(29,27,32,0.3);flex-shrink:0;">➤</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 02B CHAT REACH STATES ============ -->
+  <div style="width:1000px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">02B</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Chat reach — sub-picker states</div><div style="font-size:12px;color:#8a8693;">what All / Group / Individual reveal</div></div>
+    <div style="display:flex;gap:16px;">
+      <!-- All -->
+      <div style="flex:1;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#e7defe;border-bottom:2px solid #1d1b20;padding:9px 14px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">REACH = ALL</div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;align-items:center;gap:14px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Reach</span><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#1d1b20;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #1d1b20;display:inline-flex;align-items:center;justify-content:center;"><span style="width:8px;height:8px;border-radius:50%;background:#1d1b20;"></span></span>All</div><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8693;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.22);"></span>Group</div><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a3a7ad;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.18);"></span>Individual</div></div>
+          <div style="border:1.5px dashed rgba(29,27,32,0.2);border-radius:10px;background:#f7f7f5;padding:11px 13px;font-size:12px;color:#5b5965;line-height:1.5;">No sub-target needed. Sends to <b style="color:#1d1b20;">all 6 candidates</b> in this project.</div>
+        </div>
+      </div>
+      <!-- Group -->
+      <div style="flex:1;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#e7defe;border-bottom:2px solid #1d1b20;padding:9px 14px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">REACH = GROUP</div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;align-items:center;gap:14px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Reach</span><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8693;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.22);"></span>All</div><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#1d1b20;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #1d1b20;display:inline-flex;align-items:center;justify-content:center;"><span style="width:8px;height:8px;border-radius:50%;background:#1d1b20;"></span></span>Group</div><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a3a7ad;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.18);"></span>Individual</div></div>
+          <div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Which group?</div><div style="border:2px solid #1d1b20;border-radius:10px;background:#fff;padding:9px 12px;font-size:13px;font-weight:700;color:#1d1b20;display:flex;align-items:center;gap:8px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:14px;">🅰️</span>Batch A · Morning<span style="margin-left:auto;color:#8a8693;">▾</span></div><div style="font-size:11px;color:#8a8693;margin-top:6px;">3 recipients in this batch.</div></div>
+        </div>
+      </div>
+      <!-- Individual -->
+      <div style="flex:1;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#e7defe;border-bottom:2px solid #1d1b20;padding:9px 14px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">REACH = INDIVIDUAL</div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;align-items:center;gap:14px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Reach</span><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8693;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.22);"></span>All</div><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#8a8693;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid rgba(29,27,32,0.22);"></span>Group</div><div style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#1d1b20;"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #1d1b20;display:inline-flex;align-items:center;justify-content:center;"><span style="width:8px;height:8px;border-radius:50%;background:#1d1b20;"></span></span>Individual</div></div>
+          <div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Which candidate?</div><div style="border:2px solid #1d1b20;border-radius:10px;background:#fff;padding:9px 12px;font-size:13px;font-weight:700;color:#1d1b20;display:flex;align-items:center;gap:8px;box-shadow:2px 2px 0 #1d1b20;"><span style="width:24px;height:24px;border-radius:50%;border:1.5px solid #1d1b20;background:#faf7ff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;">지</span>김지민 · Batch A<span style="margin-left:auto;color:#8a8693;">▾</span></div><div style="font-size:11px;color:#8a8693;margin-top:6px;line-height:1.45;">Defaults to the open thread; pick anyone to start a new private thread.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 03 SLOT EDITOR MODAL ============ -->
+  <div style="width:1360px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">03</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Slot editor modal</div><div style="font-size:12px;color:#8a8693;">grouped sections · soft overlap warning</div></div>
+    <div style="width:1360px;height:660px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;">
+      <div style="position:absolute;inset:0;background-image:radial-gradient(rgba(29,27,32,0.09) 1px,transparent 1px);background-size:20px 20px;opacity:0.6;"></div>
+      <div style="position:absolute;inset:0;background:rgba(29,27,32,0.28);"></div>
+      <div style="position:relative;width:560px;background:#fff;border:3px solid #1d1b20;border-radius:18px;box-shadow:8px 8px 0 rgba(29,27,32,0.4);overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid #1d1b20;background:#ffe8a8;padding:14px 20px;"><span style="font-size:17px;">✏️</span><div style="flex:1;font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#1d1b20;">Edit slot</div><span style="width:28px;height:28px;border:1.5px solid #1d1b20;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:2px 2px 0 #1d1b20;">✕</span></div>
+        <div class="sc" style="max-height:500px;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px;">
+          <div style="flex-shrink:0;"><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Title</div><div style="border:2px solid #1d1b20;border-radius:11px;padding:11px 13px;font-size:14px;font-weight:700;color:#1d1b20;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.1);">지민 — 결제 플로우 심층 인터뷰</div><div style="font-size:10.5px;color:#a3a7ad;margin-top:5px;">Free text · shown on the participant's schedule and calendar block.</div></div>
+          <div style="border:2px solid #1d1b20;border-radius:12px;overflow:hidden;box-shadow:2px 2px 0 rgba(29,27,32,0.12);flex-shrink:0;">
+            <div style="background:#f7f7f5;border-bottom:1.5px solid rgba(29,27,32,0.12);padding:7px 13px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Target</div>
+            <div style="padding:13px;display:flex;flex-direction:column;gap:10px;"><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Assign mode</div><div style="display:inline-flex;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="padding:6px 15px;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;">Individual</div><div style="padding:6px 15px;font-size:12px;font-weight:600;color:#5b5965;background:#fff;">Group</div></div></div><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Candidate</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:9px 12px;font-size:13px;color:#1d1b20;background:#fff;display:flex;justify-content:space-between;">지민 (010-••••-4821) <span style="color:#8a8693;">▾</span></div></div></div>
+          </div>
+          <div style="border:2px solid #1d1b20;border-radius:12px;overflow:hidden;box-shadow:2px 2px 0 rgba(29,27,32,0.12);flex-shrink:0;">
+            <div style="background:#f7f7f5;border-bottom:1.5px solid rgba(29,27,32,0.12);padding:7px 13px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Time</div>
+            <div style="padding:13px;display:flex;flex-direction:column;gap:10px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;"><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Start</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#1d1b20;">Jul 22 · 14:00</div></div><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">End</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:9px 11px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#1d1b20;">Jul 22 · 14:30</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start;background:#fff1e6;border:1.5px solid #f0d78a;border-radius:10px;padding:9px 12px;"><span style="font-size:13px;">⚠️</span><div style="font-size:11.5px;color:#8a5a10;line-height:1.45;">Overlaps with <b>민수 · 14:15–14:45</b>. This is allowed — just double-check.</div></div>
+            </div>
+          </div>
+          <div style="border:2px solid #1d1b20;border-radius:12px;overflow:hidden;box-shadow:2px 2px 0 rgba(29,27,32,0.12);flex-shrink:0;">
+            <div style="background:#f7f7f5;border-bottom:1.5px solid rgba(29,27,32,0.12);padding:7px 13px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Details</div>
+            <div style="padding:13px;display:flex;flex-direction:column;gap:10px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;"><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Status</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:9px 11px;font-size:12px;color:#1d1b20;display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;"></span>Confirmed <span style="margin-left:auto;color:#8a8693;">▾</span></div></div><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Location</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:9px 11px;font-size:12px;color:#8a8693;">Zoom / room…</div></div></div><div><div style="font-size:11px;font-weight:700;color:#5b5965;margin-bottom:5px;">Note</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:9px 11px;font-size:12px;color:#a3a7ad;min-height:52px;">Optional note for the participant…</div></div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;border-top:2px solid #1d1b20;background:#f7f7f5;padding:13px 20px;"><span style="font-size:12.5px;font-weight:700;color:#c2334f;">Delete</span><div style="margin-left:auto;display:flex;gap:9px;"><div style="border:1.5px solid #1d1b20;border-radius:999px;padding:8px 17px;font-size:13px;font-weight:700;background:#fff;color:#1d1b20;">Cancel</div><div style="border:2px solid #1d1b20;border-radius:999px;padding:8px 20px;font-size:13px;font-weight:800;background:#1d1b20;color:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.3);">Save slot</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 03B PARTICIPANT · PHONE GATE ============ -->
+  <div style="width:520px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">03B</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Participant · Phone gate</div><div style="font-size:12px;color:#8a8693;">entry to the master link · last 6 digits</div></div>
+    <div style="width:520px;height:620px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;">
+      <div style="width:100%;background:#fff;border:3px solid #1d1b20;border-radius:20px;box-shadow:6px 6px 0 #1d1b20;padding:34px 30px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div style="width:60px;height:60px;border:2px solid #1d1b20;border-radius:16px;background:#cfe6ff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:2px 2px 0 #1d1b20;">🔒</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;margin-top:6px;text-align:center;">Verify it's you</div>
+        <div style="font-size:13px;color:#5b5965;line-height:1.55;text-align:center;max-width:340px;">This schedule link is shared with everyone. Enter the <b style="color:#1d1b20;">last 6 digits of your phone number</b> to see your slot.</div>
+        <div style="display:flex;gap:9px;margin-top:16px;">
+          <sc-for list="{{ otp }}" as="d" hint-placeholder-count="6"><div style="width:46px;height:56px;border:2px solid {{ d.border }};border-radius:12px;background:{{ d.bg }};display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:22px;font-weight:700;color:#1d1b20;box-shadow:{{ d.shadow }};">{{ d.v }}</div></sc-for>
+        </div>
+        <div style="width:100%;border:2px solid #1d1b20;border-radius:999px;background:#1d1b20;color:#fff;padding:13px 0;text-align:center;font-size:15px;font-weight:800;box-shadow:3px 3px 0 rgba(29,27,32,0.3);margin-top:22px;">View my schedule</div>
+        <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8a8693;margin-top:10px;text-align:center;line-height:1.4;"><span>🛈</span><span>We use this only to match you to your interview — nothing is stored on this device.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 04 PARTICIPANT VIEW ============ -->
+  <div style="width:760px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+    <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">04</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Participant view</div><div style="font-size:12px;color:#8a8693;">public /schedule · after phone gate · announcement banner vs chat bubbles</div></div>
+    <div style="width:760px;height:900px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:11px;border-bottom:3px solid #1d1b20;background:#cfe6ff;padding:15px 22px;flex-shrink:0;"><span style="font-size:20px;">📅</span><div style="flex:1;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Your interview schedule</div></div><div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">지민 님</div></div>
+      <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:18px;">
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Your slot</div>
+          <div style="border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 #16a34a;padding:16px 18px;display:flex;align-items:center;gap:14px;"><div style="width:52px;height:52px;border:2px solid #1d1b20;border-radius:12px;background:#f4fbf6;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#14713a;font-weight:700;">JUL</span><span style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;line-height:1;">22</span></div><div style="flex:1;"><div style="font-size:16px;font-weight:800;color:#1d1b20;">Tuesday · 2:00 – 2:30 PM</div><div style="font-size:12.5px;color:#5b5965;margin-top:2px;">Zoom · link shared 1 day before</div></div><div style="display:inline-flex;align-items:center;gap:5px;border:1.5px solid #cdeed8;background:#f4fbf6;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;color:#14713a;"><span style="width:7px;height:7px;border-radius:50%;background:#16a34a;"></span>Confirmed</div></div>
+        </div>
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Announcements</div>
+          <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff1e6;box-shadow:3px 3px 0 #e0a83a;overflow:hidden;"><div style="display:flex;align-items:center;gap:7px;background:#ffe8a8;border-bottom:2px solid #1d1b20;padding:7px 13px;"><span style="font-size:12px;">📢</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">FROM THE TEAM</span></div><div style="padding:12px 14px;font-size:13.5px;line-height:1.6;color:#2a262f;">Interviews start next Monday. Please confirm your slot by Friday 6&nbsp;PM 🙏 Reach out here if the time no longer works.</div><div style="padding:0 14px 10px;font-size:11px;color:#8a8693;">Research team · Jul 21</div></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;color:#8a8693;font-weight:700;margin-bottom:10px;">Messages</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="align-self:flex-start;max-width:82%;border:1.5px solid rgba(29,27,32,0.14);border-radius:14px;border-bottom-left-radius:4px;background:#fff;padding:11px 14px;box-shadow:2px 2px 0 rgba(29,27,32,0.08);"><div style="font-size:13.5px;line-height:1.5;color:#2a262f;">Hi 지민! Your slot is confirmed. Let us know if anything changes.</div><div style="font-size:10.5px;color:#a3a7ad;margin-top:4px;">Research team · 10:14</div></div>
+            <div style="align-self:flex-end;max-width:82%;border:2px solid #1d1b20;border-radius:14px;border-bottom-right-radius:4px;background:#cfe6ff;padding:11px 14px;box-shadow:2px 2px 0 #1d1b20;"><div style="font-size:13.5px;line-height:1.5;color:#2a262f;">Got it, thank you! See you Tuesday.</div><div style="font-size:10.5px;color:#5b5965;margin-top:4px;">You · 10:20</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:2px solid #1d1b20;padding:13px 16px;display:flex;gap:9px;align-items:flex-end;flex-shrink:0;background:#fff;"><div style="flex:1;border:2px solid #1d1b20;border-radius:12px;background:#fff;padding:10px 13px;font-size:13px;color:#a3a7ad;min-height:44px;">Reply to the team…</div><div style="width:46px;height:46px;border:2px solid #1d1b20;border-radius:12px;background:#1d1b20;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:2px 2px 0 rgba(29,27,32,0.3);flex-shrink:0;">➤</div></div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const tableCols = ['Email', 'Age', 'Region', 'Slot'];
+    const R = (name, phone, email, f1, f2, confirmed, checked, slot) => ({
+      name, phone, email, field1: f1, field2: f2, confirmed,
+      checkMark: checked ? '✓' : '',
+      checkBg: checked ? '#1d1b20' : '#fff',
+      checkBorder: '#1d1b20',
+      stickyBg: checked ? '#fff9fb' : '#fff',
+      hasSlot: !!slot, noSlot: !slot,
+      slotTime: slot ? slot.t : '', slotDot: slot ? slot.d : '#8a8693',
+      token: (Math.random().toString(36).slice(2, 6)),
+    });
+    const rows = [
+      R('김지민', '010-••••-4821', 'jimin@…', 'F · 32', 'Seoul', true, true, { t: 'Jul 22 · 14:00', d: '#16a34a' }),
+      R('이민수', '010-••••-7734', 'minsu@…', 'M · 29', 'Gyeonggi', false, true, { t: 'Jul 22 · 14:15', d: '#ff5c8a' }),
+      R('박서연', '010-••••-2156', 'seoyeon@…', 'F · 34', 'Seoul', false, true, null),
+      R('최유진', '010-••••-9902', 'yujin@…', 'F · 27', 'Incheon', true, false, { t: 'Jul 23 · 10:30', d: '#16a34a' }),
+      R('정하늘', '010-••••-5518', 'haneul@…', 'F · 31', 'Busan', false, false, null),
+      R('강도현', '010-••••-3390', 'dohyun@…', 'M · 30', 'Seoul', false, false, { t: 'Jul 24 · 16:00', d: '#8a8693' }),
+    ];
+
+    const weekDays = [
+      { dow: 'SUN', date: '20', color: '#c2334f' },
+      { dow: 'MON', date: '21', color: '#1d1b20' },
+      { dow: 'TUE', date: '22', color: '#1d1b20' },
+      { dow: 'WED', date: '23', color: '#1d1b20' },
+      { dow: 'THU', date: '24', color: '#1d1b20' },
+      { dow: 'FRI', date: '25', color: '#1d1b20' },
+      { dow: 'SAT', date: '26', color: '#2563a8' },
+    ];
+    const hours = ['9', '10', '11', '12', '13', '14', '15', '16', '17'];
+    const STY = {
+      proposed: { border: '#ff5c8a', bg: '#ffeef4', shadow: 'rgba(255,92,138,0.4)', dot: '#ff5c8a', textColor: '#1d1b20', timeColor: '#c2334f' },
+      confirmed: { border: '#16a34a', bg: '#f4fbf6', shadow: 'rgba(22,163,74,0.35)', dot: '#16a34a', textColor: '#1d1b20', timeColor: '#14713a' },
+      cancelled: { border: 'rgba(29,27,32,0.2)', bg: '#f7f7f5', shadow: 'rgba(29,27,32,0.1)', dot: '#8a8693', textColor: '#8a8693', timeColor: '#a3a7ad' },
+    };
+    const blk = (colIdx, startH, dur, status, label) => ({ colIdx, top: (startH * 56) + (0), height: dur * 56 / 60 * 1, ...STY[status], label, time: `${String(9 + Math.floor((startH * 56) / 56)).padStart(2, '0')}:00` });
+    const mkSlot = (startHourOffset, minutes, dur, status, label, time) => ({ top: startHourOffset * 80 + minutes / 60 * 80, height: Math.max(dur / 60 * 80, 40), ...STY[status], label, time });
+    const dayCols = [
+      { slots: [] },
+      { slots: [mkSlot(1, 0, 30, 'confirmed', '지민', '10:00–10:30')] },
+      { slots: [mkSlot(5, 0, 30, 'proposed', '민수', '14:00–14:30'), mkSlot(5, 15, 30, 'proposed', '서연', '14:15–14:45')] },
+      { slots: [mkSlot(1, 30, 30, 'confirmed', '유진', '10:30–11:00')] },
+      { slots: [mkSlot(7, 0, 45, 'cancelled', '도현', '16:00–16:45')] },
+      { slots: [mkSlot(3, 0, 30, 'proposed', 'Open', '12:00–12:30')] },
+      { slots: [] },
+    ];
+    const legend = [
+      { border: '#ff5c8a', bg: '#ffeef4', label: 'Proposed' },
+      { border: '#16a34a', bg: '#f4fbf6', label: 'Confirmed' },
+      { border: 'rgba(29,27,32,0.2)', bg: '#f7f7f5', label: 'Cancelled' },
+    ];
+    const scopeSlots = [
+      { dot: '#16a34a', time: 'Jul 22 14:00', label: '지민 · confirmed' },
+      { dot: '#ff5c8a', time: 'Jul 22 14:15', label: '서연 · proposed' },
+      { dot: '#8a8693', time: 'Jul 24 16:00', label: '도현 · cancelled' },
+    ];
+
+    const P = (name, phone, meta, confirmed, slot) => ({
+      name, phone, meta, confirmed,
+      hasSlot: !!slot, noSlot: !slot,
+      slotTime: slot ? slot.t : '', slotDot: slot ? slot.d : '#8a8693',
+    });
+    const groups = [
+      { name: 'Batch A · Morning', icon: '🅰️', headBg: '#cfe6ff', count: '3명', isBatch: true, isInbox: false, people: [
+        P('김지민', '010-••••-4821', 'F · 32 · Seoul', true, { t: 'Jul 22 · 14:00', d: '#16a34a' }),
+        P('최유진', '010-••••-9902', 'F · 27 · Incheon', true, { t: 'Jul 23 · 10:30', d: '#16a34a' }),
+        P('박서연', '010-••••-2156', 'F · 34 · Seoul', false, null),
+      ] },
+      { name: 'Batch B · Afternoon', icon: '🅱️', headBg: '#cdebd9', count: '2명', isBatch: true, isInbox: false, people: [
+        P('이민수', '010-••••-7734', 'M · 29 · Gyeonggi', false, { t: 'Jul 22 · 14:15', d: '#ff5c8a' }),
+        P('강도현', '010-••••-3390', 'M · 30 · Seoul', false, { t: 'Jul 24 · 16:00', d: '#8a8693' }),
+      ] },
+      { name: 'Inbox · unassigned', icon: '📥', headBg: '#f7f7f5', count: '1명', isBatch: false, isInbox: true, people: [
+        P('정하늘', '010-••••-5518', 'F · 31 · Busan', false, null),
+      ] },
+    ];
+
+    const otp = [
+      { v: '4', filled: true }, { v: '8', filled: true }, { v: '2', filled: true },
+      { v: '1', filled: true }, { v: '', filled: false, caret: true }, { v: '', filled: false },
+    ].map((c) => ({
+      v: c.v,
+      border: c.filled ? '#1d1b20' : (c.caret ? '#ff5c8a' : 'rgba(29,27,32,0.2)'),
+      bg: c.filled ? '#fff' : (c.caret ? '#fff' : '#f7f7f5'),
+      shadow: c.filled ? '2px 2px 0 rgba(29,27,32,0.12)' : (c.caret ? '2px 2px 0 #ff5c8a' : 'none'),
+    }));
+
+    return { tableCols, rows, weekDays, hours, dayCols, legend, scopeSlots, groups, otp };
+  }
+}
+</script>
+</body>
+</html>

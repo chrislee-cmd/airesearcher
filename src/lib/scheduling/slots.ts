@@ -79,6 +79,30 @@ export function fromLocalInputValue(local: string): string | null {
   return d.toISOString();
 }
 
+// The compose-scope a slot panel is filtered by (mirrors the chat hierarchy):
+// 전체(all) = every slot, 그룹(group) = one batch, 개인(personal) = one candidate.
+export type SlotScopeFilter =
+  | { kind: 'all' }
+  | { kind: 'group'; batchId: string }
+  | { kind: 'personal'; candidateId: string };
+
+// Slots visible for a given compose scope, ordered earliest→latest. Pure —
+// the assigned-schedule panel in the chat rail reuses the client's `slots`.
+export function slotsForScope(
+  all: SchedSlot[],
+  scope: SlotScopeFilter,
+): SchedSlot[] {
+  const filtered =
+    scope.kind === 'group'
+      ? all.filter((s) => s.batch_id === scope.batchId)
+      : scope.kind === 'personal'
+        ? all.filter((s) => s.candidate_id === scope.candidateId)
+        : all;
+  return [...filtered].sort(
+    (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+  );
+}
+
 // The slot a candidate row surfaces in the list "다음 슬롯" column: the
 // earliest upcoming non-cancelled slot; if none upcoming, the most recent
 // non-cancelled past slot; null if the candidate has only cancelled/no slots.

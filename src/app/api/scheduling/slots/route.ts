@@ -29,13 +29,20 @@ export async function POST(request: Request) {
 
   // PR-B: a slot needs a title OR a candidate. candidate_id is now optional
   // (standalone titled events), batch_id scopes the slot to its batch.
+  // Group mode fans out one slot per candidate in the batch (this PR).
+  const isGroup = b.mode === 'group';
   const candidateId = typeof b.candidate_id === 'string' ? b.candidate_id : '';
   const batchId = typeof b.batch_id === 'string' ? b.batch_id : '';
   const title =
     typeof b.title === 'string' && b.title.trim() ? b.title.trim() : '';
   const startAt = typeof b.start_at === 'string' ? b.start_at : '';
   const endAt = typeof b.end_at === 'string' ? b.end_at : '';
-  if ((!title && !candidateId) || !startAt || !endAt) {
+  // Group mode needs a batch to fan out over; individual mode needs a title or a
+  // candidate. Both need valid times (validated below).
+  if (isGroup ? !batchId : !title && !candidateId) {
+    return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
+  }
+  if (!startAt || !endAt) {
     return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
   }
   const start = new Date(startAt);
@@ -57,6 +64,53 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
+  const wideCols =
+    'id, candidate_id, batch_id, title, start_at, end_at, status, location, note';
+
+  // Group fan-out: create one slot per candidate in the batch, all sharing the
+  // same title/time/status/location/note. Individual rows keep every existing
+  // read path (per-candidate "next slot", public participant view, overlap
+  // warning) unchanged — no shared "group slot" row.
+  if (isGroup) {
+    const { data: batchCandidates, error: candErr } = await admin
+      .from('sched_candidates')
+      .select('id, status')
+      .eq('batch_id', batchId);
+    if (candErr) {
+      return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+    }
+    // Active roster only — a cancelled candidate shouldn't get a new slot.
+    const targets = (batchCandidates ?? []).filter(
+      (c) => c.status !== 'cancelled',
+    );
+    if (targets.length === 0) {
+      return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
+    }
+    const startIso = start.toISOString();
+    const endIso = end.toISOString();
+    const rows = targets.map((c) => ({
+      candidate_id: c.id,
+      batch_id: batchId || null,
+      title: title || null,
+      start_at: startIso,
+      end_at: endIso,
+      status,
+      location,
+      note,
+    }));
+    const { data: inserted, error: insertErr } = await admin
+      .from('sched_slots')
+      .insert(rows)
+      .select(wideCols);
+    if (insertErr) {
+      return NextResponse.json({ error: 'create_failed' }, { status: 500 });
+    }
+    return NextResponse.json(
+      { slots: inserted ?? [], count: inserted?.length ?? 0 },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
   // Verify the candidate exists when one is attached (FK would reject a bogus id
   // anyway, but this returns a clean 404).
   if (candidateId) {
@@ -73,8 +127,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const wideCols =
-    'id, candidate_id, batch_id, title, start_at, end_at, status, location, note';
   let { data, error } = await admin
     .from('sched_slots')
     .insert({
