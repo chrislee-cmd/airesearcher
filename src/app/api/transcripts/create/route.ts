@@ -59,12 +59,10 @@ export async function POST(request: Request) {
   const apiModel =
     provider === 'deepgram' ? langEntry.dgModel : ELEVENLABS_API_MODEL;
 
-  // FK-guard (hotfix): transcript_jobs.project_id FK → public.projects, but the
-  // transcript widget's selection SSOT is interview_projects. A selected id that
-  // doesn't exist in public.projects would violate the FK and crash the insert.
-  // Degrade an unresolvable id to null (transcript created as unfiled) instead
-  // of crashing — a valid public.projects id is preserved. Root reconciliation
-  // (interview_projects vs public.projects) is a separate follow-up.
+  // FK-guard: transcript_jobs.project_id FK → interview_projects (the widget's
+  // selection SSOT). A valid interview_projects id is preserved (attribution);
+  // anything else (null/stale legacy id) degrades to null so the insert can't
+  // violate transcript_jobs_project_id_fkey. See project-guard.ts.
   const validProjectId = await resolveProjectId(supabase, project_id, org.org_id);
 
   const { data: job, error: insertErr } = await supabase

@@ -89,10 +89,10 @@ export async function POST(request: Request) {
     }
     jobId = updated.id;
   } else {
-    // FK-guard (hotfix): degrade a project_id that doesn't exist in
-    // public.projects (FK target) to null so the insert can't violate
-    // transcript_jobs_project_id_fkey. See project-guard.ts for the full
-    // cross-namespace rationale (interview_projects vs public.projects).
+    // FK-guard: transcript_jobs.project_id FK → interview_projects (the
+    // widget's selection SSOT). A valid id is preserved (attribution); anything
+    // else degrades to null so the insert can't violate
+    // transcript_jobs_project_id_fkey. See project-guard.ts.
     const validProjectId = await resolveProjectId(
       supabase,
       project_id,
