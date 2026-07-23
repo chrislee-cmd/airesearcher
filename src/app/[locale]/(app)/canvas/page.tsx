@@ -22,6 +22,7 @@ import { moderatorAiCard } from '@/components/canvas/widgets/moderator-ai-card';
 import { pptReportCard } from '@/components/canvas/widgets/ppt-report-card';
 import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
+import { DESIGN_BRAND_OVERRIDE_KEYS } from '@/lib/design-brands';
 
 // CanvasWidgetKey → WidgetContent 매핑. visibility 가 true 인 키만
 // page 가 board 로 전달 → board 가 vertical stack 으로 렌더.
@@ -63,15 +64,22 @@ async function resolveOrgGate(): Promise<{
   return { isUnlimited: flags.isUnlimited, orgId: org.org_id };
 }
 
+// Design-system override allowlist for `?design=<name>`. Keys are sourced
+// from src/lib/design-brands.ts (SSOT shared with the /design grid). Adding
+// a new reference brand only needs: (1) its `[data-design="<key>"]` block
+// in globals.css, (2) a row in DESIGN_BRANDS — this set picks it up
+// automatically. Default (no param) keeps the bento tone.
+const DESIGN_OVERRIDES = DESIGN_BRAND_OVERRIDE_KEYS;
+
 export default async function CanvasPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ focus?: string }>;
+  searchParams: Promise<{ focus?: string; design?: string }>;
 }) {
   const { locale } = await params;
-  const { focus } = await searchParams;
+  const { focus, design } = await searchParams;
   setRequestLocale(locale);
 
   const { isUnlimited, orgId } = await resolveOrgGate();
@@ -96,10 +104,12 @@ export default async function CanvasPage({
     ? []
     : visibleKeys.filter((k) => !OPEN_FOR_NORMAL.has(k));
 
+  const designOverride = design && DESIGN_OVERRIDES.has(design) ? design : null;
+
   // RealtimeTranscriptProvider — translate 위젯이 publisher, probing 등
   // 다른 위젯이 consumer. canvas 안에서만 의미 있어 layout 이 아니라 page
   // 레벨에서 마운트. /live 페이지에는 영향 없음.
-  return (
+  const board = (
     <RealtimeTranscriptProvider>
       <CanvasBoard
         widgets={widgets}
@@ -108,5 +118,13 @@ export default async function CanvasPage({
         orgId={orgId}
       />
     </RealtimeTranscriptProvider>
+  );
+
+  return designOverride ? (
+    <div data-design={designOverride} className="contents">
+      {board}
+    </div>
+  ) : (
+    board
   );
 }
