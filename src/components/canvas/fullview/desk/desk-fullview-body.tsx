@@ -198,7 +198,7 @@ export function DeskFullviewBody({
   const ready = !!(job && job.status === 'done' && job.output);
   if (!ready) {
     return (
-      <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
+      <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
         <div className="flex min-h-0 flex-1 items-center justify-center p-10">
           {hydrationFailed ? (
             <EmptyState
@@ -236,7 +236,10 @@ export function DeskFullviewBody({
   }
 
   return (
-    <div className="flex h-full min-h-0 bg-surface-canvas">
+    // flex-1(+min-h-0) 로 슬롯(flex-col) 높이를 채운다. h-full(height:100%)은
+    // flex-1 부모 위에서 % 높이 해소가 안 돼 body 가 콘텐츠 높이로 접히므로
+    // 금지 — interpreter fullview 와 동일 선례.
+    <div className="flex min-h-0 flex-1 bg-surface-canvas">
       {/* 좌 nav — scroll-spy(§F4: 210px · border-r-2 ink · paper-soft). */}
       {navItems.length > 0 && (
         <nav className="flex w-[210px] shrink-0 flex-col gap-1 overflow-y-auto border-r-2 border-ink bg-paper-soft px-3 py-4">
