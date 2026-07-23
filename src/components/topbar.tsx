@@ -7,6 +7,7 @@ import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
 import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
 import { ViewModeToggle } from './view-mode-toggle';
+import { getActiveOrg } from '@/lib/org';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
 // + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
@@ -23,6 +24,10 @@ export async function Topbar({
 }) {
   const tBrand = await getTranslations('Brand');
   const tTabs = await getTranslations('Topbar.tabs');
+
+  // Org members (invitees) get a scheduling entry in the account menu even
+  // without super-admin, so they can find the shared workspace after accepting.
+  const isOrgMember = isAuthed ? !!(await getActiveOrg()) : false;
 
   const tabs = [
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
@@ -77,6 +82,7 @@ export async function Topbar({
               email={userEmail}
               credits={credits}
               isSuperAdmin={isSuperAdmin}
+              isOrgMember={isOrgMember}
             />
           </>
         ) : (

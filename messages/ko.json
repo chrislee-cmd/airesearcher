@@ -2885,6 +2885,30 @@
       "ctaPublishing": "발행 중…"
     }
   },
+  "CollabShare": {
+    "button": "협업자",
+    "title": "협업자 공유",
+    "notice": "초대한 사람은 조직 멤버로 이 워크스페이스와 스케줄링을 전체 접근으로 사용합니다.",
+    "emailLabel": "이메일",
+    "emailPlaceholder": "teammate@example.com",
+    "invite": "초대",
+    "inviting": "초대 중…",
+    "invited": "초대 메일을 보냈습니다.",
+    "invitedNoEmail": "초대는 추가됐지만 메일 발송에 실패했습니다. 다시 시도하세요.",
+    "invalidEmail": "올바른 이메일을 입력하세요.",
+    "inviteError": "초대에 실패했습니다.",
+    "forbidden": "초대 권한이 없습니다.",
+    "collaboratorsLabel": "현재 협업자",
+    "empty": "아직 협업자가 없습니다.",
+    "remove": "제거",
+    "removeConfirm": "{email} 님을 제거할까요?",
+    "removeError": "제거에 실패했습니다.",
+    "ownerTag": "소유자",
+    "pendingTag": "대기 중",
+    "done": "완료",
+    "emailSubject": "{inviter} 님이 \"{org}\" 에 초대했습니다",
+    "emailBody": "{inviter} 님이 Research-Canvas 의 \"{org}\" 협업에 초대했습니다.\n\n공유 워크스페이스와 스케줄링을 전체 접근으로 사용할 수 있습니다.\n\n초대 수락 및 로그인: {url}"
+  },
   "RecruitingScheduling": {
     "calClickHint": "셀을 클릭해 30분 슬롯을 만드세요",
     "chatKindLabel": "메시지 유형",

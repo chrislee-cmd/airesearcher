@@ -35,7 +35,12 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslations } from 'next-intl';
-import type { DeskJob, DeskClaim } from '@/components/desk-job-provider';
+import type {
+  DeskJob,
+  DeskClaim,
+  DeskAnalytics,
+  DeskRevenueSeries,
+} from '@/components/desk-job-provider';
 import { isJudgmentEvent } from '@/lib/desk-orchestrator/types';
 import {
   parseDeskReport,
@@ -43,6 +48,12 @@ import {
   type DeskSectionKind,
 } from '@/lib/desk-report-parser';
 import { DeskMarkdownBody } from '@/components/canvas/widgets/desk-result/desk-markdown';
+// 재사용(로직/프레젠테이션 컴포넌트) — market mode 뷰 · 정량 차트 · 매출 시계열.
+// regular DeskResultView 가 job.mode 분기로 쓰는 것과 동일 컴포넌트로, fullview 도
+// 데이터/렌더를 프레시 재구현 없이 재사용해 내용 parity 를 보장한다(스펙 제약).
+import { MarketDataset } from '@/components/canvas/widgets/desk-result/market-dataset';
+import { RevenueChart } from '@/components/canvas/widgets/desk-result/revenue-chart';
+import { DeskAnalyticsPanel } from '@/components/desk-analytics-panel';
 import { Select } from '@/components/ui/select';
 import { BrandLoader } from '@/components/ui/brand-loader';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -95,6 +106,18 @@ function sourceDomain(url: string): string {
   } catch {
     return '—';
   }
+}
+
+type TDesk = ReturnType<typeof useTranslations<'Desk'>>;
+
+// "주요 기업 매출" 섹션 식별 — 이 섹션 상단에 구조화 매출 grouped bar(RevenueChart)
+// 를 얹는다(#461). regular DeskReportView 와 동일한 순수 분류 로직(로직 재사용 —
+// superseded 프레젠테이션 파일은 편집 안 함). 매칭 실패해도 섹션 본문은 그대로
+// 렌더되므로 회귀는 없다(차트만 그 섹션에 안 붙음).
+function isRevenueSection(title: string): boolean {
+  return /주요\s*기업\s*매출|기업\s*매출|주요\s*상장사\s*매출|company\s*revenue|key\s*compan/i.test(
+    title,
+  );
 }
 
 export function DeskFullviewBody({
@@ -187,6 +210,14 @@ export function DeskFullviewBody({
   const researchQuestions = job?.research_questions ?? [];
   const similarKeywords = job?.similar_keywords ?? [];
 
+  // 정량 분석 — analytics 차트(quant 섹션) + 매출 시계열(기업 매출 섹션). regular
+  // DeskReportView 와 동일 데이터. 없으면 각 섹션은 표/프로즈만 렌더(회귀 없음).
+  const analytics = job?.analytics ?? null;
+  const revenueSeries = useMemo(
+    () => job?.analytics?.revenueSeries ?? [],
+    [job?.analytics],
+  );
+
   // scroll-spy 활성 섹션 id.
   const scrollRef = useRef<HTMLDivElement>(null);
   const navItems = parsed.ok
@@ -230,6 +261,29 @@ export function DeskFullviewBody({
               description={t('emptyDesc')}
             />
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── market mode — 시장조사 결과(KPI 히어로 · 참고 데이터 disclaimer · 규모
+  // 계층/기업 매출 표). regular DeskResultView 와 동일하게 재사용 컴포넌트
+  // MarketDataset 로 위임 → 내용 parity 보장(프레시 재구현 금지 제약). V2 좌측
+  // scroll-spy nav 는 report 섹션 구조 전용이라 market 은 자체 레이아웃을 쓰고,
+  // 셸 프레임(헤더밴드·닫기·프로젝트 pill)은 CanvasBoard FullviewHeader 가 소유.
+  // 판단 로그(상단)·export 액션(하단)은 report 스트림과 동일하게 유지한다.
+  if (job.mode === 'market') {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
+        {judgment.length > 0 && (
+          <div className="shrink-0 px-6 pt-5">
+            <JudgmentLog lines={judgment} label={t('judgmentLog')} />
+          </div>
+        )}
+        <MarketDataset job={job} tDesk={tDesk} />
+        <div className="flex shrink-0 gap-2 border-t border-line-soft px-6 py-3">
+          <ExportButton onClick={onExportDocx} label={t('exportDocx')} />
+          <ExportButton onClick={onExportMd} label={t('exportMd')} />
         </div>
       </div>
     );
@@ -281,6 +335,13 @@ export function DeskFullviewBody({
           <JudgmentLog lines={judgment} label={t('judgmentLog')} />
         )}
 
+        {/* 첫 헤딩 앞 preamble(표지 문구 등) — 보통 비어있고, 있을 때만 프로즈로. */}
+        {parsed.ok && parsed.preamble && (
+          <div className="text-md leading-[1.65] text-ink-2">
+            <DeskMarkdownBody source={parsed.preamble} />
+          </div>
+        )}
+
         {similarKeywords.length > 0 && (
           <section>
             <div className="mb-2 font-mono-label text-xs font-bold uppercase tracking-[0.1em] text-mute-soft">
@@ -309,6 +370,10 @@ export function DeskFullviewBody({
                 section.kind === 'rq' ? researchQuestions : []
               }
               rqById={rqById}
+              analytics={section.kind === 'quant' ? analytics : null}
+              revenueSeries={
+                section.kind === 'competitive' ? revenueSeries : []
+              }
               onVisible={setActiveId}
               scrollRoot={scrollRef}
               t={t}
@@ -377,6 +442,8 @@ function SectionCard({
   quantClaims,
   researchQuestions,
   rqById,
+  analytics,
+  revenueSeries,
   onVisible,
   scrollRoot,
   t,
@@ -386,10 +453,14 @@ function SectionCard({
   quantClaims: Extract<DeskClaim, { kind: 'quant' }>[];
   researchQuestions: NonNullable<DeskJob['research_questions']>;
   rqById: Map<string, NonNullable<DeskJob['rq_answers']>[number]>;
+  // quant 섹션의 정량 차트(DeskAnalyticsPanel) — 비-quant 섹션이면 null.
+  analytics: DeskAnalytics | null;
+  // 기업 매출 섹션의 매출 시계열(RevenueChart) — 그 외 섹션이면 빈 배열.
+  revenueSeries: DeskRevenueSeries[];
   onVisible: (id: string) => void;
   scrollRoot: React.RefObject<HTMLDivElement | null>;
   t: ReturnType<typeof useTranslations>;
-  tDesk: ReturnType<typeof useTranslations>;
+  tDesk: TDesk;
 }) {
   const visual = KIND_VISUAL[section.kind];
   // appendix(reference) 는 기본 접힘 — 본문 초점 유지(파서 collapsed 계약).
@@ -415,8 +486,13 @@ function SectionCard({
     return () => obs.disconnect();
   }, [section.id, onVisible, scrollRoot]);
 
-  const hasQuant = section.kind === 'quant' && quantClaims.length > 0;
   const hasRq = section.kind === 'rq' && researchQuestions.length > 0;
+  const hasCharts = section.kind === 'quant' && !!analytics?.charts?.length;
+  // 기업 매출 grouped bar — competitive 섹션(부모에서 스코프) + 제목 매칭 + 값 존재.
+  const hasRevenue =
+    section.kind === 'competitive' &&
+    isRevenueSection(section.title) &&
+    revenueSeries.length > 0;
 
   return (
     <article
@@ -451,6 +527,12 @@ function SectionCard({
 
       {open && (
         <div className="px-4 py-4">
+          {/* 기업 매출 grouped bar — 표/프로즈보다 위(구조화 DART 값). */}
+          {hasRevenue && (
+            <div className="mb-4">
+              <RevenueChart series={revenueSeries} tDesk={tDesk} />
+            </div>
+          )}
           {hasRq ? (
             <div className="flex flex-col gap-3">
               {researchQuestions.map((rq) => (
@@ -463,8 +545,24 @@ function SectionCard({
                 />
               ))}
             </div>
-          ) : hasQuant ? (
-            <QuantTable claims={quantClaims} t={t} />
+          ) : section.kind === 'quant' ? (
+            <>
+              {/* 정량 분석 차트(재사용 DeskAnalyticsPanel) — 있을 때만. */}
+              {hasCharts && analytics && (
+                <div className="mb-3">
+                  <DeskAnalyticsPanel analytics={analytics} />
+                </div>
+              )}
+              {quantClaims.length > 0 ? (
+                <QuantTable claims={quantClaims} t={t} />
+              ) : (
+                section.body && (
+                  <div className="text-md leading-[1.65] text-ink-2">
+                    <DeskMarkdownBody source={section.body} compact />
+                  </div>
+                )
+              )}
+            </>
           ) : (
             section.body && (
               <div className="text-md leading-[1.65] text-ink-2">
@@ -511,7 +609,7 @@ function RQCard({
   rq: NonNullable<DeskJob['research_questions']>[number];
   answer: NonNullable<DeskJob['rq_answers']>[number] | undefined;
   t: ReturnType<typeof useTranslations>;
-  tDesk: ReturnType<typeof useTranslations>;
+  tDesk: TDesk;
 }) {
   const conf = answer ? CONFIDENCE_VISUAL[answer.confidence] : null;
   return (

@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfProject,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 
-// Create a scheduling batch (=group) (super-admin only). Mirrors the /api/admin/*
-// gate: non-admins get 404 (route stays unobservable) and writes go through the
-// service-role client after the code-level isSuperAdminEmail check.
+// Create a scheduling batch (=group). Open to super-admin OR org member;
+// non-members get 404 (route stays unobservable). The batch is owned by the
+// caller, and when scoped under a project the caller must be allowed to touch
+// that project's owner (tenancy scoping).
 //
 // A batch may be scoped under a project (PR-C) via optional `projectId`. When
 // the project_id column isn't present yet (preview DB, additive migration not
 // auto-applied) the insert-with-project errors, so we retry without it —
 // wide/narrow degrade keeps group creation working on preview.
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -35,12 +36,22 @@ export async function POST(request: Request) {
     typeof obj.projectId === 'string' && obj.projectId ? obj.projectId : null;
 
   const admin = createAdminClient();
+
+  // Tenancy scoping — a batch under a project must belong to an owner the
+  // caller may touch (super-admin bypasses).
+  if (projectId) {
+    const owner = await ownerOfProject(admin, projectId);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+  }
+
   const wide = await admin
     .from('sched_batches')
     .insert(
       projectId
-        ? { owner_user_id: user!.id, title, project_id: projectId }
-        : { owner_user_id: user!.id, title },
+        ? { owner_user_id: access.userId, title, project_id: projectId }
+        : { owner_user_id: access.userId, title },
     )
     .select('id, title, created_at')
     .single();
@@ -52,7 +63,7 @@ export async function POST(request: Request) {
     if (projectId) {
       const narrow = await admin
         .from('sched_batches')
-        .insert({ owner_user_id: user!.id, title })
+        .insert({ owner_user_id: access.userId, title })
         .select('id, title, created_at')
         .single();
       if (narrow.error) {

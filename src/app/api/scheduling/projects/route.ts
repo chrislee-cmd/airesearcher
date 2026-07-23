@@ -1,25 +1,21 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { getSchedulingAccess } from '@/lib/scheduling/access';
 
 // Projects are the top layer above scheduling batches (=groups) (PR-C). List +
-// create, super-admin only. Mirrors the /api/scheduling/batches gate: non-admins
-// get 404 (route stays unobservable) and reads/writes go through the
-// service-role client after the code-level isSuperAdminEmail check.
+// create, open to super-admin OR org member. Non-members get 404 (route stays
+// unobservable). Org members are tenancy-scoped: the list is filtered to
+// owner_user_ids that share an org with them, and a create is owned by them.
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('sched_projects')
-    .select('id, title, share_token, created_at')
+  let q = admin.from('sched_projects').select('id, title, share_token, created_at');
+  if (!access.superadmin) q = q.in('owner_user_id', access.ownerUserIds);
+  const { data, error } = await q
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) {
@@ -32,11 +28,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -59,7 +52,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('sched_projects')
-    .insert({ owner_user_id: user!.id, title })
+    .insert({ owner_user_id: access.userId, title })
     .select('id, title, share_token, created_at')
     .single();
 

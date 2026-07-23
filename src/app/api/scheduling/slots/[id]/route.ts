@@ -1,23 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfSlot,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 import { isSlotStatus } from '@/lib/scheduling/slots';
 
-// Edit an interview slot (super-admin only). Any subset of
-// start_at/end_at/status/location/note may be sent; omitted keys are left
-// untouched. Used for both drag/edit and the proposed↔confirmed status toggle.
+// Edit an interview slot. Open to super-admin OR org member; non-members get
+// 404. Org members may only edit a slot whose owner shares an org with them
+// (tenancy scoping). Any subset of start_at/end_at/status/location/note may be
+// sent; omitted keys are left untouched.
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -80,6 +81,12 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+  if (!access.superadmin) {
+    const owner = await ownerOfSlot(admin, id);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'slot_not_found' }, { status: 404 });
+    }
+  }
   let { data, error } = await admin
     .from('sched_slots')
     .update(patch)
@@ -124,15 +131,18 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const admin = createAdminClient();
+  if (!access.superadmin) {
+    const owner = await ownerOfSlot(admin, id);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'slot_not_found' }, { status: 404 });
+    }
+  }
   const { error } = await admin.from('sched_slots').delete().eq('id', id);
   if (error) {
     return NextResponse.json({ error: 'delete_failed' }, { status: 500 });

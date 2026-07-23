@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfBatch,
+  ownerOfCandidate,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 import { isSlotStatus, type SlotStatus } from '@/lib/scheduling/slots';
 
-// Create an interview slot for a candidate (super-admin only). Mirrors the
-// /api/scheduling/batches gate: non-admins get 404 (route stays unobservable)
-// and writes go through the service-role client after isSuperAdminEmail.
+// Create an interview slot for a candidate. Open to super-admin OR org member;
+// non-members get 404 (route stays unobservable). Org members are tenancy-
+// scoped: the target batch/candidate must belong to an owner they may touch.
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -63,6 +64,19 @@ export async function POST(request: Request) {
     typeof b.note === 'string' && b.note.trim() ? b.note.trim() : null;
 
   const admin = createAdminClient();
+
+  // Tenancy scoping — the slot's batch (or candidate) must belong to an owner
+  // the caller may touch (super-admin bypasses).
+  if (!access.superadmin) {
+    const owner = batchId
+      ? await ownerOfBatch(admin, batchId)
+      : candidateId
+        ? await ownerOfCandidate(admin, candidateId)
+        : null;
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+  }
 
   const wideCols =
     'id, candidate_id, batch_id, title, start_at, end_at, status, location, note';
