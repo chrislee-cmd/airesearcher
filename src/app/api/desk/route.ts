@@ -317,6 +317,23 @@ export async function POST(request: Request) {
     );
   }
 
+  // project_id namespace guard (FK → interview_projects, see migration
+  // 20260723135946_desk_jobs_project_fk_to_v2.sql). The desk ProjectPicker is
+  // fed by the shared ProjectSelectionProvider (interview_projects), but the
+  // client also falls back to the legacy active_project (public.projects) id.
+  // Validate against interview_projects and null-demote anything else so a
+  // stale/foreign id can never raise a 23503 FK crash. RLS already scopes the
+  // lookup to the caller's org.
+  let safeProjectId: string | null = null;
+  if (project_id) {
+    const { data: proj } = await supabase
+      .from('interview_projects')
+      .select('id')
+      .eq('id', project_id)
+      .maybeSingle();
+    safeProjectId = proj?.id ?? null;
+  }
+
   // Insert the durable job row first (status=queued). The client polls /jobs
   // or subscribes via Realtime — this request itself returns immediately.
   const initialProgress: ProgressShape = { events: initialEvents };
@@ -324,7 +341,7 @@ export async function POST(request: Request) {
     .from('desk_jobs')
     .insert({
       org_id: org.org_id,
-      project_id: project_id ?? null,
+      project_id: safeProjectId,
       user_id: user.id,
       keywords: cleanKeywords,
       mode,
