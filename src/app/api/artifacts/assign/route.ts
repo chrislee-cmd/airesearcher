@@ -12,15 +12,23 @@ type AssignTarget = {
   // recruiting_forms predates org-scoping; older rows have no org_id.
   // For recruiting we still scope writes by user_id to stay safe.
   scopeColumn: 'org_id' | 'user_id';
+  // Which table the row's project_id FK points at. Most job tables still FK
+  // public.projects (0014_project_scoping), but transcript_jobs
+  // (20260723150349) and desk_jobs (20260723135946) were re-pointed at
+  // interview_projects — the widget selection SSOT. project_id must be
+  // validated against the correct FK target, otherwise a valid-but-foreign id
+  // (this route's caller feeds public.projects ids from the workspace panel)
+  // would pass validation and mirror-crash the update with a 23503.
+  projectTable: 'projects' | 'interview_projects';
 };
 
 const FEATURES: Record<string, AssignTarget> = {
-  report: { table: 'report_jobs', idColumn: 'id', scopeColumn: 'org_id' },
-  interview: { table: 'interview_jobs', idColumn: 'id', scopeColumn: 'org_id' },
-  transcript: { table: 'transcript_jobs', idColumn: 'id', scopeColumn: 'org_id' },
-  desk: { table: 'desk_jobs', idColumn: 'id', scopeColumn: 'org_id' },
-  scheduler: { table: 'scheduler_sessions', idColumn: 'id', scopeColumn: 'org_id' },
-  recruiting: { table: 'recruiting_forms', idColumn: 'form_id', scopeColumn: 'user_id' },
+  report: { table: 'report_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
+  interview: { table: 'interview_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
+  transcript: { table: 'transcript_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'interview_projects' },
+  desk: { table: 'desk_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'interview_projects' },
+  scheduler: { table: 'scheduler_sessions', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
+  recruiting: { table: 'recruiting_forms', idColumn: 'form_id', scopeColumn: 'user_id', projectTable: 'projects' },
 };
 
 const Body = z.object({
@@ -59,8 +67,11 @@ export async function POST(req: Request) {
   }
 
   if (project_id) {
+    // Validate against the FK target for THIS feature's table (projects vs
+    // interview_projects) so a foreign-namespace id is rejected here rather
+    // than mirror-crashing the update. Both tables are org-scoped.
     const { data: project } = await supabase
-      .from('projects')
+      .from(target.projectTable)
       .select('id')
       .eq('id', project_id)
       .eq('org_id', org.org_id)
