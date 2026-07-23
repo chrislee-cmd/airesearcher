@@ -2718,6 +2718,10 @@
       "thinkingHeader": "AI 사고 흐름",
       "spotlightHint": "중요 질문은 전체 화면 스포트라이트로 표시됩니다 →",
       "historyHeader": "질문 기록",
+      "unattributedHeader": "기타 질문",
+      "widgetQuestions": "질문 {n}개 보기",
+      "sectionQuestionsTitle": "「{label}」 누적 질문",
+      "sectionQuestionsEmpty": "이 위젯에 누적된 질문이 아직 없습니다.",
       "spotlightAutosave": "15초 후 기록에 자동 저장 · 마우스를 올리면 정지",
       "projectFallback": "프로젝트"
     },

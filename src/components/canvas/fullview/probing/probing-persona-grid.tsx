@@ -75,12 +75,19 @@ function PersonaCard({
   icon,
   title,
   section,
+  questionCount,
+  onClick,
 }: {
   icon: string;
   title: string;
   section: ProbingPersonaSection | null;
+  // PR (probing-question-history-per-widget): 이 위젯에 누적된 질문 수. >0 이면
+  // 카드가 클릭 가능해지고(팝업으로 누적 질문 노출) 💬 뱃지를 표시.
+  questionCount: number;
+  onClick: () => void;
 }) {
   const t = useTranslations('Widgets');
+  const tp = useTranslations('Probing');
   const filled = isFilled(section);
   const count = signalCountOf(section);
   const { glyph, colorClass } = fillDots(count);
@@ -88,15 +95,16 @@ function PersonaCard({
   const signals = (section?.signals ?? []).filter(
     (s) => (s?.bullet?.trim().length ?? 0) > 0,
   );
+  const clickable = questionCount > 0;
 
-  return (
-    <div
-      className={`flex min-h-[112px] flex-col rounded-[var(--fv-radius-card)] p-[13px] ${
-        filled
-          ? 'border-2 border-ink bg-paper shadow-memphis-sm-faint'
-          : 'border-[1.6px] border-dashed border-line-empty bg-paper-soft'
-      }`}
-    >
+  const surfaceClass = `flex min-h-[112px] flex-col rounded-[var(--fv-radius-card)] p-[13px] text-left ${
+    filled
+      ? 'border-2 border-ink bg-paper shadow-memphis-sm-faint'
+      : 'border-[1.6px] border-dashed border-line-empty bg-paper-soft'
+  } ${clickable ? 'cursor-pointer transition-transform duration-150 hover:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore' : ''}`;
+
+  const inner = (
+    <>
       <div className="mb-2 flex items-center gap-[7px]">
         <span aria-hidden className="text-xl leading-none">
           {icon}
@@ -104,6 +112,12 @@ function PersonaCard({
         <span className="flex-1 truncate text-xs font-bold uppercase tracking-[0.15em] text-mute-soft">
           {title}
         </span>
+        {questionCount > 0 && (
+          <span className="flex shrink-0 items-center gap-[3px] rounded-full border border-amore bg-amore-bg px-[7px] py-[1px] font-mono-label text-xs leading-none text-amore">
+            <span aria-hidden>💬</span>
+            {questionCount}
+          </span>
+        )}
         <span
           className={`font-mono-label text-sm leading-none tracking-[1px] ${colorClass}`}
           aria-hidden
@@ -128,7 +142,26 @@ function PersonaCard({
           {t('probingInsufficientHint')}
         </p>
       )}
-    </div>
+    </>
+  );
+
+  if (!clickable) {
+    return <div className={surfaceClass}>{inner}</div>;
+  }
+  // 클릭 가능한 위젯 카드 — 누적 질문 팝업 트리거. 대형 카드 표면 전체가 탭
+  // 타깃이라 IconButton primitive 로는 표현 불가(레이아웃/보더/그림자를 카드가
+  // 소유). data-canvas-action 으로 globals [data-canvas-body] cascade opt-out.
+  return (
+    // eslint-disable-next-line react/forbid-elements -- full-card click target opening the per-widget questions popup; primitive Button forces capsule shape/centered text incompatible with this content card. Tokens preserved.
+    <button
+      type="button"
+      onClick={onClick}
+      data-canvas-action
+      aria-label={tp('fv.widgetQuestions', { n: questionCount })}
+      className={surfaceClass}
+    >
+      {inner}
+    </button>
   );
 }
 
@@ -139,6 +172,8 @@ export function ProbingPersonaGrid({
   isLive,
   hasTranscript,
   gridRef,
+  questionCounts,
+  onSectionClick,
 }: {
   data: ProbingReflectionData | null;
   customSections: ProbingCustomSection[];
@@ -147,6 +182,9 @@ export function ProbingPersonaGrid({
   hasTranscript: boolean;
   // PDF 캡쳐 대상 grid DOM (probing-card 가 전달) — 페르소나 그리드만 캡쳐.
   gridRef?: Ref<HTMLDivElement>;
+  // PR (probing-question-history-per-widget): section key → 누적 질문 수.
+  questionCounts: Map<string, number>;
+  onSectionClick: (key: string) => void;
 }) {
   const t = useTranslations('Probing');
   const hasAnyPanel = data !== null;
@@ -165,6 +203,8 @@ export function ProbingPersonaGrid({
                 icon={p.icon}
                 title={t(`personaSection.${p.key}`)}
                 section={sectionOf(data, p.key)}
+                questionCount={questionCounts.get(p.key) ?? 0}
+                onClick={() => onSectionClick(p.key)}
               />
             ),
           )}
@@ -174,6 +214,8 @@ export function ProbingPersonaGrid({
               icon={CUSTOM_PANEL_ICON}
               title={c.title}
               section={sectionOf(data, c.key)}
+              questionCount={questionCounts.get(c.key) ?? 0}
+              onClick={() => onSectionClick(c.key)}
             />
           ))}
         </div>

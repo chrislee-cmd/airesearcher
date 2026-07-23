@@ -2718,6 +2718,10 @@
       "thinkingHeader": "AI thinking stream",
       "spotlightHint": "High-importance questions appear full-screen as a spotlight →",
       "historyHeader": "Question history",
+      "unattributedHeader": "Other questions",
+      "widgetQuestions": "View {n} questions",
+      "sectionQuestionsTitle": "Questions for “{label}”",
+      "sectionQuestionsEmpty": "No questions accumulated for this widget yet.",
       "spotlightAutosave": "Auto-saves to history after 15s · hover to pause",
       "projectFallback": "Project"
     },
