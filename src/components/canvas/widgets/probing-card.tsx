@@ -314,9 +314,12 @@ function cumulativeCharsOf(segments: TranscriptionSegment[]): number {
 // 검증 helper — think route 의 EMIT 라인 JSON 을 schema 로 통과시킨다.
 // resolveTargetLabel: target_section alias → 위젯 라벨 (popup 뱃지용). alias 가
 // 이번 think 호출의 위젯 집합에 없으면 undefined → 뱃지 미표시.
+// resolveTargetKey: target_section alias → 위젯 section key (질문 귀속용, PR
+// probing-question-history-per-widget). alias 매핑 실패 시 undefined → 전역 폴백.
 function parseEmit(
   raw: string,
   resolveTargetLabel?: (alias: string) => string | undefined,
+  resolveTargetKey?: (alias: string) => string | undefined,
 ): PopupQuestion | null {
   try {
     const parsed = JSON.parse(raw) as unknown;
@@ -329,6 +332,10 @@ function parseEmit(
       target_section && resolveTargetLabel
         ? resolveTargetLabel(target_section)
         : undefined;
+    const targetKey =
+      target_section && resolveTargetKey
+        ? resolveTargetKey(target_section)
+        : undefined;
     return {
       id,
       text,
@@ -337,6 +344,7 @@ function parseEmit(
       importance,
       emitted_at: Date.now(),
       target_section_label: targetLabel,
+      section_key: targetKey,
     };
   } catch {
     return null;
@@ -683,6 +691,9 @@ function ExpandedBody() {
   // PR (probing-custom-widget-priority-weight): 이번 think 호출의 위젯 alias →
   // 라벨 매핑. EMIT 의 target_section alias 를 popup 뱃지 라벨로 되돌린다.
   const widgetAliasLabelRef = useRef<Map<string, string>>(new Map());
+  // PR (probing-question-history-per-widget): alias → section key 매핑. EMIT 의
+  // target_section alias 를 질문 귀속 대상 위젯 key 로 되돌린다(위젯별 누적 팝업).
+  const widgetAliasKeyRef = useRef<Map<string, string>>(new Map());
   // 주입(one-shot) think 는 자동 think 와 동시 실행될 수 있어 별도 abort ref.
   const injectAbortRef = useRef<AbortController | null>(null);
 
@@ -841,8 +852,10 @@ function ExpandedBody() {
           ]);
         } else if (line.startsWith('EMIT:')) {
           const raw = line.slice('EMIT:'.length).trim();
-          const popup = parseEmit(raw, (alias) =>
-            widgetAliasLabelRef.current.get(alias),
+          const popup = parseEmit(
+            raw,
+            (alias) => widgetAliasLabelRef.current.get(alias),
+            (alias) => widgetAliasKeyRef.current.get(alias),
           );
           if (popup) handleEmit(popup, opts);
         }
@@ -909,11 +922,15 @@ function ExpandedBody() {
         ProbingPersonaSection | undefined
       > | null;
       const aliasToLabel = new Map<string, string>();
+      // PR (probing-question-history-per-widget): alias → section key. 기본
+      // 섹션은 alias 가 곧 key(def.key), custom 은 custom_N → c.key.
+      const aliasToKey = new Map<string, string>();
       const widgetStatus: ProbingWidgetStatus[] = [];
       const hiddenSet = new Set(hiddenDefaultKeysRef.current);
       for (const def of DEFAULT_PERSONA_SECTIONS) {
         if (hiddenSet.has(def.key)) continue;
         aliasToLabel.set(def.key, def.title);
+        aliasToKey.set(def.key, def.key);
         widgetStatus.push({
           alias: def.key,
           label: def.title,
@@ -925,6 +942,7 @@ function ExpandedBody() {
       customSectionsRef.current.forEach((c, i) => {
         const alias = `custom_${i + 1}`;
         aliasToLabel.set(alias, c.title);
+        aliasToKey.set(alias, c.key);
         widgetStatus.push({
           alias,
           label: c.title,
@@ -934,6 +952,7 @@ function ExpandedBody() {
         });
       });
       widgetAliasLabelRef.current = aliasToLabel;
+      widgetAliasKeyRef.current = aliasToKey;
 
       try {
         const res = await fetchWithAuth('/api/probing/think', {
@@ -1785,6 +1804,29 @@ function ExpandedBody() {
       if (key) {
         toast.push(t('card.widgetAdded', { label }), { tone: 'info', ttlMs: 2400 });
         markWidgetAdded(key);
+        // PR (probing-question-history-per-widget): 위젯을 생성한 그 질문 자체를
+        // 새 section 에 귀속시켜 누적 이력의 seed 로 남긴다 — 위젯을 클릭하면
+        // 최소한 생성 질문이 보인다(스펙 "질문이 위젯을 생성하면 그 section 에
+        // 귀속"). 이후 같은 위젯 보강 think emit 은 target_section→key 로 누적.
+        const seedNow = Date.now();
+        setHistory((prev) => {
+          if (prev.some((p) => p.section_key === key && p.text === question)) {
+            return prev;
+          }
+          const seed: HistoryQuestion = {
+            id: `inject_${seedNow}_${Math.random().toString(36).slice(2, 8)}`,
+            text: question,
+            technique: 'clarification',
+            rationale: DESC,
+            importance: 'medium',
+            emitted_at: seedNow,
+            section_key: key,
+            is_starred: false,
+            dismissed_reason: 'manual',
+            dismissed_at: seedNow,
+          };
+          return [seed, ...prev].slice(0, HISTORY_MAX);
+        });
         // 신규 위젯 = 누적 대화 backfill 시도.
         void runBackfillRef.current(key, question, DESC);
       } else {

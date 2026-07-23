@@ -16,11 +16,13 @@
      보존, 시각 표출 없음).
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ProbingPersonaGrid, type ProbingReflectionData } from './probing-persona-grid';
 import { ProbingThinkingRail } from './probing-thinking-rail';
 import { ProbingSpotlight } from './probing-spotlight';
 import { ProbingFullviewInject } from './probing-fullview-inject';
+import { ProbingSectionQuestionsModal } from './probing-section-questions-modal';
 import type { ProbingBackfillFeedback } from '../../widgets/probing/inject-field';
 import type {
   HistoryQuestion,
@@ -101,7 +103,48 @@ export function ProbingFullviewBody({
   onPopupDismiss: () => void;
   onPopupAutoDismiss: () => void;
 }) {
+  const t = useTranslations('Probing');
   const showSpotlight = activePopup?.importance === 'high';
+
+  // PR (probing-question-history-per-widget): history 를 귀속 section 별로 분리.
+  // section_key 가 있는 질문 → 위젯 카드 팝업(위젯-귀속 뷰). section_key 없는
+  // 질문 → 전역 폴백(기타 질문 레일). 어떤 질문도 드롭되지 않는다.
+  const questionsBySection = useMemo(() => {
+    const map = new Map<string, HistoryQuestion[]>();
+    for (const q of history) {
+      if (!q.section_key) continue;
+      const arr = map.get(q.section_key);
+      if (arr) arr.push(q);
+      else map.set(q.section_key, [q]);
+    }
+    return map;
+  }, [history]);
+
+  const questionCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [key, arr] of questionsBySection) map.set(key, arr.length);
+    return map;
+  }, [questionsBySection]);
+
+  const unattributedHistory = useMemo(
+    () => history.filter((q) => !q.section_key),
+    [history],
+  );
+
+  // 클릭된 위젯 카드 → 팝업 (선택된 section key).
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
+  // 선택 위젯의 사람 친화 라벨 — custom 은 title, 기본 8 은 personaSection.<key>.
+  const selectedLabel = useMemo(() => {
+    if (!selectedSection) return '';
+    const custom = customSections.find((c) => c.key === selectedSection);
+    if (custom) return custom.title;
+    return t(`personaSection.${selectedSection}`);
+  }, [selectedSection, customSections, t]);
+
+  const selectedQuestions = selectedSection
+    ? (questionsBySection.get(selectedSection) ?? [])
+    : [];
 
   return (
     <div className="relative flex min-h-0 flex-1">
@@ -118,6 +161,8 @@ export function ProbingFullviewBody({
           isLive={isLive}
           hasTranscript={hasTranscript}
           gridRef={gridRef}
+          questionCounts={questionCounts}
+          onSectionClick={setSelectedSection}
         />
         {/* 우 rail 컬럼 = "추가 질문 주입" 필드(상단) + thinking/history 레일.
             legacy question-pane 에서 inject 가 우패널 상단(thinking 위)에 있던
@@ -132,7 +177,7 @@ export function ProbingFullviewBody({
           <ProbingThinkingRail
             thinkingEvents={thinkingEvents}
             thinkingStreaming={thinkingStreaming}
-            history={history}
+            history={unattributedHistory}
             nowMs={nowMs}
             onHistoryCopy={onHistoryCopy}
             onHistoryToggleStar={onHistoryToggleStar}
@@ -140,6 +185,18 @@ export function ProbingFullviewBody({
           />
         </div>
       </div>
+
+      {/* 위젯 카드 클릭 → 그 위젯에 누적된 질문 팝업 (위젯-귀속 뷰). */}
+      <ProbingSectionQuestionsModal
+        open={selectedSection !== null}
+        label={selectedLabel}
+        questions={selectedQuestions}
+        nowMs={nowMs}
+        onClose={() => setSelectedSection(null)}
+        onCopy={onHistoryCopy}
+        onToggleStar={onHistoryToggleStar}
+        onDelete={onHistoryDelete}
+      />
 
       {showSpotlight && activePopup && (
         <ProbingSpotlight

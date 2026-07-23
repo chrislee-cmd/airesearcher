@@ -109,6 +109,13 @@ export type PopupQuestion = {
   // 가 위젯 라벨로 되돌려 popup 뱃지에 "{라벨} 채우기" 로 표시. 특정 위젯 겨냥이
   // 아니거나 alias 매핑 실패 시 undefined.
   target_section_label?: string;
+  // PR (probing-question-history-per-widget): 이 질문이 귀속되는 페르소나/custom
+  // section 의 key (기본 8 섹션 key 또는 custom section uuid). think EMIT 의
+  // target_section alias 를 client 가 위젯 key 로 되돌려 채운다. 위젯 카드를
+  // 클릭하면 같은 section_key 로 귀속된 질문들이 팝업으로 누적 노출된다. 특정
+  // 위젯 겨냥이 아니거나 alias 매핑 실패 시 undefined → 전역 폴백(기타 질문 레일).
+  // in-memory 표시 전용(history 처럼 휘발) — DB/영속 스키마는 건드리지 않는다.
+  section_key?: string;
 };
 
 // D. history row — popup 이 사라진 뒤 누적되는 항목. popup 의 메타에 핀 /

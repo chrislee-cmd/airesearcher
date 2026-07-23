@@ -228,8 +228,11 @@ export function ProbingThinkingRail({
       {/* Question history */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <div className="mb-[10px] flex items-center gap-[7px]">
+          {/* PR (probing-question-history-per-widget): 전역 스택 → 위젯-귀속 뷰로
+              전환. 이 레일은 특정 위젯에 안 묶인 "기타 질문"(전역 폴백)만 남는다.
+              위젯에 귀속된 질문은 좌 그리드 카드 클릭 팝업으로 노출. */}
           <span className="text-md font-extrabold text-ink">
-            {t('fv.historyHeader')}
+            {t('fv.unattributedHeader')}
           </span>
           <span className="text-sm text-mute-soft">· {history.length}</span>
           {starredCount > 0 && (
