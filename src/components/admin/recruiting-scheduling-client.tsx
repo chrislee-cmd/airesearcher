@@ -1,7 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -170,13 +176,16 @@ export function RecruitingSchedulingClient({
   // rather than something bound to a single group.
   const [calendarGroupId, setCalendarGroupId] = useState('');
 
-  // Chat rail (CD frame 02) — round2 (수정4): up to MAX_CHAT_PANELS threads open
-  // at once, tiled horizontally. Each entry is a candidate id or the broadcast
-  // sentinel; insertion order preserved. Broadcast opens by default (keeps
-  // single-window parity — the rail is never empty on first paint).
-  const [openThreads, setOpenThreads] = useState<string[]>([
-    BROADCAST_THREAD_ID,
-  ]);
+  // Chat rail (CD frame 02) — round2 (수정4): up to MAX_CHAT_PANELS chat tiles
+  // open at once, tiled horizontally. Each tile is keyed by a STABLE tileId (not
+  // its thread) so a tile can freely switch threads — even to broadcast while
+  // another tile is already broadcast — without a React key collision, and so a
+  // tile's local state (draft/kind/reach) stays glued to that tile across close.
+  // Broadcast opens by default (single-window parity — never empty on first paint).
+  const tileSeqRef = useRef(1);
+  const [chatTiles, setChatTiles] = useState<
+    { tileId: string; thread: string }[]
+  >([{ tileId: 't0', thread: BROADCAST_THREAD_ID }]);
   // Confirmed-roster disclosure (수정1) + calendar horizontal fold (수정3).
   const [rosterOpen, setRosterOpen] = useState(true);
   const [calendarFolded, setCalendarFolded] = useState(false);
@@ -377,38 +386,36 @@ export function RecruitingSchedulingClient({
 
   // --- Chat panel orchestration (수정4) ---
 
-  // Open (or focus) a thread in a NEW tile — driven by the roster rows + the
-  // broadcast CTA. Already-open → no-op (it's visible). At the cap → block the
+  // Open a thread in a NEW tile — driven by the roster rows + the broadcast CTA.
+  // If a tile already shows that thread → focus (no dup). At the cap → block the
   // 5th with a hint toast; no eviction (conservative per spec).
-  function openThread(id: string) {
-    if (openThreads.includes(id)) return;
-    if (openThreads.length >= MAX_CHAT_PANELS) {
+  function openTile(thread: string) {
+    if (chatTiles.some((c) => c.thread === thread)) return;
+    if (chatTiles.length >= MAX_CHAT_PANELS) {
       notifyErr(t('chatMaxPanels'));
       return;
     }
-    setOpenThreads((prev) =>
-      prev.includes(id) || prev.length >= MAX_CHAT_PANELS
+    const tileId = `t${tileSeqRef.current++}`;
+    setChatTiles((prev) =>
+      prev.some((c) => c.thread === thread) || prev.length >= MAX_CHAT_PANELS
         ? prev
-        : [...prev, id],
+        : [...prev, { tileId, thread }],
     );
   }
 
-  // Switch ONE tile's thread in place — driven by a panel's own reach/kind/개인
+  // Re-target ONE tile's thread in place — driven by a panel's own reach/kind/개인
   // switcher, so each tile behaves exactly like the single-window rail (the
   // controlled thread flows back here → resolveChatContext re-scopes its batch).
-  // Thread ids stay unique across tiles (they're React keys); if the target is
-  // already shown in another tile, keep it there instead of duplicating.
-  function switchThread(index: number, id: string) {
-    setOpenThreads((prev) => {
-      if (prev[index] === id || prev.includes(id)) return prev;
-      const next = [...prev];
-      next[index] = id;
-      return next;
-    });
+  // Unconditional: tiles are keyed by tileId, so duplicate threads are harmless
+  // (this is why a personal tile can switch to broadcast even if one's open).
+  function switchTile(tileId: string, thread: string) {
+    setChatTiles((prev) =>
+      prev.map((c) => (c.tileId === tileId ? { ...c, thread } : c)),
+    );
   }
 
-  function closeThread(id: string) {
-    setOpenThreads((prev) => prev.filter((tid) => tid !== id));
+  function closeTile(tileId: string) {
+    setChatTiles((prev) => prev.filter((c) => c.tileId !== tileId));
   }
 
   // --- Project + group creation / source ingestion ---
@@ -1406,12 +1413,12 @@ export function RecruitingSchedulingClient({
                       : 'lg:w-auto lg:max-w-[768px] lg:shrink-0',
                   ].join(' ')}
                 >
-                  {openThreads.map((thread, i) => {
+                  {chatTiles.map(({ tileId, thread }, i) => {
                     const ctx = resolveChatContext(thread);
                     if (!ctx.batchId) return null;
                     return (
                       <aside
-                        key={thread}
+                        key={tileId}
                         className={[
                           'flex min-h-[540px] w-full flex-col lg:min-h-0 lg:w-[360px] lg:shrink-0',
                           i > 0
@@ -1432,8 +1439,8 @@ export function RecruitingSchedulingClient({
                           // re-targets THIS tile in place (single-window parity),
                           // not a new tile — so every control stays live. New
                           // tiles come from the roster rows + broadcast CTA.
-                          onSelectThread={(id) => switchThread(i, id)}
-                          onClose={() => closeThread(thread)}
+                          onSelectThread={(id) => switchTile(tileId, id)}
+                          onClose={() => closeTile(tileId)}
                           totalCount={candidates.length}
                           // 일정 패널 소스 — the full slot set so the panel's own
                           // scope filter (전체/그룹/개인) resolves any target, not
@@ -1483,7 +1490,7 @@ export function RecruitingSchedulingClient({
                   <Button
                     variant="ghost"
                     size="xs"
-                    onClick={() => openThread(BROADCAST_THREAD_ID)}
+                    onClick={() => openTile(BROADCAST_THREAD_ID)}
                   >
                     {t('confirmedBroadcastCta')}
                   </Button>
@@ -1498,14 +1505,14 @@ export function RecruitingSchedulingClient({
                     {confirmedCandidates.map((c) => {
                       const next = nextSlotForCandidate(c.id, slots, now);
                       const contact = contactValue(c);
-                      const active = openThreads.includes(c.id);
+                      const active = chatTiles.some((tile) => tile.thread === c.id);
                       const groupName = groupNameById.get(c.batch_id);
                       return (
                         <li key={c.id}>
                           {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
                           <button
                             type="button"
-                            onClick={() => openThread(c.id)}
+                            onClick={() => openTile(c.id)}
                             className={[
                               'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
                               active
