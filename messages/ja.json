@@ -206,7 +206,9 @@
       "sectionLabel": "テスト方法",
       "groupAria": "テスト方法を選択",
       "hostTitle": "自分の端末でテスト",
-      "guestTitle": "参加者の端末でテスト"
+      "guestTitle": "参加者の端末でテスト",
+      "hostDesc": "自分の画面を共有して直接進めます",
+      "guestDesc": "参加者を招待し、各自の端末で進めます"
     },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",

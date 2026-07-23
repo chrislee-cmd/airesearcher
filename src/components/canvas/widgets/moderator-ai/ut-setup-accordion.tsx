@@ -81,17 +81,20 @@ export function UtSetupAccordion({
   const accordion = useWidgetAccordion();
 
   // 테스트 방식 2-카드 — host/guest 두 옵션(CaptureUseCaseOption 슬롯 재사용).
-  // 서브텍스트(hostVia/guestVia) 미전달 → 카드 = 제목 1라인(규격 통일).
+  // desc 한 줄로 다른 방식 카드(인터뷰/전사)와 텍스트 양식 통일 — 고정 128
+  // 카드에 제목만 있으면 빈약해 보여 친근한 한 줄 설명을 붙인다(desc → clamp-2).
   const METHOD_OPTIONS: CaptureUseCaseOption[] = [
     {
       id: 'host',
       icon: <DuotoneIcon name="host" size={24} fill={PEACH_FILL} />,
       title: t('method.hostTitle'),
+      desc: t('method.hostDesc'),
     },
     {
       id: 'guest',
       icon: <DuotoneIcon name="guest" size={24} fill={PEACH_FILL} />,
       title: t('method.guestTitle'),
+      desc: t('method.guestDesc'),
     },
   ];
 

@@ -206,7 +206,9 @@
       "sectionLabel": "테스트 방식",
       "groupAria": "테스트 방식 선택",
       "hostTitle": "내 기기에서 테스트",
-      "guestTitle": "참가자 기기에서 테스트"
+      "guestTitle": "참가자 기기에서 테스트",
+      "hostDesc": "내 화면을 공유해 직접 진행합니다",
+      "guestDesc": "참가자를 초대해 각자 기기로 진행합니다"
     },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
