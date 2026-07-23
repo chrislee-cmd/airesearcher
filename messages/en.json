@@ -2885,6 +2885,30 @@
       "ctaPublishing": "Publishing…"
     }
   },
+  "CollabShare": {
+    "button": "Collaborators",
+    "title": "Share with collaborators",
+    "notice": "Invited people join as org members with full access to this workspace and scheduling.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "teammate@example.com",
+    "invite": "Invite",
+    "inviting": "Inviting…",
+    "invited": "Invite email sent.",
+    "invitedNoEmail": "Invite added, but the email failed to send. Try again.",
+    "invalidEmail": "Enter a valid email.",
+    "inviteError": "Could not send the invite.",
+    "forbidden": "You don't have permission to invite.",
+    "collaboratorsLabel": "Current collaborators",
+    "empty": "No collaborators yet.",
+    "remove": "Remove",
+    "removeConfirm": "Remove {email}?",
+    "removeError": "Could not remove.",
+    "ownerTag": "Owner",
+    "pendingTag": "Pending",
+    "done": "Done",
+    "emailSubject": "{inviter} invited you to \"{org}\"",
+    "emailBody": "{inviter} invited you to collaborate in \"{org}\" on Research-Canvas.\n\nYou will get full access to the shared workspace and scheduling.\n\nAccept the invite and sign in: {url}"
+  },
   "RecruitingScheduling": {
     "calClickHint": "Click a cell to create a 30-min slot",
     "chatKindLabel": "Message type",

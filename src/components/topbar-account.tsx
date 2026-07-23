@@ -17,6 +17,9 @@ type Props = {
   email: string | null;
   credits: number | null;
   isSuperAdmin?: boolean;
+  // Org members (non-super-admin) get a single entry point to the shared
+  // recruiting-scheduling workspace so an invitee can find it after accepting.
+  isOrgMember?: boolean;
 };
 
 // 계정 패널 언어 스위처의 표시 순서 — 글로벌 디폴트가 영어라 EN 우선, 그다음
@@ -32,7 +35,7 @@ const localeOptions = [
 // PR-D7: 사이드바 → 헤더 탭 전환 후, 우측 끝의 account trigger. 기존
 // SidebarAccount 의 popover 동작을 가로 헤더용으로 정렬 — 트리거 = 아바타
 // + 이름 + 크레딧 + gear 한 줄, dropdown 은 트리거 아래로 펼침.
-export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
+export function TopbarAccount({ email, credits, isSuperAdmin, isOrgMember }: Props) {
   const t = useTranslations('Sidebar');
   const tCommon = useTranslations('Common');
   const tAuth = useTranslations('Auth');
@@ -376,6 +379,22 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
               >
                 {t('adminRecruitingInvitations')}
               </PopoverLink>
+              <PopoverLink
+                href="/admin/recruiting-scheduling"
+                onClick={() => {
+                  track('admin_recruiting_scheduling_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminRecruitingScheduling')}
+              </PopoverLink>
+            </>
+          )}
+          {/* Org members who aren't super-admins get just the shared scheduling
+              entry (so an invitee can find it after accepting). */}
+          {!isSuperAdmin && isOrgMember && (
+            <>
+              <div className="my-1 h-px bg-line-soft" />
               <PopoverLink
                 href="/admin/recruiting-scheduling"
                 onClick={() => {

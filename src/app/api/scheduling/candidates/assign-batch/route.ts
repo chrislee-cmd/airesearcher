@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  accessibleCandidateIds,
+  ownerOfProject,
+  ownerOfBatch,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 
 export const runtime = 'nodejs';
 
@@ -15,11 +20,8 @@ export const runtime = 'nodejs';
 // target; we surface that as `duplicate_in_target` rather than a raw 500. A new
 // batch can never collide.
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -51,17 +53,30 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
+  // Tenancy scoping — the moved candidates and the destination must all belong
+  // to owners the caller may touch (super-admin bypasses).
+  const allowedIds = await accessibleCandidateIds(admin, access, candidateIds);
+  if (allowedIds.length === 0) {
+    return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
+  }
+
   // Resolve the destination batch: create when a title is given, else validate
   // the supplied existing id.
   let targetBatchId: string;
   if (newBatchTitle) {
+    if (projectId) {
+      const owner = await ownerOfProject(admin, projectId);
+      if (!ownerAllowed(access, owner)) {
+        return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+    }
     // project_id may be absent on a preview DB — retry without it (wide/narrow).
     const wide = await admin
       .from('sched_batches')
       .insert(
         projectId
-          ? { owner_user_id: user!.id, title: newBatchTitle, project_id: projectId }
-          : { owner_user_id: user!.id, title: newBatchTitle },
+          ? { owner_user_id: access.userId, title: newBatchTitle, project_id: projectId }
+          : { owner_user_id: access.userId, title: newBatchTitle },
       )
       .select('id')
       .single();
@@ -70,7 +85,7 @@ export async function POST(request: Request) {
       if (projectId) {
         const narrow = await admin
           .from('sched_batches')
-          .insert({ owner_user_id: user!.id, title: newBatchTitle })
+          .insert({ owner_user_id: access.userId, title: newBatchTitle })
           .select('id')
           .single();
         if (narrow.error || !narrow.data) {
@@ -94,6 +109,12 @@ export async function POST(request: Request) {
     if (!batch) {
       return NextResponse.json({ error: 'batch_not_found' }, { status: 404 });
     }
+    if (!access.superadmin) {
+      const owner = await ownerOfBatch(admin, existingBatchId);
+      if (!ownerAllowed(access, owner)) {
+        return NextResponse.json({ error: 'batch_not_found' }, { status: 404 });
+      }
+    }
     targetBatchId = batch.id;
   } else {
     return NextResponse.json({ error: 'no_target' }, { status: 400 });
@@ -102,7 +123,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from('sched_candidates')
     .update({ batch_id: targetBatchId })
-    .in('id', candidateIds)
+    .in('id', allowedIds)
     .select('id');
   if (error) {
     // 23505 = unique_violation (an emailed candidate already in the target).

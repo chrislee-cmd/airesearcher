@@ -1,24 +1,22 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import {
+  getSchedulingAccess,
+  ownerOfBatch,
+  ownerAllowed,
+} from '@/lib/scheduling/access';
 
-// Rename a scheduling batch (super-admin only). Drives the calendar view's
-// inline free-text title (PR-B) — the title doubles as the calendar heading, so
-// it saves immediately on blur/Enter. Mirrors the /api/admin/* gate: non-admins
-// get 404 and the write goes through the service-role client after the
-// code-level isSuperAdminEmail check.
+// Rename a scheduling batch. Open to super-admin OR org member; non-members get
+// 404. Org members may only rename a batch whose owner shares an org with them
+// (tenancy scoping). The title doubles as the calendar heading (PR-B).
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -39,6 +37,12 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+  if (!access.superadmin) {
+    const owner = await ownerOfBatch(admin, id);
+    if (!ownerAllowed(access, owner)) {
+      return NextResponse.json({ error: 'batch_not_found' }, { status: 404 });
+    }
+  }
   const { data, error } = await admin
     .from('sched_batches')
     .update({ title })

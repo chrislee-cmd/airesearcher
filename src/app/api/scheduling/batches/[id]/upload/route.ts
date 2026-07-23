@@ -1,38 +1,37 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { getSchedulingAccess, ownerAllowed } from '@/lib/scheduling/access';
 import { parseCandidateFile } from '@/lib/scheduling/candidates-parse';
 import { upsertCandidatesIntoBatch } from '@/lib/scheduling/candidates-upsert';
 
-// Bulk-upload candidates into a batch from a CSV or XLSX file (super-admin
-// only; non-admins get 404). email is optional — candidates merge by
-// best-available identity (email > phone > name); anonymous rows are appended.
-// Merge is done in code: each parsed row resolves to an UPDATE (carries the
-// matching existing row's id) or an INSERT (omits id). A single upsert on the
-// `id` primary key applies both. participant_token is omitted from the payload
-// so the DB default mints it once on insert and existing rows keep their token.
+// Bulk-upload candidates into a batch from a CSV or XLSX file. Open to
+// super-admin OR org member; non-members get 404. Org members may only upload
+// into a batch whose owner shares an org with them (tenancy scoping). email is
+// optional — candidates merge by best-available identity (email > phone >
+// name); anonymous rows are appended. Merge is done in code: each parsed row
+// resolves to an UPDATE (carries the matching existing row's id) or an INSERT
+// (omits id). A single upsert on the `id` primary key applies both.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: batchId } = await params;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  const access = await getSchedulingAccess();
+  if (!access) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const admin = createAdminClient();
   const { data: batch } = await admin
     .from('sched_batches')
-    .select('id')
+    .select('id, owner_user_id')
     .eq('id', batchId)
     .maybeSingle();
   if (!batch) {
+    return NextResponse.json({ error: 'batch_not_found' }, { status: 404 });
+  }
+  if (!ownerAllowed(access, (batch as { owner_user_id?: string }).owner_user_id)) {
     return NextResponse.json({ error: 'batch_not_found' }, { status: 404 });
   }
 
