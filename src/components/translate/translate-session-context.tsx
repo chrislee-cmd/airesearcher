@@ -62,6 +62,22 @@ export type TranslateSessionSnapshot = {
   // Observer-link copy action + its transient "copied" flag (rail button).
   copyShareUrl: () => void;
   shareCopied: boolean;
+  // Observer-link revoke — mirrors the console's existing revoke action
+  // (DELETE /api/translate/sessions/{id}/share). `sharing` is the in-flight
+  // flag that disables the button while the request runs. The fullview rail
+  // gets its own revoke control; the console already owns the callback.
+  revokeShare: () => void;
+  sharing: boolean;
+  // Host-local monitor autoplay-blocked state + one-click re-enable. Mirrors
+  // the console's `ttsBlocked` banner (translate-console §Layer A): the
+  // browser blocked the interpreted-audio monitor and `enableTtsPlayback`
+  // resumes it. Host-only — viewers are unaffected.
+  ttsBlocked: boolean;
+  enableTtsPlayback: () => void;
+  // Cross-channel echo advisory — true once a self-echo burst is detected.
+  // Drives a read-only advisory (nudge toward headphones); no action, the
+  // console's loop-breaker already fired.
+  echoDetected: boolean;
   // End-session — mirrors the card's existing stop action (header End-session
   // button). No-op outside a live session.
   stop: () => void;
@@ -82,6 +98,11 @@ const EMPTY: TranslateSessionSnapshot = {
   toggleOutputAudible: NOOP,
   copyShareUrl: NOOP,
   shareCopied: false,
+  revokeShare: NOOP,
+  sharing: false,
+  ttsBlocked: false,
+  enableTtsPlayback: NOOP,
+  echoDetected: false,
   stop: NOOP,
 };
 
