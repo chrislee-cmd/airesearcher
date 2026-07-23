@@ -958,7 +958,9 @@ export function TranslateConsole({
   // Whether the MediaRecorder is actively capturing. Driven from the
   // recorder's onstart/onstop events so the indicator pill renders
   // without needing to read the ref during render.
-  const [recorderActive, setRecorderActive] = useState(false);
+  // recorderActive 값은 읽는 곳이 없고 setter 만 녹음 start/stop 부수효과로
+  // 호출된다 → 미사용 getter 바인딩 제거(동작 불변).
+  const [, setRecorderActive] = useState(false);
   // 🚨 Auto-renewal in flight. Drives the subtle "세션 갱신 중…" indicator so
   // the host knows a background handover is happening (the <2s gap is
   // otherwise invisible). Cleared when the renewal settles (success or
@@ -4324,6 +4326,16 @@ export function TranslateConsole({
   // state for the eventual "download full transcript" feature (PR-B),
   // but only render the last 30 seconds on the prompter so the screen
   // stays light and the active line stays in the visual center.
+  // Same rolling window as promptedLines but over the source (INPUT) lines,
+  // so the interpreter fullview can stream INPUT and OUTPUT side-by-side.
+  const promptedInputLines = useMemo(
+    () =>
+      inputLines
+        .filter((l) => now - l.ts <= PROMPTER_WINDOW_MS)
+        .slice()
+        .sort((a, b) => (a.ts === b.ts ? a.id.localeCompare(b.id) : a.ts - b.ts)),
+    [inputLines, now],
+  );
   const promptedLines = useMemo(
     () =>
       outputLines
@@ -4346,16 +4358,53 @@ export function TranslateConsole({
   // (standalone /live). This only reads state the console already computes —
   // it never touches the session lifecycle, which is the whole point of the
   // fullview-session-preserve fix.
+  // Stable flip for the host monitor audio — lifted so the fullview rail
+  // toggle (§F4) drives the same gain the inline ChromeButton does.
+  const toggleOutputAudible = useCallback(() => setOutputAudible((v) => !v), []);
   const publishSession = useTranslateSessionPublisher();
   useEffect(() => {
+    const labelOf = (v: string) => LANGS.find((l) => l.value === v)?.label ?? v;
     publishSession({
       sessionId: liveSessionId,
       shareUrl,
       isLive: status === 'live',
       promptedLines,
+      inputLines: promptedInputLines,
       listeners,
+      sourceLangLabel: sourceLang ? labelOf(sourceLang) : '',
+      targetLangLabel: targetLang ? labelOf(targetLang) : '',
+      outputAudible,
+      toggleOutputAudible,
+      copyShareUrl: () => void copyShareUrl(),
+      shareCopied,
+      revokeShare: () => void revokeShare(),
+      sharing,
+      ttsBlocked,
+      enableTtsPlayback: () => void enableTtsPlayback(),
+      echoDetected,
+      stop: () => void stop(),
     });
-  }, [publishSession, liveSessionId, shareUrl, status, promptedLines, listeners]);
+  }, [
+    publishSession,
+    liveSessionId,
+    shareUrl,
+    status,
+    promptedLines,
+    promptedInputLines,
+    listeners,
+    sourceLang,
+    targetLang,
+    outputAudible,
+    toggleOutputAudible,
+    copyShareUrl,
+    shareCopied,
+    revokeShare,
+    sharing,
+    ttsBlocked,
+    enableTtsPlayback,
+    echoDetected,
+    stop,
+  ]);
 
   // idle(시작 전) 여부 — starting/error 도 시작 CTA 가 노출되는 "세션 전"
   // 화면이므로 idle launcher layout 을 공유한다 (starting 에 layout 이

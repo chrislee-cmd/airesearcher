@@ -1,14 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useTranslations } from 'next-intl';
 import type { WidgetContent } from '../widget-types';
 import { TranslateConsole } from '@/components/translate-console';
 import { TranslateSessionProvider } from '@/components/translate/translate-session-context';
-import { TranslateFullviewView } from '@/components/translate/fullview-view';
+import { InterpreterFullview } from '../fullview/interpreter/interpreter-fullview';
 import { useRealtimeTranscript } from '@/components/realtime-transcript-provider';
 import { useWidgetState } from '../shell/widget-state-context';
-import { WidgetFullviewPanel } from '../shell/widget-fullview-panel';
 import { useFullview } from '../shell/fullview-shell-context';
 
 // TranslateConsole 의 status 는 내부 useState — 외부에서 못 본다. 대신
@@ -44,8 +42,7 @@ function TranslateStatePush() {
 // 청취자용 session id / share url) 을 미러링한다. provider 는 console 과
 // 모달 portal 을 둘 다 감싸야 하므로 (둘은 형제) 여기서 wrap 한다.
 function ExpandedBody() {
-  const { renderInSlot, close } = useFullview('translate');
-  const t = useTranslations('TranslateConsole');
+  const { renderInSlot } = useFullview('translate');
   return (
     <TranslateSessionProvider>
       <TranslateStatePush />
@@ -60,15 +57,12 @@ function ExpandedBody() {
       <div className="flex min-h-full flex-col">
         <TranslateConsole />
       </div>
-      {renderInSlot(
-        <WidgetFullviewPanel
-          title={t('fullviewTitle')}
-          subtitle={t('fullviewSubtitle')}
-          onClose={close}
-        >
-          <TranslateFullviewView onGoToCard={close} />
-        </WidgetFullviewPanel>,
-      )}
+      {/* 풀뷰 V2 (fullviewV2) — 셸(FullviewShell)이 프레임+사이드바+헤더를
+          소유하고, 이 slot 에는 fresh Interpreter body(트윈 패널+rail)만
+          portal. 헤더 lang pill·End-session 은 body 가 header-slot 으로
+          publish → 셸 헤더가 렌더. 레거시 WidgetFullviewPanel/
+          TranslateFullviewView 는 supersede. */}
+      {renderInSlot(<InterpreterFullview />)}
     </TranslateSessionProvider>
   );
 }
@@ -85,6 +79,10 @@ export const translateCard: WidgetContent = {
     expandedCols: 3,
     // Canvas 1c 카드 프레임 opt-in — mint 파스텔 헤더밴드 + 통합 툴바(💎50).
     cardFrame: true,
+    // 풀뷰 V2 opt-in — 전체보기를 공유 <FullviewShell>(프레임+사이드바+헤더)
+    // 로 열고, body 는 fresh InterpreterFullview(CD state 03). 레거시 wide
+    // 모달 경로 대신 분기.
+    fullviewV2: true,
   },
   state: 'idle',
   ExpandedBody,

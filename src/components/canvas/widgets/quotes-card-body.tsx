@@ -42,7 +42,16 @@ import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel
 import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { TranscriptResultFullview } from '@/components/canvas/widgets/transcript-result-fullview';
-import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import { TranscriptFullviewBody } from '@/components/canvas/fullview/transcript/transcript-fullview-body';
+import {
+  FullviewProjectPill,
+  FullviewDoneBadge,
+} from '@/components/canvas/fullview/fullview-header';
+import {
+  useFullview,
+  useFullviewChrome,
+} from '@/components/canvas/shell/fullview-shell-context';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { LANGUAGES, pickFromBrowser } from '@/lib/transcripts/languages';
 import { uploadResumable } from '@/lib/transcripts/resumable-upload';
@@ -227,6 +236,10 @@ export function QuotesCardBody() {
   // 선택값을 create/start 페이로드의 project_id 로 전달한다.
   const { getSelection, setSelection } = useProjectSelection();
   const projectId = getSelection('quotes');
+  // 풀뷰 V2 헤더 프로젝트 pill 표시명 — 미선택/미매칭이면 폴백 라벨.
+  const { projects } = useInterviewV2Projects();
+  const fullviewProjectName =
+    projects.find((p) => p.id === projectId)?.name ?? tView('fieldProject');
   // 위젯별 동시사용 게이트 (#512) — 전사 잡 시작 시 슬롯 획득, 큐가 모두 끝나
   // isWorking 이 false 로 떨어지면 반납.
   const gate = useWidgetGate('quotes');
@@ -254,7 +267,16 @@ export function QuotesCardBody() {
   // close 후 보존되고, 파일명 검색어(fullviewQuery)는 항상-마운트된 카드
   // 본문에 남아 모달 close 후에도 유지된다. 카드 바닥의 "더보기"(overflow)
   // 모달과는 의미가 다른 별도 진입 — 더보기는 그대로 유지.
-  const { isCurrent, renderInSlot, openFullview, close: closeFullview } = useFullview('quotes');
+  const {
+    isCurrent,
+    renderInSlot,
+    renderInHeaderStart,
+    renderInHeaderEnd,
+    openFullview,
+    close: closeFullview,
+  } = useFullview('quotes');
+  // 풀뷰 V2 셸(캔버스 모달)이면 'modal', 리스트 페이지면 'page'. V2 body 분기.
+  const fullviewChrome = useFullviewChrome();
   const [fullviewQuery, setFullviewQuery] = useState('');
   // 완료 전사 1건의 결과 fullview(좌 turn 스트림 + 우 Export). fullview list 에서
   // "결과 보기" 클릭 시 이 잡으로 설정 → slot 이 상세 결과뷰로 전환된다. onBack /
@@ -1447,10 +1469,47 @@ export function QuotesCardBody() {
         />
       )}
 
-      {/* 통일 "전체 보기" — 전사 작업 전체(진행 중 + 완료)를 풀스크린 list +
-          파일명 검색으로. JobRow previewMode="inline" 이라 모달 안에서도
-          다운로드/공유/미리보기/삭제 모두 동작. 공유 모달 slot 으로 portal. */}
-      {renderInSlot(
+      {/* 통일 "전체 보기" — 전사 작업 전체(진행 중 + 완료).
+          ── 풀뷰 V2 (캔버스 모달, fullviewV2) ── FullviewShell 로 렌더. body =
+          fresh TranscriptFullviewBody(파일 리스트 state 04 · 상세 state 05).
+          헤더는 프로젝트 pill(리스트) / Done 배지(상세)를 slot 으로 portal.
+          ── 레거시 (리스트/page chrome) ── 아직 V2 전환 전 표면. 기존
+          WidgetFullviewPanel + JobRow 리스트 + TranscriptResultFullview 그대로
+          (회귀 0). */}
+      {fullviewChrome === 'modal' ? (
+        <>
+          {renderInHeaderStart(
+            resultJob ? null : <FullviewProjectPill name={fullviewProjectName} />,
+          )}
+          {renderInHeaderEnd(
+            resultJob ? <FullviewDoneBadge label={tView('statusDone')} /> : null,
+          )}
+          {renderInSlot(
+            <TranscriptFullviewBody
+              jobs={job.jobs}
+              stuckIds={stuckIds}
+              resultJob={resultJob}
+              onOpenResult={setResultJob}
+              onBackToList={() => setResultJob(null)}
+              // 완료 job 관리 액션 — 전부 기존 상태/핸들러 배선(재구현 0).
+              // 벌크 삭제 confirm 모달(:1643)은 page chrome 과 공유.
+              actions={{
+                selected,
+                toggleSelect,
+                selectVisible: (ids, on) =>
+                  setSelected(on ? new Set(ids) : new Set()),
+                clearSelection,
+                bulkDownload,
+                requestBulkDelete: () => setBulkDeleteOpen(true),
+                bulkBusy,
+                deleteJob,
+                retryJob,
+              }}
+            />,
+          )}
+        </>
+      ) : (
+        renderInSlot(
         resultJob ? (
           <TranscriptResultFullview
             job={resultJob}
@@ -1591,6 +1650,7 @@ export function QuotesCardBody() {
         </div>
         </WidgetFullviewPanel>
         ),
+        )
       )}
 
       {/* 일괄 삭제 confirm 모달 — 결정 3. */}

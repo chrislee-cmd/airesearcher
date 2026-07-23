@@ -89,6 +89,13 @@ export type WidgetContent = {
     // `accent`(sky/mint) → `--widget-header-bg-{accent}` 로 매핑. 다른 위젯의
     // banner-top 은 불변(회귀 0).
     cardFrame?: boolean;
+    // 옵션: 풀뷰 V2 opt-in. true 면 canvas-board 가 이 위젯의 전체보기를
+    // 레거시 모달(<Modal>+SidebarNav) 대신 신규 공유 셸(<FullviewShell> —
+    // 프레임+240px 사이드바+헤더 스캐폴드, design-handoff/FULLVIEW-SHELL.md
+    // §F1~F3)로 렌더한다. 미지정(기본)이면 레거시 경로 유지 → 혼재기간 무회귀.
+    // 위젯별 body 전환은 각 위젯 후속 PR 이 이 플래그를 켜며 수행 (셸 PR 은
+    // 플래그 0건 — 회귀 0).
+    fullviewV2?: boolean;
   };
   state: WidgetState;
   ExpandedBody: FC;

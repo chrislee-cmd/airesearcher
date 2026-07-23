@@ -25,6 +25,9 @@ const PostBody = z.object({
   why: z.string().max(2000).optional().default(''),
   guide_reference: z.string().max(2000).optional(),
   transcript_cutoff: z.string().max(60_000).optional(),
+  // 풀뷰 V2 Spotlight — 질문 중요도(high|medium|low). 새로고침 후 히스토리가
+  // 중요도를 보존하도록 영속화. 옛 클라이언트는 미전송 → null(중요도 미상).
+  importance: z.enum(['high', 'medium', 'low']).optional(),
 });
 
 export async function POST(req: Request) {
@@ -44,8 +47,14 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
-  const { text, technique, why, guide_reference, transcript_cutoff } =
-    parsed.data;
+  const {
+    text,
+    technique,
+    why,
+    guide_reference,
+    transcript_cutoff,
+    importance,
+  } = parsed.data;
 
   const { data, error } = await supabase
     .from('probing_questions')
@@ -57,9 +66,10 @@ export async function POST(req: Request) {
       why: why ?? '',
       guide_reference: guide_reference ?? null,
       transcript_cutoff: transcript_cutoff ?? null,
+      importance: importance ?? null,
     })
     .select(
-      'id, text, technique, why, guide_reference, transcript_cutoff, is_core, created_at',
+      'id, text, technique, why, guide_reference, transcript_cutoff, importance, is_core, created_at',
     )
     .single();
   if (error || !data) {
@@ -95,7 +105,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabase
     .from('probing_questions')
     .select(
-      'id, text, technique, why, guide_reference, transcript_cutoff, is_core, created_at',
+      'id, text, technique, why, guide_reference, transcript_cutoff, importance, is_core, created_at',
     )
     .order('created_at', { ascending: false })
     .limit(limit);

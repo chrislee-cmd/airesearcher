@@ -139,7 +139,35 @@
     "fullview": {
       "reviewTitle": "AI UT · รีวิว",
       "reviewBadge": "รีวิวหลังเซสชัน",
-      "reviewMeta": "ผู้เข้าร่วม {count} คน · {duration} · PREVIEW"
+      "reviewMeta": "ผู้เข้าร่วม {count} คน · {duration} · PREVIEW",
+      "projectFallback": "ยังไม่เลือกโปรเจกต์"
+    },
+    "fv": {
+      "distCellAria": "กรอง {gender} × {age} ({count})",
+      "live": {
+        "thinkAloud": "สตรีมพูดความคิด",
+        "thinkAloudWaiting": "กำลังรอเสียงพูดของผู้เข้าร่วม…",
+        "urlPlaceholder": "URL เป้าหมาย",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "กำลังรอหน้าจอผู้เข้าร่วม",
+        "recTag": "REC",
+        "micOn": "เปิดไมค์",
+        "cursorTracked": "ติดตามเคอร์เซอร์",
+        "taskLabel": "งานที่มอบหมาย",
+        "taskEmpty": "ไม่มีงานที่มอบหมาย",
+        "endSession": "จบเซสชัน"
+      },
+      "review": {
+        "insightReport": "รายงานอินไซต์",
+        "taskHeading": "งาน: {task}",
+        "taskFallback": "ไม่มีงานที่มอบหมาย",
+        "insightRunning": "กำลังสร้างรายงานอินไซต์…",
+        "keyClips": "คลิปสำคัญ · {count}",
+        "behavioralMetrics": "เมตริกพฤติกรรม",
+        "estimatedMeta": "(ประมาณ · ความเชื่อมั่น {pct}%)",
+        "utteranceLog": "บันทึกคำพูดทั้งหมด",
+        "turns": "{turns} เทิร์น"
+      }
     },
     "unsupported": "เบราว์เซอร์นี้ไม่รองรับการบันทึกหน้าจอ กรุณาใช้เบราว์เซอร์เดสก์ท็อปเวอร์ชันล่าสุด เช่น Chrome หรือ Edge",
     "result": {
@@ -1019,7 +1047,11 @@
       "noResults": "ไม่พบผลลัพธ์",
       "aiSummaryTitle": "สรุปด้วย AI",
       "keyThemesTitle": "ธีมหลัก",
-      "comingSoon": "เร็ว ๆ นี้ (อัปเดตภายหลัง)"
+      "comingSoon": "เร็ว ๆ นี้ (อัปเดตภายหลัง)",
+      "generate": "สร้างสรุปด้วย AI",
+      "generating": "กำลังสร้าง…",
+      "summaryStub": "ยังไม่ได้สร้างสรุปด้วย AI",
+      "summaryUnavailable": "ไม่สามารถสร้างสรุปได้"
     },
     "transcriptsView": {
       "setup": {
@@ -1385,6 +1417,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "ส่วน",
+      "judgmentLog": "บันทึกการตัดสินของ AI",
+      "expandedKeywords": "คีย์เวิร์ดที่ขยายเพิ่ม",
+      "toExplore": "สิ่งที่ควรสำรวจเพิ่ม:",
+      "jobSelectAria": "เลือกผลลัพธ์ก่อนหน้า",
+      "loading": "กำลังโหลด",
+      "loadFailedTitle": "โหลดรายงานไม่สำเร็จ",
+      "loadFailedDesc": "ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+      "notDoneTitle": "งานนี้ยังไม่เสร็จ",
+      "notDoneDesc": "เลือกผลลัพธ์ที่เสร็จแล้วจากรายการด้านบน",
+      "emptyTitle": "ยังไม่มีรายงานที่เสร็จ",
+      "emptyDesc": "เรียกใช้การค้นหาเพื่อดูรายงานที่นี่",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "หัวข้อ",
+        "value": "ค่า",
+        "source": "แหล่งที่มา",
+        "tier": "tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "โปรเจกต์",
@@ -1654,6 +1708,15 @@
     "fullview": {
       "controlHint": "การเริ่ม หยุด และแชร์ควบคุมได้จากการ์ดวิดเจ็ต",
       "backToWidget": "กลับไปที่วิดเจ็ต"
+    },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "เสียงเอาต์พุต",
+      "outputAudioHint": "การล่ามด้วยเสียง",
+      "observerLink": "ลิงก์ผู้สังเกตการณ์",
+      "observerLinkPending": "ระบบจะสร้างลิงก์เมื่อเริ่มการล่าม",
+      "observerHint": "ผู้สังเกตการณ์จะได้ยินการล่ามแบบเรียลไทม์เท่านั้น (อ่านอย่างเดียว)"
     },
     "live": {
       "fullviewHeading": "โปรดตรวจสอบมุมมองเต็มหน้าจอ",
@@ -2650,7 +2713,8 @@
       "inject": "Inject",
       "backfillRunning": "🔍 กำลังค้นหาเนื้อหาที่เกี่ยวข้อง…",
       "backfillDone": "✓ เติมข้อมูลอัตโนมัติ {count} ประโยคจากการสนทนา",
-      "backfillEmpty": "⚠ ไม่พบเนื้อหาที่เกี่ยวข้อง — AI จะให้ความสำคัญกับคำถามที่เติมเต็มวิดเจ็ตนี้"
+      "backfillEmpty": "⚠ ไม่พบเนื้อหาที่เกี่ยวข้อง — AI จะให้ความสำคัญกับคำถามที่เติมเต็มวิดเจ็ตนี้",
+      "fullviewHelper": "ส่งถึงผู้ตอบทันที — แสดงเป็นสปอตไลต์หนึ่งครั้งและบันทึกไว้ในประวัติคำถาม"
     },
     "thinking": {
       "header": "เหตุผลของ AI",
@@ -2742,6 +2806,14 @@
       "cancel": "ยกเลิก",
       "add": "เพิ่ม"
     },
+    "fv": {
+      "personaBuilding": "เพอร์โซนาผู้ให้สัมภาษณ์ · กำลังสร้างแบบเรียลไทม์",
+      "thinkingHeader": "สตรีมความคิดของ AI",
+      "spotlightHint": "คำถามสำคัญจะแสดงเป็นสปอตไลต์เต็มหน้าจอ →",
+      "historyHeader": "ประวัติคำถาม",
+      "spotlightAutosave": "บันทึกลงประวัติอัตโนมัติหลัง 15 วินาที · ชี้เมาส์เพื่อหยุดชั่วคราว",
+      "projectFallback": "โปรเจกต์"
+    },
     "canvasBody": {
       "liveHint": "เซสชันกำลังดำเนินอยู่ · ตรวจสอบการวิเคราะห์ของ AI และคำถามที่แนะนำในมุมมองเต็มหน้าจอ",
       "startHint": "เริ่มเซสชัน",
@@ -2768,6 +2840,60 @@
     "offlineNote": "ไมค์เครื่องเดียวเก็บเสียงทั้งห้อง · ไม่แยกผู้พูด"
   },
   "Recruiting": {
+    "fv": {
+      "criteriaTitle": "เกณฑ์ผู้เข้าร่วม",
+      "criteriaCount": "{count}",
+      "criteriaEmpty": "วิเคราะห์เอกสารในการ์ดเพื่อสรุปเกณฑ์ผู้เข้าร่วมที่นี่",
+      "required": "จำเป็น",
+      "distTitle": "การกระจาย",
+      "distTotal": "รวม {count}",
+      "filterRemove": "ลบตัวกรอง",
+      "filterClearAll": "ล้างทั้งหมด",
+      "distNoFormTitle": "ยังไม่มีแบบฟอร์มที่เผยแพร่",
+      "distNoFormDesc": "เผยแพร่แบบฟอร์มเพื่อดูการกระจายตามเพศ · อายุที่นี่",
+      "distNoAxisTitle": "ไม่มีคำถามสำหรับสร้างการกระจาย",
+      "distNoAxisDesc": "แบบฟอร์มต้องมีคำถามเพศ · อายุ (ปีเกิด) จึงจะคำนวณตารางไขว้ได้",
+      "distNoResponsesTitle": "ยังไม่มีคำตอบให้รวม",
+      "distNoResponsesDesc": "เมื่อมีคำตอบเข้ามา การกระจายเพศ × ช่วงอายุจะแสดงที่นี่",
+      "distAxisHeader": "เพศ \\ อายุ",
+      "distFixedNote": "คงที่ที่ 100% ของคำตอบ — ตัวกรองเพียงเน้นเซลล์แต่ไม่เปลี่ยนตัวเลขเหล่านี้",
+      "csvTitle": "ดาวน์โหลดคำตอบทั้งหมดเป็น CSV (ไม่รวมชื่อ · โทรศัพท์และข้อมูลส่วนบุคคล)",
+      "refresh": "รีเฟรช",
+      "criteriaMissingBanner": "แบบฟอร์มนี้ไม่มีเกณฑ์ผู้เข้าร่วมที่บันทึกไว้",
+      "criteriaRepublish": "เผยแพร่เกณฑ์อีกครั้ง",
+      "formSelect": "เลือกแบบฟอร์ม",
+      "noFormChip": "ไม่มีแบบฟอร์มที่เผยแพร่",
+      "tablistLabel": "โหมดการดูคำตอบ",
+      "tabSummary": "สรุปความเหมาะสม",
+      "tabRaw": "ข้อมูลดิบ",
+      "fitHigh": "สูง",
+      "fitMedium": "กลาง",
+      "fitLow": "ต่ำ",
+      "fitNoneTitle": "ไม่ได้ตั้งเกณฑ์ผู้เข้าร่วม จึงไม่ได้ประเมินความเหมาะสม",
+      "filterAll": "ทั้งหมด",
+      "judgingUpdating": "กำลังอัปเดตการประเมิน…",
+      "judgeError": "โหลดการประเมินความเหมาะสมไม่สำเร็จ: {error}",
+      "retry": "ลองอีกครั้ง",
+      "noFormSelectTitle": "เลือกแบบฟอร์มที่เผยแพร่",
+      "noFormSelectDesc": "เลือกแบบฟอร์มที่มีคำตอบเพื่อดูการประเมินความเหมาะสมรายบุคคลที่นี่",
+      "noJudgeTitle": "ยังไม่มีคำตอบให้ประเมิน",
+      "noJudgeDesc": "แชร์ลิงก์แบบฟอร์ม เมื่อมีคำตอบเข้ามา การประเมินความเหมาะสมรายบุคคลจะแสดงขึ้น",
+      "noFilterMatchTitle": "ไม่มีคำตอบที่ระดับความเหมาะสมนี้",
+      "noFilterMatchDesc": "สลับตัวกรองเป็น 'ทั้งหมด' เพื่อแสดงผู้ตอบทุกคนอีกครั้ง",
+      "colRespondent": "ผู้ตอบ",
+      "colGender": "เพศ",
+      "colAge": "อายุ",
+      "colRegion": "ภูมิภาค",
+      "colFitReason": "ความเหมาะสม · เหตุผล",
+      "footerAll": "{count} คำตอบ · สูง {high} · กลาง {medium} · ต่ำ {low} · ไม่รวมชื่อ·โทรศัพท์",
+      "footerFiltered": "แสดง {shown} / {total} คำตอบ",
+      "footerEmpty": "ชื่อ·โทรศัพท์และข้อมูลส่วนบุคคลใช้ในการประเมินแต่ไม่แสดง",
+      "judgingLabel": "กำลังประเมินความเหมาะสมของผู้ตอบแต่ละคน…",
+      "flagDuplicate": "คำตอบซ้ำ",
+      "flagShort": "อาจเป็นคำตอบสั้น",
+      "flagContradict": "คำตอบขัดแย้ง",
+      "flagNonsense": "คำตอบไม่มีความหมาย"
+    },
     "setup": {
       "chipRequired": "จำเป็น",
       "standardBadge": "มาตรฐาน",

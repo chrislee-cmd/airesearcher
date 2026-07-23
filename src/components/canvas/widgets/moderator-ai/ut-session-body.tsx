@@ -30,10 +30,22 @@ import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
-import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import {
+  useFullview,
+  useFullviewChrome,
+} from '@/components/canvas/shell/fullview-shell-context';
+import {
+  FullviewProjectPill,
+  FullviewStatusChip,
+  FullviewEndSessionButton,
+} from '@/components/canvas/fullview/fullview-header';
+import { AiutLiveMonitor } from '@/components/canvas/fullview/aiut/aiut-live-monitor';
+import { AiutReviewReport } from '@/components/canvas/fullview/aiut/aiut-review-report';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { useProjectSelection } from '@/components/project-selection-provider';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useUtSession, normalizeTargetUrl } from './use-ut-session';
+import type { UtPhase } from './use-ut-session';
 import { useUtRemoteSession } from './use-ut-remote-session';
 import { UtConsentModal } from './consent-modal';
 import { UtResultView } from './ut-result';
@@ -45,6 +57,20 @@ function formatElapsed(ms: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// 라이브 관전 REC 경과(ms) — active 인 동안만 매초 갱신. 시작시각은 effect
+// 진입 시 로컬 const 로 캡처하고, setState 는 interval 콜백에서만 부른다
+// (react-hooks/set-state-in-effect 회피). 비활성이면 0.
+function useRecElapsed(active: boolean, intervalMs = 1000): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Date.now() - start), intervalMs);
+    return () => clearInterval(id);
+  }, [active, intervalMs]);
+  return active ? elapsed : 0;
 }
 
 export function UtSessionBody() {
@@ -64,8 +90,21 @@ export function UtSessionBody() {
 
   const projectId = getSelection('moderator_ai');
 
-  const { isCurrent, renderInSlot, close } = useFullview('moderator_ai');
+  const {
+    isCurrent,
+    renderInSlot,
+    renderInHeaderStart,
+    renderInHeaderEnd,
+    close,
+  } = useFullview('moderator_ai');
+  const fullviewChrome = useFullviewChrome();
   const { setState } = useWidgetState();
+
+  // 풀뷰 V2 헤더 프로젝트 pill 표시명 — 미선택/미매칭이면 폴백 라벨.
+  const { projects } = useInterviewV2Projects();
+  const fullviewProjectName =
+    projects.find((p) => p.id === projectId)?.name ??
+    t('fullview.projectFallback');
 
   // 표면 라우팅 — 로컬 세션 활성(live/result) / 원격 공유 활성(waiting~review) /
   // 그 외(idle·생성중·에러) = 세팅 아코디언. 원격 idle/creating/error 는 세팅
@@ -154,6 +193,11 @@ export function UtSessionBody() {
     session.phase === 'transcribing' ||
     session.phase === 'done' ||
     session.phase === 'error';
+
+  // 원격 라이브 관전 모니터(state 06) — REC 경과. 원격 훅은 라이브 시작시각을
+  // 노출하지 않으므로 관전 진입 순간을 로컬에서 스탬프해 카운트한다(근사).
+  const remoteLive = effectiveMode === 'remote' && remote.phase === 'live';
+  const recElapsedMs = useRecElapsed(remoteLive);
 
   const urlValid = normalizeTargetUrl(targetUrl) !== null;
   // 방식별 시작 게이트. host=지원·URL·언어 / guest=언어·과제.
@@ -337,32 +381,120 @@ export function UtSessionBody() {
             })
           : t('subtitle.idle');
 
+  // ── 풀뷰 V2 리뷰 표면(state 07) 데이터 — 활성 엔진(로컬/원격)에서 해석 ──
+  const reviewResult = effectiveMode === 'remote' ? remote.result : session.result;
+  const reviewPhase = (effectiveMode === 'remote'
+    ? remote.reviewStatus ?? 'done'
+    : session.phase) as UtPhase;
+  const reviewTaskGoal = taskGoal.trim() || reviewResult?.task_goal || '';
+
   return (
     <>
       {/* 카드 본문 — 항상 마운트(세션 엔진 보존). */}
       <div className="flex h-full min-h-0 flex-col">{renderContent('card')}</div>
 
-      {/* 전체보기 — 공유 모달 slot 으로 portal. 리뷰 표면은 peach 헤더밴드 +
-          'AI UT · Review' display 타이틀 + 'Post-session review' pill 로 정합. */}
-      {renderInSlot(
-        <WidgetFullviewPanel
-          title={isReviewSurface ? t('fullview.reviewTitle') : 'AI UT'}
-          subtitle={fullviewSubtitle}
-          onClose={close}
-          tone={isReviewSurface ? 'var(--widget-header-bg-peach)' : undefined}
-          titleDisplay={isReviewSurface}
-          badge={
-            isReviewSurface ? (
-              <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs-soft font-semibold uppercase tracking-wider text-mute">
+      {/* ── 풀뷰 V2 (캔버스 모달) ── FullviewShell(§F1~F3)에 배선. 본문은 fresh
+          AiutLiveMonitor(state 06)·AiutReviewReport(state 07); CD 미도시 표면
+          (세팅/공유대기/로컬녹화)은 기존 renderContent 유지(회귀 0). 헤더는
+          pill(좌)+REC chip/End-session·리뷰 pill(우) 슬롯으로 portal. */}
+      {fullviewChrome === 'modal' ? (
+        <>
+          {renderInHeaderStart(
+            <FullviewProjectPill name={fullviewProjectName} />,
+          )}
+          {renderInHeaderEnd(
+            remoteLive ? (
+              <>
+                <FullviewStatusChip
+                  label={`${t('fv.live.recTag')} ${formatElapsed(recElapsedMs)}`}
+                  tone="rec"
+                />
+                <FullviewEndSessionButton
+                  onClick={remote.stopMonitoring}
+                  label={t('fv.live.endSession')}
+                />
+              </>
+            ) : isReviewSurface ? (
+              // 리뷰 표면 — dot-less 'Post-session review' pill(CD state 07).
+              <span className="inline-flex shrink-0 items-center rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1 text-sm font-bold text-ink">
                 {t('fullview.reviewBadge')}
               </span>
-            ) : undefined
-          }
-        >
-          <div className="flex h-full min-h-0 flex-col">
-            {renderContent('fullview')}
-          </div>
-        </WidgetFullviewPanel>,
+            ) : null,
+          )}
+          {renderInSlot(
+            remoteLive ? (
+              <AiutLiveMonitor
+                targetUrl={remote.result?.target_url ?? normalizeTargetUrl(targetUrl)}
+                taskGoal={reviewTaskGoal}
+                recElapsedMs={recElapsedMs}
+                hasParticipantVideo={remote.hasParticipantVideo}
+                isActiveSurface={activeSurface === 'fullview'}
+                attachMonitor={remote.attachMonitor}
+                captionLines={remote.captionLines}
+                captionStatus={remote.captionStatus}
+              />
+            ) : isReviewSurface ? (
+              <AiutReviewReport
+                phase={reviewPhase}
+                result={reviewResult}
+                error={effectiveMode === 'remote' ? remote.error : session.error}
+                taskGoal={reviewTaskGoal}
+                onDownloadRecording={() =>
+                  void (effectiveMode === 'remote'
+                    ? remote.download('recording')
+                    : session.download('recording'))
+                }
+                onDownloadAudio={() =>
+                  void (effectiveMode === 'remote'
+                    ? remote.download('audio')
+                    : session.download('audio'))
+                }
+                onDownloadTranscript={
+                  effectiveMode === 'remote'
+                    ? remote.downloadTranscript
+                    : session.downloadTranscript
+                }
+                onRetry={
+                  effectiveMode === 'remote' ? undefined : session.retryUpload
+                }
+                onReset={
+                  effectiveMode === 'remote' ? remote.reset : session.reset
+                }
+                getPlaybackUrl={
+                  effectiveMode === 'remote' ? undefined : session.getPlaybackUrl
+                }
+              />
+            ) : (
+              // CD 미도시 표면(세팅/공유대기/로컬 라이브녹화/생성중) — 기존 본문.
+              <div className="flex h-full min-h-0 flex-col">
+                {renderContent('fullview')}
+              </div>
+            ),
+          )}
+        </>
+      ) : (
+        // ── 레거시 (리스트/page) ── 아직 V2 전환 전 표면. WidgetFullviewPanel
+        // 그대로(회귀 0). 리뷰 표면은 peach 헤더밴드 + Review 타이틀 + pill.
+        renderInSlot(
+          <WidgetFullviewPanel
+            title={isReviewSurface ? t('fullview.reviewTitle') : 'AI UT'}
+            subtitle={fullviewSubtitle}
+            onClose={close}
+            tone={isReviewSurface ? 'var(--widget-header-bg-peach)' : undefined}
+            titleDisplay={isReviewSurface}
+            badge={
+              isReviewSurface ? (
+                <span className="rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs-soft font-semibold uppercase tracking-wider text-mute">
+                  {t('fullview.reviewBadge')}
+                </span>
+              ) : undefined
+            }
+          >
+            <div className="flex h-full min-h-0 flex-col">
+              {renderContent('fullview')}
+            </div>
+          </WidgetFullviewPanel>,
+        )
       )}
 
       <UtConsentModal

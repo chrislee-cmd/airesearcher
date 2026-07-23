@@ -139,7 +139,35 @@
     "fullview": {
       "reviewTitle": "AI UT · Review",
       "reviewBadge": "Post-session review",
-      "reviewMeta": "{count} participant · {duration} · PREVIEW"
+      "reviewMeta": "{count} participant · {duration} · PREVIEW",
+      "projectFallback": "No project"
+    },
+    "fv": {
+      "distCellAria": "Filter {gender} × {age} ({count})",
+      "live": {
+        "thinkAloud": "Think-aloud stream",
+        "thinkAloudWaiting": "Waiting for participant speech…",
+        "urlPlaceholder": "Target URL",
+        "liveTag": "LIVE",
+        "mirrorWaiting": "Waiting for participant screen",
+        "recTag": "REC",
+        "micOn": "mic on",
+        "cursorTracked": "cursor tracked",
+        "taskLabel": "Assigned task",
+        "taskEmpty": "No task assigned",
+        "endSession": "End session"
+      },
+      "review": {
+        "insightReport": "Insight report",
+        "taskHeading": "Task: {task}",
+        "taskFallback": "No task assigned",
+        "insightRunning": "Generating insight report…",
+        "keyClips": "Key clips · {count}",
+        "behavioralMetrics": "Behavioral metrics",
+        "estimatedMeta": "(estimated · {pct}% confidence)",
+        "utteranceLog": "Full utterance log",
+        "turns": "{turns} turns"
+      }
     },
     "unsupported": "This browser doesn't support screen-share recording. Please use a recent desktop browser such as Chrome or Edge.",
     "result": {
@@ -929,7 +957,11 @@
       "noResults": "No matches.",
       "aiSummaryTitle": "AI summary",
       "keyThemesTitle": "Key themes",
-      "comingSoon": "Coming soon (later update)."
+      "comingSoon": "Coming soon (later update).",
+      "generate": "Generate AI summary",
+      "generating": "Generating…",
+      "summaryStub": "No AI summary generated yet.",
+      "summaryUnavailable": "Couldn't generate a summary."
     },
     "transcriptsView": {
       "setup": {
@@ -1295,6 +1327,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "Sections",
+      "judgmentLog": "AI judgment log",
+      "expandedKeywords": "Expanded keywords",
+      "toExplore": "To explore:",
+      "jobSelectAria": "Select a previous report",
+      "loading": "Loading",
+      "loadFailedTitle": "Couldn't load the report",
+      "loadFailedDesc": "Check your connection and try again.",
+      "notDoneTitle": "This run isn't complete",
+      "notDoneDesc": "Pick a completed report from the dropdown above.",
+      "emptyTitle": "No completed report yet",
+      "emptyDesc": "Run a search to see the report here.",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "Subject",
+        "value": "Value",
+        "source": "Source",
+        "tier": "Tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "Project",
@@ -1561,6 +1615,15 @@
     "fullview": {
       "controlHint": "Start, stop, and sharing are controlled from the widget card.",
       "backToWidget": "Back to widget"
+    },
+    "interpreter": {
+      "input": "INPUT",
+      "output": "OUTPUT",
+      "outputAudio": "Output audio",
+      "outputAudioHint": "Spoken interpretation",
+      "observerLink": "Observer link",
+      "observerLinkPending": "A link is created once interpreting starts",
+      "observerHint": "Observers hear the interpretation live, read-only."
     },
     "live": {
       "fullviewHeading": "Please check the full view",
@@ -2557,7 +2620,8 @@
       "inject": "Inject",
       "backfillRunning": "🔍 Finding related content…",
       "backfillDone": "✓ Auto-filled {count} utterances from the conversation",
-      "backfillEmpty": "⚠ No related content — the AI will prioritize questions that fill this widget"
+      "backfillEmpty": "⚠ No related content — the AI will prioritize questions that fill this widget",
+      "fullviewHelper": "Sent to the respondent right away — appears once as a spotlight and is logged to question history."
     },
     "thinking": {
       "header": "AI's reasoning",
@@ -2649,6 +2713,14 @@
       "cancel": "Cancel",
       "add": "Add"
     },
+    "fv": {
+      "personaBuilding": "Participant persona · building live",
+      "thinkingHeader": "AI thinking stream",
+      "spotlightHint": "High-importance questions appear full-screen as a spotlight →",
+      "historyHeader": "Question history",
+      "spotlightAutosave": "Auto-saves to history after 15s · hover to pause",
+      "projectFallback": "Project"
+    },
     "canvasBody": {
       "liveHint": "Session in progress · check the AI reasoning and suggested questions in full view",
       "startHint": "Start a session",
@@ -2675,6 +2747,60 @@
     "offlineNote": "One device mic captures the whole room · no speaker separation"
   },
   "Recruiting": {
+    "fv": {
+      "criteriaTitle": "Participant criteria",
+      "criteriaCount": "{count}",
+      "criteriaEmpty": "Analyze source material in the card to summarize participant criteria here.",
+      "required": "Required",
+      "distTitle": "Distribution",
+      "distTotal": "total {count}",
+      "filterRemove": "Remove filter",
+      "filterClearAll": "Clear all",
+      "distNoFormTitle": "No published form",
+      "distNoFormDesc": "Publish a form to see the gender · age distribution here.",
+      "distNoAxisTitle": "No questions to build a distribution",
+      "distNoAxisDesc": "The form needs gender · age (birth year) questions to compute a cross-tab.",
+      "distNoResponsesTitle": "No responses to aggregate yet",
+      "distNoResponsesDesc": "Once responses arrive, the gender × age distribution appears here.",
+      "distAxisHeader": "G \\ Age",
+      "distFixedNote": "Fixed at 100% of responses — filters highlight cells but never change these counts.",
+      "csvTitle": "Download all responses as CSV (name · phone and other PII excluded)",
+      "refresh": "Refresh",
+      "criteriaMissingBanner": "This form has no saved participant criteria.",
+      "criteriaRepublish": "Re-publish criteria",
+      "formSelect": "Select form",
+      "noFormChip": "No published form",
+      "tablistLabel": "Response view mode",
+      "tabSummary": "Fit summary",
+      "tabRaw": "Raw data",
+      "fitHigh": "High",
+      "fitMedium": "Medium",
+      "fitLow": "Low",
+      "fitNoneTitle": "No participant criteria set, so fit was not judged.",
+      "filterAll": "All",
+      "judgingUpdating": "Updating judgments…",
+      "judgeError": "Couldn't load fit judgments: {error}",
+      "retry": "Try again",
+      "noFormSelectTitle": "Select a published form",
+      "noFormSelectDesc": "Choose a form with responses to see per-respondent fit judgments here.",
+      "noJudgeTitle": "No responses to judge yet",
+      "noJudgeDesc": "Share the form link — once responses arrive, per-respondent fit judgments appear.",
+      "noFilterMatchTitle": "No responses at this fit level",
+      "noFilterMatchDesc": "Switch the filter to 'All' to show every respondent again.",
+      "colRespondent": "Respondent",
+      "colGender": "Gender",
+      "colAge": "Age",
+      "colRegion": "Region",
+      "colFitReason": "Fit · reason",
+      "footerAll": "{count} responses · High {high} · Medium {medium} · Low {low} · name·phone excluded",
+      "footerFiltered": "Showing {shown} / {total} responses",
+      "footerEmpty": "Name·phone and other PII are used in judging but not shown.",
+      "judgingLabel": "Judging fit for each respondent…",
+      "flagDuplicate": "Duplicate response",
+      "flagShort": "Possibly a one-word answer",
+      "flagContradict": "Contradictory response",
+      "flagNonsense": "Nonsensical response"
+    },
     "setup": {
       "chipRequired": "Required",
       "standardBadge": "Standard",
