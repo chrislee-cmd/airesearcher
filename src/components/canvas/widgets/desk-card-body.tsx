@@ -33,11 +33,9 @@ import {
   type DeskMode,
   type DeskCountryScope,
 } from '@/lib/desk-orchestrator/types';
-import { Select } from '@/components/ui/select';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
 import { EmptyState } from '@/components/ui/empty-state';
-import { BrandLoader } from '@/components/ui/brand-loader';
 import { StageFlow, type Stage } from '@/components/ui/stage-flow';
 import { Button } from '@/components/ui/button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
@@ -47,8 +45,9 @@ import { DeskSetupAccordion } from './desk/setup-accordion';
 import { useProjectSelection } from '@/components/project-selection-provider';
 import { WidgetOutputRegion } from '@/components/canvas/shell/widget-output-region';
 import { WidgetStatusFooter } from '@/components/canvas/shell/widget-status-footer';
-import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { useFullview } from '@/components/canvas/shell/fullview-shell-context';
+import { useActiveProject } from '@/components/active-project-provider';
+import { DeskFullviewBody } from '@/components/canvas/fullview/desk/desk-fullview-body';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { deskCumulativeProgress } from '@/lib/widget-progress';
 import { Banner } from '@/components/canvas/shell/banner';
@@ -141,7 +140,9 @@ export function DeskCardBody() {
   // (CanvasBoard FullviewShell)이 소유하고, desk 가 currentKey 일 때만 본문을
   // 모달 slot 으로 portal. 결과는 useDeskJobs provider 기반이라 모달 close 후
   // 에도 보존. 행별 "미리보기" 모달(previewOpen) 과는 별개 — 그건 그대로 유지.
-  const { renderInSlot, openFullview, close: closeFullview } = useFullview('desk');
+  const { renderInSlot, openFullview } = useFullview('desk');
+  // 풀뷰 V2 헤더 프로젝트 pill — 활성 프로젝트명(없으면 pill 미표시).
+  const { active: activeProject } = useActiveProject();
 
   // Fullview 좌측 "이전 산출물" 사이드바에서 고른 job. 카드 본문(latestJob,
   // 세션 스코프)은 그대로 두고 fullview 우측 report 만 스위치한다. Default =
@@ -1086,98 +1087,50 @@ export function DeskCardBody() {
         {job && <DeskResultView job={job} tDesk={tDesk} />}
       </Modal>
 
-      {/* 통일 "전체 보기" — 상단 "이전 산출물" 드롭다운(최근 20개 persist
-          job, 리크루팅 응답 fullview 의 폼 선택 Select 와 동일 패턴) + 아래
-          선택 job 리포트. 카드 본문은 세션 스코프 latestJob 만 보여주므로
-          옛 완료 job 은 여기서 접근한다. 공유 모달 slot 으로 portal 되며
-          chrome(title/subtitle/닫기×)은 WidgetFullviewPanel 이 소유. */}
+      {/* 통일 "전체 보기" 풀뷰 V2 (fullviewV2) — CD state 09 fresh 본문
+          (DeskFullviewBody: scroll-spy nav + 판단로그 + 섹션 카드). 공유
+          FullviewShell 이 프레임/사이드바/헤더 스캐폴드를 소유하고, 이 본문이
+          slot 으로 portal 된다(프로젝트 pill · 이전 산출물 Select 는 §F3 헤더
+          slot 으로 body 가 publish). 카드 본문은 세션 스코프 latestJob 만
+          보여주므로 옛 완료 job 은 여기 드롭다운으로 접근. 상태/로직(선택 job
+          해상·on-demand hydration·export)은 이 host 가 그대로 소유(회귀 0). */}
       {renderInSlot(
-        <WidgetFullviewPanel
-          title="데스크 리서치 — 전체 보기"
-          subtitle={
-            fullviewJob
-              ? `${fullviewJob.keywords.join(', ')} · ${tDesk('reportTitle')}`
-              : '완료된 리포트를 풀스크린으로 봅니다'
-          }
-          onClose={closeFullview}
-        >
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">
-              {jobs.length > 0 ? (
-                <Select
-                  size="sm"
-                  fullWidth={false}
-                  aria-label="이전 산출물 선택"
-                  className="min-w-[280px]"
-                  value={fullviewJob?.id ?? ''}
-                  onChange={(e) => setSelectedJobId(e.target.value || null)}
-                  options={jobs.map((j) => ({
-                    value: j.id,
-                    label: deskJobSelectorLabel(j),
-                  }))}
-                />
-              ) : (
-                <span className="text-sm text-mute-soft">이전 산출물 없음</span>
-              )}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {fullviewJob && fullviewJob.status === 'done' && fullviewJob.output ? (
-                <div className="px-6 py-6">
-                  <DeskResultView job={fullviewJob} tDesk={tDesk} />
-                </div>
-              ) : fullviewHydrationFailed ? (
-                // done job, but the on-demand heavy-column fetch failed — show
-                // an explicit error + retry, never a silent forever-spinner
-                // (spec decision B: 무음 X).
-                <div className="flex h-full items-center justify-center p-10">
-                  <EmptyState
-                    tone="subtle"
-                    title="리포트를 불러오지 못했습니다"
-                    description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
-                    action={
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          if (!fullviewJobId) return;
-                          setHydrationFailedId(null);
-                          void hydrateJob(fullviewJobId).then((ok) => {
-                            if (!ok) setHydrationFailedId(fullviewJobId);
-                          });
-                        }}
-                      >
-                        {tDesk('retry')}
-                      </Button>
-                    }
-                  />
-                </div>
-              ) : fullviewNeedsHydration ? (
-                // done job, report body being fetched on demand (list is
-                // light) — show a loader, not a false "미완료", while the
-                // detail request lands.
-                <div className="flex h-full items-center justify-center p-10">
-                  <BrandLoader size={36} label={tCommon('loading')} />
-                </div>
-              ) : fullviewJob ? (
-                <div className="flex h-full items-center justify-center p-10">
-                  <EmptyState
-                    tone="subtle"
-                    title="이 산출물은 완료되지 않았습니다"
-                    description="위 드롭다운에서 완료된 다른 산출물을 선택해 주세요."
-                  />
-                </div>
-              ) : (
-                <div className="flex h-full items-center justify-center p-10">
-                  <EmptyState
-                    tone="subtle"
-                    title="아직 완료된 리포트가 없습니다"
-                    description="검색을 실행하면 결과 리포트를 여기서 풀스크린으로 볼 수 있어요."
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </WidgetFullviewPanel>,
+        <DeskFullviewBody
+          job={fullviewJob}
+          jobs={jobs}
+          onSelectJob={setSelectedJobId}
+          jobSelectorLabel={deskJobSelectorLabel}
+          needsHydration={fullviewNeedsHydration}
+          hydrationFailed={fullviewHydrationFailed}
+          onRetryHydration={() => {
+            if (!fullviewJobId) return;
+            setHydrationFailedId(null);
+            void hydrateJob(fullviewJobId).then((ok) => {
+              if (!ok) setHydrationFailedId(fullviewJobId);
+            });
+          }}
+          projectName={activeProject?.name ?? null}
+          onExportMd={() => {
+            if (!fullviewJob?.output) return;
+            // 파일명은 선택된 fullviewJob 기준(세션 latestJob 아님) — 옛 산출물
+            // 을 골라 내려받아도 라벨이 그 job 을 반영.
+            const name = buildArtifactBaseName({
+              prefix: 'desk',
+              slug: fullviewJob.keywords[0],
+              createdAt: fullviewJob.created_at,
+            });
+            triggerBlobDownload(
+              new Blob([fullviewJob.output], {
+                type: 'text/markdown;charset=utf-8',
+              }),
+              `${name}.md`,
+            );
+          }}
+          onExportDocx={() => {
+            if (!fullviewJob?.output) return;
+            void downloadDocx(fullviewJob.output);
+          }}
+        />,
       )}
     </>
   );

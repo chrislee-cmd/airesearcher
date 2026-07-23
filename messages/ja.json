@@ -1415,6 +1415,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "セクション",
+      "judgmentLog": "AI 判断ログ",
+      "expandedKeywords": "拡張された類似キーワード",
+      "toExplore": "追加で確認すべき点:",
+      "jobSelectAria": "以前の成果物を選択",
+      "loading": "読み込み中",
+      "loadFailedTitle": "レポートを読み込めませんでした",
+      "loadFailedDesc": "接続を確認してからもう一度お試しください。",
+      "notDoneTitle": "この実行は完了していません",
+      "notDoneDesc": "上のドロップダウンから完了した成果物を選んでください。",
+      "emptyTitle": "まだ完了したレポートがありません",
+      "emptyDesc": "検索を実行するとここにレポートが表示されます。",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "項目",
+        "value": "数値",
+        "source": "出典",
+        "tier": "tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "プロジェクト",

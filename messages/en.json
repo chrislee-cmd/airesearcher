@@ -1325,6 +1325,28 @@
     }
   },
   "Desk": {
+    "fv": {
+      "sections": "Sections",
+      "judgmentLog": "AI judgment log",
+      "expandedKeywords": "Expanded keywords",
+      "toExplore": "To explore:",
+      "jobSelectAria": "Select a previous report",
+      "loading": "Loading",
+      "loadFailedTitle": "Couldn't load the report",
+      "loadFailedDesc": "Check your connection and try again.",
+      "notDoneTitle": "This run isn't complete",
+      "notDoneDesc": "Pick a completed report from the dropdown above.",
+      "emptyTitle": "No completed report yet",
+      "emptyDesc": "Run a search to see the report here.",
+      "exportDocx": "📄 .docx",
+      "exportMd": "📝 .md",
+      "quantCol": {
+        "subject": "Subject",
+        "value": "Value",
+        "source": "Source",
+        "tier": "Tier"
+      }
+    },
     "setup": {
       "stepEyebrow": "STEP 0{n} · {label}",
       "step1Short": "Project",
