@@ -28,9 +28,9 @@
     "*.{ts,tsx,js,jsx,mjs,cjs}": "sh -c 'pnpm exec eslint --fix \"$@\" || true' --"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.74",
-    "@ai-sdk/openai": "^3.0.58",
-    "@ai-sdk/react": "^3.0.176",
+    "@ai-sdk/anthropic": "^4.0.16",
+    "@ai-sdk/openai": "^4.0.16",
+    "@ai-sdk/react": "^4.0.34",
     "@deepgram/sdk": "^5.1.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@openai/agents": "^0.11.6",
@@ -40,7 +40,7 @@
     "@t3-oss/env-nextjs": "^0.13.11",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
-    "ai": "^6.0.174",
+    "ai": "^7.0.31",
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.9.3",
