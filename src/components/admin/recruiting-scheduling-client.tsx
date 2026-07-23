@@ -612,6 +612,20 @@ export function RecruitingSchedulingClient({
   const calendarSlots = effectiveCalendarGroupId
     ? slots.filter((s) => s.batch_id === effectiveCalendarGroupId)
     : slots;
+  const calendarScopedCandidates = effectiveCalendarGroupId
+    ? candidates.filter((c) => c.batch_id === effectiveCalendarGroupId)
+    : candidates;
+  // Confirmed attendees within the calendar's current scope — the roster below
+  // the calendar card (restored — #1161 Memphis rewrite dropped this block).
+  const confirmedCandidates = calendarScopedCandidates.filter(
+    (c) => c.status === 'confirmed',
+  );
+  // batch_id → group name, so the roster can tag which group each attendee
+  // belongs to (esp. in 전체 mode where the list spans groups). Inbox pool has
+  // no group tag.
+  const groupNameById = new Map(
+    namedGroups.map((g) => [g.id, g.title] as const),
+  );
   // The editor's candidate list / overlap check follow the batch being created
   // into (a candidate's own group, or the calendar filter); '' spans all.
   const editorSlots = editorBatchId
@@ -1320,6 +1334,90 @@ export function RecruitingSchedulingClient({
                       onEditSlot={openEdit}
                     />
                   </aside>
+                )}
+              </div>
+
+              {/* Confirmed roster — the final-confirmed attendees within the
+                  calendar's current scope. Restored below the two-pane card
+                  (#1161 Memphis rewrite dropped this block). Clicking a row
+                  opens that attendee's chat thread in the rail; the header CTA
+                  opens the broadcast thread. */}
+              <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-ink">
+                    {t('confirmedHeading', {
+                      count: confirmedCandidates.length,
+                    })}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => setChatThread(BROADCAST_THREAD_ID)}
+                  >
+                    {t('confirmedBroadcastCta')}
+                  </Button>
+                </div>
+                {confirmedCandidates.length === 0 ? (
+                  <p className="text-sm text-mute-soft">
+                    {t('confirmedEmpty')}
+                  </p>
+                ) : (
+                  <ul className="flex flex-col divide-y divide-line-soft">
+                    {confirmedCandidates.map((c) => {
+                      const next = nextSlotForCandidate(c.id, slots, now);
+                      const contact = contactValue(c);
+                      const active = chatThread === c.id;
+                      const groupName = groupNameById.get(c.batch_id);
+                      return (
+                        <li key={c.id}>
+                          {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
+                          <button
+                            type="button"
+                            onClick={() => setChatThread(c.id)}
+                            className={[
+                              'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
+                              active
+                                ? 'bg-paper-soft'
+                                : 'hover:bg-paper-soft',
+                            ].join(' ')}
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2">
+                                <span className="truncate text-sm font-bold text-ink">
+                                  {candidateLabel(c)}
+                                </span>
+                                {groupName && (
+                                  <span className="shrink-0 rounded-xs border border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs text-mute">
+                                    {groupName}
+                                  </span>
+                                )}
+                              </span>
+                              {contact && (
+                                <span className="block truncate text-xs text-mute-soft">
+                                  {contact}
+                                </span>
+                              )}
+                            </span>
+                            <span className="shrink-0 text-xs text-mute">
+                              {next ? (
+                                <span className="flex items-center gap-1.5">
+                                  <span
+                                    className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${slotDotClass(next.status)}`}
+                                  />
+                                  {slotTimeFmt.format(new Date(next.start_at))}
+                                </span>
+                              ) : (
+                                t('confirmedNoSlot')
+                              )}
+                            </span>
+                            <span className="shrink-0 text-xs font-bold text-amore">
+                              {t('confirmedChatCta')}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
             </div>
