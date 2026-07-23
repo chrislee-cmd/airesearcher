@@ -673,12 +673,33 @@ export function RecruitingSchedulingClient({
   const confirmedCandidates = calendarScopedCandidates.filter(
     (c) => c.status === 'confirmed',
   );
-  // batch_id → group name, so the roster can tag which group each attendee
-  // belongs to (esp. in 전체 mode where the list spans groups). Inbox pool has
-  // no group tag.
-  const groupNameById = new Map(
-    namedGroups.map((g) => [g.id, g.title] as const),
-  );
+  // Confirmed roster as read-only group sections — the same 그룹뷰 shape as the
+  // list view's by-group cards, but built from confirmedCandidates and scoped to
+  // the calendar's current group. Empty groups are dropped so the roster only
+  // lists groups that actually have confirmed attendees; the 미할당 pool collects
+  // confirmed candidates not in any named group (전체 mode only).
+  const confirmedSections = [
+    ...namedGroups
+      .filter(
+        (g) => !effectiveCalendarGroupId || g.id === effectiveCalendarGroupId,
+      )
+      .map((g) => ({
+        key: g.id,
+        title: g.title,
+        rows: confirmedCandidates.filter((c) => c.batch_id === g.id),
+      })),
+    ...(effectiveCalendarGroupId
+      ? []
+      : [
+          {
+            key: '__ungrouped__',
+            title: t('ungrouped'),
+            rows: confirmedCandidates.filter(
+              (c) => !namedGroupIds.has(c.batch_id),
+            ),
+          },
+        ]),
+  ].filter((s) => s.rows.length > 0);
   // The editor's candidate list / overlap check follow the batch being created
   // into (a candidate's own group, or the calendar filter); '' spans all.
   const editorSlots = editorBatchId
@@ -756,7 +777,11 @@ export function RecruitingSchedulingClient({
   // paper-soft, sticky-3col geometry preserved (CONTEXTFORCD §5.9). The
   // per-candidate share-link column is gone — the link is one project-shared
   // master link now (BUILD-SPEC §5.1).
-  function renderTable(rows: SchedCandidate[], framed = true) {
+  // `readOnly` (수정: 확정 로스터 그룹뷰) drops every mutation affordance —
+  // checkbox/select-all, slot assign/edit — and appends a chat CTA column so the
+  // confirmed roster reuses the exact list-view group table as a read-only view.
+  // The list view calls renderTable without it, so its behavior is unchanged.
+  function renderTable(rows: SchedCandidate[], framed = true, readOnly = false) {
     const body = (
       <div className="overflow-x-auto">
           {/* border-separate (not collapse): under border-collapse, z-index on
@@ -766,25 +791,33 @@ export function RecruitingSchedulingClient({
           <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
             <thead className="[&_th]:border-b-2 [&_th]:border-ink [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
               <tr className="text-left">
-                <th
-                  className="sticky z-table-cell-sticky px-3 py-2.5"
-                  style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
-                >
-                  <Checkbox
-                    aria-label={t('selectAll')}
-                    checked={rowsAllSelected(rows)}
-                    onChange={() => toggleRows(rows)}
-                  />
-                </th>
+                {!readOnly && (
+                  <th
+                    className="sticky z-table-cell-sticky px-3 py-2.5"
+                    style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                  >
+                    <Checkbox
+                      aria-label={t('selectAll')}
+                      checked={rowsAllSelected(rows)}
+                      onChange={() => toggleRows(rows)}
+                    />
+                  </th>
+                )}
                 <th
                   className="sticky z-table-cell-sticky px-3.5 py-2.5"
-                  style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
+                  style={stickyStyle(
+                    readOnly ? 0 : STICKY_LEFT.name,
+                    STICKY_W.name,
+                  )}
                 >
                   {t('colName')}
                 </th>
                 <th
                   className="sticky z-table-cell-sticky border-r-2 border-ink px-3.5 py-2.5"
-                  style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
+                  style={stickyStyle(
+                    readOnly ? STICKY_W.name : STICKY_LEFT.contact,
+                    STICKY_W.contact,
+                  )}
                 >
                   {t('colContact')}
                 </th>
@@ -795,6 +828,9 @@ export function RecruitingSchedulingClient({
                   </th>
                 ))}
                 <th className="px-4 py-2.5">{t('colSlot')}</th>
+                {readOnly && (
+                  <th className="px-4 py-2.5">{t('confirmedChatCta')}</th>
+                )}
               </tr>
             </thead>
             <tbody className="[&_td]:border-b [&_td]:border-line-soft">
@@ -814,19 +850,24 @@ export function RecruitingSchedulingClient({
                   const contact = contactValue(c);
                   return (
                     <tr key={c.id} className="group">
-                      <td
-                        className="sticky z-table-cell-sticky bg-paper px-3 py-2.5 transition-colors group-hover:bg-paper-soft"
-                        style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
-                      >
-                        <Checkbox
-                          aria-label={t('selectRow')}
-                          checked={checked}
-                          onChange={() => toggleOne(c.id)}
-                        />
-                      </td>
+                      {!readOnly && (
+                        <td
+                          className="sticky z-table-cell-sticky bg-paper px-3 py-2.5 transition-colors group-hover:bg-paper-soft"
+                          style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                        >
+                          <Checkbox
+                            aria-label={t('selectRow')}
+                            checked={checked}
+                            onChange={() => toggleOne(c.id)}
+                          />
+                        </td>
+                      )}
                       <td
                         className="sticky z-table-cell-sticky bg-paper px-3.5 py-2.5 text-ink transition-colors group-hover:bg-paper-soft"
-                        style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
+                        style={stickyStyle(
+                          readOnly ? 0 : STICKY_LEFT.name,
+                          STICKY_W.name,
+                        )}
                       >
                         <div className="flex items-center gap-1.5">
                           <span
@@ -844,7 +885,10 @@ export function RecruitingSchedulingClient({
                       </td>
                       <td
                         className="sticky z-table-cell-sticky border-r-2 border-ink bg-paper px-3.5 py-2.5 font-mono text-md text-ink-2 transition-colors group-hover:bg-paper-soft"
-                        style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
+                        style={stickyStyle(
+                          readOnly ? STICKY_W.name : STICKY_LEFT.contact,
+                          STICKY_W.contact,
+                        )}
                       >
                         <div className="truncate" title={contact ?? undefined}>
                           {contact ?? '—'}
@@ -871,7 +915,26 @@ export function RecruitingSchedulingClient({
                         </td>
                       ))}
                       <td className="px-4 py-2.5">
-                        {next ? (
+                        {readOnly ? (
+                          // Read-only roster: slot as static text, no assign/edit.
+                          next ? (
+                            <span className="flex items-center gap-1.5 text-sm">
+                              <span
+                                className={`inline-block h-2 w-2 shrink-0 rounded-full ${slotDotClass(next.status)}`}
+                              />
+                              <span className="font-bold text-ink">
+                                {slotTimeFmt.format(new Date(next.start_at))}
+                              </span>
+                              <span className="text-mute-soft">
+                                · {statusLabel[next.status]}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-sm text-mute-soft">
+                              {t('confirmedNoSlot')}
+                            </span>
+                          )
+                        ) : next ? (
                           <Button
                             variant="link"
                             size="xs"
@@ -900,6 +963,17 @@ export function RecruitingSchedulingClient({
                           </button>
                         )}
                       </td>
+                      {readOnly && (
+                        <td className="px-4 py-2.5">
+                          <Button
+                            variant="link"
+                            size="xs"
+                            onClick={() => openTile(c.id)}
+                          >
+                            {t('confirmedChatCta')}
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })
@@ -1501,62 +1575,47 @@ export function RecruitingSchedulingClient({
                       {t('confirmedEmpty')}
                     </p>
                   ) : (
-                    <ul className="flex flex-col divide-y divide-line-soft">
-                    {confirmedCandidates.map((c) => {
-                      const next = nextSlotForCandidate(c.id, slots, now);
-                      const contact = contactValue(c);
-                      const active = chatTiles.some((tile) => tile.thread === c.id);
-                      const groupName = groupNameById.get(c.batch_id);
-                      return (
-                        <li key={c.id}>
-                          {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
-                          <button
-                            type="button"
-                            onClick={() => openTile(c.id)}
-                            className={[
-                              'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
-                              active
-                                ? 'bg-paper-soft'
-                                : 'hover:bg-paper-soft',
-                            ].join(' ')}
+                    // Read-only 그룹뷰 (라운드3): a Memphis card per group, pastel
+                    // head + count pill (no Rename), holding the list-view table in
+                    // read-only mode — full user columns, no select/edit, chat CTA
+                    // per row (openTile → multi-window rail, 수정4).
+                    <div className="flex flex-col gap-4">
+                      {confirmedSections.map(({ key, title, rows }, i) => {
+                        const isInbox = key === '__ungrouped__';
+                        return (
+                          <div
+                            key={key}
+                            className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
                           >
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-center gap-2">
-                                <span className="truncate text-sm font-bold text-ink">
-                                  {candidateLabel(c)}
-                                </span>
-                                {groupName && (
-                                  <span className="shrink-0 rounded-xs border border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs text-mute">
-                                    {groupName}
-                                  </span>
-                                )}
+                            <div
+                              className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                                isInbox
+                                  ? 'bg-paper-soft'
+                                  : HEAD_TINTS[i % HEAD_TINTS.length]
+                              }`}
+                            >
+                              <span className="text-base" aria-hidden>
+                                {isInbox ? '📥' : '📁'}
                               </span>
-                              {contact && (
-                                <span className="block truncate text-xs text-mute-soft">
-                                  {contact}
-                                </span>
-                              )}
-                            </span>
-                            <span className="shrink-0 text-xs text-mute">
-                              {next ? (
-                                <span className="flex items-center gap-1.5">
-                                  <span
-                                    className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${slotDotClass(next.status)}`}
-                                  />
-                                  {slotTimeFmt.format(new Date(next.start_at))}
-                                </span>
-                              ) : (
-                                t('confirmedNoSlot')
-                              )}
-                            </span>
-                            <span className="shrink-0 text-xs font-bold text-amore">
-                              {t('confirmedChatCta')}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                    </ul>
+                              <span
+                                className="min-w-0 flex-1 truncate font-extrabold text-ink"
+                                style={{
+                                  fontFamily:
+                                    'var(--font-outfit), var(--font-sans)',
+                                  fontSize: 16,
+                                }}
+                              >
+                                {title}
+                              </span>
+                              <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                                {rows.length}
+                              </span>
+                            </div>
+                            {renderTable(rows, false, true)}
+                          </div>
+                        );
+                      })}
+                    </div>
                   ))}
               </div>
             </div>

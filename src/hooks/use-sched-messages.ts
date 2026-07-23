@@ -17,6 +17,8 @@ export function useSchedMessages(batchId: string | null): {
   messages: SchedMessage[];
   loading: boolean;
   refetch: () => Promise<void>;
+  editMessage: (id: string, body: string) => Promise<boolean>;
+  deleteMessage: (id: string) => Promise<boolean>;
 } {
   const [messages, setMessages] = useState<SchedMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,50 @@ export function useSchedMessages(batchId: string | null): {
       // ignore — realtime or the next poll will catch up
     }
   }, [batchId]);
+
+  // Edit a broadcast message's body (admin, round-3). Refetch on success so the
+  // edit + "수정됨" marker land immediately even if the realtime event lags;
+  // realtime will also fire for the other open panels. Returns success.
+  const editMessage = useCallback(
+    async (id: string, nextBody: string): Promise<boolean> => {
+      const text = nextBody.trim();
+      if (!text) return false;
+      try {
+        const res = await fetch(
+          `/api/scheduling/messages/${encodeURIComponent(id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body: text }),
+          },
+        );
+        if (!res.ok) return false;
+        await refetch();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [refetch],
+  );
+
+  // Delete a broadcast message (admin, round-3). Refetch on success.
+  const deleteMessage = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const res = await fetch(
+          `/api/scheduling/messages/${encodeURIComponent(id)}`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) return false;
+        await refetch();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [refetch],
+  );
 
   // Initial + on-batch-change load.
   useEffect(() => {
@@ -91,5 +137,5 @@ export function useSchedMessages(batchId: string | null): {
     return () => clearInterval(timer);
   }, [batchId, refetch]);
 
-  return { messages, loading, refetch };
+  return { messages, loading, refetch, editMessage, deleteMessage };
 }

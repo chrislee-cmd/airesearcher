@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -69,7 +70,8 @@ export function SchedulingChatPanel({
   totalCount,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
-  const { messages, loading, refetch } = useSchedMessages(batchId);
+  const { messages, loading, refetch, editMessage, deleteMessage } =
+    useSchedMessages(batchId);
 
   const [internalThread, setInternalThread] =
     useState<string>(BROADCAST_THREAD_ID);
@@ -83,6 +85,11 @@ export function SchedulingChatPanel({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline edit of a broadcast message (round-3). editingId marks which bubble
+  // is in edit mode; editDraft holds its working text.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
   // Assigned-schedule panel — collapsed by default to keep the rail compact;
   // the toggle carries a count badge (공간 압축, 사용자 요청).
   const [slotsOpen, setSlotsOpen] = useState(false);
@@ -253,6 +260,42 @@ export function SchedulingChatPanel({
     } finally {
       setSending(false);
     }
+  }
+
+  // --- Broadcast message edit / delete (round-3, admin-only) ---
+
+  function startEdit(m: SchedMessage) {
+    setEditingId(m.id);
+    setEditDraft(m.body);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft('');
+  }
+
+  async function saveEdit(id: string) {
+    const text = editDraft.trim();
+    if (!text || editBusy) return;
+    setEditBusy(true);
+    setError(null);
+    const ok = await editMessage(id, text);
+    setEditBusy(false);
+    if (ok) {
+      setEditingId(null);
+      setEditDraft('');
+    } else {
+      setError(t('chatEditFailed'));
+    }
+  }
+
+  async function removeMessage(id: string) {
+    if (typeof window !== 'undefined' && !window.confirm(t('chatMsgDeleteConfirm')))
+      return;
+    const ok = await deleteMessage(id);
+    if (!ok) setError(t('chatDeleteFailed'));
+    else if (editingId === id) cancelEdit();
   }
 
   const threadTitle = isBroadcast
@@ -445,7 +488,76 @@ export function SchedulingChatPanel({
             const senderLabel = fromAdmin
               ? t('chatSenderAdmin')
               : t('chatSenderParticipant');
-            const stamp = `${senderLabel} · ${timeFmt.format(new Date(m.created_at))}`;
+            // "수정됨" marker — only when the row carries an edit stamp later than
+            // its creation (a never-edited / preview-DB row has updated_at null).
+            const edited =
+              !!m.updated_at &&
+              new Date(m.updated_at).getTime() >
+                new Date(m.created_at).getTime();
+            const stamp = `${senderLabel} · ${timeFmt.format(new Date(m.created_at))}${
+              edited ? ` · ${t('chatMsgEdited')}` : ''
+            }`;
+            // Edit/delete are broadcast-only (private is out of round-3 scope) and
+            // admin-authored — matching the [id] route's server-side gate.
+            const editable = fromAdmin && m.scope === 'broadcast';
+            const isEditing = editingId === m.id;
+
+            // Shared inline editor (textarea + save/cancel), used by both the
+            // banner and the bubble when this message is being edited.
+            const editor = (
+              <div className="flex flex-col gap-2">
+                <Textarea
+                  aria-label={t('chatMsgEdit')}
+                  value={editDraft}
+                  maxLength={MAX_MESSAGE_LENGTH}
+                  rows={3}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void saveEdit(m.id);
+                    }
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  className="resize-none border-2 border-ink"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    onClick={() => void saveEdit(m.id)}
+                    disabled={!editDraft.trim() || editBusy}
+                  >
+                    {t('chatMsgSave')}
+                  </Button>
+                  <Button size="xs" variant="ghost" onClick={cancelEdit}>
+                    {t('cancel')}
+                  </Button>
+                </div>
+              </div>
+            );
+
+            // Edit/delete action pair, shown on editable messages when not editing.
+            const actions = editable && !isEditing && (
+              <span className="flex shrink-0 items-center gap-0.5">
+                <IconButton
+                  aria-label={t('chatMsgEdit')}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(m)}
+                >
+                  ✎
+                </IconButton>
+                <IconButton
+                  aria-label={t('chatMsgDelete')}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void removeMessage(m.id)}
+                >
+                  🗑
+                </IconButton>
+              </span>
+            );
 
             // Broadcast announcement → banner (sun head + amber shadow).
             if (m.is_announcement && m.scope === 'broadcast') {
@@ -468,10 +580,17 @@ export function SchedulingChatPanel({
                       {t('chatKindAnnouncement')} · {reachTag}
                     </span>
                   </div>
-                  <div className="whitespace-pre-wrap px-3 py-2.5 text-sm leading-relaxed text-ink-2">
-                    {m.body}
+                  {isEditing ? (
+                    <div className="px-3 py-2.5">{editor}</div>
+                  ) : (
+                    <div className="whitespace-pre-wrap px-3 py-2.5 text-sm leading-relaxed text-ink-2">
+                      {m.body}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-2 px-3 pb-2">
+                    <span className="text-xs text-mute-soft">{stamp}</span>
+                    {actions}
                   </div>
-                  <div className="px-3 pb-2 text-xs text-mute-soft">{stamp}</div>
                 </div>
               );
             }
@@ -492,10 +611,17 @@ export function SchedulingChatPanel({
                       : 'rounded-bl-xs border-[1.5px] border-line bg-paper shadow-memphis-sm-faint',
                   ].join(' ')}
                 >
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
-                    {m.body}
+                  {isEditing ? (
+                    editor
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
+                      {m.body}
+                    </div>
+                  )}
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-xs text-mute-soft">{stamp}</span>
+                    {actions}
                   </div>
-                  <div className="mt-1 text-xs text-mute-soft">{stamp}</div>
                 </div>
               </div>
             );
