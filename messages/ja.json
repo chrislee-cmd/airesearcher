@@ -3031,7 +3031,13 @@
     "confirmedNoSlot": "スロットなし",
     "confirmedChatCta": "チャット",
     "confirmedBroadcastCta": "全体連絡",
-    "chatClose": "閉じる"
+    "chatClose": "閉じる",
+    "chatMaxPanels": "チャットは最大4件まで開けます。",
+    "calendarFold": "カレンダーを折りたたむ",
+    "calendarExpand": "カレンダーを展開",
+    "confirmedToggleLabel": "確定者リストの開閉",
+    "rosterCollapseHint": "折りたたむ",
+    "rosterExpandHint": "展開"
   },
   "SchedulingParticipant": {
     "title": "面接スケジュール",

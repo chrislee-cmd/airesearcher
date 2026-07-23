@@ -1,7 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +78,10 @@ type Props = {
 };
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+// Chat rail round2 (수정4) — how many thread panels can tile at once. 5th open is
+// blocked with a hint toast (no eviction — conservative default per spec).
+const MAX_CHAT_PANELS = 4;
 
 // Pastel tints cycled across By-group (01B) section heads (BUILD-SPEC §1 — group
 // heads sky/mint/neutral). Inbox section heads neutral (paper-soft) separately.
@@ -166,10 +176,19 @@ export function RecruitingSchedulingClient({
   // rather than something bound to a single group.
   const [calendarGroupId, setCalendarGroupId] = useState('');
 
-  // Chat rail (CD frame 02) is a permanent right column of the calendar tab.
-  // `chatThread` is a candidate id or the broadcast sentinel; the chat panel's
-  // own reach sub-picker drives thread selection.
-  const [chatThread, setChatThread] = useState<string>(BROADCAST_THREAD_ID);
+  // Chat rail (CD frame 02) — round2 (수정4): up to MAX_CHAT_PANELS chat tiles
+  // open at once, tiled horizontally. Each tile is keyed by a STABLE tileId (not
+  // its thread) so a tile can freely switch threads — even to broadcast while
+  // another tile is already broadcast — without a React key collision, and so a
+  // tile's local state (draft/kind/reach) stays glued to that tile across close.
+  // Broadcast opens by default (single-window parity — never empty on first paint).
+  const tileSeqRef = useRef(1);
+  const [chatTiles, setChatTiles] = useState<
+    { tileId: string; thread: string }[]
+  >([{ tileId: 't0', thread: BROADCAST_THREAD_ID }]);
+  // Confirmed-roster disclosure (수정1) + calendar horizontal fold (수정3).
+  const [rosterOpen, setRosterOpen] = useState(true);
+  const [calendarFolded, setCalendarFolded] = useState(false);
 
   // The project in focus — its share_token drives the master-link bar.
   const selectedProject =
@@ -363,6 +382,40 @@ export function RecruitingSchedulingClient({
     setShowAssign(false);
     setAssignTitle('');
     setAssignBatchId('');
+  }
+
+  // --- Chat panel orchestration (수정4) ---
+
+  // Open a thread in a NEW tile — driven by the roster rows + the broadcast CTA.
+  // If a tile already shows that thread → focus (no dup). At the cap → block the
+  // 5th with a hint toast; no eviction (conservative per spec).
+  function openTile(thread: string) {
+    if (chatTiles.some((c) => c.thread === thread)) return;
+    if (chatTiles.length >= MAX_CHAT_PANELS) {
+      notifyErr(t('chatMaxPanels'));
+      return;
+    }
+    const tileId = `t${tileSeqRef.current++}`;
+    setChatTiles((prev) =>
+      prev.some((c) => c.thread === thread) || prev.length >= MAX_CHAT_PANELS
+        ? prev
+        : [...prev, { tileId, thread }],
+    );
+  }
+
+  // Re-target ONE tile's thread in place — driven by a panel's own reach/kind/개인
+  // switcher, so each tile behaves exactly like the single-window rail (the
+  // controlled thread flows back here → resolveChatContext re-scopes its batch).
+  // Unconditional: tiles are keyed by tileId, so duplicate threads are harmless
+  // (this is why a personal tile can switch to broadcast even if one's open).
+  function switchTile(tileId: string, thread: string) {
+    setChatTiles((prev) =>
+      prev.map((c) => (c.tileId === tileId ? { ...c, thread } : c)),
+    );
+  }
+
+  function closeTile(tileId: string) {
+    setChatTiles((prev) => prev.filter((c) => c.tileId !== tileId));
   }
 
   // --- Project + group creation / source ingestion ---
@@ -645,17 +698,24 @@ export function RecruitingSchedulingClient({
   const currentGroup =
     groups.find((g) => g.id === effectiveCalendarGroupId) ?? null;
 
-  // Chat is inherently per-group. In 전체 mode a per-candidate thread resolves to
-  // that candidate's own group; broadcast (and the fallback) uses the calendar's
-  // resolved batch. Chat's roster is scoped to that same batch for coherence.
-  const chatCandidate =
-    chatThread && chatThread !== BROADCAST_THREAD_ID
-      ? (candidates.find((c) => c.id === chatThread) ?? null)
-      : null;
-  const chatBatchId = chatCandidate?.batch_id ?? activeCalendarGroupId;
-  const chatCandidateOptions = candidates
-    .filter((c) => c.batch_id === chatBatchId)
-    .map((c) => ({ id: c.id, label: candidateLabel(c) }));
+  // Chat is inherently per-group. A per-candidate thread resolves to that
+  // candidate's own group; broadcast (and the fallback) uses the calendar's
+  // resolved batch. Each open panel resolves its OWN batch + roster so the send
+  // scope (510 payload) / 일정 패널 stay coherent per thread (수정4 multi-window).
+  function resolveChatContext(threadId: string): {
+    batchId: string;
+    candidateOptions: { id: string; label: string }[];
+  } {
+    const cand =
+      threadId && threadId !== BROADCAST_THREAD_ID
+        ? (candidates.find((c) => c.id === threadId) ?? null)
+        : null;
+    const batchId = cand?.batch_id ?? activeCalendarGroupId;
+    const candidateOptions = candidates
+      .filter((c) => c.batch_id === batchId)
+      .map((c) => ({ id: c.id, label: candidateLabel(c) }));
+    return { batchId, candidateOptions };
+  }
   // Every assignment group + its active-candidate count — feeds the slot
   // editor's group-mode picker so fan-out can target any group. Non-cancelled
   // only, mirroring the server-side fan-out filter.
@@ -1285,56 +1345,113 @@ export function RecruitingSchedulingClient({
                 </div>
               )}
 
-              <div className="flex flex-col overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md lg:h-[680px] lg:flex-row">
-                <SchedulingCalendar
-                  slots={calendarSlots}
-                  candidateName={(id) =>
-                    candidateNameById.get(id) ?? t('unnamedCandidate')
-                  }
-                  view={calendarView}
-                  onViewChange={setCalendarView}
-                  onCreateAt={(start) => openCreate(start)}
-                  onEditSlot={openEdit}
-                  groupFilter={
-                    namedGroups.length > 0
-                      ? {
-                          ariaLabel: t('calendarGroupLabel'),
-                          value: effectiveCalendarGroupId,
-                          onChange: setCalendarGroupId,
-                          options: [
-                            { value: '', label: t('groupAll') },
-                            ...namedGroups.map((g) => ({
-                              value: g.id,
-                              label: g.title,
-                            })),
-                          ],
-                        }
-                      : undefined
-                  }
-                />
-
-                {/* Permanent chat rail — CD frame 02 border-between the panes. */}
-                {chatBatchId && (
-                  <aside className="flex min-h-[540px] flex-col border-t-[3px] border-ink lg:min-h-0 lg:w-[396px] lg:shrink-0 lg:border-l-[3px] lg:border-t-0">
-                    <SchedulingChatPanel
-                      batchId={chatBatchId}
-                      candidates={chatCandidateOptions}
-                      groups={namedGroups.map((g) => ({
-                        id: g.id,
-                        title: g.title,
-                      }))}
-                      layout="sidebar"
-                      selectedThread={chatThread}
-                      onSelectThread={setChatThread}
-                      totalCount={candidates.length}
-                      // 일정 패널 소스 — the full slot set so the panel's own
-                      // scope filter (전체/그룹/개인) resolves any target, not just
-                      // the calendar's currently-filtered group. Click → openEdit.
-                      slots={slots}
-                      onEditSlot={openEdit}
-                    />
-                  </aside>
+              {/* Height bumped ~1.5× (수정2, 680→1020) so more of the day is
+                  visible at once and the chat tiles have vertical room. */}
+              <div className="flex flex-col overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md lg:h-[1020px] lg:flex-row">
+                {/* Calendar pane — collapsible horizontally on desktop (수정3) to
+                    free width for the chat tiles. Always shown on mobile (the
+                    panes stack there, so folding a horizontal pane is moot). */}
+                {!calendarFolded && (
+                  <SchedulingCalendar
+                    slots={calendarSlots}
+                    candidateName={(id) =>
+                      candidateNameById.get(id) ?? t('unnamedCandidate')
+                    }
+                    view={calendarView}
+                    onViewChange={setCalendarView}
+                    onCreateAt={(start) => openCreate(start)}
+                    onEditSlot={openEdit}
+                    groupFilter={
+                      namedGroups.length > 0
+                        ? {
+                            ariaLabel: t('calendarGroupLabel'),
+                            value: effectiveCalendarGroupId,
+                            onChange: setCalendarGroupId,
+                            options: [
+                              { value: '', label: t('groupAll') },
+                              ...namedGroups.map((g) => ({
+                                value: g.id,
+                                label: g.title,
+                              })),
+                            ],
+                          }
+                        : undefined
+                    }
+                  />
                 )}
+
+                {/* Fold rail (수정3) — desktop handle collapsing/expanding the
+                    calendar pane. Hidden on mobile (panes already stack). */}
+                {/* eslint-disable-next-line react/forbid-elements -- full-height vertical fold handle; Button primitive chrome unsuitable for a rail toggle */}
+                <button
+                  type="button"
+                  onClick={() => setCalendarFolded((v) => !v)}
+                  aria-label={
+                    calendarFolded ? t('calendarExpand') : t('calendarFold')
+                  }
+                  className="hidden shrink-0 flex-col items-center justify-center gap-3 bg-paper-soft transition-colors hover:bg-paper lg:flex lg:w-9 lg:border-l-2 lg:border-ink"
+                >
+                  <span className="text-lg font-bold text-ink" aria-hidden>
+                    {calendarFolded ? '›' : '‹'}
+                  </span>
+                  {calendarFolded && (
+                    <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft [writing-mode:vertical-rl]">
+                      {t('calendarExpand')}
+                    </span>
+                  )}
+                </button>
+
+                {/* Chat pane — up to 4 tiled thread panels (수정4). Expanded: the
+                    pane caps its width + scrolls horizontally so the calendar
+                    keeps room; folded: it fills the freed width. Each panel
+                    resolves its own batch/roster and closes independently. */}
+                <div
+                  className={[
+                    'flex w-full flex-col overflow-x-auto border-t-2 border-ink lg:min-h-0 lg:flex-row lg:border-t-0',
+                    calendarFolded
+                      ? 'lg:min-w-0 lg:flex-1'
+                      : 'lg:w-auto lg:max-w-[768px] lg:shrink-0',
+                  ].join(' ')}
+                >
+                  {chatTiles.map(({ tileId, thread }, i) => {
+                    const ctx = resolveChatContext(thread);
+                    if (!ctx.batchId) return null;
+                    return (
+                      <aside
+                        key={tileId}
+                        className={[
+                          'flex min-h-[540px] w-full flex-col lg:min-h-0 lg:w-[360px] lg:shrink-0',
+                          i > 0
+                            ? 'border-t-2 border-ink lg:border-l-2 lg:border-t-0'
+                            : '',
+                        ].join(' ')}
+                      >
+                        <SchedulingChatPanel
+                          batchId={ctx.batchId}
+                          candidates={ctx.candidateOptions}
+                          groups={namedGroups.map((g) => ({
+                            id: g.id,
+                            title: g.title,
+                          }))}
+                          layout="sidebar"
+                          selectedThread={thread}
+                          // Multi-window: the panel's own reach/kind/개인 switcher
+                          // re-targets THIS tile in place (single-window parity),
+                          // not a new tile — so every control stays live. New
+                          // tiles come from the roster rows + broadcast CTA.
+                          onSelectThread={(id) => switchTile(tileId, id)}
+                          onClose={() => closeTile(tileId)}
+                          totalCount={candidates.length}
+                          // 일정 패널 소스 — the full slot set so the panel's own
+                          // scope filter (전체/그룹/개인) resolves any target, not
+                          // just the calendar's filtered group. Click → openEdit.
+                          slots={slots}
+                          onEditSlot={openEdit}
+                        />
+                      </aside>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Confirmed roster — the final-confirmed attendees within the
@@ -1344,36 +1461,58 @@ export function RecruitingSchedulingClient({
                   opens the broadcast thread. */}
               <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-ink">
-                    {t('confirmedHeading', {
-                      count: confirmedCandidates.length,
-                    })}
-                  </p>
+                  {/* Roster disclosure toggle (수정1) — the whole heading bar is
+                      the fold control; the count stays visible when collapsed.
+                      Boxed chevron + hover surface make the affordance obvious. */}
+                  {/* eslint-disable-next-line react/forbid-elements -- disclosure toggle (heading + boxed chevron); Button primitive chrome unsuitable for a bare list header */}
+                  <button
+                    type="button"
+                    aria-expanded={rosterOpen}
+                    aria-label={t('confirmedToggleLabel')}
+                    onClick={() => setRosterOpen((v) => !v)}
+                    className="-mx-1.5 -my-1 flex min-w-0 flex-1 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
+                      aria-hidden
+                    >
+                      ▾
+                    </span>
+                    <span className="truncate text-sm font-bold text-ink">
+                      {t('confirmedHeading', {
+                        count: confirmedCandidates.length,
+                      })}
+                    </span>
+                    <span className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+                      {rosterOpen ? t('rosterCollapseHint') : t('rosterExpandHint')}
+                    </span>
+                  </button>
                   <Button
                     variant="ghost"
                     size="xs"
-                    onClick={() => setChatThread(BROADCAST_THREAD_ID)}
+                    onClick={() => openTile(BROADCAST_THREAD_ID)}
                   >
                     {t('confirmedBroadcastCta')}
                   </Button>
                 </div>
-                {confirmedCandidates.length === 0 ? (
-                  <p className="text-sm text-mute-soft">
-                    {t('confirmedEmpty')}
-                  </p>
-                ) : (
-                  <ul className="flex flex-col divide-y divide-line-soft">
+                {rosterOpen &&
+                  (confirmedCandidates.length === 0 ? (
+                    <p className="text-sm text-mute-soft">
+                      {t('confirmedEmpty')}
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col divide-y divide-line-soft">
                     {confirmedCandidates.map((c) => {
                       const next = nextSlotForCandidate(c.id, slots, now);
                       const contact = contactValue(c);
-                      const active = chatThread === c.id;
+                      const active = chatTiles.some((tile) => tile.thread === c.id);
                       const groupName = groupNameById.get(c.batch_id);
                       return (
                         <li key={c.id}>
                           {/* eslint-disable-next-line react/forbid-elements -- full-width multiline attendee-row selector opening the chat rail; Button primitive chrome unsuitable */}
                           <button
                             type="button"
-                            onClick={() => setChatThread(c.id)}
+                            onClick={() => openTile(c.id)}
                             className={[
                               'flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors',
                               active
@@ -1417,8 +1556,8 @@ export function RecruitingSchedulingClient({
                         </li>
                       );
                     })}
-                  </ul>
-                )}
+                    </ul>
+                  ))}
               </div>
             </div>
           )}
