@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
 import { getLanguage } from '@/lib/transcripts/languages';
 import { ELEVENLABS_API_MODEL } from '@/lib/transcripts/models';
+import { resolveProjectId } from '@/lib/transcripts/project-guard';
 
 // Row-first handoff — create the per-file transcript_jobs row at UPLOAD START,
 // BEFORE the file finishes uploading and BEFORE the concurrency gate. The row
@@ -58,11 +59,19 @@ export async function POST(request: Request) {
   const apiModel =
     provider === 'deepgram' ? langEntry.dgModel : ELEVENLABS_API_MODEL;
 
+  // FK-guard (hotfix): transcript_jobs.project_id FK → public.projects, but the
+  // transcript widget's selection SSOT is interview_projects. A selected id that
+  // doesn't exist in public.projects would violate the FK and crash the insert.
+  // Degrade an unresolvable id to null (transcript created as unfiled) instead
+  // of crashing — a valid public.projects id is preserved. Root reconciliation
+  // (interview_projects vs public.projects) is a separate follow-up.
+  const validProjectId = await resolveProjectId(supabase, project_id, org.org_id);
+
   const { data: job, error: insertErr } = await supabase
     .from('transcript_jobs')
     .insert({
       org_id: org.org_id,
-      project_id: project_id ?? null,
+      project_id: validProjectId,
       user_id: user.id,
       storage_key,
       filename,

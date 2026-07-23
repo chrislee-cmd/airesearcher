@@ -11,6 +11,7 @@ import {
   dispatchElevenLabs,
   dispatchTextExtraction,
 } from '@/lib/transcripts/dispatch';
+import { resolveProjectId } from '@/lib/transcripts/project-guard';
 
 const Body = z.object({
   // Row-first: when the client pre-created the row at upload start (status
@@ -88,12 +89,21 @@ export async function POST(request: Request) {
     }
     jobId = updated.id;
   } else {
+    // FK-guard (hotfix): degrade a project_id that doesn't exist in
+    // public.projects (FK target) to null so the insert can't violate
+    // transcript_jobs_project_id_fkey. See project-guard.ts for the full
+    // cross-namespace rationale (interview_projects vs public.projects).
+    const validProjectId = await resolveProjectId(
+      supabase,
+      project_id,
+      org.org_id,
+    );
     // Insert the job row first so the webhook has somewhere to land.
     const { data: job, error: insertErr } = await supabase
       .from('transcript_jobs')
       .insert({
         org_id: org.org_id,
-        project_id: project_id ?? null,
+        project_id: validProjectId,
         user_id: user.id,
         storage_key,
         filename,
