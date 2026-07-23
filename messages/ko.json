@@ -2942,7 +2942,9 @@
     "chatMaxPanels": "채팅은 최대 4개까지 열 수 있어요.",
     "calendarFold": "캘린더 접기",
     "calendarExpand": "캘린더 펼치기",
-    "confirmedToggleLabel": "확정 인원 접기/펼치기"
+    "confirmedToggleLabel": "확정 인원 접기/펼치기",
+    "rosterCollapseHint": "접기",
+    "rosterExpandHint": "펼치기"
   },
   "SchedulingParticipant": {
     "title": "인터뷰 일정",

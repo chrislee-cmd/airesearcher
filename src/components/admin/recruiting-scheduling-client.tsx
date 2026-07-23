@@ -1438,26 +1438,30 @@ export function RecruitingSchedulingClient({
                   opens the broadcast thread. */}
               <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
                 <div className="flex items-center justify-between gap-2">
-                  {/* Roster disclosure toggle (수정1) — collapses the list body;
-                      the heading count stays visible when collapsed. */}
-                  {/* eslint-disable-next-line react/forbid-elements -- disclosure toggle (heading + chevron); Button primitive chrome unsuitable for a bare list header */}
+                  {/* Roster disclosure toggle (수정1) — the whole heading bar is
+                      the fold control; the count stays visible when collapsed.
+                      Boxed chevron + hover surface make the affordance obvious. */}
+                  {/* eslint-disable-next-line react/forbid-elements -- disclosure toggle (heading + boxed chevron); Button primitive chrome unsuitable for a bare list header */}
                   <button
                     type="button"
                     aria-expanded={rosterOpen}
                     aria-label={t('confirmedToggleLabel')}
                     onClick={() => setRosterOpen((v) => !v)}
-                    className="flex items-center gap-2 text-left"
+                    className="-mx-1.5 -my-1 flex min-w-0 flex-1 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
                   >
-                    <span className="text-sm font-bold text-ink">
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
+                      aria-hidden
+                    >
+                      ▾
+                    </span>
+                    <span className="truncate text-sm font-bold text-ink">
                       {t('confirmedHeading', {
                         count: confirmedCandidates.length,
                       })}
                     </span>
-                    <span
-                      className={`text-xs text-mute transition-transform ${rosterOpen ? 'rotate-180' : ''}`}
-                      aria-hidden
-                    >
-                      ▾
+                    <span className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+                      {rosterOpen ? t('rosterCollapseHint') : t('rosterExpandHint')}
                     </span>
                   </button>
                   <Button

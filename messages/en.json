@@ -2942,7 +2942,9 @@
     "chatMaxPanels": "You can open up to 4 chats at once.",
     "calendarFold": "Collapse calendar",
     "calendarExpand": "Expand calendar",
-    "confirmedToggleLabel": "Toggle confirmed roster"
+    "confirmedToggleLabel": "Toggle confirmed roster",
+    "rosterCollapseHint": "Collapse",
+    "rosterExpandHint": "Expand"
   },
   "SchedulingParticipant": {
     "title": "Your interview schedule",

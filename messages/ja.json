@@ -3035,7 +3035,9 @@
     "chatMaxPanels": "チャットは最大4件まで開けます。",
     "calendarFold": "カレンダーを折りたたむ",
     "calendarExpand": "カレンダーを展開",
-    "confirmedToggleLabel": "確定者リストの開閉"
+    "confirmedToggleLabel": "確定者リストの開閉",
+    "rosterCollapseHint": "折りたたむ",
+    "rosterExpandHint": "展開"
   },
   "SchedulingParticipant": {
     "title": "面接スケジュール",

@@ -3035,7 +3035,9 @@
     "chatMaxPanels": "เปิดแชทได้สูงสุด 4 รายการพร้อมกัน",
     "calendarFold": "ย่อปฏิทิน",
     "calendarExpand": "ขยายปฏิทิน",
-    "confirmedToggleLabel": "สลับรายชื่อผู้ยืนยัน"
+    "confirmedToggleLabel": "สลับรายชื่อผู้ยืนยัน",
+    "rosterCollapseHint": "ย่อ",
+    "rosterExpandHint": "ขยาย"
   },
   "SchedulingParticipant": {
     "title": "ตารางสัมภาษณ์ของคุณ",
