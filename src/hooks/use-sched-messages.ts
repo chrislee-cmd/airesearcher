@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { SchedMessage } from '@/lib/scheduling/messages';
 
@@ -17,11 +17,19 @@ export function useSchedMessages(batchId: string | null): {
   messages: SchedMessage[];
   loading: boolean;
   refetch: () => Promise<void>;
+  editMessage: (id: string, body: string) => Promise<boolean>;
+  deleteMessage: (id: string) => Promise<boolean>;
 } {
   const [messages, setMessages] = useState<SchedMessage[]>([]);
   const [loading, setLoading] = useState(false);
   // Guards against a slow response for an old batch overwriting a newer one.
   const reqIdRef = useRef(0);
+  // Per-instance channel suffix. Multiple chat panels can now share the same
+  // batch (수정4 멀티창) — a batch-only channel name would collide, and Supabase
+  // rejects a second `.on('postgres_changes')` on an already-subscribed channel
+  // ("cannot add postgres_changes callbacks ... after subscribe()"). useId gives
+  // each hook instance a stable, unique topic. Colons stripped (topic-safe).
+  const channelSuffix = useId().replace(/:/g, '');
 
   const refetch = useCallback(async () => {
     if (!batchId) return;
@@ -39,6 +47,50 @@ export function useSchedMessages(batchId: string | null): {
       // ignore — realtime or the next poll will catch up
     }
   }, [batchId]);
+
+  // Edit a broadcast message's body (admin, round-3). Refetch on success so the
+  // edit + "수정됨" marker land immediately even if the realtime event lags;
+  // realtime will also fire for the other open panels. Returns success.
+  const editMessage = useCallback(
+    async (id: string, nextBody: string): Promise<boolean> => {
+      const text = nextBody.trim();
+      if (!text) return false;
+      try {
+        const res = await fetch(
+          `/api/scheduling/messages/${encodeURIComponent(id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body: text }),
+          },
+        );
+        if (!res.ok) return false;
+        await refetch();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [refetch],
+  );
+
+  // Delete a broadcast message (admin, round-3). Refetch on success.
+  const deleteMessage = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const res = await fetch(
+          `/api/scheduling/messages/${encodeURIComponent(id)}`,
+          { method: 'DELETE' },
+        );
+        if (!res.ok) return false;
+        await refetch();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [refetch],
+  );
 
   // Initial + on-batch-change load.
   useEffect(() => {
@@ -62,7 +114,7 @@ export function useSchedMessages(batchId: string | null): {
     if (!batchId) return;
     const supabase = createClient();
     const ch = supabase
-      .channel(`sched-messages-${batchId}`)
+      .channel(`sched-messages-${batchId}-${channelSuffix}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sched_messages' },
@@ -74,7 +126,7 @@ export function useSchedMessages(batchId: string | null): {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [batchId, refetch]);
+  }, [batchId, refetch, channelSuffix]);
 
   // Polling fallback — covers a dropped/failed realtime channel.
   useEffect(() => {
@@ -85,5 +137,5 @@ export function useSchedMessages(batchId: string | null): {
     return () => clearInterval(timer);
   }, [batchId, refetch]);
 
-  return { messages, loading, refetch };
+  return { messages, loading, refetch, editMessage, deleteMessage };
 }

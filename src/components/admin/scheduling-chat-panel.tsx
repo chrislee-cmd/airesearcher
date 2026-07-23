@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
@@ -39,34 +39,39 @@ type Props = {
   // drives this and, via the hierarchy sync, flips the composer to 채팅→개인.
   selectedThread?: string;
   onSelectThread?: (threadId: string) => void;
-  // 'panel' = classic two-pane (thread list + messages). 'sidebar' = single
-  // column (hierarchy → 일정 패널 → messages + composer) in the calendar rail.
+  // Retained for prop compatibility with the client. Only the redesigned
+  // sidebar (calendar rail) treatment is rendered now.
   layout?: 'panel' | 'sidebar';
   onClose?: () => void;
-  // Assigned-schedule panel source (sidebar only): the client's slots. Filtered
-  // by the current compose scope (전체=all · 그룹=batch · 개인=candidate).
+  // Assigned-schedule panel source: the client's slots. Filtered by the current
+  // compose scope (전체=all · 그룹=batch · 개인=candidate).
   slots?: SchedSlot[];
   // Slot click → open the slot editor modal (parent's `openEdit`).
   onEditSlot?: (slot: SchedSlot) => void;
+  // Total candidate count in the project (for the 전체 reach hint). Falls back
+  // to the visible candidate count.
+  totalCount?: number;
 };
 
-// Admin chat panel: a broadcast announcement/chat channel + one private thread
-// per candidate, now organized as a hierarchy — 공지글/채팅 메세지 kind toggle →
-// 전체/그룹/개인 reach → target picker — mapped onto the same send API (510).
-// Messages are loaded + kept live by useSchedMessages (realtime + poll).
+// Admin chat rail (CD frame 02 · reach sub-picker 02B) — a broadcast
+// announcement/chat channel + one private thread per candidate, organized as a
+// hierarchy: 공지글/채팅 kind segment → 전체/그룹/개인 reach radio → target
+// sub-picker — mapped onto the same send API (510, payload unchanged). Messages
+// are loaded + kept live by useSchedMessages (realtime + poll).
 export function SchedulingChatPanel({
   batchId,
   candidates,
   groups = [],
   selectedThread: controlledThread,
   onSelectThread,
-  layout = 'panel',
   onClose,
   slots,
   onEditSlot,
+  totalCount,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
-  const { messages, loading, refetch } = useSchedMessages(batchId);
+  const { messages, loading, refetch, editMessage, deleteMessage } =
+    useSchedMessages(batchId);
 
   const [internalThread, setInternalThread] =
     useState<string>(BROADCAST_THREAD_ID);
@@ -80,15 +85,21 @@ export function SchedulingChatPanel({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline edit of a broadcast message (round-3). editingId marks which bubble
+  // is in edit mode; editDraft holds its working text.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
+  // Assigned-schedule panel — collapsed by default to keep the rail compact;
+  // the toggle carries a count badge (공간 압축, 사용자 요청).
+  const [slotsOpen, setSlotsOpen] = useState(false);
 
-  // Compose hierarchy state:
+  // Compose hierarchy state (see the legacy header note — logic unchanged):
   //   announceMode  — 공지글(announcement, banner) vs 채팅 메세지(chat, bubble)
   //   broadcastReach — 전체(all) vs 그룹(one group), for broadcast sends only
   //   groupTarget   — the batch id when broadcastReach==='group'
-  // 개인 is NOT stored here — it is DERIVED from the open thread (selectedThread
-  // being a candidate id). So a candidate clicked elsewhere in the page and a
-  // 개인 pick in this selector converge on one source of truth (selectedThread),
-  // with no effect-based state sync (which react-hooks/set-state-in-effect bans).
+  // 개인 is DERIVED from the open thread (selectedThread being a candidate id) —
+  // no effect-based state sync.
   const [announceMode, setAnnounceMode] = useState<AnnounceMode>('announcement');
   const [broadcastReach, setBroadcastReach] = useState<'all' | 'group'>('all');
   const [groupTarget, setGroupTarget] = useState<string>(() =>
@@ -106,6 +117,12 @@ export function SchedulingChatPanel({
     return map;
   }, [candidates]);
 
+  const groupTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of groups) map.set(g.id, g.title);
+    return map;
+  }, [groups]);
+
   const timeFmt = useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -115,16 +132,6 @@ export function SchedulingChatPanel({
         minute: '2-digit',
       }),
     [],
-  );
-
-  const statusLabel = useMemo(
-    () =>
-      ({
-        proposed: t('statusProposed'),
-        confirmed: t('statusConfirmed'),
-        cancelled: t('statusCancelled'),
-      }) as Record<SlotStatus, string>,
-    [t],
   );
 
   const isBroadcast = selectedThread === BROADCAST_THREAD_ID;
@@ -137,25 +144,51 @@ export function SchedulingChatPanel({
     ? broadcast
     : (byCandidate.get(selectedThread) ?? []);
 
-  // Assigned-schedule slots for the current compose scope (sidebar only).
+  // Assigned-schedule slots for the current compose scope.
   const scopedSlots = useMemo(() => {
     if (!slots) return [];
+    let scoped: SchedSlot[];
     if (reachScope === 'group')
-      return groupTarget
+      scoped = groupTarget
         ? slotsForScope(slots, { kind: 'group', batchId: groupTarget })
         : [];
-    if (reachScope === 'personal')
-      return isBroadcast
+    else if (reachScope === 'personal')
+      scoped = isBroadcast
         ? []
         : slotsForScope(slots, {
             kind: 'personal',
             candidateId: selectedThread,
           });
-    return slotsForScope(slots, { kind: 'all' });
-  }, [slots, reachScope, groupTarget, isBroadcast, selectedThread]);
+    else scoped = slotsForScope(slots, { kind: 'all' });
+    // Dedup by display unit — group slots fan out per candidate, repeating the
+    // same time + label. Key on the label as rendered (title, else candidate
+    // name / broadcast) so identical rows collapse to one representative; the
+    // click still opens that representative slot's editor.
+    const seen = new Set<string>();
+    const unique: SchedSlot[] = [];
+    for (const s of scoped) {
+      const label =
+        s.title ||
+        (s.candidate_id
+          ? (candidateLabelById.get(s.candidate_id) ?? t('unnamedCandidate'))
+          : t('chatBroadcast'));
+      const key = `${s.start_at}__${label}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(s);
+    }
+    return unique;
+  }, [
+    slots,
+    reachScope,
+    groupTarget,
+    isBroadcast,
+    selectedThread,
+    candidateLabelById,
+    t,
+  ]);
 
-  // Auto-scroll the message list to the newest message on thread change / new
-  // message arrival.
+  // Auto-scroll to the newest message on thread change / new message arrival.
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = listRef.current;
@@ -219,8 +252,8 @@ export function SchedulingChatPanel({
         return;
       }
       setDraft('');
-      // Optimistic-ish: realtime will also fire, but refetch guarantees the
-      // sender sees their message immediately even if the WebSocket lags.
+      // Realtime will also fire, but refetch guarantees the sender sees their
+      // message immediately even if the WebSocket lags.
       await refetch();
     } catch {
       setError(t('chatSendFailed'));
@@ -229,67 +262,132 @@ export function SchedulingChatPanel({
     }
   }
 
+  // --- Broadcast message edit / delete (round-3, admin-only) ---
+
+  function startEdit(m: SchedMessage) {
+    setEditingId(m.id);
+    setEditDraft(m.body);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft('');
+  }
+
+  async function saveEdit(id: string) {
+    const text = editDraft.trim();
+    if (!text || editBusy) return;
+    setEditBusy(true);
+    setError(null);
+    const ok = await editMessage(id, text);
+    setEditBusy(false);
+    if (ok) {
+      setEditingId(null);
+      setEditDraft('');
+    } else {
+      setError(t('chatEditFailed'));
+    }
+  }
+
+  async function removeMessage(id: string) {
+    if (typeof window !== 'undefined' && !window.confirm(t('chatMsgDeleteConfirm')))
+      return;
+    const ok = await deleteMessage(id);
+    if (!ok) setError(t('chatDeleteFailed'));
+    else if (editingId === id) cancelEdit();
+  }
+
   const threadTitle = isBroadcast
     ? t('chatBroadcast')
     : (candidateLabelById.get(selectedThread) ?? t('unnamedCandidate'));
+  const avatarLetter = isBroadcast ? '📢' : threadTitle.trim().charAt(0) || '·';
+  const allCount = totalCount ?? candidates.length;
 
-  // --- Compose hierarchy: kind toggle → reach → target picker ---
-  const hierarchy = (
-    <div className="flex flex-col gap-2 border-b border-line-soft px-4 py-3">
-      {/* Top level: 공지글 | 채팅 메세지 */}
-      <div className="flex items-center gap-1">
-        <Button
-          size="xs"
-          variant={kind === 'announcement' ? 'secondary' : 'ghost'}
-          onClick={() => pickKind('announcement')}
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-paper">
+      {/* Header — lav band, avatar, thread title + hint, close. */}
+      <div className="flex shrink-0 items-center gap-2.5 border-b-2 border-ink bg-lav px-4 py-3">
+        <span
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border-2 border-ink bg-paper text-md font-extrabold text-ink shadow-memphis-sm"
+          aria-hidden
         >
-          {t('chatKindAnnouncement')}
-        </Button>
-        <Button
-          size="xs"
-          variant={kind === 'chat' ? 'secondary' : 'ghost'}
-          onClick={() => pickKind('chat')}
-        >
-          {t('chatKindChat')}
-        </Button>
+          {avatarLetter}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-md font-extrabold text-ink">
+            {threadTitle}
+          </div>
+          <div className="truncate text-xs text-mute">
+            {isBroadcast ? t('chatBroadcastHint') : t('chatPrivateHint')}
+          </div>
+        </div>
+        {onClose && (
+          <IconButton
+            aria-label={t('chatClose')}
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+          >
+            ✕
+          </IconButton>
+        )}
       </div>
 
-      {/* Reach: 전체 | 그룹 | 개인(채팅만). Plus the target picker. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
-          <Button
-            size="xs"
-            variant={reachScope === 'all' ? 'secondary' : 'ghost'}
-            onClick={() => pickReach('all')}
-          >
-            {t('chatReachAll')}
-          </Button>
+      {/* Hierarchy — compacted (사용자 승인 CD 이탈, spec 수정2): the kind segment
+          and the reach radios share one wrapping row; the 전체 hint collapses to
+          a single inline line and the 그룹/개인 target Select reveals inline only
+          when that reach is chosen. All states (kind 2 · reach 3 · target 2)
+          stay reachable — only the vertical footprint shrinks. */}
+      <div className="flex shrink-0 flex-col gap-2 border-b border-line-soft px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Segmented
+            ariaLabel={t('chatKindLabel')}
+            value={kind}
+            onChange={pickKind}
+            options={[
+              {
+                value: 'announcement',
+                label: `📢 ${t('chatKindAnnouncement')}`,
+              },
+              { value: 'chat', label: `💬 ${t('chatKindChat')}` },
+            ]}
+          />
+          <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+            {t('chatReachLabel')}
+          </span>
+          <Radio
+            label={t('chatReachAll')}
+            selected={reachScope === 'all'}
+            onSelect={() => pickReach('all')}
+          />
           {groups.length > 0 && (
-            <Button
-              size="xs"
-              variant={reachScope === 'group' ? 'secondary' : 'ghost'}
-              onClick={() => pickReach('group')}
-            >
-              {t('chatReachGroup')}
-            </Button>
+            <Radio
+              label={t('chatReachGroup')}
+              selected={reachScope === 'group'}
+              onSelect={() => pickReach('group')}
+            />
           )}
           {kind === 'chat' && candidates.length > 0 && (
-            <Button
-              size="xs"
-              variant={reachScope === 'personal' ? 'secondary' : 'ghost'}
-              onClick={() => pickReach('personal')}
-            >
-              {t('chatReachPersonal')}
-            </Button>
+            <Radio
+              label={t('chatReachPersonal')}
+              selected={reachScope === 'personal'}
+              onSelect={() => pickReach('personal')}
+            />
           )}
         </div>
 
+        {/* Sub-picker reveal (02B): All=one-line hint · Group/Individual=Select. */}
+        {reachScope === 'all' && (
+          <p className="text-xs leading-relaxed text-mute-soft">
+            {t('chatReachAllHint', { count: allCount })}
+          </p>
+        )}
         {reachScope === 'group' && groups.length > 0 && (
           <Select
             aria-label={t('chatGroupPickerLabel')}
             size="sm"
-            fullWidth={false}
-            className="w-40 truncate"
+            className="w-full"
             value={groupTarget}
             onChange={(e) => setGroupTarget(e.target.value)}
             options={groups.map((g) => ({ value: g.id, label: g.title }))}
@@ -299,235 +397,365 @@ export function SchedulingChatPanel({
           <Select
             aria-label={t('chatPersonalPickerLabel')}
             size="sm"
-            fullWidth={false}
-            className="w-40 truncate"
+            className="w-full"
             value={isBroadcast ? '' : selectedThread}
             onChange={(e) => selectThread(e.target.value)}
             options={candidates.map((c) => ({ value: c.id, label: c.label }))}
           />
         )}
       </div>
-    </div>
-  );
 
-  // --- Assigned-schedule panel (sidebar only): scope-filtered slots, click → edit ---
-  const slotPanel = slots && (
-    <div className="flex max-h-40 flex-col gap-1 overflow-y-auto border-b border-line-soft px-4 py-3">
-      <p className="text-xs font-medium text-mute">{t('chatScheduleHeading')}</p>
-      {scopedSlots.length === 0 ? (
-        <p className="text-xs text-mute-soft">{t('chatScheduleEmpty')}</p>
-      ) : (
-        <ul className="flex flex-col divide-y divide-line-soft">
-          {scopedSlots.map((s) => {
-            const label =
-              s.title ||
-              (s.candidate_id
-                ? (candidateLabelById.get(s.candidate_id) ??
-                  t('unnamedCandidate'))
-                : t('chatBroadcast'));
-            return (
-              <li key={s.id}>
-                {/* eslint-disable-next-line react/forbid-elements -- full-width multiline slot row opening the slot editor; Button primitive chrome unsuitable */}
-                <button
-                  type="button"
-                  onClick={() => onEditSlot?.(s)}
-                  className="flex w-full items-center gap-2 py-1.5 text-left text-xs transition-colors hover:text-ink"
-                >
-                  <span
-                    className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
-                      s.status === 'confirmed'
-                        ? 'bg-success'
-                        : s.status === 'cancelled'
-                          ? 'bg-mute-soft'
-                          : 'bg-amore'
-                    }`}
-                  />
-                  <span className="shrink-0 text-mute">
-                    {timeFmt.format(new Date(s.start_at))}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-ink" title={label}>
-                    {label}
-                  </span>
-                  <span className="shrink-0 text-mute-soft">
-                    {statusLabel[s.status]}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-
-  // --- Message history ---
-  const messageList = (
-    <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-      {loading && threadMessages.length === 0 ? (
-        <p className="text-sm text-mute-soft">{t('chatLoading')}</p>
-      ) : threadMessages.length === 0 ? (
-        <p className="text-sm text-mute-soft">{t('chatEmpty')}</p>
-      ) : (
-        threadMessages.map((m) => {
-          const fromAdmin = m.sender_role === 'admin';
-          return (
-            <div
-              key={m.id}
-              className={[
-                'flex flex-col gap-1',
-                fromAdmin ? 'items-end' : 'items-start',
-              ].join(' ')}
+      {/* Slots in scope — collapsible (default collapsed, spec 수정2): a
+          disclosure toggle carrying a count badge; the list expands on demand
+          so the rail stays compact. Values are deduped in scopedSlots. */}
+      {slots && (
+        <div className="shrink-0 border-b border-line-soft">
+          {/* eslint-disable-next-line react/forbid-elements -- full-width disclosure toggle (heading + count badge + chevron); Button primitive chrome unsuitable for a bare list header */}
+          <button
+            type="button"
+            aria-expanded={slotsOpen}
+            onClick={() => setSlotsOpen((v) => !v)}
+            className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-paper-soft"
+          >
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+              {t('chatScheduleHeading')}
+            </span>
+            <span className="inline-flex min-w-5 items-center justify-center rounded-pill border-2 border-ink bg-paper px-1.5 py-px font-mono text-xs font-bold text-ink">
+              {scopedSlots.length}
+            </span>
+            <span
+              className={`ml-auto text-xs text-mute transition-transform ${slotsOpen ? 'rotate-180' : ''}`}
+              aria-hidden
             >
-              <div
-                className={[
-                  'max-w-[85%] whitespace-pre-wrap rounded-sm border px-3 py-2 text-sm',
-                  fromAdmin
-                    ? 'border-amore/40 bg-amore/5 text-ink'
-                    : 'border-line bg-paper text-ink',
-                ].join(' ')}
-              >
-                {m.body}
-              </div>
-              <span className="text-xs text-mute-soft">
-                {fromAdmin ? t('chatSenderAdmin') : t('chatSenderParticipant')}
-                {' · '}
-                {timeFmt.format(new Date(m.created_at))}
-              </span>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-
-  // --- Composer: input + send only (kind/reach moved up into the hierarchy) ---
-  const composer = (
-    <div className="border-t border-line-soft p-3">
-      {error && <p className="mb-2 text-sm text-warning">{error}</p>}
-      <div className="flex items-end gap-2">
-        <Textarea
-          aria-label={t('chatComposerLabel')}
-          placeholder={
-            isPersonal
-              ? t('chatComposerPrivatePlaceholder')
-              : t('chatComposerBroadcastPlaceholder')
-          }
-          value={draft}
-          maxLength={MAX_MESSAGE_LENGTH}
-          rows={2}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter sends; Shift+Enter inserts a newline.
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-          className="resize-none"
-        />
-        <Button
-          variant="primary"
-          onClick={() => void send()}
-          disabled={!draft.trim() || sending || !sendReady}
-        >
-          {sending ? t('chatSending') : t('chatSend')}
-        </Button>
-      </div>
-    </div>
-  );
-
-  // --- Sidebar layout (unified calendar view) ---
-  if (layout === 'sidebar') {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="flex items-center justify-between gap-2 border-b border-line-soft px-4 py-3">
-          <p className="truncate text-sm font-medium text-ink">
-            {t('tabChat')}
-          </p>
-          {onClose && (
-            <IconButton
-              aria-label={t('chatClose')}
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-            >
-              ✕
-            </IconButton>
-          )}
+              ▾
+            </span>
+          </button>
+          {slotsOpen &&
+            (scopedSlots.length === 0 ? (
+              <p className="px-4 pb-2.5 text-xs text-mute-soft">
+                {t('chatScheduleEmpty')}
+              </p>
+            ) : (
+              <ul className="max-h-[118px] overflow-y-auto">
+              {scopedSlots.map((s) => {
+                const label =
+                  s.title ||
+                  (s.candidate_id
+                    ? (candidateLabelById.get(s.candidate_id) ??
+                      t('unnamedCandidate'))
+                    : t('chatBroadcast'));
+                return (
+                  <li key={s.id}>
+                    {/* eslint-disable-next-line react/forbid-elements -- full-width multiline slot row opening the slot editor; Button primitive chrome unsuitable */}
+                    <button
+                      type="button"
+                      onClick={() => onEditSlot?.(s)}
+                      className="flex w-full items-center gap-2.5 border-t border-line-soft px-4 py-2 text-left transition-colors hover:bg-paper-soft"
+                    >
+                      <span
+                        className={`inline-block h-2 w-2 shrink-0 rounded-full ${slotDot(s.status)}`}
+                      />
+                      <span className="shrink-0 font-mono text-xs font-bold text-ink">
+                        {timeFmt.format(new Date(s.start_at))}
+                      </span>
+                      <span
+                        className="min-w-0 flex-1 truncate text-sm text-mute"
+                        title={label}
+                      >
+                        {label}
+                      </span>
+                      <span className="shrink-0 text-xs font-bold text-amore">
+                        {t('chatSlotEdit')}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+              </ul>
+            ))}
         </div>
+      )}
 
-        {hierarchy}
-        {slotPanel}
-        {messageList}
-        {composer}
-      </div>
-    );
-  }
-
-  // --- Classic two-pane panel layout ---
-  return (
-    <div className="flex min-h-[28rem] gap-4 rounded-sm border border-line">
-      {/* Thread list */}
-      <div className="w-64 shrink-0 overflow-y-auto border-r border-line-soft">
-        {/* eslint-disable-next-line react/forbid-elements -- custom full-width multiline thread-row selector; Button primitive chrome unsuitable */}
-        <button
-          type="button"
-          onClick={() => pickReach('all')}
-          className={[
-            'flex w-full flex-col items-start gap-0.5 border-b border-line-soft px-4 py-3 text-left transition-colors',
-            isBroadcast ? 'bg-paper-soft text-ink' : 'text-mute hover:text-ink',
-          ].join(' ')}
-        >
-          <span className="text-sm font-medium">{t('chatBroadcast')}</span>
-          <span className="text-xs text-mute-soft">
-            {t('chatBroadcastHint')}
-          </span>
-        </button>
-
-        {candidates.length === 0 ? (
-          <p className="px-4 py-3 text-xs text-mute-soft">
-            {t('chatNoCandidates')}
-          </p>
+      {/* Messages — announcement banner vs chat bubbles. */}
+      <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        {loading && threadMessages.length === 0 ? (
+          <p className="text-sm text-mute-soft">{t('chatLoading')}</p>
+        ) : threadMessages.length === 0 ? (
+          <p className="text-sm text-mute-soft">{t('chatEmpty')}</p>
         ) : (
-          candidates.map((c) => {
-            const active = !isBroadcast && selectedThread === c.id;
-            const count = byCandidate.get(c.id)?.length ?? 0;
+          threadMessages.map((m) => {
+            const fromAdmin = m.sender_role === 'admin';
+            const senderLabel = fromAdmin
+              ? t('chatSenderAdmin')
+              : t('chatSenderParticipant');
+            // "수정됨" marker — only when the row carries an edit stamp later than
+            // its creation (a never-edited / preview-DB row has updated_at null).
+            const edited =
+              !!m.updated_at &&
+              new Date(m.updated_at).getTime() >
+                new Date(m.created_at).getTime();
+            const stamp = `${senderLabel} · ${timeFmt.format(new Date(m.created_at))}${
+              edited ? ` · ${t('chatMsgEdited')}` : ''
+            }`;
+            // Edit/delete are broadcast-only (private is out of round-3 scope) and
+            // admin-authored — matching the [id] route's server-side gate.
+            const editable = fromAdmin && m.scope === 'broadcast';
+            const isEditing = editingId === m.id;
+
+            // Shared inline editor (textarea + save/cancel), used by both the
+            // banner and the bubble when this message is being edited.
+            const editor = (
+              <div className="flex flex-col gap-2">
+                <Textarea
+                  aria-label={t('chatMsgEdit')}
+                  value={editDraft}
+                  maxLength={MAX_MESSAGE_LENGTH}
+                  rows={3}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void saveEdit(m.id);
+                    }
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  className="resize-none border-2 border-ink"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    onClick={() => void saveEdit(m.id)}
+                    disabled={!editDraft.trim() || editBusy}
+                  >
+                    {t('chatMsgSave')}
+                  </Button>
+                  <Button size="xs" variant="ghost" onClick={cancelEdit}>
+                    {t('cancel')}
+                  </Button>
+                </div>
+              </div>
+            );
+
+            // Edit/delete action pair, shown on editable messages when not editing.
+            const actions = editable && !isEditing && (
+              <span className="flex shrink-0 items-center gap-0.5">
+                <IconButton
+                  aria-label={t('chatMsgEdit')}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(m)}
+                >
+                  ✎
+                </IconButton>
+                <IconButton
+                  aria-label={t('chatMsgDelete')}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void removeMessage(m.id)}
+                >
+                  🗑
+                </IconButton>
+              </span>
+            );
+
+            // Broadcast announcement → banner (sun head + amber shadow).
+            if (m.is_announcement && m.scope === 'broadcast') {
+              const reachTag = m.batch_id
+                ? (groupTitleById.get(m.batch_id) ?? t('chatReachGroup'))
+                : t('chatReachAll');
+              return (
+                <div
+                  key={m.id}
+                  className="overflow-hidden rounded-sm border-2 border-ink bg-warning-bg shadow-memphis-md-amber"
+                >
+                  <div
+                    className="flex items-center gap-1.5 border-b-2 border-ink px-3 py-1.5"
+                    style={{ background: 'var(--widget-header-bg-sun)' }}
+                  >
+                    <span className="text-xs" aria-hidden>
+                      📢
+                    </span>
+                    <span className="font-mono text-xs font-extrabold uppercase tracking-wider text-ink">
+                      {t('chatKindAnnouncement')} · {reachTag}
+                    </span>
+                  </div>
+                  {isEditing ? (
+                    <div className="px-3 py-2.5">{editor}</div>
+                  ) : (
+                    <div className="whitespace-pre-wrap px-3 py-2.5 text-sm leading-relaxed text-ink-2">
+                      {m.body}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-2 px-3 pb-2">
+                    <span className="text-xs text-mute-soft">{stamp}</span>
+                    {actions}
+                  </div>
+                </div>
+              );
+            }
+
+            // Admin chat bubble (right, amore) vs participant bubble (left, paper).
             return (
-              // eslint-disable-next-line react/forbid-elements -- custom full-width thread-row selector; Button primitive chrome unsuitable
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => selectThread(c.id)}
-                className={[
-                  'flex w-full items-center justify-between gap-2 border-b border-line-soft px-4 py-3 text-left text-sm transition-colors',
-                  active ? 'bg-paper-soft text-ink' : 'text-mute hover:text-ink',
-                ].join(' ')}
+              <div
+                key={m.id}
+                className={fromAdmin ? 'flex justify-end' : 'flex justify-start'}
               >
-                <span className="truncate">{c.label}</span>
-                {count > 0 && (
-                  <span className="shrink-0 text-xs text-mute-soft">
-                    {count}
-                  </span>
-                )}
-              </button>
+                <div
+                  className={[
+                    'max-w-[85%] px-3 py-2.5',
+                    // design-allow-hardcoded -- CD frame 02 chat-bubble radius 13px (documented outlier band, PROJECT.md §9); tail corner uses rounded-xs(4) token
+                    'rounded-[13px]',
+                    fromAdmin
+                      ? 'rounded-br-xs border-2 border-ink bg-amore-bg shadow-memphis-sm'
+                      : 'rounded-bl-xs border-[1.5px] border-line bg-paper shadow-memphis-sm-faint',
+                  ].join(' ')}
+                >
+                  {isEditing ? (
+                    editor
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
+                      {m.body}
+                    </div>
+                  )}
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-xs text-mute-soft">{stamp}</span>
+                    {actions}
+                  </div>
+                </div>
+              </div>
             );
           })
         )}
       </div>
 
-      {/* Thread messages + composer */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-line-soft px-4 py-3">
-          <p className="text-sm font-medium text-ink">{threadTitle}</p>
-          <p className="text-xs text-mute-soft">
-            {isBroadcast ? t('chatBroadcastHint') : t('chatPrivateHint')}
-          </p>
+      {/* Composer — border-2 ink field + ➤ ink button. */}
+      <div className="shrink-0 border-t-2 border-ink bg-paper p-3">
+        {error && <p className="mb-2 text-sm text-warning">{error}</p>}
+        <div className="flex items-end gap-2.5">
+          <Textarea
+            aria-label={t('chatComposerLabel')}
+            placeholder={
+              isPersonal
+                ? t('chatComposerPrivatePlaceholder')
+                : t('chatComposerBroadcastPlaceholder')
+            }
+            value={draft}
+            maxLength={MAX_MESSAGE_LENGTH}
+            rows={2}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter sends; Shift+Enter inserts a newline.
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            className="resize-none border-2 border-ink"
+          />
+          {/* eslint-disable-next-line react/forbid-elements -- CD send affordance: 44×44 ink Memphis square (2px hard shadow); no Button/IconButton variant reproduces the square ink fill + offset shadow */}
+          <button
+            type="button"
+            aria-label={t('chatSend')}
+            onClick={() => void send()}
+            disabled={!draft.trim() || sending || !sendReady}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border-2 border-ink bg-ink text-lg text-paper shadow-memphis-sm transition-opacity disabled:opacity-40"
+          >
+            ➤
+          </button>
         </div>
-
-        {hierarchy}
-        {messageList}
-        {composer}
       </div>
+    </div>
+  );
+}
+
+function slotDot(status: SlotStatus): string {
+  return status === 'confirmed'
+    ? 'bg-slot-confirmed-dot'
+    : status === 'cancelled'
+      ? 'bg-slot-cancelled-dot'
+      : 'bg-slot-proposed-dot';
+}
+
+// Reach radio (CD frame 02B) — 16px circle, 2px ink border, filled = 8px ink
+// dot. Native button (radio semantics) because no primitive renders this.
+function Radio({
+  label,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    // eslint-disable-next-line react/forbid-elements -- CD reach radio (16px circle · 2px ink · 8px ink dot); no primitive renders a radio control
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={`inline-flex items-center gap-1.5 text-sm transition-colors ${
+        selected ? 'font-extrabold text-ink' : 'font-semibold text-mute'
+      }`}
+    >
+      <span
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+          selected ? 'border-ink' : 'border-line'
+        }`}
+      >
+        {selected && (
+          <span className="h-2 w-2 rounded-full bg-ink" aria-hidden />
+        )}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+// Memphis segmented control (ink-fill active segment). fullWidth stretches each
+// segment (chat kind toggle spans the rail).
+function Segmented<T extends string>({
+  ariaLabel,
+  value,
+  onChange,
+  options,
+  fullWidth,
+}: {
+  ariaLabel: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly { value: T; label: ReactNode }[];
+  fullWidth?: boolean;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className={`inline-flex overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm ${
+        fullWidth ? 'flex w-full' : 'shrink-0'
+      }`}
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          // eslint-disable-next-line react/forbid-elements -- CD Memphis segmented pill (ink-fill active seg); a per-Button border/shadow/radius can't compose into one unified control
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.value)}
+            className={[
+              fullWidth ? 'flex-1 text-center' : '',
+              'px-4 py-1.5 text-sm font-bold transition-colors',
+              active ? 'bg-ink text-paper' : 'bg-paper text-mute hover:text-ink',
+            ].join(' ')}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

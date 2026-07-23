@@ -1,21 +1,25 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Tabs } from '@/components/ui/tabs';
+import { Select } from '@/components/ui/select';
 import { type SchedSlot, type SlotStatus } from '@/lib/scheduling/slots';
 
-// Self-built lightweight time grid (no calendar library — keeps the bundle
-// small and lets every pixel use design tokens). Week view = 7 day columns,
-// day view = 1. Slots are stored UTC and rendered in the admin's local
-// timezone. Clicking an empty half-hour opens the create modal pre-filled with
-// that time; clicking a slot opens the edit modal.
+// Fresh Memphis rebuild (BUILD-SPEC §1 · CD frame 02). Self-built lightweight
+// time grid — no calendar library, so every pixel binds a design token. Week
+// view = 7 day columns, day view = 1. Slots are stored UTC, rendered in the
+// admin's local timezone. Density = 80px/hour (§6.4). Clicking an empty
+// half-hour opens the create modal pre-filled with that time; clicking a
+// colored time-block opens the edit modal.
 
 const DAY_START_HOUR = 8;
 const DAY_END_HOUR = 21;
-const PX_PER_MIN = 0.8;
+// 80px per hour (BUILD-SPEC §6.4) — up from the legacy 0.8·56 density.
+const PX_PER_HOUR = 80;
+const PX_PER_MIN = PX_PER_HOUR / 60;
 const SNAP_MIN = 30;
+// Weekday-header / hour-gutter width (CD grid: 46px repeat(7,1fr)).
+const GUTTER_W = 46;
 
 const DAY_START_MIN = DAY_START_HOUR * 60;
 const DAY_END_MIN = DAY_END_HOUR * 60;
@@ -23,6 +27,16 @@ const SPAN_MIN = DAY_END_MIN - DAY_START_MIN;
 const DAY_HEIGHT = SPAN_MIN * PX_PER_MIN;
 
 export type CalendarView = 'week' | 'day';
+
+// Optional inline group-scope pill in the toolbar (CD frame 02 "Group: All ▾").
+// The client owns the calendar's group filter state; the calendar just renders
+// the control in the Memphis toolbar so the frame reads as one unit.
+export type CalendarGroupFilter = {
+  ariaLabel: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+};
 
 type Props = {
   slots: SchedSlot[];
@@ -32,6 +46,7 @@ type Props = {
   // Create a slot starting at the given local Date (end defaults to +30m).
   onCreateAt: (start: Date) => void;
   onEditSlot: (slot: SchedSlot) => void;
+  groupFilter?: CalendarGroupFilter;
 };
 
 function startOfDay(d: Date): Date {
@@ -60,29 +75,34 @@ function sameLocalDay(a: Date, b: Date): boolean {
   );
 }
 
-// Status → block/dot styling. Token-only (§9): amore for proposed, success for
-// confirmed, muted+strikethrough for cancelled.
-function blockClass(status: SlotStatus): string {
-  switch (status) {
-    case 'confirmed':
-      return 'border-success bg-paper-soft text-ink';
-    case 'cancelled':
-      return 'border-line-soft bg-paper text-mute-soft line-through';
-    default:
-      return 'border-amore-soft bg-amore-bg text-ink';
-  }
-}
+// Status → colored time-block skin (BUILD-SPEC §2 slot tokens). Token-only: the
+// slot-* ramp (border/bg/dot) + the matching hard shadow CSS var. Cancelled adds
+// a strike-through on the label.
+const BLOCK: Record<
+  SlotStatus,
+  { block: string; dot: string; shadowVar: string; label: string }
+> = {
+  proposed: {
+    block: 'border-slot-proposed-border bg-slot-proposed-bg',
+    dot: 'bg-slot-proposed-dot',
+    shadowVar: 'var(--slot-proposed-shadow)',
+    label: 'text-ink',
+  },
+  confirmed: {
+    block: 'border-slot-confirmed-border bg-slot-confirmed-bg',
+    dot: 'bg-slot-confirmed-dot',
+    shadowVar: 'var(--slot-confirmed-shadow)',
+    label: 'text-ink',
+  },
+  cancelled: {
+    block: 'border-slot-cancelled-border bg-slot-cancelled-bg',
+    dot: 'bg-slot-cancelled-dot',
+    shadowVar: 'var(--slot-cancelled-shadow)',
+    label: 'text-mute-soft line-through',
+  },
+};
 
-function dotClass(status: SlotStatus): string {
-  switch (status) {
-    case 'confirmed':
-      return 'bg-success';
-    case 'cancelled':
-      return 'bg-mute-soft';
-    default:
-      return 'bg-amore';
-  }
-}
+const OUTFIT = 'var(--font-outfit), var(--font-sans)';
 
 export function SchedulingCalendar({
   slots,
@@ -91,6 +111,7 @@ export function SchedulingCalendar({
   onViewChange,
   onCreateAt,
   onEditSlot,
+  groupFilter,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
@@ -113,23 +134,18 @@ export function SchedulingCalendar({
   const hourLabels = useMemo(
     () =>
       Array.from(
-        { length: DAY_END_HOUR - DAY_START_HOUR + 1 },
+        { length: DAY_END_HOUR - DAY_START_HOUR },
         (_, i) => DAY_START_HOUR + i,
       ),
     [],
   );
 
-  const dayFmt = useMemo(
-    () =>
-      new Intl.DateTimeFormat(undefined, {
-        month: 'short',
-        day: 'numeric',
-        weekday: 'short',
-      }),
+  const dowFmt = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { weekday: 'short' }),
     [],
   );
   const rangeFmt = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric' }),
+    () => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }),
     [],
   );
   const timeFmt = useMemo(
@@ -168,160 +184,292 @@ export function SchedulingCalendar({
 
   const rangeLabel =
     view === 'day'
-      ? dayFmt.format(days[0])
+      ? rangeFmt.format(days[0])
       : `${rangeFmt.format(days[0])} – ${rangeFmt.format(days[6])}`;
 
+  const gridCols = `${GUTTER_W}px repeat(${days.length}, minmax(0, 1fr))`;
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => shift(-1)}>
-            ‹ {t('calPrev')}
-          </Button>
-          <Button
-            variant="ghost"
+    <div className="flex min-w-0 flex-1 flex-col">
+      {/* Toolbar — Group pill · week range (Outfit) · nav chips · Week/Day. */}
+      <div className="flex flex-wrap items-center gap-3 border-b-2 border-ink bg-paper px-5 py-3">
+        {groupFilter && (
+          <Select
+            aria-label={groupFilter.ariaLabel}
             size="sm"
+            fullWidth={false}
+            className="w-36 truncate"
+            value={groupFilter.value}
+            onChange={(e) => groupFilter.onChange(e.target.value)}
+            options={groupFilter.options}
+          />
+        )}
+        <span
+          className="text-ink"
+          style={{ fontFamily: OUTFIT, fontSize: 17, fontWeight: 800 }}
+        >
+          {rangeLabel}
+        </span>
+        <div className="flex items-center gap-1.5">
+          <NavChip aria-label={t('calPrev')} onClick={() => shift(-1)}>
+            ‹
+          </NavChip>
+          <NavChip
+            aria-label={t('calToday')}
+            wide
             onClick={() => setAnchor(startOfDay(new Date()))}
           >
             {t('calToday')}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => shift(1)}>
-            {t('calNext')} ›
-          </Button>
-          <span className="ml-2 text-sm font-medium text-ink">{rangeLabel}</span>
+          </NavChip>
+          <NavChip aria-label={t('calNext')} onClick={() => shift(1)}>
+            ›
+          </NavChip>
         </div>
-        <Tabs
-          aria-label={t('calViewLabel')}
-          value={view}
-          onValueChange={(v) => onViewChange(v as CalendarView)}
-          items={[
-            { value: 'week', label: t('calWeek') },
-            { value: 'day', label: t('calDay') },
-          ]}
-        />
+        <div className="ml-auto">
+          <Segmented
+            ariaLabel={t('calViewLabel')}
+            value={view}
+            onChange={(v) => onViewChange(v as CalendarView)}
+            options={[
+              { value: 'week', label: t('calWeek') },
+              { value: 'day', label: t('calDay') },
+            ]}
+          />
+        </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="flex min-w-[640px]">
-          {/* Hour gutter */}
-          <div className="w-14 shrink-0">
-            <div className="h-8 border-b border-line" />
-            <div className="relative" style={{ height: DAY_HEIGHT }}>
-              {hourLabels.map((h, i) => (
-                <div
-                  key={h}
-                  className="absolute right-2 -translate-y-1/2 text-xs text-mute-soft"
-                  style={{ top: i * 60 * PX_PER_MIN }}
-                >
-                  {String(h).padStart(2, '0')}:00
-                </div>
-              ))}
+      {/* Weekday header — bg paper-soft, today date in amore. */}
+      <div
+        className="grid border-b-2 border-ink bg-paper-soft"
+        style={{ gridTemplateColumns: gridCols }}
+      >
+        <div />
+        {days.map((day) => {
+          const isToday = sameLocalDay(day, new Date());
+          return (
+            <div
+              key={day.toISOString()}
+              className="border-l border-line-soft px-1 py-1.5 text-center first:border-l-0"
+            >
+              <div className="font-mono text-xs font-bold uppercase text-mute-soft">
+                {dowFmt.format(day)}
+              </div>
+              <div
+                className={isToday ? 'text-amore' : 'text-ink'}
+                style={{ fontFamily: OUTFIT, fontSize: 15, fontWeight: 800 }}
+              >
+                {day.getDate()}
+              </div>
             </div>
+          );
+        })}
+      </div>
+
+      {/* Grid — 80px/hour, colored time-blocks over a clickable half-hour grid. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="grid" style={{ gridTemplateColumns: gridCols }}>
+          {/* Hour gutter */}
+          <div>
+            {hourLabels.map((h) => (
+              <div
+                key={h}
+                className="border-b border-line-soft px-1.5 pt-0.5 text-right font-mono text-xs text-mute-soft"
+                style={{ height: PX_PER_HOUR }}
+              >
+                {String(h).padStart(2, '0')}:00
+              </div>
+            ))}
           </div>
 
           {/* Day columns */}
-          <div className="flex flex-1">
-            {days.map((day) => {
-              const daySlots = slotsByDay.get(day.toDateString()) ?? [];
-              const isToday = sameLocalDay(day, new Date());
-              return (
-                <div
-                  key={day.toISOString()}
-                  className="flex-1 border-l border-line first:border-l-0"
-                >
+          {days.map((day) => {
+            const daySlots = slotsByDay.get(day.toDateString()) ?? [];
+            return (
+              <div
+                key={day.toISOString()}
+                className="relative border-l border-line-soft first:border-l-0"
+                style={{ height: DAY_HEIGHT }}
+              >
+                {/* Clickable half-hour grid rows */}
+                {Array.from({ length: SPAN_MIN / SNAP_MIN }, (_, r) => (
                   <div
-                    className={`flex h-8 items-center justify-center border-b border-line text-xs ${
-                      isToday ? 'text-amore' : 'text-mute'
-                    }`}
-                  >
-                    {dayFmt.format(day)}
-                  </div>
-                  <div className="relative" style={{ height: DAY_HEIGHT }}>
-                    {/* Clickable half-hour grid */}
-                    {Array.from({ length: SPAN_MIN / SNAP_MIN }, (_, r) => (
-                      <div
-                        key={r}
-                        role="button"
-                        tabIndex={-1}
-                        onClick={() => handleCellClick(day, r * SNAP_MIN)}
-                        className="absolute inset-x-0 cursor-pointer border-b border-line-soft hover:bg-paper-soft"
-                        style={{
-                          top: r * SNAP_MIN * PX_PER_MIN,
-                          height: SNAP_MIN * PX_PER_MIN,
-                        }}
-                      />
-                    ))}
+                    key={r}
+                    role="button"
+                    tabIndex={-1}
+                    onClick={() => handleCellClick(day, r * SNAP_MIN)}
+                    className="absolute inset-x-0 cursor-pointer border-b border-line-soft transition-colors hover:bg-paper-soft"
+                    style={{
+                      top: r * SNAP_MIN * PX_PER_MIN,
+                      height: SNAP_MIN * PX_PER_MIN,
+                    }}
+                  />
+                ))}
 
-                    {/* Slot blocks */}
-                    {daySlots.map((s) => {
-                      const start = new Date(s.start_at);
-                      const end = new Date(s.end_at);
-                      const startMin =
-                        start.getHours() * 60 + start.getMinutes();
-                      const endMin = end.getHours() * 60 + end.getMinutes();
-                      const top =
-                        Math.max(startMin - DAY_START_MIN, 0) * PX_PER_MIN;
-                      const rawBottom =
-                        Math.min(endMin - DAY_START_MIN, SPAN_MIN) * PX_PER_MIN;
-                      const height = Math.max(rawBottom - top, 16);
-                      return (
-                        <div
-                          key={s.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditSlot(s);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              onEditSlot(s);
-                            }
-                          }}
-                          className={`absolute inset-x-1 z-fab cursor-pointer overflow-hidden rounded-xs border px-1.5 py-1 text-left text-xs ${blockClass(
-                            s.status,
-                          )}`}
-                          style={{ top, height }}
-                          title={`${slotLabel(s)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`}
+                {/* Colored time-blocks */}
+                {daySlots.map((s) => {
+                  const start = new Date(s.start_at);
+                  const end = new Date(s.end_at);
+                  const startMin = start.getHours() * 60 + start.getMinutes();
+                  const endMin = end.getHours() * 60 + end.getMinutes();
+                  const top = Math.max(startMin - DAY_START_MIN, 0) * PX_PER_MIN;
+                  const rawBottom =
+                    Math.min(endMin - DAY_START_MIN, SPAN_MIN) * PX_PER_MIN;
+                  const height = Math.max(rawBottom - top, 30);
+                  const skin = BLOCK[s.status];
+                  return (
+                    <div
+                      key={s.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditSlot(s);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onEditSlot(s);
+                        }
+                      }}
+                      className={[
+                        'absolute inset-x-1 z-fab cursor-pointer overflow-hidden border-2 px-1.5 py-1 text-left',
+                        // design-allow-hardcoded -- CD frame 02 time-block radius 9px (documented outlier band, PROJECT.md §9); no exact DS radius token between rounded-xs(4) and rounded-sm(14)
+                        'rounded-[9px]',
+                        skin.block,
+                      ].join(' ')}
+                      style={{
+                        top,
+                        height,
+                        boxShadow: skin.shadowVar,
+                      }}
+                      title={`${slotLabel(s)} · ${timeFmt.format(start)}–${timeFmt.format(end)}`}
+                    >
+                      <div className="mb-0.5 flex items-center gap-1">
+                        <span
+                          className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full ${skin.dot}`}
+                        />
+                        <span
+                          className={`truncate ${skin.label}`}
+                          style={{ fontFamily: OUTFIT, fontSize: 11, fontWeight: 800 }}
                         >
-                          <span className="flex items-center gap-1 font-medium">
-                            <span
-                              className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${dotClass(
-                                s.status,
-                              )}`}
-                            />
-                            <span className="truncate">{slotLabel(s)}</span>
-                          </span>
-                          <span className="block truncate text-xs opacity-80">
-                            {timeFmt.format(start)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                          {slotLabel(s)}
+                        </span>
+                      </div>
+                      <div className="truncate font-mono text-xs text-mute">
+                        {timeFmt.format(start)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-mute">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-amore" />
-          {t('statusProposed')}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-success" />
-          {t('statusConfirmed')}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-mute-soft" />
-          {t('statusCancelled')}
-        </span>
+      {/* Legend — colored swatches + click hint. */}
+      <div className="flex flex-wrap items-center gap-4 border-t-2 border-ink bg-paper-soft px-5 py-2.5">
+        <LegendChip
+          className="border-slot-proposed-border bg-slot-proposed-bg"
+          label={t('statusProposed')}
+        />
+        <LegendChip
+          className="border-slot-confirmed-border bg-slot-confirmed-bg"
+          label={t('statusConfirmed')}
+        />
+        <LegendChip
+          className="border-slot-cancelled-border bg-slot-cancelled-bg"
+          label={t('statusCancelled')}
+        />
+        <span className="ml-auto text-xs text-mute-soft">{t('calClickHint')}</span>
       </div>
+    </div>
+  );
+}
+
+function LegendChip({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className={`inline-block h-3.5 w-3.5 rounded-xs border-[1.5px] ${className}`}
+      />
+      <span className="text-xs font-semibold text-mute">{label}</span>
+    </span>
+  );
+}
+
+// Memphis nav chip (CD frame 02 toolbar) — 1.5px ink border, radius 8, 2px hard
+// shadow. Native <button> because the ChromeButton primitive is 4px-radius and
+// can't take this square/pill Memphis chrome; per-line disable per the codebase
+// convention for CD-authored controls.
+function NavChip({
+  children,
+  onClick,
+  wide,
+  'aria-label': ariaLabel,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  wide?: boolean;
+  'aria-label': string;
+}) {
+  return (
+    // eslint-disable-next-line react/forbid-elements -- CD Memphis nav chip (1.5px ink · radius8 · 2px hard shadow); Button/ChromeButton chrome (radius 4/14) can't reproduce this
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onClick}
+      className={[
+        'inline-flex h-[30px] items-center justify-center border-[1.5px] border-ink bg-paper text-md font-bold text-ink shadow-memphis-sm transition-colors hover:bg-paper-soft',
+        // design-allow-hardcoded -- CD frame 02 nav-chip radius 8px (documented outlier band, PROJECT.md §9); no exact DS radius token between rounded-xs(4) and rounded-sm(14)
+        'rounded-[8px]',
+        wide ? 'px-3' : 'w-[30px]',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Memphis segmented control (ink-fill active segment). Shared shape across the
+// recsched screens; a fresh build per CD (the flat <Tabs> primitive would
+// downgrade the treatment). role=tablist keeps it AT-legible.
+function Segmented<T extends string>({
+  ariaLabel,
+  value,
+  onChange,
+  options,
+}: {
+  ariaLabel: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly { value: T; label: ReactNode }[];
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className="inline-flex shrink-0 overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm"
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          // eslint-disable-next-line react/forbid-elements -- CD Memphis segmented pill (ink-fill active seg); a per-Button border/shadow/radius can't compose into one unified control
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.value)}
+            className={[
+              'px-3.5 py-1 text-sm font-bold transition-colors',
+              active ? 'bg-ink text-paper' : 'bg-paper text-mute hover:text-ink',
+            ].join(' ')}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

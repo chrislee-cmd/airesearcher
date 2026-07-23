@@ -45,22 +45,36 @@ export default async function Page({
   const { project: projectParam, batch: batchParam } = await searchParams;
 
   // --- Projects (top layer) ---------------------------------------------
+  // share_token feeds the redesign's project-shared master link (BUILD-SPEC
+  // §5.1). It's additive (migration auto-applies on merge to main only), so a
+  // preview DB may lack the column — the wide select then errors and we fall
+  // back to the pre-share_token column set (master-link bar simply hides).
   const projectsRes = await admin
     .from('sched_projects')
-    .select('id, title, created_at')
+    .select('id, title, created_at, share_token')
     .order('created_at', { ascending: false })
     .limit(200);
 
+  const projectsNarrow = projectsRes.error
+    ? await admin
+        .from('sched_projects')
+        .select('id, title, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200)
+    : null;
+
   // Legacy/degrade mode: no sched_projects table on this DB (preview). Present
   // each batch as its own project so the picker + grouped view still render.
-  const degraded = !!projectsRes.error;
+  const degraded = !!projectsRes.error && !!projectsNarrow?.error;
 
   let projects: SchedProject[] = [];
   let groups: SchedBatch[] = [];
   let selectedProjectId: string | null = null;
 
   if (!degraded) {
-    projects = (projectsRes.data ?? []) as SchedProject[];
+    projects = (projectsRes.error
+      ? (projectsNarrow?.data ?? [])
+      : (projectsRes.data ?? [])) as SchedProject[];
     selectedProjectId =
       projectParam && projects.some((p) => p.id === projectParam)
         ? projectParam
