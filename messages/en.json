@@ -2620,7 +2620,8 @@
       "inject": "Inject",
       "backfillRunning": "🔍 Finding related content…",
       "backfillDone": "✓ Auto-filled {count} utterances from the conversation",
-      "backfillEmpty": "⚠ No related content — the AI will prioritize questions that fill this widget"
+      "backfillEmpty": "⚠ No related content — the AI will prioritize questions that fill this widget",
+      "fullviewHelper": "Sent to the respondent right away — appears once as a spotlight and is logged to question history."
     },
     "thinking": {
       "header": "AI's reasoning",

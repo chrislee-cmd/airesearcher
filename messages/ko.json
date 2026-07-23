@@ -2620,7 +2620,8 @@
       "inject": "주입",
       "backfillRunning": "🔍 관련 내용 찾는 중…",
       "backfillDone": "✓ 대화에서 {count}개 발화 자동 채움",
-      "backfillEmpty": "⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다"
+      "backfillEmpty": "⚠ 관련 내용 없음 — AI 가 이 위젯을 채우는 질문을 우선 제안합니다",
+      "fullviewHelper": "응답자에게 즉시 전달됩니다 — 스포트라이트로 한 번 표시되고 질문 기록에 남습니다."
     },
     "thinking": {
       "header": "AI 의 사고 흐름",

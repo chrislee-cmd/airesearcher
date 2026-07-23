@@ -2713,7 +2713,8 @@
       "inject": "挿入",
       "backfillRunning": "🔍 関連コンテンツを検索中…",
       "backfillDone": "✓ 会話から {count} 件の発言を自動入力しました",
-      "backfillEmpty": "⚠ 関連コンテンツが見つかりませんでした — AIはこのウィジェットを埋める質問を優先します"
+      "backfillEmpty": "⚠ 関連コンテンツが見つかりませんでした — AIはこのウィジェットを埋める質問を優先します",
+      "fullviewHelper": "回答者にすぐ届きます — スポットライトとして一度表示され、質問履歴に記録されます。"
     },
     "thinking": {
       "header": "AIの推論",
