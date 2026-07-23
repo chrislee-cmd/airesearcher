@@ -4377,6 +4377,11 @@ export function TranslateConsole({
       toggleOutputAudible,
       copyShareUrl: () => void copyShareUrl(),
       shareCopied,
+      revokeShare: () => void revokeShare(),
+      sharing,
+      ttsBlocked,
+      enableTtsPlayback: () => void enableTtsPlayback(),
+      echoDetected,
       stop: () => void stop(),
     });
   }, [
@@ -4393,6 +4398,11 @@ export function TranslateConsole({
     toggleOutputAudible,
     copyShareUrl,
     shareCopied,
+    revokeShare,
+    sharing,
+    ttsBlocked,
+    enableTtsPlayback,
+    echoDetected,
     stop,
   ]);
 

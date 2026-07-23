@@ -45,6 +45,11 @@ export function InterpreterFullview() {
     toggleOutputAudible,
     copyShareUrl,
     shareCopied,
+    revokeShare,
+    sharing,
+    ttsBlocked,
+    enableTtsPlayback,
+    echoDetected,
     stop,
   } = useTranslateSession();
 
@@ -76,22 +81,53 @@ export function InterpreterFullview() {
 
   return (
     <div className="flex min-h-0 flex-1 gap-[18px] overflow-hidden p-[22px]">
-      {/* 트윈 패널 그룹 (flex:1) */}
-      <div className="flex min-w-0 flex-1 gap-[14px]">
-        <StreamPanel
-          tone="input"
-          label={t('interpreter.input')}
-          langLabel={sourceLangLabel}
-          lines={inputLines}
-          emptyText={t('prompter.empty')}
-        />
-        <StreamPanel
-          tone="output"
-          label={t('interpreter.output')}
-          langLabel={targetLangLabel}
-          lines={promptedLines}
-          emptyText={t('prompter.empty')}
-        />
+      {/* 트윈 패널 그룹 (flex:1) — advisory 배너(TTS 차단·에코)를 패널 위에
+          쌓고(일반 위젯 §Layer A 미러), 그 아래 트윈 스트림 행. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-[14px]">
+        {/* autoplay-blocked amber 배너 — host 로컬 모니터가 차단됐을 때 1클릭
+            재활성. 일반 위젯 ttsBlockedBanner(translate-console §Layer A) 미러. */}
+        {ttsBlocked ? (
+          <div className="flex flex-wrap items-center gap-[11px] rounded-sm border-2 border-warning-line-amber bg-warning-bg px-[15px] py-[11px] shadow-memphis-sm">
+            <span aria-hidden className="text-xl leading-none">
+              🔊
+            </span>
+            <span className="min-w-0 flex-1 text-md font-bold text-warning-text">
+              {t('ttsBlocked.notice')}
+            </span>
+            <TtsEnableButton
+              onClick={enableTtsPlayback}
+              label={t('ttsBlocked.enable')}
+            />
+          </div>
+        ) : null}
+
+        {/* 에코 감지 advisory — 헤드폰 안내(액션 없음). role="status" (비차단
+            공지). 일반 위젯 echoBanner(translate-console) 미러. */}
+        {echoDetected ? (
+          <div
+            role="status"
+            className="rounded-sm border-2 border-warning-line-amber bg-warning-bg px-[15px] py-[11px] text-md font-bold text-warning-text shadow-memphis-sm"
+          >
+            {t('echoDetected.notice')}
+          </div>
+        ) : null}
+
+        <div className="flex min-h-0 flex-1 gap-[14px]">
+          <StreamPanel
+            tone="input"
+            label={t('interpreter.input')}
+            langLabel={sourceLangLabel}
+            lines={inputLines}
+            emptyText={t('prompter.empty')}
+          />
+          <StreamPanel
+            tone="output"
+            label={t('interpreter.output')}
+            langLabel={targetLangLabel}
+            lines={promptedLines}
+            emptyText={t('prompter.empty')}
+          />
+        </div>
       </div>
 
       {/* 우측 rail 300px — 출력오디오 · 옵저버 링크 · 리스너 */}
@@ -137,6 +173,15 @@ export function InterpreterFullview() {
               label={shareCopied ? t('share.copied') : t('share.copy')}
             />
           </div>
+          {/* revoke — 공유링크 취소(옵저버 차단). shareUrl 있을 때만 노출,
+              in-flight 중 disable. 콘솔 revokeShare(DELETE .../share) 미러. */}
+          {shareUrl ? (
+            <RevokeButton
+              disabled={sharing}
+              onRevoke={revokeShare}
+              label={t('share.revoke')}
+            />
+          ) : null}
           <div className="text-xs-soft leading-[1.5] text-mute-soft">
             {t('interpreter.observerHint')}
           </div>
@@ -289,6 +334,49 @@ function CopyButton({
       onClick={onCopy}
       disabled={disabled}
       className="shrink-0 rounded-[var(--fv-radius-field)] bg-ink px-[13px] py-[9px] text-md font-bold text-paper disabled:opacity-50"
+    >
+      {label}
+    </button>
+  );
+}
+
+// ── autoplay 차단 재활성 버튼 (amber 배너, ink solid pill) ───────────────
+function TtsEnableButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    // eslint-disable-next-line react/forbid-elements -- Copy/End-session 와 동일 선례: fullview 배너 액션은 ink solid · radius-field(10) 전용 chrome 으로 Button primitive variant(radius 고정)와 불일치.
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 rounded-[var(--fv-radius-field)] bg-ink px-[13px] py-[8px] text-md font-bold text-paper"
+    >
+      {label}
+    </button>
+  );
+}
+
+// ── 공유링크 revoke 버튼 (muted outline, full-width) ─────────────────────
+function RevokeButton({
+  disabled,
+  onRevoke,
+  label,
+}: {
+  disabled: boolean;
+  onRevoke: () => void;
+  label: string;
+}) {
+  return (
+    // eslint-disable-next-line react/forbid-elements -- Copy 와 동일 선례: fullview rail 액션은 muted outline · radius-field 전용 chrome 으로 Button primitive variant 와 불일치.
+    <button
+      type="button"
+      onClick={onRevoke}
+      disabled={disabled}
+      className="rounded-[var(--fv-radius-field)] border-[1.5px] border-line bg-paper px-[11px] py-[8px] text-sm font-bold text-mute-soft disabled:opacity-50"
     >
       {label}
     </button>
