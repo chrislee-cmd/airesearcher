@@ -2946,6 +2946,7 @@
     "confirmedEmpty": "No confirmed attendees yet. Confirm candidates from the list.",
     "confirmedNoSlot": "No slot",
     "confirmedChatCta": "Chat",
+    "chatUnreadBadge": "Unread participant message",
     "confirmedBroadcastCta": "Broadcast",
     "chatClose": "Close",
     "chatMaxPanels": "You can open up to 4 chats at once.",

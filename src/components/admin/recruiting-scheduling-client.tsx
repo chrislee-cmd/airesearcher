@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -24,6 +25,7 @@ import {
   type SlotDraft,
 } from '@/components/admin/slot-editor-modal';
 import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
+import { useSchedUnread } from '@/hooks/use-sched-unread';
 import { BROADCAST_THREAD_ID } from '@/lib/scheduling/messages';
 import {
   type SchedSlot,
@@ -189,6 +191,24 @@ export function RecruitingSchedulingClient({
   // Confirmed-roster disclosure (수정1) + calendar horizontal fold (수정3).
   const [rosterOpen, setRosterOpen] = useState(true);
   const [calendarFolded, setCalendarFolded] = useState(false);
+
+  // Unread badge (빨간콩) — participant messages unseen by the admin, per thread.
+  // Runs at the parent so the roster/broadcast entry points can show a dot even
+  // with no chat tile open. batchIds = every batch (inbox + named groups) so
+  // private threads across the whole project are covered.
+  const unreadBatchIds = useMemo(() => groups.map((g) => g.id), [groups]);
+  const unread = useSchedUnread(selectedProjectId, unreadBatchIds);
+  const { markSeen: markThreadSeen, isUnread: isThreadUnread } = unread;
+  const unreadLatest = unread.latestParticipantAt;
+  // Keep an OPEN tile's thread marked seen as new participant messages land —
+  // opening a thread reads it, and a message arriving while you watch it stays
+  // read (no badge pops on the thread you're already in).
+  useEffect(() => {
+    for (const { thread } of chatTiles) {
+      const at = unreadLatest.get(thread);
+      if (at && isThreadUnread(thread)) markThreadSeen(thread);
+    }
+  }, [chatTiles, unreadLatest, isThreadUnread, markThreadSeen]);
 
   // The project in focus — its share_token drives the master-link bar.
   const selectedProject =
@@ -395,6 +415,8 @@ export function RecruitingSchedulingClient({
       notifyErr(t('chatMaxPanels'));
       return;
     }
+    // Opening a thread reads it → clear its unread badge.
+    markThreadSeen(thread);
     const tileId = `t${tileSeqRef.current++}`;
     setChatTiles((prev) =>
       prev.some((c) => c.thread === thread) || prev.length >= MAX_CHAT_PANELS
@@ -409,6 +431,8 @@ export function RecruitingSchedulingClient({
   // Unconditional: tiles are keyed by tileId, so duplicate threads are harmless
   // (this is why a personal tile can switch to broadcast even if one's open).
   function switchTile(tileId: string, thread: string) {
+    // Switching a tile to a thread reads it → clear its unread badge.
+    markThreadSeen(thread);
     setChatTiles((prev) =>
       prev.map((c) => (c.tileId === tileId ? { ...c, thread } : c)),
     );
@@ -965,13 +989,18 @@ export function RecruitingSchedulingClient({
                       </td>
                       {readOnly && (
                         <td className="px-4 py-2.5">
-                          <Button
-                            variant="link"
-                            size="xs"
-                            onClick={() => openTile(c.id)}
-                          >
-                            {t('confirmedChatCta')}
-                          </Button>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Button
+                              variant="link"
+                              size="xs"
+                              onClick={() => openTile(c.id)}
+                            >
+                              {t('confirmedChatCta')}
+                            </Button>
+                            {isThreadUnread(c.id) && (
+                              <UnreadDot label={t('chatUnreadBadge')} />
+                            )}
+                          </span>
                         </td>
                       )}
                     </tr>
@@ -1561,13 +1590,18 @@ export function RecruitingSchedulingClient({
                       {rosterOpen ? t('rosterCollapseHint') : t('rosterExpandHint')}
                     </span>
                   </button>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => openTile(BROADCAST_THREAD_ID)}
-                  >
-                    {t('confirmedBroadcastCta')}
-                  </Button>
+                  <span className="inline-flex shrink-0 items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => openTile(BROADCAST_THREAD_ID)}
+                    >
+                      {t('confirmedBroadcastCta')}
+                    </Button>
+                    {isThreadUnread(BROADCAST_THREAD_ID) && (
+                      <UnreadDot label={t('chatUnreadBadge')} />
+                    )}
+                  </span>
                 </div>
                 {rosterOpen &&
                   (confirmedCandidates.length === 0 ? (
@@ -1799,6 +1833,20 @@ function SegmentedControl<T extends string>({
         );
       })}
     </div>
+  );
+}
+
+// Unread badge (빨간콩) — a Memphis-framed amore dot marking a thread with an
+// unseen participant message. amore is the single sanctioned accent; the 2px ink
+// ring + hard micro-shadow keep it in the recsched Memphis language.
+function UnreadDot({ label }: { label: string }) {
+  return (
+    <span
+      role="status"
+      aria-label={label}
+      title={label}
+      className="inline-block h-3 w-3 shrink-0 rounded-full border-2 border-ink bg-amore shadow-memphis-2xs"
+    />
   );
 }
 

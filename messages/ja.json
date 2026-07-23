@@ -3039,6 +3039,7 @@
     "confirmedEmpty": "まだ確定した候補者がいません。リストから候補者を確定してください。",
     "confirmedNoSlot": "スロットなし",
     "confirmedChatCta": "チャット",
+    "chatUnreadBadge": "未読の参加者メッセージ",
     "confirmedBroadcastCta": "全体連絡",
     "chatClose": "閉じる",
     "chatMaxPanels": "チャットは最大4件まで開けます。",
