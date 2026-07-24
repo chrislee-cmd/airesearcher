@@ -215,6 +215,30 @@ export function useUtParticipantSession(opts: {
     [clearTimer, teardownLiveKit, teardownStreams],
   );
 
+  // pagehide 종료 beacon(보강) — 참가자가 세션 진행 중 탭을 닫거나 페이지를
+  // 떠나는 비정상 종료 시, 서버에 종료 핑을 쏴 세션이 'live' 에 고착되지 않게
+  // 한다. 비정상 종료엔 올릴 녹화가 없으므로(업로드는 명시적 stop 에서만 시작)
+  // leave 엔드포인트가 세션을 error(participant_lost)로만 정리한다.
+  //   · best-effort: sendBeacon 은 unload 중에도 발화 보장.
+  //   · bfcache(event.persisted) 진입은 되돌아올 수 있으므로 제외 — 실제 종료만.
+  //   · 정상 종료(stop→ending/ended)는 서버 status 가 이미 넘어가 leave 가 no-op.
+  //   · 놓치더라도(브라우저 크래시 등) 서버 stale-live sweep cron 이 백스톱.
+  useEffect(() => {
+    const onPageHide = (e: PageTransitionEvent) => {
+      if (e.persisted) return;
+      if (phaseRef.current !== 'live' && phaseRef.current !== 'starting') return;
+      try {
+        navigator.sendBeacon(
+          `/api/ut/public/${encodeURIComponent(token)}/leave`,
+        );
+      } catch {
+        // best-effort — 실패해도 sweep 이 정리한다.
+      }
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => window.removeEventListener('pagehide', onPageHide);
+  }, [token]);
+
   const attachPreview = useCallback((el: HTMLVideoElement | null) => {
     videoElRef.current = el;
     if (el && screenStreamRef.current) {

@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/topline-resume-sweep",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/ut-stale-live-sweep",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

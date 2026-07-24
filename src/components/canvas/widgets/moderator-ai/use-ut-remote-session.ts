@@ -233,8 +233,25 @@ export function useUtRemoteSession(): UseUtRemoteSession {
         }
       };
 
+      // presence 감지(핵심 수정) — 참가자가 room 을 떠나면(정상 종료 클릭·탭닫기·
+      // 새로고침·네트워크 끊김이 모두 여기로 들어온다) 관전 Room 을 끊고 리뷰로.
+      // 종전엔 종료 신호가 참가자 finalize 에만 의존해, 참가자가 비정상 종료하면
+      // ParticipantDisconnected/Disconnected 를 아무도 안 들어 리서처 뷰가 'live'
+      // 에 영구 고착됐다(이 PR 의 root cause). 최종 status(uploading/transcribing/
+      // done|error)는 기존 폴링이 확정하므로 여기선 관전만 정리한다 — 정상 종료
+      // 시 폴링이 하던 review 전환과 동일 end-state 라 회귀 0, 비정상 종료에서만
+      // 추가로 고착을 해소. teardown 으로 인한 자기-Disconnected 재진입은 phase
+      // 가드 + disconnectRoom 멱등성으로 무해(같은 review 타깃).
+      const onParticipantGone = () => {
+        if (phaseRef.current !== 'live' && phaseRef.current !== 'waiting') return;
+        disconnectRoom();
+        setPhase('review');
+      };
+
       room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
       room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
+      room.on(RoomEvent.ParticipantDisconnected, onParticipantGone);
+      room.on(RoomEvent.Disconnected, onParticipantGone);
 
       try {
         const res = await fetchWithAuth(
@@ -252,7 +269,7 @@ export function useUtRemoteSession(): UseUtRemoteSession {
         setError(tRef.current('remote.error.monitor'));
       }
     },
-    [],
+    [disconnectRoom],
   );
 
   // 세션 status 폴링 — 참가자가 세션을 끝내면(uploading→…→done) 리뷰로 전환.
