@@ -29,6 +29,10 @@ import {
 } from 'react';
 
 export type FullviewHeaderSlot = {
+  // Sits next to the title (left flex-1 area) — the CD §F3 project pill. The
+  // widget owns its behavior (interactive picker vs display-only), the shell
+  // just gives it the title-adjacent slot.
+  projectPill?: ReactNode;
   // Sits in the status-chip position (right of title/project pill). For the
   // interpreter this is the CD lang pill (Korean → English).
   statusChip?: ReactNode;

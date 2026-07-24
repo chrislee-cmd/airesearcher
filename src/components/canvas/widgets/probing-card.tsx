@@ -53,6 +53,7 @@ import {
   FullviewStatusChip,
   FullviewEndSessionButton,
 } from '@/components/canvas/fullview/fullview-header';
+import { useFullviewHeaderSlotPublisher } from '@/components/canvas/shell/fullview-header-slot-context';
 import { ProbingFullviewBody } from '@/components/canvas/fullview/probing/probing-fullview-body';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { ChromeButton } from '@/components/ui/chrome-button';
@@ -353,6 +354,7 @@ function parseEmit(
 
 function ExpandedBody() {
   const t = useTranslations('Probing');
+  const tPicker = useTranslations('ProjectPicker');
   const locale = useLocale();
   const toast = useToast();
   const now = useNowTick();
@@ -395,13 +397,16 @@ function ExpandedBody() {
   const {
     isCurrent,
     renderInSlot,
-    renderInHeaderStart,
-    renderInHeaderEnd,
     openFullview,
     close,
   } = useFullview('probing');
   // 풀뷰 V2 셸(캔버스 모달)이면 'modal', 리스트 페이지면 'page'. V2 body 분기.
   const fullviewChrome = useFullviewChrome();
+  // 셸 헤더 슬롯 publish 채널(interpreter/desk 와 동일 메커니즘). 옛
+  // renderInHeaderStart/End 포털은 셸이 headerStartEl/headerEndEl 를 끝내
+  // 주입하지 않아 죽어 있었다(헤더 pill·End-session 미표시) → 살아있는
+  // FullviewHeaderSlot 컨텍스트로 이관.
+  const publishHeaderSlot = useFullviewHeaderSlotPublisher();
 
   const isLive = sessionStatus === 'live';
 
@@ -2196,6 +2201,125 @@ function ExpandedBody() {
     hasTranscript,
   };
 
+  // ── 풀뷰 V2 셸 헤더 슬롯 publish (interpreter/desk 와 동일 메커니즘) ──
+  // probing 이 현재 풀뷰 대상(isCurrent) + 캔버스 모달일 때만 헤더 조각을 셸에
+  // 주입: 프로젝트 pill(인터랙티브 피커) · LIVE chip · End-session(진짜 세션
+  // 종료) · 부가 액션(녹음/공유/내보내기). 다른 위젯이 현재일 땐 아무것도
+  // publish 안 함(cleanup) → 헤더 안 섞임. (옛 renderInHeaderStart/End 포털은
+  // 셸 미주입으로 죽어 있었다 — 위 destructure 주석 참고.)
+  useEffect(() => {
+    if (!isCurrent || fullviewChrome !== 'modal') return;
+
+    const projectPill = (
+      <FullviewProjectPill
+        name={fullviewProjectName}
+        selectedId={selectedProjectId}
+        // probing 카드 피커는 live 중에도 disable 안 함(control-board.tsx:158)
+        // → SSOT 미러로 풀뷰 pill 도 live 무관 인터랙티브.
+        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+        onSelect={(id) => setSelection('probing', id)}
+        menuLabel={tPicker('menu')}
+      />
+    );
+
+    const recordingDownload =
+      recording.status === 'ready' ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleDownloadRecording}
+          title={t('card.downloadRecordingTitle')}
+        >
+          {t('card.downloadRecording')}
+        </Button>
+      ) : recording.status === 'uploading' ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          loading
+          loadingLabel={t('card.savingRecording')}
+          disabled
+        >
+          {t('card.savingRecording')}
+        </Button>
+      ) : null;
+
+    const shareInvite = (
+      <ShareInviteButton
+        resourceType="probing_persona"
+        resourceId={probingSessionId}
+        onBeforeOpen={snapshotPersonaForShare}
+      />
+    );
+
+    // 내보내기(PDF)는 End-session 과 분리된 별도 액션(스펙 §수정2: export 별도
+    // 유지). live 면 stop+export 확인 흐름, idle 이면 즉시 생성 — 기존 동작 유지.
+    const exportButton = (
+      <Button
+        variant={isLive ? 'secondary' : 'primary'}
+        size="sm"
+        onClick={handlePdfExportClick}
+        loading={pdfExporting}
+        loadingLabel={t('card.exporting')}
+        title={
+          isLive ? t('card.pdfExportTitleLive') : t('card.pdfExportTitleIdle')
+        }
+      >
+        {isLive ? t('card.pdfExportCtaLive') : t('card.pdfExportCtaIdle')}
+      </Button>
+    );
+
+    publishHeaderSlot({
+      projectPill,
+      statusChip: isLive ? (
+        <FullviewStatusChip
+          label={`LIVE ${formatElapsed(
+            liveStartedAt ? now - liveStartedAt : 0,
+          )}`}
+          tone="live"
+        />
+      ) : undefined,
+      actions: (
+        <>
+          {recordingDownload}
+          {shareInvite}
+          {exportButton}
+          {isLive ? (
+            // End-session = 진짜 세션 종료(handleStopSession, control-board
+            // :2182/:2309 와 동일). 옛 배선은 handlePdfExportClick(내보내기 확인
+            // 플로우)이라 "세션이 안 끝난다" 사용자 리포트의 원인 → stop 으로
+            // 재연결. 내보내기는 위 별도 버튼이 담당.
+            <FullviewEndSessionButton
+              onClick={handleStopSession}
+              label={t('live.endSession')}
+            />
+          ) : null}
+        </>
+      ),
+    });
+    return () => publishHeaderSlot({});
+  }, [
+    isCurrent,
+    fullviewChrome,
+    publishHeaderSlot,
+    fullviewProjectName,
+    selectedProjectId,
+    projects,
+    setSelection,
+    tPicker,
+    recording.status,
+    handleDownloadRecording,
+    probingSessionId,
+    snapshotPersonaForShare,
+    isLive,
+    pdfExporting,
+    handlePdfExportClick,
+    handleStopSession,
+    liveStartedAt,
+    now,
+    t,
+  ]);
+
   return (
     <>
       <div className="flex h-full min-h-0 flex-col">
@@ -2516,53 +2640,14 @@ function ExpandedBody() {
           />
         );
 
-        // ── 풀뷰 V2 (캔버스 모달) ── FullviewShell 로 렌더. 본문은 fresh
-        // ProbingFullviewBody, 헤더는 pill(좌) + 액션(우) 슬롯으로 portal.
+        // ── 풀뷰 V2 (캔버스 모달) ── FullviewShell 로 렌더. 본문만 slot 으로
+        // portal 한다. 헤더 조각(프로젝트 pill·LIVE chip·End-session·부가 액션)
+        // 은 위 useEffect 가 FullviewHeaderSlot 컨텍스트로 publish 한다 — 셸이
+        // headerStartEl/headerEndEl 를 주입하지 않아 죽어 있던 옛
+        // renderInHeaderStart/End 포털을 대체.
         if (fullviewChrome === 'modal') {
           return (
             <>
-              {renderInHeaderStart(
-                <FullviewProjectPill name={fullviewProjectName} />,
-              )}
-              {renderInHeaderEnd(
-                <>
-                  {/* 부가 액션(녹음·공유)은 CD-primary(상태 chip·End-session)
-                      좌측 quiet chrome 으로 유지 — 기능 회귀 0. */}
-                  {recordingDownload}
-                  {shareInvite}
-                  {isLive && (
-                    <FullviewStatusChip
-                      // 경과시간 = now(useNowTick 매초) − 라이브 진입 시각.
-                      label={`LIVE ${formatElapsed(
-                        liveStartedAt ? now - liveStartedAt : 0,
-                      )}`}
-                      tone="live"
-                    />
-                  )}
-                  {isLive ? (
-                    // End-session(amore-deep) = 세션 종료 + 페르소나 내보내기
-                    // 확인 흐름(기존 handlePdfExportClick). 확인 모달이 내보내기를
-                    // 명시한다. CD §F3 End-session 크림슨 pill.
-                    <FullviewEndSessionButton
-                      onClick={handlePdfExportClick}
-                      label={t('live.endSession')}
-                    />
-                  ) : (
-                    // 비라이브(세션 종료 후 리뷰) — 내보내기만 노출(종료할 세션
-                    // 없음). CD 는 라이브 상태만 그리므로 idle 은 secondary CTA.
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handlePdfExportClick}
-                      loading={pdfExporting}
-                      loadingLabel={t('card.exporting')}
-                      title={t('card.pdfExportTitleIdle')}
-                    >
-                      {t('card.pdfExportCtaIdle')}
-                    </Button>
-                  )}
-                </>,
-              )}
               {renderInSlot(
                 <ProbingFullviewBody
                   reflection={reflection}
