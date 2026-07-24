@@ -2023,6 +2023,8 @@
     "toplineGenerateCta": "Start generating",
     "toplineErrorTitle": "Report generation failed",
     "toplineErrorHint": "Please try again in a moment. If it persists, check your file status.",
+    "toplineErrorBillingTitle": "Credit/billing check needed",
+    "toplineErrorBillingHint": "Generation stopped because AI credits ran out. We don't retry automatically — please top up your credits and generate again.",
     "toplineAskTitle": "Ask about the selection",
     "toplineAskSelectedLabel": "Selected",
     "toplineAskPlaceholder": "Ask more about this passage…",

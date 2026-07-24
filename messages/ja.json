@@ -2116,6 +2116,8 @@
     "toplineGenerateCta": "生成を開始",
     "toplineErrorTitle": "レポートの生成に失敗しました",
     "toplineErrorHint": "しばらくしてから再度お試しください。問題が続く場合は、ファイルのステータスをご確認ください。",
+    "toplineErrorBillingTitle": "クレジット/お支払いの確認が必要です",
+    "toplineErrorBillingHint": "AIクレジットが不足したため生成が中断されました。自動での再試行は行いません。クレジットをチャージしてから再度生成してください。",
     "toplineAskTitle": "選択範囲について質問する",
     "toplineAskSelectedLabel": "選択中",
     "toplineAskPlaceholder": "この段落についてさらに質問する…",

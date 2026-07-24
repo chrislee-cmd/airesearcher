@@ -2116,6 +2116,8 @@
     "toplineGenerateCta": "เริ่มสร้าง",
     "toplineErrorTitle": "การสร้างรายงานล้มเหลว",
     "toplineErrorHint": "กรุณาลองใหม่อีกครั้งในอีกสักครู่ หากยังเกิดปัญหาซ้ำ ให้ตรวจสอบสถานะไฟล์ของคุณ",
+    "toplineErrorBillingTitle": "ต้องตรวจสอบเครดิต/การชำระเงิน",
+    "toplineErrorBillingHint": "การสร้างหยุดลงเนื่องจากเครดิต AI หมด ระบบจะไม่ลองใหม่อัตโนมัติ กรุณาเติมเครดิตแล้วสร้างอีกครั้ง",
     "toplineAskTitle": "ถามเกี่ยวกับส่วนที่เลือก",
     "toplineAskSelectedLabel": "เลือกแล้ว",
     "toplineAskPlaceholder": "ถามเพิ่มเติมเกี่ยวกับข้อความนี้…",

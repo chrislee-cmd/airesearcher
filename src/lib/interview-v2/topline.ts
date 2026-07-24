@@ -48,6 +48,7 @@ import {
 } from '@/lib/interview-v2/topline-map';
 import {
   isEditableToplineBlockType,
+  isToplineHardFaultMessage,
   type ToplineBlock as ClientToplineBlock,
 } from '@/lib/interview-v2/types';
 
@@ -858,6 +859,37 @@ export async function selfHealStaleTopline(
   const resumeCount = row.resume_count ?? 0;
   const tag = `[v2/topline] self-heal ${row.project_id.slice(0, 8)}`;
 
+  // ── 하드 장애(크레딧 402·인증) 제외 (카드 #555) ──
+  // runTopline 이 하드 장애를 감지하면 error_message 에 `map_hard(...)` 마커를
+  // 미리 남긴다(종결 write 前 함수 킬 대비 durable 마커). 그 마커가 보이면
+  // 재-kick 은 100% 재실패라 error_events·이메일을 flood 시킬 뿐이다(실사고:
+  // 402 재시도로 topline_map_call_failed 8→38 급증). 재점화하지 않고 error 로
+  // 고정한다 — selfheal 은 transient(429/5xx/네트워크) 재개 전용. 마커는 그대로
+  // 보존해 인시던트에서 하드 사유를 유지한다. status='generating' 가드로 경합 안전.
+  if (isToplineHardFaultMessage(row.error_message)) {
+    const { error } = await admin
+      .from('interview_toplines')
+      .update({ status: 'error', error_message: row.error_message })
+      .eq('id', row.id)
+      .eq('status', 'generating');
+    if (error) {
+      return {
+        status: row.status,
+        error_message: row.error_message ?? null,
+        updated_at: row.updated_at ?? null,
+      };
+    }
+    console.warn(`${tag} hard fault — no re-kick, fixed to error`, {
+      progress: progressLabel(row),
+      hop: resumeCount,
+    });
+    return {
+      status: 'error',
+      error_message: row.error_message ?? null,
+      updated_at: row.updated_at ?? null,
+    };
+  }
+
   // durable 재개 진행 중 + 홉 예산 남음 → 체인 재점화(죽이지 않음).
   if (row.phase && resumeCount < MAX_RESUME_HOPS) {
     const nowIso = new Date(nowMs).toISOString();
@@ -1094,9 +1126,24 @@ export async function runTopline(
               const cls = classifyMapError(e);
               fault.last = cls;
               if (cls.hardFault) {
+                const firstHard = fault.hard === null;
                 fault.hard = cls;
                 mapFailures += 1;
                 console.warn(`${tag} map hard fault ${doc.filename}`, cls.label);
+                // durable 하드 마커 (카드 #555) — 이 홉이 post-pool 종결 write 에
+                // 닿기 前 함수가 킬되면 row 가 'generating' 에 갇히고, selfheal/cron 이
+                // 재-kick → 또 402 → error_events flood(실사고 8→38). 하드 감지 즉시
+                // error_message 에 `map_hard` 마커를 남겨, 그 창에서 죽어도 selfheal 이
+                // isToplineHardFaultMessage 로 하드를 인지해 재-kick 대신 error 고정한다.
+                // status 는 generating 유지(정상 흐름의 종결 write 가 곧 error 로 확정,
+                // UI 는 generating 중 error_message 미표시라 부작용 0). 최초 1회만 write.
+                if (firstHard) {
+                  await admin
+                    .from('interview_toplines')
+                    .update({ error_message: `map_hard(pending): ${cls.label}` })
+                    .eq('id', toplineId)
+                    .eq('status', 'generating');
+                }
                 // 하드 장애(크레딧/인증)는 재시도 무의미 — 중앙 관측에 error 로.
                 await logError({
                   feature: 'interview',
