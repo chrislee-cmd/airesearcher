@@ -180,12 +180,23 @@ export default async function Page({
     // have them yet — the wide select then errors and we fall back to the
     // pre-PR-B candidate-scoped fetch (sched_slots/sched_batches have no embed
     // FK — PROJECT.md §7.10).
+    //
+    // Standalone slots (batch_id null & candidate_id null) belong to no batch,
+    // so a pure `batch_id in (groupIds)` filter renders them invisible to every
+    // account — the ghost-slot bug. Widen the filter with an OR branch that
+    // pulls standalone rows the caller may see: super-admin gets all of them
+    // (including legacy owner-null ghosts, so they become cleanable); an org
+    // member gets only standalone rows whose owner_user_id is in their org
+    // (owner-null legacy rows stay hidden from members — tenancy preserved).
+    const standaloneOr = ownerIds
+      ? `and(batch_id.is.null,candidate_id.is.null,owner_user_id.in.(${ownerIds.join(',')}))`
+      : 'and(batch_id.is.null,candidate_id.is.null)';
     const wideSlots = await admin
       .from('sched_slots')
       .select(
         'id, candidate_id, batch_id, title, start_at, end_at, status, location, note',
       )
-      .in('batch_id', groupIds)
+      .or(`batch_id.in.(${groupIds.join(',')}),${standaloneOr}`)
       .order('start_at', { ascending: true })
       .limit(10000);
     if (wideSlots.error) {
