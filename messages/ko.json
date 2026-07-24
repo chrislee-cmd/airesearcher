@@ -2913,6 +2913,11 @@
     "emailSubject": "{inviter} 님이 \"{org}\" 에 초대했습니다",
     "emailBody": "{inviter} 님이 Research-Canvas 의 \"{org}\" 협업에 초대했습니다.\n\n공유 워크스페이스와 스케줄링을 전체 접근으로 사용할 수 있습니다.\n\n초대 수락 및 로그인: {url}"
   },
+  "InviteAccept": {
+    "notFoundTitle": "초대를 찾지 못했습니다",
+    "notFoundBody": "이 계정({email})으로 도착한 초대를 찾지 못했습니다. 초대받은 주소로 로그인했는지 확인하세요.",
+    "switchAccount": "다른 계정으로 로그인"
+  },
   "RecruitingScheduling": {
     "calClickHint": "셀을 클릭해 30분 슬롯을 만드세요",
     "chatKindLabel": "메시지 유형",

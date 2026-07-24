@@ -3006,6 +3006,11 @@
     "emailSubject": "{inviter} さんが「{org}」に招待しました",
     "emailBody": "{inviter} さんが Research-Canvas の「{org}」への共同作業に招待しました。\n\n共有ワークスペースとスケジューリングにフルアクセスできます。\n\n招待を承認してサインイン: {url}"
   },
+  "InviteAccept": {
+    "notFoundTitle": "招待が見つかりません",
+    "notFoundBody": "このアカウント（{email}）宛ての招待が見つかりませんでした。招待が送られたアドレスでサインインしているか確認してください。",
+    "switchAccount": "別のアカウントでサインイン"
+  },
   "RecruitingScheduling": {
     "calClickHint": "セルをクリックして30分の枠を作成",
     "chatKindLabel": "メッセージの種類",
