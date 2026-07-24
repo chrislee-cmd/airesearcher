@@ -24,17 +24,21 @@ export type SchedulingAccess =
 // organization_members row (invited_email set, user_id null) to the now-known
 // user_id so a freshly-signed-up invitee becomes a full org member. Idempotent
 // (a 0-row update once already claimed). Service-role client bypasses RLS.
+// Returns the number of rows claimed so callers can log/branch on a 0-match
+// (the accept page renders a "invite not found" notice instead of a 404).
 export async function claimPendingInvites(
   admin: Admin,
   userId: string,
   email: string | null | undefined,
-): Promise<void> {
-  if (!email) return;
-  await admin
+): Promise<number> {
+  if (!email) return 0;
+  const { data } = await admin
     .from('organization_members')
     .update({ user_id: userId, invited_email: null })
     .is('user_id', null)
-    .ilike('invited_email', email);
+    .ilike('invited_email', email)
+    .select('id');
+  return data?.length ?? 0;
 }
 
 // Resolve the caller's scheduling access. super-admin = unrestricted. Org

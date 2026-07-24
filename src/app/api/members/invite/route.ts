@@ -40,31 +40,52 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  const { data: existing } = await supabase
+  let alreadyInvited = false;
+
+  // Never pre-link the row to an existing profile's user_id. Pre-linking
+  // (user_id set, invited_email null) strands invitees who sign in with a
+  // different auth identity than their existing profile: claimPendingInvites
+  // filters on `user_id is null`, so a pre-linked row never matches and the
+  // invitee lands on a 0-membership 404. Instead always insert a pending
+  // invited_email row so the claim path links whichever identity signs in.
+  //
+  // Exception — the email already belongs to a *full member of this org*: a
+  // pending invited_email row would be a redundant duplicate (it does not
+  // collide with unique(org_id, user_id), so the 23505 swallow below wouldn't
+  // catch it). Detect that case explicitly and treat it as already-invited.
+  const { data: existing } = await admin
     .from('profiles')
     .select('id')
     .eq('email', email)
     .maybeSingle();
+  if (existing) {
+    const { data: existingMember } = await admin
+      .from('organization_members')
+      .select('user_id')
+      .eq('org_id', org_id)
+      .eq('user_id', existing.id)
+      .maybeSingle();
+    if (existingMember) alreadyInvited = true;
+  }
 
-  const { error } = await supabase.from('organization_members').insert({
-    org_id,
-    user_id: existing?.id ?? null,
-    invited_email: existing ? null : email,
-    role,
-  });
-
-  let alreadyInvited = false;
-  if (error) {
-    // 23505 = unique_violation. Either the invitee already accepted into this
-    // org (unique on org_id + user_id) or a pending invite row for that email
-    // is still on file (unique on org_id + invited_email). In both cases the
-    // inviter's intent — "this person should be in the org" — is already
-    // satisfied, so we treat it as success and (re)send the invite email.
-    const pgCode = (error as { code?: string }).code;
-    if (pgCode !== '23505') {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!alreadyInvited) {
+    const { error } = await supabase.from('organization_members').insert({
+      org_id,
+      user_id: null,
+      invited_email: email,
+      role,
+    });
+    if (error) {
+      // 23505 = unique_violation — a pending invite row for that email is
+      // already on file (unique on org_id + invited_email). The inviter's
+      // intent — "this person should be in the org" — is already satisfied, so
+      // we treat it as success and (re)send the invite email.
+      const pgCode = (error as { code?: string }).code;
+      if (pgCode !== '23505') {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      alreadyInvited = true;
     }
-    alreadyInvited = true;
   }
 
   // Send the real invite email (new — the old flow only ever created the

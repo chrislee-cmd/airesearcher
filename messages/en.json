@@ -2913,6 +2913,11 @@
     "emailSubject": "{inviter} invited you to \"{org}\"",
     "emailBody": "{inviter} invited you to collaborate in \"{org}\" on Research-Canvas.\n\nYou will get full access to the shared workspace and scheduling.\n\nAccept the invite and sign in: {url}"
   },
+  "InviteAccept": {
+    "notFoundTitle": "Invite not found",
+    "notFoundBody": "We couldn't find an invite for this account ({email}). Check that you signed in with the address the invite was sent to.",
+    "switchAccount": "Sign in with a different account"
+  },
   "RecruitingScheduling": {
     "calClickHint": "Click a cell to create a 30-min slot",
     "chatKindLabel": "Message type",
