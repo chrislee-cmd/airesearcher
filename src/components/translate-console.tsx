@@ -526,6 +526,64 @@ function emptySlotRecord<T>(value: T): Record<SourceSlot, T> {
   return { mic: value, tab: value };
 }
 
+// SOURCE transcription lane (fix A). The unified Realtime GA SDP endpoint —
+// same path the probing transcription hook uses. The translation lane posts to
+// `…/translations/calls`; the transcription lane posts here.
+const SOURCE_LANE_SDP_URL = 'https://api.openai.com/v1/realtime/calls';
+
+// SDP munge — force `stereo=0; sprop-stereo=0` on the Opus fmtp line. Our
+// publish tracks are already mono (mic native, tab resampled to 24 kHz mono),
+// but the transcription endpoint is stricter about stereo Opus than the
+// translation endpoint (probing PR #401), so we pin mono defensively on the
+// source lane offer. Ported verbatim from use-realtime-transcription.ts (the
+// reference implementation) to avoid drift.
+function forceOpusMonoSdp(sdp: string): string {
+  const lines = sdp.split('\r\n');
+  let opusPt: string | null = null;
+  for (const line of lines) {
+    const m = /^a=rtpmap:(\d+)\s+opus\/48000/i.exec(line);
+    if (m) {
+      opusPt = m[1];
+      break;
+    }
+  }
+  if (!opusPt) return sdp;
+
+  let fmtpSeen = false;
+  const fmtpPrefix = `a=fmtp:${opusPt}`;
+  const result = lines.map((line) => {
+    if (line.startsWith(fmtpPrefix)) {
+      fmtpSeen = true;
+      const params = line
+        .substring(fmtpPrefix.length)
+        .trim()
+        .split(';')
+        .map((p) => p.trim())
+        .filter(
+          (p) =>
+            p.length > 0 &&
+            !p.startsWith('stereo=') &&
+            !p.startsWith('sprop-stereo='),
+        );
+      params.push('stereo=0', 'sprop-stereo=0');
+      return `${fmtpPrefix} ${params.join(';')}`;
+    }
+    return line;
+  });
+
+  if (fmtpSeen) return result.join('\r\n');
+
+  const out: string[] = [];
+  const rtpmapRe = new RegExp(`^a=rtpmap:${opusPt}\\s+opus`);
+  for (const line of result) {
+    out.push(line);
+    if (rtpmapRe.test(line)) {
+      out.push(`${fmtpPrefix} stereo=0;sprop-stereo=0`);
+    }
+  }
+  return out.join('\r\n');
+}
+
 const LANGS: { value: string; label: string }[] = [
   // i18n-allow-korean -- 언어 선택기 endonym (각 언어를 자국어 표기로 노출, 번역 안 함)
   { value: 'ko', label: '한국어' },
@@ -981,6 +1039,32 @@ export function TranslateConsole({
   const dcRef = useRef<Record<SourceSlot, RTCDataChannel | null>>(
     emptySlotRecord<RTCDataChannel | null>(null),
   );
+  // 🎙️ SOURCE transcription lane (fix A). A SECOND peer connection per slot to
+  // a language-pinned transcription session (openai-realtime.ts /
+  // ../transcription route). It feeds off the SAME publish track as the
+  // translation pc above and produces the source captions with Korean pinned —
+  // sidestepping the translations endpoint's inability to accept a language
+  // hint. `sourceLaneActiveRef[slot]` flips true once this pc connects; while
+  // it's true `handleOaiEvent` suppresses the translation lane's
+  // `session.input_transcript.delta` (the source lane owns captions). If the
+  // lane never connects / drops, the flag is false and the translation lane's
+  // input transcript takes over (graceful fallback = old behaviour).
+  const sourcePcRef = useRef<Record<SourceSlot, RTCPeerConnection | null>>(
+    emptySlotRecord<RTCPeerConnection | null>(null),
+  );
+  const sourceDcRef = useRef<Record<SourceSlot, RTCDataChannel | null>>(
+    emptySlotRecord<RTCDataChannel | null>(null),
+  );
+  const sourceLaneActiveRef = useRef<Record<SourceSlot, boolean>>(
+    emptySlotRecord(false),
+  );
+  // Per-utterance accumulated source text, keyed `${slot}:${item_id}`. The
+  // transcription session's deltas may be incremental OR cumulative depending
+  // on model/moment (same ambiguity the probing hook absorbs); we track the
+  // running text and feed only the INCREMENTAL diff into appendStreaming so the
+  // existing dedup / turn-silence / publish machinery sees clean deltas exactly
+  // like the translation input path.
+  const sourceItemTextRef = useRef<Map<string, string>>(new Map());
   // Raw captured stream per slot. `mic` slot = getUserMedia,
   // `tab` slot = getDisplayMedia audio. Cleanup stops the tracks (which
   // also dismisses Chrome's "Sharing this tab's audio" banner).
@@ -1123,6 +1207,14 @@ export function TranslateConsole({
   // pc.ontrack for the OUTPUT re-emit) so input cleanup doesn't fight
   // output cleanup.
   const tabResampleCtxRef = useRef<AudioContext | null>(null);
+  // 🎙️ Mic-mode analogue (fix C). The mic used to be published as a bare
+  // getUserMedia stream — no AGC/NS/EC-off constraints and no resample, unlike
+  // the tab path. That let the browser's auto-gain + noise-suppression eat the
+  // consonant detail (받침 / 격음) Korean recognition leans on, and handed the
+  // ASR a non-24 kHz stream. This context runs the SAME 24 kHz mono WebAudio
+  // resample the tab path uses, so the mic reaches the ASR in the expected
+  // format. Separate ctx so mic/tab input cleanup don't fight.
+  const micResampleCtxRef = useRef<AudioContext | null>(null);
 
   // Watchdog: if start() doesn't reach setStatus('live') within
   // CONNECT_TIMEOUT_MS we surface `translate_timeout` and tear down.
@@ -1219,6 +1311,13 @@ export function TranslateConsole({
   // can reuse the EXACT same connect path — no duplicated slot-boot logic to
   // drift. Reassigned on every start(); read at renewal time.
   const bootSlotRef = useRef<
+    (slot: SourceSlot, clientSecret: string, renewal?: boolean) => Promise<boolean>
+  >(async () => false);
+  // Companion boot closure for the SOURCE transcription lane (fix A), stored so
+  // renewSession() can re-establish the language-pinned STT pc on the same
+  // ~30-min cadence as the translation pc. Same drift-avoidance rationale as
+  // bootSlotRef.
+  const bootSourceLaneRef = useRef<
     (slot: SourceSlot, clientSecret: string, renewal?: boolean) => Promise<boolean>
   >(async () => false);
 
@@ -1442,6 +1541,17 @@ export function TranslateConsole({
         pcRef.current[slot]?.close();
       } catch {}
       pcRef.current[slot] = null;
+      // 🎙️ SOURCE lane teardown (fix A) — its pc/dc share the slot's capture
+      // track (which is stopped below), so just close the connection.
+      try {
+        sourceDcRef.current[slot]?.close();
+      } catch {}
+      sourceDcRef.current[slot] = null;
+      try {
+        sourcePcRef.current[slot]?.close();
+      } catch {}
+      sourcePcRef.current[slot] = null;
+      sourceLaneActiveRef.current[slot] = false;
       srcStreamRef.current[slot]?.getTracks().forEach((tr) => tr.stop());
       srcStreamRef.current[slot] = null;
       publishStreamRef.current[slot] = null;
@@ -1466,6 +1576,8 @@ export function TranslateConsole({
       partialOutputRef.current[slot] = null;
       lastDeltaAtRef.current[slot] = { input: null, output: null };
     }
+    // 🎙️ Drop the source lane's per-utterance accumulators (fix A).
+    sourceItemTextRef.current.clear();
     if (tabSilenceTimerRef.current) {
       clearInterval(tabSilenceTimerRef.current);
       tabSilenceTimerRef.current = null;
@@ -1478,6 +1590,10 @@ export function TranslateConsole({
       void tabResampleCtxRef.current?.close();
     } catch {}
     tabResampleCtxRef.current = null;
+    try {
+      void micResampleCtxRef.current?.close();
+    } catch {}
+    micResampleCtxRef.current = null;
     // 🔊 Custom TTS: stop the synthesis queue (aborts in-flight fetches +
     // stops scheduled sources) and drop the monitor gain BEFORE the shared
     // AudioContext closes below.
@@ -2320,6 +2436,77 @@ export function TranslateConsole({
     ],
   );
 
+  // 🎙️ SOURCE transcription lane handler (fix A). Consumes the language-pinned
+  // transcription session's data channel — a DIFFERENT event shape from the
+  // translation lane. The transcription session emits
+  //   conversation.item.input_audio_transcription.delta      (incremental)
+  //   conversation.item.input_audio_transcription.completed   (final)
+  // We convert whatever delta style the model uses into clean incremental
+  // pieces (cumulative-vs-incremental absorption, mirrors the probing hook) and
+  // feed them into the SAME appendStreaming('input', …) path the translation
+  // lane's input transcript used — so dedup, echo, turn-silence, publish,
+  // persist all behave identically. The Japanese-fallback / silence gates are
+  // intentionally NOT applied here: the source language is pinned server-side,
+  // so kana / silence hallucinations don't occur and the gates would only
+  // over-drop real speech (the whole point of fix A — see the relaxed gates in
+  // handleOaiEvent's fallback path).
+  const handleSourceEvent = useCallback(
+    (slot: SourceSlot, raw: string) => {
+      let msg: { type?: string; item_id?: string; delta?: string; transcript?: string };
+      try {
+        msg = JSON.parse(raw) as typeof msg;
+      } catch {
+        return;
+      }
+      const type = msg.type ?? '';
+      const wall = Date.now();
+
+      const feedIncremental = (itemId: string, cumulativeNext: string) => {
+        const key = `${slot}:${itemId}`;
+        const prev = sourceItemTextRef.current.get(key) ?? '';
+        // Backstep (new text is a prefix of what we already have) — ignore.
+        if (prev.startsWith(cumulativeNext) && prev.length >= cumulativeNext.length) {
+          return;
+        }
+        // Emit only the new tail so appendStreaming accumulates cleanly.
+        const incr = cumulativeNext.startsWith(prev)
+          ? cumulativeNext.slice(prev.length)
+          : cumulativeNext; // divergent rewrite — feed whole (rare)
+        sourceItemTextRef.current.set(key, cumulativeNext);
+        if (!incr) return;
+        fidelityCountersRef.current.input.deltaChars += incr.length;
+        appendStreaming(slot, 'input', incr, sourceLang);
+      };
+
+      if (type === 'conversation.item.input_audio_transcription.delta') {
+        const itemId = msg.item_id || `src-${wall}`;
+        const key = `${slot}:${itemId}`;
+        const delta = typeof msg.delta === 'string' ? msg.delta : '';
+        if (!delta) return;
+        const prev = sourceItemTextRef.current.get(key) ?? '';
+        // Absorb cumulative (delta is the full running transcript) vs
+        // incremental (delta is just the new piece).
+        const cumulativeNext =
+          delta.startsWith(prev) && delta.length > prev.length
+            ? delta
+            : prev + delta;
+        feedIncremental(itemId, cumulativeNext);
+        return;
+      }
+
+      if (type === 'conversation.item.input_audio_transcription.completed') {
+        const itemId = msg.item_id || `src-${wall}`;
+        const final = typeof msg.transcript === 'string' ? msg.transcript : '';
+        if (final) feedIncremental(itemId, final);
+        // Utterance closed — drop its accumulator so a later item_id reuse
+        // (or the map growing over a long session) doesn't leak.
+        sourceItemTextRef.current.delete(`${slot}:${itemId}`);
+        return;
+      }
+    },
+    [appendStreaming, sourceLang],
+  );
+
   const handleOaiEvent = useCallback(
     (slot: SourceSlot, raw: string) => {
       let msg: { type?: string; [k: string]: unknown };
@@ -2353,6 +2540,14 @@ export function TranslateConsole({
       // when `audio.input.transcription` is enabled at session-create.
       if (type === 'session.input_transcript.delta') {
         const delta = String(msg.delta ?? '');
+        // 🎙️ Fix A — when the language-pinned SOURCE lane is live for this
+        // slot, IT owns the source captions (recognised as Korean, no kana
+        // drift). Drop the translation lane's parallel input transcript
+        // entirely so captions aren't doubled. This is the primary path in a
+        // healthy session; the gates below only run in the FALLBACK case where
+        // the source lane failed to connect / dropped and we're back to the
+        // translations input transcript (old behaviour, gates still needed).
+        if (sourceLaneActiveRef.current[slot]) return;
         // Script-guard (audit #1) — last-resort drop for the Japanese
         // fallback. A ko-source session should never produce a kana-only
         // fragment; gpt-4o-transcribe makes it rare but not impossible,
@@ -2539,9 +2734,46 @@ export function TranslateConsole({
 
     const acquireMicSlot = async (): Promise<boolean> => {
       try {
-        const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // 🎙️ Fix C — mic audio conditioning. Same constraints as the tab path:
+        // AGC/NS/EC OFF so the browser doesn't scrub the consonant detail
+        // (받침, 격음/긴장 자음) Korean recognition depends on, plus a mono
+        // hint. `ideal` (not `exact`) avoids OverconstrainedError on devices
+        // that can't honour a constraint.
+        const mic = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            channelCount: { ideal: 1 },
+          },
+        });
         srcStreamRef.current.mic = mic;
-        publishStreamRef.current.mic = mic;
+        // Resample to 24 kHz mono — same WebAudio graph as the tab path, so the
+        // mic reaches the ASR in the format it expects (getUserMedia's rate is
+        // device-dependent, typically 44.1/48 kHz). On any failure we fall back
+        // to publishing the raw conditioned stream (still better than before —
+        // the constraints above already dropped AGC/NS).
+        try {
+          if (!AudioCtx) throw new Error('no AudioContext');
+          const ctx = new AudioCtx({ sampleRate: 24000 });
+          micResampleCtxRef.current = ctx;
+          if (ctx.state === 'suspended') {
+            void ctx.resume().catch((err) => {
+              console.warn('[translate] mic resample ctx.resume failed', err);
+            });
+          }
+          const src = ctx.createMediaStreamSource(mic);
+          const dst = ctx.createMediaStreamDestination();
+          src.connect(dst);
+          publishStreamRef.current.mic = dst.stream;
+          console.info('[translate] mic resample graph wired', {
+            ctxSampleRate: ctx.sampleRate,
+            publishTracks: dst.stream.getAudioTracks().length,
+          });
+        } catch (err) {
+          console.warn('[translate] mic resample failed, passing raw stream', err);
+          publishStreamRef.current.mic = mic;
+        }
         return true;
       } catch (e) {
         const name = e instanceof DOMException ? e.name : '';
@@ -3349,6 +3581,142 @@ export function TranslateConsole({
     // connect path for a background handover.
     bootSlotRef.current = startSlot;
 
+    // 🎙️ SOURCE transcription lane boot (fix A). A second, language-pinned STT
+    // pc per slot over the SAME publish track. Its captions replace the
+    // translation lane's input transcript (handleOaiEvent suppresses that while
+    // sourceLaneActiveRef[slot] is true). Best-effort: a failure here leaves
+    // sourceLaneActiveRef[slot] false, so the translation input transcript
+    // silently carries the source captions (old behaviour) — never a caption
+    // blackout. Mirrors startSlot's structure but points at the transcription
+    // SDP endpoint + handleSourceEvent.
+    const startSourceLane = async (
+      slot: SourceSlot,
+      clientSecret: string,
+      renewal = false,
+    ): Promise<boolean> => {
+      const publishStream = publishStreamRef.current[slot];
+      if (!publishStream) return false;
+      try {
+        const pc = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+          ],
+        });
+        pc.onconnectionstatechange = () => {
+          console.info(
+            `[translate:${slot}] source pc.connectionState`,
+            pc.connectionState,
+          );
+          if (pc.connectionState === 'connected') {
+            if (sourcePcRef.current[slot] === pc) {
+              sourceLaneActiveRef.current[slot] = true;
+            }
+          } else if (
+            pc.connectionState === 'failed' ||
+            pc.connectionState === 'disconnected' ||
+            pc.connectionState === 'closed'
+          ) {
+            // Only relinquish the lane if THIS pc is still the live one — during
+            // renewal the old pc closes ~2s after the new one takes over, and
+            // that close must not flip the healthy new lane to fallback.
+            if (sourcePcRef.current[slot] === pc) {
+              sourceLaneActiveRef.current[slot] = false;
+            }
+          }
+        };
+        sourcePcRef.current[slot] = pc;
+        // Share the slot's capture track (a MediaStreamTrack can back senders
+        // on multiple peer connections — the translation pc has the same one).
+        publishStream.getAudioTracks().forEach((tr) => pc.addTrack(tr, publishStream));
+
+        const dc = pc.createDataChannel('oai-events');
+        sourceDcRef.current[slot] = dc;
+        dc.onmessage = (ev) => {
+          const text = decodeDataChannelMessage(ev.data);
+          if (text === null) return;
+          handleSourceEvent(slot, text);
+        };
+        dc.onopen = () => console.info(`[translate:${slot}] source dc open`);
+        dc.onerror = (ev) => console.warn(`[translate:${slot}] source dc error`, ev);
+
+        const offer = await pc.createOffer();
+        // Pin mono defensively (transcription endpoint is stricter than the
+        // translation one). Both slots' publish streams are already mono.
+        const offerSdp = forceOpusMonoSdp(offer.sdp ?? '');
+        await pc.setLocalDescription({ type: 'offer', sdp: offerSdp });
+
+        const sdpController = new AbortController();
+        const sdpTimer = setTimeout(
+          () => sdpController.abort(),
+          SLOT_CONNECT_TIMEOUT_MS,
+        );
+        let sdpRes: Response;
+        try {
+          sdpRes = await fetch(SOURCE_LANE_SDP_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${clientSecret}`,
+              'Content-Type': 'application/sdp',
+            },
+            body: offerSdp,
+            signal: sdpController.signal,
+          });
+        } finally {
+          clearTimeout(sdpTimer);
+        }
+        if (!sdpRes.ok) {
+          const body = await sdpRes.text().catch(() => '');
+          console.warn(
+            `[translate:${slot}] source sdp error`,
+            sdpRes.status,
+            body.slice(0, 300),
+          );
+          throw new Error(`source_sdp_${sdpRes.status}`);
+        }
+        const answerSdp = await sdpRes.text();
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+        console.info(`[translate:${slot}] source lane sdp answer applied`, {
+          renewal,
+        });
+        return true;
+      } catch (e) {
+        console.warn(`[translate:${slot}] source lane start failed`, e);
+        try {
+          sourceDcRef.current[slot]?.close();
+        } catch {}
+        sourceDcRef.current[slot] = null;
+        try {
+          sourcePcRef.current[slot]?.close();
+        } catch {}
+        sourcePcRef.current[slot] = null;
+        sourceLaneActiveRef.current[slot] = false;
+        return false;
+      }
+    };
+    bootSourceLaneRef.current = startSourceLane;
+
+    // Mint a source-lane transcription ephemeral for a slot (server pins the
+    // session's source language). Returns null on failure so the caller can
+    // skip that slot's source lane and fall back to the translation input.
+    const mintSourceSecret = async (): Promise<string | null> => {
+      try {
+        const res = await fetch(
+          `/api/translate/sessions/${bundle.session.id}/transcription`,
+          { method: 'POST' },
+        );
+        if (!res.ok) throw new Error(`source_secret_${res.status}`);
+        const j = (await res.json()) as {
+          openai?: { client_secret?: { value?: string } };
+        };
+        const v = j.openai?.client_secret?.value;
+        return v ?? null;
+      } catch (e) {
+        console.warn('[translate] source secret mint failed', e);
+        return null;
+      }
+    };
+
     // Hand out the ephemerals. liveSlots[0] reuses the bundle's
     // ephemeral; liveSlots[1] (if present) issues a fresh one via the
     // re-issue endpoint.
@@ -3461,6 +3829,22 @@ export function TranslateConsole({
       return;
     }
 
+    // 🎙️ Boot the SOURCE transcription lanes (fix A) for the slots whose
+    // translation pc came up. Fire-and-forget: go-live is NOT blocked on the
+    // source lane (fallback captions flow from the translation input transcript
+    // meanwhile), and each lane flips sourceLaneActiveRef[slot] true as it
+    // connects, at which point it takes over the source captions. A slot whose
+    // source secret / connect fails just stays on the fallback path.
+    liveSlots.forEach((slot, i) => {
+      if (!slotResults[i] || !pcRef.current[slot]) return;
+      void mintSourceSecret().then((secret) => {
+        if (!secret) return;
+        // The session may have been torn down while the secret was minting.
+        if (!startInFlightRef.current && !pcRef.current[slot]) return;
+        void startSourceLane(slot, secret);
+      });
+    });
+
     // Supabase broadcast channel. Also the presence topic viewers track on
     // (/live/<token> calls channel.track on the same `live:<sessionId>`), so
     // the host reads the listener list straight off THIS channel — one
@@ -3533,6 +3917,7 @@ export function TranslateConsole({
     captureMode,
     cleanup,
     handleOaiEvent,
+    handleSourceEvent,
     logSessionRestart,
     outputAudible,
     sourceLang,
@@ -3650,6 +4035,57 @@ export function TranslateConsole({
           oldPc?.close();
         } catch {}
       }, 2000);
+
+      // 🎙️ Renew the SOURCE lane (fix A) on the same cadence — the
+      // transcription session shares the ~30-min OpenAI cap. Best-effort: if
+      // this slot has no source lane, or the renewal fails, close the stale
+      // source pc and drop to the translation input fallback (captions never
+      // stop). Runs after the translation swap so a source-lane failure can't
+      // block the primary handover.
+      const oldSourcePc = sourcePcRef.current[slot];
+      const oldSourceDc = sourceDcRef.current[slot];
+      if (oldSourcePc) {
+        let srcSecret: string | null = null;
+        try {
+          const r = await fetch(
+            `/api/translate/sessions/${id}/transcription`,
+            { method: 'POST' },
+          );
+          if (r.ok) {
+            const rj = (await r.json()) as {
+              openai?: { client_secret?: { value?: string } };
+            };
+            srcSecret = rj.openai?.client_secret?.value ?? null;
+          }
+        } catch (e) {
+          console.warn(`[translate:${slot}] renew source secret failed`, e);
+        }
+        const sourceOk = srcSecret
+          ? await bootSourceLaneRef.current(slot, srcSecret, true)
+          : false;
+        if (sourceOk) {
+          setTimeout(() => {
+            try {
+              oldSourceDc?.close();
+            } catch {}
+            try {
+              oldSourcePc?.close();
+            } catch {}
+          }, 2000);
+        } else {
+          // Couldn't re-establish — retire the stale source pc now and let the
+          // translation input transcript carry the source captions.
+          sourceLaneActiveRef.current[slot] = false;
+          try {
+            oldSourceDc?.close();
+          } catch {}
+          sourceDcRef.current[slot] = null;
+          try {
+            oldSourcePc?.close();
+          } catch {}
+          sourcePcRef.current[slot] = null;
+        }
+      }
       return true;
     };
 

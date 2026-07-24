@@ -190,6 +190,12 @@ export const env = createEnv({
 
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
+    // 동시통역 SOURCE 전사 lane 전용 모델. translations 엔드포인트가
+    // language 힌트를 거부하는 문제를 우회해, 소스 캡션을 language 를
+    // 받는 표준 transcription 세션으로 분리(A)할 때 쓴다. 한국어 음향
+    // 모델이 강한 FULL 모델을 기본값으로 — probing 의 mini 와 달리 소스
+    // 오인식(kana/영어환각)을 줄이기 위함.
+    OPENAI_TRANSLATE_SOURCE_MODEL: z.string().default('gpt-4o-transcribe'),
 
     // Custom translation TTS (single fixed voice). The realtime model's
     // audio uses dynamic voice adaptation with no voice selector, so we
@@ -364,6 +370,7 @@ export const env = createEnv({
 
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
+    OPENAI_TRANSLATE_SOURCE_MODEL: process.env.OPENAI_TRANSLATE_SOURCE_MODEL,
     TRANSLATE_TTS_VOICE: process.env.TRANSLATE_TTS_VOICE,
     TRANSLATE_TTS_MODEL: process.env.TRANSLATE_TTS_MODEL,
     TRANSLATE_TTS_VOICE_MIC: process.env.TRANSLATE_TTS_VOICE_MIC,
