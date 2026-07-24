@@ -112,10 +112,20 @@ export async function POST(request: Request) {
       location,
       note,
     }));
-    const { data: inserted, error: insertErr } = await admin
+    let { data: inserted, error: insertErr } = await admin
       .from('sched_slots')
-      .insert(rows)
+      .insert(rows.map((r) => ({ ...r, owner_user_id: access.userId })))
       .select(wideCols);
+    // Preview DB may lack the owner_user_id column (migration auto-applies on
+    // merge to main only) — retry without it so the fan-out still succeeds.
+    if (insertErr) {
+      const retry = await admin
+        .from('sched_slots')
+        .insert(rows)
+        .select(wideCols);
+      inserted = retry.data;
+      insertErr = retry.error;
+    }
     if (insertErr) {
       return NextResponse.json({ error: 'create_failed' }, { status: 500 });
     }
@@ -141,20 +151,38 @@ export async function POST(request: Request) {
     }
   }
 
+  const baseRow = {
+    candidate_id: candidateId || null,
+    batch_id: batchId || null,
+    title: title || null,
+    start_at: start.toISOString(),
+    end_at: end.toISOString(),
+    status,
+    location,
+    note,
+  };
+
+  // owner_user_id anchors standalone (candidate-less, batch-less) slots to the
+  // caller so the page read can surface them (they'd otherwise be write-only
+  // ghosts). Set on every new slot, standalone or not.
   let { data, error } = await admin
     .from('sched_slots')
-    .insert({
-      candidate_id: candidateId || null,
-      batch_id: batchId || null,
-      title: title || null,
-      start_at: start.toISOString(),
-      end_at: end.toISOString(),
-      status,
-      location,
-      note,
-    })
+    .insert({ ...baseRow, owner_user_id: access.userId })
     .select(wideCols)
     .single();
+
+  // Preview DB may lack the owner_user_id column (migration auto-applies on
+  // merge to main only) — retry without it so slot creation keeps working;
+  // standalone tenancy just isn't recorded until the migration lands.
+  if (error) {
+    const retry = await admin
+      .from('sched_slots')
+      .insert(baseRow)
+      .select(wideCols)
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   // Preview DB without the title/batch_id columns yet — keep candidate-slot
   // creation working by retrying with the pre-PR-B column set. A candidate-less
