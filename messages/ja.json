@@ -2985,7 +2985,7 @@
   "CollabShare": {
     "button": "コラボレーター",
     "title": "コラボレーターと共有",
-    "notice": "招待された人は組織メンバーとして、このワークスペースとスケジューリングにフルアクセスできます。",
+    "notice": "招待された人は組織メンバーとして、ワークスペース全体にフルアクセスできます。",
     "emailLabel": "メール",
     "emailPlaceholder": "teammate@example.com",
     "invite": "招待",

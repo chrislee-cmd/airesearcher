@@ -2892,7 +2892,7 @@
   "CollabShare": {
     "button": "Collaborators",
     "title": "Share with collaborators",
-    "notice": "Invited people join as org members with full access to this workspace and scheduling.",
+    "notice": "Invited people join as org members with full access to your workspace.",
     "emailLabel": "Email",
     "emailPlaceholder": "teammate@example.com",
     "invite": "Invite",

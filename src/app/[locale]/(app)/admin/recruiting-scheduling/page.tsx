@@ -3,8 +3,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSchedulingAccess } from '@/lib/scheduling/access';
-import { getActiveOrg } from '@/lib/org';
-import type { CollabMember } from '@/components/scheduling/collab-share';
+import { getCollabShareData } from '@/lib/collab-share-data';
 import {
   RecruitingSchedulingClient,
   type SchedProject,
@@ -211,44 +210,9 @@ export default async function Page({
 
   // Collaborator share — shown only to an org owner/admin (they may invite +
   // remove). The invite reuses POST /api/members/invite (role=member, full
-  // access) which now also sends the real invite email.
-  let collab: { orgId: string; members: CollabMember[] } | null = null;
-  const org = await getActiveOrg();
-  if (org && (org.role === 'owner' || org.role === 'admin')) {
-    const { data: memberRows } = await admin
-      .from('organization_members')
-      .select('user_id, invited_email, role')
-      .eq('org_id', org.org_id)
-      .order('created_at', { ascending: true });
-    const rows = (memberRows ?? []) as {
-      user_id: string | null;
-      invited_email: string | null;
-      role: string;
-    }[];
-    // Resolve emails in a second step — organization_members and profiles share
-    // no direct FK, so a PostgREST embed would silently return nothing (§7.10).
-    const userIds = rows
-      .map((r) => r.user_id)
-      .filter((v): v is string => !!v);
-    const emailById = new Map<string, string>();
-    if (userIds.length > 0) {
-      const { data: profs } = await admin
-        .from('profiles')
-        .select('id, email')
-        .in('id', userIds);
-      for (const p of (profs ?? []) as { id: string; email: string | null }[]) {
-        emailById.set(p.id, p.email ?? '');
-      }
-    }
-    const members: CollabMember[] = rows.map((r) => ({
-      userId: r.user_id,
-      email: r.user_id
-        ? emailById.get(r.user_id) ?? ''
-        : r.invited_email ?? '',
-      role: r.role,
-    }));
-    collab = { orgId: org.org_id, members };
-  }
+  // access) which now also sends the real invite email. Data loader shared with
+  // the global topbar share button (pr-canvas-collab-share-entry).
+  const collab = await getCollabShareData();
 
   return (
     <RecruitingSchedulingClient
