@@ -211,12 +211,13 @@ function FullviewHeaderConnected({
   tone?: string;
   onClose?: () => void;
 }) {
-  const { statusChip, actions } = useFullviewHeaderSlot();
+  const { projectPill, statusChip, actions } = useFullviewHeaderSlot();
   return (
     <FullviewHeader
       title={title}
       tone={tone}
       onClose={onClose}
+      projectPill={projectPill}
       statusChip={statusChip}
       actions={actions}
     />

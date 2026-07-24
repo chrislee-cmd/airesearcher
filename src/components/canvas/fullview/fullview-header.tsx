@@ -16,6 +16,7 @@
 
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
+import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 
 // 타이틀은 카드(29px) 와 구분되는 풀뷰 전용 타입 — Outfit 800 / --fv-title-size
 // / ls -0.5. font-family 는 widget-shell 카드 타이틀과 동일한 런타임 var 소비.
@@ -97,17 +98,38 @@ export function FullviewHeader({
 // 위젯이 header 슬롯으로 주입한다. 셸은 기본 렌더 안 함 — 위젯 종속.
 
 // 프로젝트 pill — 📁 + 이름 + ▾. paper · border 1.5 ink · radius-pill ·
-// memphis-sm. onClick 지정 시 드롭다운 트리거(behavior 는 위젯 소유).
+// memphis-sm.
+//
+// 두 모드 (CD closed-state 비주얼은 동일, 동작만 위젯 소유 — BUILD-SPEC §26
+// "project dropdown = worker owns"):
+//   - display-only (`onSelect`/`projects` 미지정): 정적 <span> — 회귀 0 폴백.
+//     아직 피커를 배선 안 한 뷰(recruiting/desk/quotes/moderator)가 그대로 씀.
+//   - interactive (`onSelect` + 비어있지 않은 `projects`): <button> 트리거 +
+//     DropdownMenu. 클릭 시 프로젝트 목록에서 전환. 드롭다운 open-state 는 CD
+//     미제공(worker-owned) → 공용 DropdownMenu(Memphis) 로 그린다.
 export function FullviewProjectPill({
   name,
   trailing,
+  projects,
+  onSelect,
+  selectedId,
+  menuLabel,
 }: {
   name: ReactNode;
   // 옵션: 이름 뒤 글리프 (기본 ▾ 드롭다운 힌트).
   trailing?: ReactNode;
+  // 인터랙티브 모드 — 전환 가능한 프로젝트 목록. 비었으면 display-only 로 폴백
+  // (열어봐야 고를 게 없으므로). 새 프로젝트 생성은 카드의 ProjectPicker 소유.
+  projects?: { id: string; name: string }[];
+  // 프로젝트 선택 콜백. `projects` 와 함께 지정돼야 인터랙티브해진다.
+  onSelect?: (projectId: string) => void;
+  // 현재 선택된 프로젝트 id — 메뉴에서 강조 표시.
+  selectedId?: string | null;
+  // 인터랙티브 트리거의 접근성 라벨 (예: "프로젝트 메뉴").
+  menuLabel?: string;
 }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm">
+  const content = (
+    <>
       <span aria-hidden className="text-lg">
         📁
       </span>
@@ -115,7 +137,45 @@ export function FullviewProjectPill({
       <span aria-hidden className="text-xs text-ink">
         {trailing ?? '▾'}
       </span>
-    </span>
+    </>
+  );
+
+  const interactive = !!onSelect && !!projects && projects.length > 0;
+  if (!interactive) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm">
+        {content}
+      </span>
+    );
+  }
+
+  const items: DropdownItem[] = projects.map((p) => ({
+    key: p.id,
+    label: (
+      <span className={p.id === selectedId ? 'font-semibold text-ink' : undefined}>
+        {p.name}
+      </span>
+    ),
+    onSelect: () => onSelect(p.id),
+  }));
+
+  return (
+    <DropdownMenu
+      items={items}
+      align="start"
+      trigger={({ onClick, ...aria }) => (
+        // eslint-disable-next-line react/forbid-elements -- 프로젝트 pill 은 CD §F3 전용 chrome(📁 + 이름 + ▾ · radius-pill · border 1.5 ink · memphis-sm)으로 Button primitive variant(고정 radius·형태)와 불일치. 셸 close ✕ / End-session pill 과 동일 선례(native chrome).
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={menuLabel}
+          {...aria}
+          className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm transition-colors hover:bg-paper-soft focus:outline-none focus-visible:bg-paper-soft"
+        >
+          {content}
+        </button>
+      )}
+    />
   );
 }
 

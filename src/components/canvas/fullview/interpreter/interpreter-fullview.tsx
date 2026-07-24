@@ -23,7 +23,9 @@ import { useTranslations } from 'next-intl';
 import type { CaptionLine } from '@/components/translate-console';
 import { useTranslateSession } from '@/components/translate/translate-session-context';
 import { useFullviewHeaderSlotPublisher } from '@/components/canvas/shell/fullview-header-slot-context';
-import { FullviewEndSessionButton } from '../fullview-header';
+import { useProjectSelection } from '@/components/project-selection-provider';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
+import { FullviewEndSessionButton, FullviewProjectPill } from '../fullview-header';
 
 // 통역 라인은 CD 에서 Outfit(display) 로 조판된다(§03 stream). 셸 타이틀과
 // 동일한 런타임 var 소비 — 하드코드 폰트 금지.
@@ -33,6 +35,18 @@ const STREAM_FONT = {
 
 export function InterpreterFullview() {
   const t = useTranslations('TranslateConsole');
+  const tPicker = useTranslations('ProjectPicker');
+  // 프로젝트 피커 (#542) — 통역 위젯 슬롯의 독립 선택('translate'). 카드
+  // ProjectPicker(translate-console:4896) 와 같은 소스를 미러: 목록은
+  // useInterviewV2Projects, 선택은 useProjectSelection('translate'). 세션
+  // 스냅샷을 거치지 않고 전역 선택 컨텍스트를 직접 소비한다 — 선택 상태는
+  // 이미 전역이라 read-only 미러가 불필요하고, merge 충돌 잦은
+  // translate-console/translate-session-context 를 건드리지 않는다(보수적).
+  const { getSelection, setSelection } = useProjectSelection();
+  const translateProjectId = getSelection('translate');
+  const { projects } = useInterviewV2Projects();
+  const projectName =
+    projects.find((p) => p.id === translateProjectId)?.name ?? t('project');
   const {
     promptedLines,
     inputLines,
@@ -53,10 +67,26 @@ export function InterpreterFullview() {
     stop,
   } = useTranslateSession();
 
-  // 헤더 슬롯 publish — lang pill(§F3 mono "src → tgt") + End-session(라이브
-  // 시에만; = 카드 stop 액션 미러). 언마운트/전환 시 clear.
+  // 헤더 슬롯 publish — 프로젝트 pill(좌, 타이틀 옆) + lang pill(§F3 mono
+  // "src → tgt") + End-session(라이브 시에만; = 카드 stop 액션 미러). 언마운트/
+  // 전환 시 clear.
   const publishHeaderSlot = useFullviewHeaderSlotPublisher();
   useEffect(() => {
+    // 프로젝트 pill — live 중엔 카드 피커가 disabled(translate-console:4899)
+    // 이므로 SSOT 미러로 display-only, idle 이면 인터랙티브 드롭다운.
+    const projectPill = (
+      <FullviewProjectPill
+        name={projectName}
+        selectedId={translateProjectId}
+        projects={
+          isLive ? undefined : projects.map((p) => ({ id: p.id, name: p.name }))
+        }
+        onSelect={
+          isLive ? undefined : (id) => setSelection('translate', id)
+        }
+        menuLabel={tPicker('menu')}
+      />
+    );
     const langPill =
       sourceLangLabel && targetLangLabel ? (
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
@@ -64,6 +94,7 @@ export function InterpreterFullview() {
         </span>
       ) : undefined;
     publishHeaderSlot({
+      projectPill,
       statusChip: langPill,
       actions: isLive ? (
         <FullviewEndSessionButton onClick={stop} label={t('stop')} />
@@ -72,6 +103,11 @@ export function InterpreterFullview() {
     return () => publishHeaderSlot({});
   }, [
     publishHeaderSlot,
+    projectName,
+    translateProjectId,
+    projects,
+    setSelection,
+    tPicker,
     sourceLangLabel,
     targetLangLabel,
     isLive,
