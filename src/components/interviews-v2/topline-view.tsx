@@ -18,7 +18,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { useToast } from '@/components/toast-provider';
-import { isEditableToplineBlockType } from '@/lib/interview-v2/types';
+import {
+  isEditableToplineBlockType,
+  isToplineHardBillingMessage,
+} from '@/lib/interview-v2/types';
 import { useInterviewTopline } from '@/hooks/use-interview-topline';
 import { useCountUp } from '@/hooks/use-count-up';
 import { Prose, ToplineBlockView } from './topline-blocks';
@@ -455,12 +458,18 @@ export function ToplineView({ projectId }: { projectId: string }) {
     savedLang,
     savedDirection,
     source,
+    errorMessage,
   } = useInterviewTopline(projectId);
 
   const toast = useToast();
   const hasBlocks = blocks.length > 0;
   // 편집전용 모드 — 업로드된 외부 보고서인지. 재생성 덮어쓰기 경고 판단에 쓴다.
   const isUploaded = source === 'uploaded';
+  // 하드 결제/크레딧(402) 장애로 error 종결됐는지 — 일반 실패("잠시 후 재시도")와
+  // 달리 "결제/크레딧 확인 필요" 를 안내한다(카드 #555, 사용자 대기 표시). 자동
+  // 재시도는 selfheal 이 제외하므로 사용자가 충전 후 재생성해야 한다.
+  const errorIsHardBilling =
+    status === 'error' && isToplineHardBillingMessage(errorMessage);
   // 재생성 버튼 활성 = 인덱싱 완료 & POST in-flight 아님 & (생성 중 아님 OR
   // 생성이 멈춰 stuck). stuck('generating' 인데 updated_at 오래됨 = 함수 사망)이면
   // 재생성/추가질문 잠금을 푼다(결정 A). 정상 진행 중(non-stale generating)은
@@ -890,18 +899,22 @@ export function ToplineView({ projectId }: { projectId: string }) {
               <h3 className="text-lg font-semibold text-ink-2">
                 {generatingStale
                   ? t('toplineStuckTitle')
-                  : status === 'error'
-                    ? t('toplineErrorTitle')
-                    : t('toplineIntroTitle')}
+                  : errorIsHardBilling
+                    ? t('toplineErrorBillingTitle')
+                    : status === 'error'
+                      ? t('toplineErrorTitle')
+                      : t('toplineIntroTitle')}
               </h3>
               <p className="mt-2 text-md text-mute">
                 {generatingStale
                   ? t('toplineStuckHint')
-                  : status === 'error'
-                    ? t('toplineErrorHint')
-                    : !indexed
-                      ? t('toplineNotIndexed')
-                      : t('toplineIntroHint')}
+                  : errorIsHardBilling
+                    ? t('toplineErrorBillingHint')
+                    : status === 'error'
+                      ? t('toplineErrorHint')
+                      : !indexed
+                        ? t('toplineNotIndexed')
+                        : t('toplineIntroHint')}
               </p>
               {/* 분석 언어 선택 — 입력 파일 언어와 독립. 생성(①) 전용이라 업로드
                   버튼과 무관. 미인덱싱 시엔 생성이 불가라 disabled. */}

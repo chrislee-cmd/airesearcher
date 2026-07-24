@@ -235,3 +235,27 @@ export function isToplineGeneratingStale(
   if (Number.isNaN(updated)) return false;
   return nowMs - updated > TOPLINE_GENERATING_STALE_MS;
 }
+
+// 하드 장애(크레딧 402·인증 401/403)로 종결/표시된 error_message 인지 —
+// runTopline 이 심는 `map_hard(...)`/`reduce_hard(...)` 마커(카드 #483)를 인식한다.
+// 하드 장애는 재시도해도 100% 재실패라 selfheal/cron 재개 대상에서 제외해야 한다
+// (카드 #555 — 402 재시도가 error_events 를 8→38 로 flood 시킨 실사고). selfheal
+// 이 이 판정으로 "transient(429/5xx/네트워크) 전용" 원칙을 지킨다.
+export function isToplineHardFaultMessage(
+  msg: string | null | undefined,
+): boolean {
+  if (!msg) return false;
+  return /\bmap_hard\b|\breduce_hard\b/.test(msg);
+}
+
+// 위 하드 장애 중 **결제/크레딧(402)** 계열인지 — 사용자에게 "결제/크레딧 확인
+// 필요" 를 안내할 때만 참이어야 한다(인증 401/403 은 ops 이슈라 제외해 오안내
+// 방지). runTopline 하드 라벨("Anthropic 크레딧/결제 소진(402)")과 정합. UI 전용.
+export function isToplineHardBillingMessage(
+  msg: string | null | undefined,
+): boolean {
+  if (!msg) return false;
+  return /402|크레딧|결제|credit|billing|insufficient|payment|quota|balance/i.test(
+    msg,
+  );
+}

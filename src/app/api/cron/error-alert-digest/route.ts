@@ -57,6 +57,23 @@ type OpenIncident = {
 const SELECT_COLS =
   'id, signature, feature, code, message, context, severity, source, first_seen, last_seen, count';
 
+// 하드 결제/크레딧(402) 시그니처 — 사용자 대면 기능(topline·translate·desk 등이
+// 동일 `*_call_failed` 키 공유)이 전면 중단되는 최상위 심각도라, 일반 digest 뭉치기
+// 에서 분리해 즉시 상단 승격한다(카드 #555). 판정: code 가 `*_call_failed` 이고
+// (logError context 의 hard:true 마커 OR 메시지/코드가 결제·크레딧·402 계열).
+// hard:true 마커가 1차 신호, 메시지 패턴은 마커 유실 대비 백업.
+const HARD_BILLING_MSG_RE =
+  /402|크레딧|결제|credit|billing|insufficient|payment|quota|balance/i;
+
+function isHardBillingIncident(inc: OpenIncident): boolean {
+  if (!inc.code || !/_call_failed$/.test(inc.code)) return false;
+  const hardMarker = inc.context?.hard === true;
+  const msgMatch = HARD_BILLING_MSG_RE.test(
+    `${inc.message ?? ''} ${inc.code ?? ''}`,
+  );
+  return hardMarker || msgMatch;
+}
+
 function authorized(request: Request): boolean {
   const header = request.headers.get('authorization') ?? '';
   return header === `Bearer ${env.CRON_SECRET}`;
@@ -123,12 +140,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sent: false, incidents: 0 });
   }
 
-  const displayed = incidents.slice(0, MAX_ROWS_IN_EMAIL);
+  // ── 하드 결제/크레딧(402) 승격 (카드 #555) ──
+  // 쿼리는 count desc 정렬이라 402 가 count 낮은 초기엔 하위에 묻힌다. 결제 소진은
+  // 기능 전면 중단이라 count 와 무관하게 최상단·별도 섹션으로 올리고, 표시 cap 에서도
+  // 항상 우선 확보한다(먼저 truncate 되지 않게). 나머지 incident 는 기존과 동일.
+  const hardBilling = incidents.filter(isHardBillingIncident);
+  const rest = incidents.filter((inc) => !isHardBillingIncident(inc));
+
+  // 하드 결제는 항상 우선 표시분에 넣고, 남은 자리로 나머지를 채운다(합계 cap 유지).
+  const hardShown = hardBilling.slice(0, MAX_ROWS_IN_EMAIL);
+  const restShown = rest.slice(0, MAX_ROWS_IN_EMAIL - hardShown.length);
+  const displayed = [...hardShown, ...restShown];
   const overflow = total - displayed.length;
 
   const site = baseUrl();
 
-  const lines = displayed.map((inc) => {
+  const formatLine = (inc: OpenIncident): string => {
     const surge = inc.count >= SURGE_COUNT ? '🔥 ' : '';
     const code = inc.code ? ` · ${inc.code}` : '';
     const msg = inc.message?.trim() || '(message 없음)';
@@ -140,23 +167,47 @@ export async function GET(request: Request) {
     ];
     if (ctx) parts.push(`    context: ${ctx}`);
     return parts.join('\n');
-  });
+  };
 
   const totalOccurrences = displayed.reduce((sum, i) => sum + i.count, 0);
+  const hasHardBilling = hardShown.length > 0;
+
   const bodyParts: string[] = [
     `전제품 에러 관측에서 신규/미해결 incident ${total}건이 감지되었습니다.`,
     '',
     `요약: incident ${total}건 (표시 ${displayed.length}건, 누적 발생 ${totalOccurrences}회+)`,
     `대시보드: ${site}`,
-    '',
-    '── Incident (count 내림차순) ──',
-    lines.join('\n'),
   ];
+
+  // 결제/크레딧 소진은 별도 강조 섹션으로 최상단 승격(즉시 조치 안내 포함).
+  if (hasHardBilling) {
+    bodyParts.push(
+      '',
+      `🚨 즉시 조치 — 결제/크레딧 소진(402) ${hardShown.length}건`,
+      '   AI 크레딧/결제 소진으로 사용자 대면 기능이 중단됐습니다. 재시도로 복구되지 않으니(자동 재시도 제외됨) Anthropic 크레딧을 충전하세요.',
+      hardShown.map(formatLine).join('\n'),
+    );
+  }
+
+  bodyParts.push(
+    '',
+    hasHardBilling
+      ? '── 기타 Incident (count 내림차순) ──'
+      : '── Incident (count 내림차순) ──',
+  );
+  if (restShown.length > 0) {
+    bodyParts.push(restShown.map(formatLine).join('\n'));
+  } else {
+    bodyParts.push('  (기타 없음)');
+  }
   if (overflow > 0) bodyParts.push(`  … 외 +${overflow}건 (다음 스윕에서 알림)`);
   bodyParts.push('', `digest_at: ${new Date().toISOString()}`);
   const text = bodyParts.join('\n');
 
-  const subject = `🔴 에러 digest — incident ${total}건 (prod)`;
+  // 결제 소진이 섞여 있으면 제목에도 즉시 인지되게 prefix 승격.
+  const subject = hasHardBilling
+    ? `💳🔴 [결제/크레딧 소진] 에러 digest — incident ${total}건 (prod)`
+    : `🔴 에러 digest — incident ${total}건 (prod)`;
 
   // #1008 의 nodemailer + Gmail SMTP 발송 경로 그대로 재사용.
   const gmailUser = env.GMAIL_USER;
