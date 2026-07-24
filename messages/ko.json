@@ -2892,7 +2892,7 @@
   "CollabShare": {
     "button": "협업자",
     "title": "협업자 공유",
-    "notice": "초대한 사람은 조직 멤버로 이 워크스페이스와 스케줄링을 전체 접근으로 사용합니다.",
+    "notice": "초대한 사람은 조직 멤버로 워크스페이스 전체를 전체 접근으로 사용합니다.",
     "emailLabel": "이메일",
     "emailPlaceholder": "teammate@example.com",
     "invite": "초대",

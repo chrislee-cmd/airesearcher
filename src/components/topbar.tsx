@@ -7,7 +7,9 @@ import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
 import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
 import { ViewModeToggle } from './view-mode-toggle';
+import { CollabShareButton } from './scheduling/collab-share';
 import { getActiveOrg } from '@/lib/org';
+import { getCollabShareData } from '@/lib/collab-share-data';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
 // + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
@@ -28,6 +30,13 @@ export async function Topbar({
   // Org members (invitees) get a scheduling entry in the account menu even
   // without super-admin, so they can find the shared workspace after accepting.
   const isOrgMember = isAuthed ? !!(await getActiveOrg()) : false;
+
+  // Global collaborator-share entry point (pr-canvas-collab-share-entry) — the
+  // same invite modal as the recruiting-scheduling view, surfaced next to the
+  // account menu (Google-Docs share position) so it's reachable from the main
+  // canvas and every other (app) page. Returns null (button hidden) unless the
+  // account is an org owner/admin — same gate as members/invite.
+  const collab = isAuthed ? await getCollabShareData() : null;
 
   const tabs = [
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
@@ -78,6 +87,9 @@ export async function Topbar({
             {/* QA feedback cluster (voice mic + text note + "피드백 남기기"
                 label) — shown to every signed-in account. */}
             <QaFeedbackCluster />
+            {collab ? (
+              <CollabShareButton orgId={collab.orgId} members={collab.members} />
+            ) : null}
             <TopbarAccount
               email={userEmail}
               credits={credits}
