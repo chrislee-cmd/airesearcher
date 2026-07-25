@@ -10,6 +10,7 @@ import {
 } from '@/lib/consent';
 import { routing } from '@/i18n/routing';
 import { validateNext } from '@/lib/auth/validate-next';
+import { claimPendingInvites } from '@/lib/scheduling/access';
 
 type OauthConsentPayload = {
   version?: string;
@@ -164,6 +165,18 @@ export async function GET(request: Request) {
         metadata: { method: 'oauth' },
         request,
       });
+
+      // Double-defence: claim any pending org invites for this email right at
+      // the callback, so an invitee is linked to their org even if `next` is
+      // lost or 404s on the round-trip (the double-locale bug this PR also
+      // fixes at source). Awaited so it completes before the redirect; a
+      // failure logs only and never blocks login. No-op when email is null.
+      try {
+        const admin = createAdminClient();
+        await claimPendingInvites(admin, userId, userEmail);
+      } catch (err) {
+        console.error('[auth/callback] claimPendingInvites failed', err);
+      }
 
       const { data: profile } = await supabase
         .from('profiles')

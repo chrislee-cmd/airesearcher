@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { track } from '@/components/mixpanel-provider';
 import { mapAuthError } from '@/lib/auth/error-map';
+import { splitLocalePrefix } from '@/lib/auth/validate-next';
 import { routing } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -151,7 +152,18 @@ export function EmailPasswordForm() {
             localeOpts = { locale: pref };
           }
         }
-        router.replace(next, localeOpts);
+        // next-intl's router re-prefixes the locale, so a `next` that already
+        // carries one (localized invite paths like /ko/invite/accept) would
+        // become /ko/ko/… → 404. When `next` is already localized, honor its
+        // own locale verbatim (strip + pass as `locale`); the path's locale
+        // wins over the DB cross-device preference. Otherwise prefix as before.
+        const { locale: nextLocale, pathname: nextPathname } =
+          splitLocalePrefix(next);
+        if (nextLocale) {
+          router.replace(nextPathname, { locale: nextLocale });
+        } else {
+          router.replace(next, localeOpts);
+        }
         router.refresh();
       } else {
         const trimmedName = fullName.trim();
@@ -175,7 +187,16 @@ export function EmailPasswordForm() {
           // confirmed) — record consents now while the cookie is fresh.
           persistSignupConsents(agreeMarketing);
           track('auth_signup_success');
-          router.replace(next);
+          // Same double-locale guard as the sign-in path: a localized `next`
+          // (e.g. an invitee signing up from /ko/invite/accept) must not be
+          // re-prefixed by next-intl into /ko/ko/… → 404.
+          const { locale: nextLocale, pathname: nextPathname } =
+            splitLocalePrefix(next);
+          if (nextLocale) {
+            router.replace(nextPathname, { locale: nextLocale });
+          } else {
+            router.replace(next);
+          }
           router.refresh();
         } else {
           // Pending email confirmation — defer consent insert to
