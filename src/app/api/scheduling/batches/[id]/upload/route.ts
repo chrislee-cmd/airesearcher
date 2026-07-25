@@ -68,6 +68,7 @@ export async function POST(
     admin,
     batchId,
     parsed.candidates,
+    'upload',
   );
   if ('error' in result) {
     return NextResponse.json({ error: result.error }, { status: 500 });
