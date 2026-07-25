@@ -55,18 +55,39 @@ export async function POST(req: Request) {
     .insert({ ...baseRow, target_batch_id: targetBatchId })
     .select('id')
     .single();
+  // Only degrade to the narrow insert when target_batch_id is genuinely absent
+  // (42703 / PGRST204). Retrying on ANY error just re-ran the same failing insert
+  // and buried the real cause under "insert_failed" — round-2 feedback #2a. Now a
+  // non-missing-column error (RLS with-check, FK, response_ids format) surfaces
+  // verbatim below instead of being masked by a pointless retry.
   if (insert.error) {
-    insert = await supabase
-      .from('recruiting_invitations')
-      .insert(baseRow)
-      .select('id')
-      .single();
+    const code = insert.error.code;
+    const missingTargetBatch =
+      code === '42703' ||
+      (code === 'PGRST204' && /target_batch_id/.test(insert.error.message ?? ''));
+    if (missingTargetBatch) {
+      insert = await supabase
+        .from('recruiting_invitations')
+        .insert(baseRow)
+        .select('id')
+        .single();
+    }
   }
   const { data, error } = insert;
 
   if (error) {
     console.error('[recruiting/invitations] insert error', error);
-    return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
+    // Surface the real Postgres code + message so a failing preview is
+    // diagnosable at the UI (per spec: "에러를 삼키지 말고 노출"). This route is
+    // auth-gated (requester = auth.uid()); the DB error carries no secrets.
+    return NextResponse.json(
+      {
+        error: 'insert_failed',
+        code: error.code ?? null,
+        detail: error.message ?? null,
+      },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({

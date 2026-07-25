@@ -10,7 +10,8 @@ import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
-import { useActiveProject } from '@/components/active-project-provider';
+import { useProjectSelection } from '@/components/project-selection-provider';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { ControlBoardPanel } from '../shell/control-board-panel';
 import { WidgetPrimaryCta } from '../shell/widget-primary-cta';
 import { useWidgetState } from '../shell/widget-state-context';
@@ -62,15 +63,30 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
-  const { active: activeProject, projects, setActive } = useActiveProject();
-  // 헤더 프로젝트 pill(인터랙티브) — 셸 onSelect 모드 배선(BUILD-SPEC §5.4).
-  // projects.length<=1 이면 FullviewProjectPill 이 display-only 로 폴백.
+  // 헤더 프로젝트 pill = **위젯 프로젝트 귀속** 축. probing/interpreter 와 동일
+  // 단위로 통일한다 — 프로젝트 엔티티는 공유(useInterviewV2Projects =
+  // interview_projects SSOT), 선택은 위젯별 독립(useProjectSelection('recruiting'),
+  // translate/probing 미러). 예전엔 useActiveProject(워크스페이스 단일 활성
+  // 프로젝트)를 써서 다른 위젯 피커와 단위가 어긋났다(round-2 feedback #3).
+  //
+  // ⚠️ 이 pill 축은 탭②·③ 의 sched form-anchor 프로젝트(형별 데이터 앵커,
+  // formId → resolveOrCreateProjectForForm)와는 **별개 축**이다. pill = 위젯이
+  // 어느 리서치 프로젝트에 귀속되는지(표시/그룹핑), form-anchor = 그 폼의 응답·
+  // 명단·일정이 어느 sched_projects row 에 저장되는지(내부 데이터). 둘을 엮지 않는다.
+  const { getSelection, setSelection } = useProjectSelection();
+  const recruitingProjectId = getSelection('recruiting');
+  const { projects: interviewProjects } = useInterviewV2Projects();
+  const projects = useMemo(
+    () => interviewProjects.map((p) => ({ id: p.id, name: p.name })),
+    [interviewProjects],
+  );
+  const activeProject = useMemo(
+    () => projects.find((p) => p.id === recruitingProjectId) ?? null,
+    [projects, recruitingProjectId],
+  );
   const handleSelectProject = useCallback(
-    (projectId: string) => {
-      const next = projects.find((p) => p.id === projectId);
-      if (next) setActive(next);
-    },
-    [projects, setActive],
+    (projectId: string) => setSelection('recruiting', projectId),
+    [setSelection],
   );
   // Published state emitted by the wizard. When true, the card shows the
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
@@ -303,8 +319,6 @@ function ExpandedBody() {
           counts={undefined}
           shareButton={undefined}
           onRefresh={handleRefresh}
-          onDownloadCsv={handleDownloadCsv}
-          hasResponses={hasResponses}
           // 탭②(명단)·탭③(일정) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔
           // 활성 폼(탭③ 은 이 form 으로 scheduling 데이터 페치 = P0 project resolve).
           formId={activeFormId}
@@ -326,6 +340,11 @@ function ExpandedBody() {
               activeTab={activeTab}
               onTabChange={setActiveTab}
               judgeRefreshSignal={judgeRefreshSignal}
+              // CSV = 응답 내보내기 → 탭①(응답)의 요약/raw 토글 밴드 우측에 둔다
+              // (round-2 feedback #7: 셸 헤더에서 이관). 헤더는 전 탭 공용이라
+              // CSV(응답 전용)엔 부적합.
+              onDownloadCsv={handleDownloadCsv}
+              hasResponses={hasResponses}
               // 브리지(N1·N4) — 선택 SSOT + judgments lift + 서술자.
               bridgeSelected={bridgeSelected}
               onToggleRow={toggleBridgeRow}
@@ -357,6 +376,9 @@ function ExpandedBody() {
                   selected={bridgeSelected}
                   onToggleRow={toggleBridgeRow}
                   onToggleAll={toggleBridgeAll}
+                  // footer("총 N 응답 · ↗ Google Sheets") 는 raw 탭에서만 —
+                  // 요약 탭 아래로 새지 않도록(round-2 feedback #4).
+                  footerVisible={activeTab === 'raw'}
                 />
               }
             />

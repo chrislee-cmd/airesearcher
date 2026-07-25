@@ -140,6 +140,9 @@ export function JourneyCandidatesTab({ formId }: { formId: string | null }) {
   }, [load]);
 
   // --- Source intake state ----------------------------------------------
+  // 소스 3-up 접기 토글 — 기본 오픈(round-2 feedback #5). 명단이 길어지면
+  // 접어서 표에 집중할 수 있게 한다.
+  const [sourceOpen, setSourceOpen] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
@@ -244,15 +247,9 @@ export function JourneyCandidatesTab({ formId }: { formId: string | null }) {
       ]
     : groupSections;
 
-  // Legend + linked-source counts.
+  // Linked-source count — 응답 연동 카드의 "브리지 N명" 배지용(레전드는 제거됨,
+  // round-2 feedback #6).
   const bridgedCount = candidates.filter((c) => c.source === 'bridge').length;
-  const confirmedCount = candidates.filter(
-    (c) => c.status === 'confirmed',
-  ).length;
-  const communicatingCount = candidates.filter(
-    (c) => c.status === 'communicating',
-  ).length;
-  const pendingCount = candidates.length - confirmedCount - communicatingCount;
 
   const visibleAllSelected =
     sortedCandidates.length > 0 &&
@@ -687,11 +684,22 @@ export function JourneyCandidatesTab({ formId }: { formId: string | null }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
-      {/* Source intake 3-up (N2) — 응답 연동(읽기전용) · CSV 업로드 · Sheets. */}
+      {/* Source intake 3-up (N2) — 응답 연동(읽기전용) · CSV 업로드 · Sheets.
+          접기 토글, 기본 오픈(round-2 feedback #5). */}
       <div>
-        <div className="mb-3 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+        {/* eslint-disable-next-line react/forbid-elements -- 인라인 접기 토글(mono 라벨 + 셰브론) — Button primitive 의 border/radius chrome 과 불일치(§7.11). 저니 셸 접기 조각과 동일 선례. */}
+        <button
+          type="button"
+          onClick={() => setSourceOpen((v) => !v)}
+          aria-expanded={sourceOpen}
+          className="mb-3 flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft transition-colors hover:text-ink"
+        >
+          <span aria-hidden className="text-xs leading-none">
+            {sourceOpen ? '▼' : '▶'}
+          </span>
           {t('loadCandidates')}
-        </div>
+        </button>
+        {sourceOpen && (
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
           {/* 1. 응답에서 연동 — mint linked card, read-only (브리지는 ① 탭에서). */}
           <div className="flex flex-col gap-2 rounded-sm border-2 border-ink bg-success-bg p-4 shadow-memphis-sm">
@@ -821,6 +829,7 @@ export function JourneyCandidatesTab({ formId }: { formId: string | null }) {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* List controls (N2) — 전체/그룹별 · 상태 · 필드 필터 · 정렬. 슬롯 추가는
@@ -1048,16 +1057,6 @@ export function JourneyCandidatesTab({ formId }: { formId: string | null }) {
           )}
         </div>
       )}
-
-      {/* Footer legend (N2) — 마스킹 규칙 + 상태 요약. */}
-      <div className="font-mono text-xs text-mute-soft">
-        {tj('piiLegend', {
-          total: candidates.length,
-          confirmed: confirmedCount,
-          communicating: communicatingCount,
-          pending: pendingCount,
-        })}
-      </div>
     </div>
   );
 }

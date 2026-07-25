@@ -259,7 +259,10 @@ export function RecruitingJudgedTable({
   const active = open ? displayItems[openPos] : null;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    // min-w-0 = 폭 봉쇄 체인의 리프(round-2 feedback #1). 요약 탭 본문이
+    // 판단테이블 intrinsic 폭으로 팽창해 상위 min-w-0 를 뚫는 케이스 차단 —
+    // 가로 스크롤은 아래 overflow-auto 본문 한 겹에만.
+    <div className="relative flex h-full min-h-0 min-w-0 flex-col">
       {/* fit 칩 바 (CD state 08) — active = bg-ink white pill */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-ink/10 px-5 py-[11px]">
         {FILTER_CHIPS.map((chip) => {
@@ -297,8 +300,8 @@ export function RecruitingJudgedTable({
         )}
       </div>
 
-      {/* 본문 */}
-      <div className="min-h-0 flex-1 overflow-auto bg-paper">
+      {/* 본문 — min-w-0 로 테이블 intrinsic 폭을 이 래퍼 안에 가둔다(가로 스크롤 복원). */}
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto bg-paper">
         {noForm ? (
           <div className="flex h-full items-center justify-center p-8">
             <EmptyState
@@ -360,9 +363,11 @@ export function RecruitingJudgedTable({
                   t('colRegion'),
                   t('colFitReason'),
                 ].map((h) => (
+                  // whitespace-nowrap = 헤더 컬럼명 줄바꿈 금지(round-2 feedback
+                  // #1: RESPONDENT → RESPONDEN/T wrap). 좁은 폭에서도 라벨 한 줄 유지.
                   <th
                     key={h}
-                    className="border-b border-line px-4 py-2.5 font-mono-label text-xs-soft uppercase tracking-[0.05em] text-mute-soft"
+                    className="whitespace-nowrap border-b border-line px-4 py-2.5 font-mono-label text-xs-soft uppercase tracking-[0.05em] text-mute-soft"
                   >
                     {h}
                   </th>

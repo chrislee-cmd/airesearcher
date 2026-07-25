@@ -55,8 +55,6 @@ export function RecruitingJourneyShell({
   counts,
   shareButton,
   onRefresh,
-  onDownloadCsv,
-  hasResponses,
   responsesTab,
   formId,
 }: {
@@ -74,11 +72,10 @@ export function RecruitingJourneyShell({
   // Share 버튼 — 라이브 collab-share 컴포넌트 재사용(R11). 접근통일 웨이브가
   // orgId+members 를 주입하면 활성. 미주입 시 숨김(graceful).
   shareButton?: ReactNode;
-  // 헤더 액션 — 전 탭 refresh(각 탭 새로고침 대상 존재, GAP-AUDIT §3) + CSV
-  // (comps 미작화지만 §5.4 계약, 기존 스타일). P1 에선 응답(탭①) 대상.
+  // 헤더 액션 — 전 탭 refresh(각 탭 새로고침 대상 존재, GAP-AUDIT §3). CSV 는
+  // 탭①(응답)의 요약/raw 토글 밴드로 이관됨(round-2 feedback #7) — 응답 전용
+  // 액션이라 전 탭 공용 헤더엔 부적합.
   onRefresh: () => void;
-  onDownloadCsv: () => void;
-  hasResponses: boolean;
   // 탭① 본문 — 기존 RecruitingFullviewBody(re-home). 상시 마운트(R3).
   responsesTab: ReactNode;
   // 활성 폼 id — 탭②(명단)·탭③(일정)이 form-anchored 저니 데이터를 조회하는
@@ -140,17 +137,6 @@ export function RecruitingJourneyShell({
             />
           ) : null}
           {shareButton}
-          {/* CSV(§5.4 계약, GAP-AUDIT §3 "기존 스타일") — pill chrome. */}
-          {/* eslint-disable-next-line react/forbid-elements -- CD §F3 CSV 는 radius-pill·border-ink·memphis-sm 전용 chrome 으로 Button primitive 와 불일치(§7.11). 헤더 조각과 동일 선례. */}
-          <button
-            type="button"
-            onClick={onDownloadCsv}
-            disabled={!hasResponses}
-            title={t('fv.csvTitle')}
-            className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1.5 text-sm font-bold text-ink shadow-memphis-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            ↓ CSV
-          </button>
           {/* refresh(전 탭) — CD N1 32×32 스퀘어 아이콘(radius-close(9)·mute). */}
           {/* eslint-disable-next-line react/forbid-elements -- CD §F3 refresh 는 32px·radius-close(9)·memphis-sm 스퀘어 chrome 으로 IconButton 고정 radius variant 와 불일치(§7.11). 셸 닫기✕ 와 동일 선례. */}
           <button
@@ -216,13 +202,11 @@ export function RecruitingJourneyShell({
     counts,
     shareButton,
     onRefresh,
-    onDownloadCsv,
-    hasResponses,
     activeTab,
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
+    <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas">
       {/* 탭① 응답 — 상시 마운트(R3: ResponsesSpreadsheet 데이터 파이프 SSOT
           가 이 본문 안에 있으므로 탭 전환 시에도 hidden 으로 유지). min-w-0 = 폭 봉쇄
           체인의 최상단 링크(568) — 본문이 판단테이블/스프레드시트의 intrinsic
