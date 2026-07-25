@@ -10,6 +10,7 @@ import {
   OAUTH_CONSENT_COOKIE,
   OAUTH_CONSENT_COOKIE_MAX_AGE_S,
 } from '@/lib/consent';
+import { localizeNext } from '@/lib/auth/validate-next';
 import { Button } from './ui/button';
 
 // Only allow same-origin app paths to prevent open-redirect via ?next=.
@@ -55,7 +56,10 @@ export function GoogleSignInButton({ label }: { label: string }) {
     const supabase = createClient();
     const origin = window.location.origin;
     const nextPath = safeNext(searchParams.get('next')) ?? '/canvas';
-    const next = `/${locale}${nextPath}`;
+    // Don't re-prefix a `next` that already carries a locale (localized invite
+    // paths like /ko/invite/accept) — that produced the /ko/ko/… 404 that
+    // stranded the invite round-trip before claim ran.
+    const next = localizeNext(nextPath, locale);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
