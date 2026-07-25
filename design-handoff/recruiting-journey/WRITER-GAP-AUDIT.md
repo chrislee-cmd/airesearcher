@@ -5,6 +5,7 @@
 
 ## 0. 확정 결정 (writer, 사용자 위임 "이거로 작업")
 - **D1 = A** (어드민 게이트): 브리지 = 초대요청 v2. 유저가 ①에서 선택→보내기 = `recruiting_invitations` 생성 → **슈퍼어드민 승인(sent) 시 서버가 자동 인제스트**(sched_candidates, 연락처는 응답유래 = 유저에게 마스킹). **raw 탭의 구 "📧 초대 보내기" CTA 는 브리지로 통합·대체**(이중 CTA 금지). `/admin/recruiting-invitations` 처리대 존치(=승인 게이트).
+  - **개정(2026-07-25, 사용자 결정 · #571):** D1-A 승인 게이트 **폐기 → 직접 인제스트**. 보내기 = `POST /api/recruiting/invitations` 가 같은 요청 안에서 즉시 인제스트(승인 대기 없음) + invitation status 자동 `sent` 스탬프(audit 존치). 슈퍼어드민 PATCH 승인 경로는 idempotent no-op 로 존치. **PII 마스킹은 그대로 존치**("승인 제거"지 "마스킹 제거" 아님).
 - **D2**: 1600×940 + ③ 내부 스크롤 — **recruiting 풀뷰 한정**(공유 셸 전역 변경 아님; 셸에 per-widget 치수 옵션).
 - **D3**: 마스터링크 chip + Share 헤더 승격 (전 탭).
 - **D5**: 폼:프로젝트 = 1:1 lazy (form_id null 수동 프로젝트는 명단 탭 프로젝트 스위처로 접근 가능하게 — 고아 방지).

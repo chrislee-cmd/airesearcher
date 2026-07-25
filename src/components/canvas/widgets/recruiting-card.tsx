@@ -30,7 +30,10 @@ import {
   type FormSummary,
 } from './recruiting/responses-spreadsheet';
 import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
-import { RecruitingJourneyShell } from '../fullview/recruiting/recruiting-journey-shell';
+import {
+  RecruitingJourneyShell,
+  type JourneyTab,
+} from '../fullview/recruiting/recruiting-journey-shell';
 import type { BridgeCandidate } from '../fullview/recruiting/recruiting-bridge';
 import type { ResponseJudgment } from '@/lib/recruiting/persona-fit';
 import {
@@ -156,6 +159,15 @@ function ExpandedBody() {
     });
   }, []);
   const clearBridge = useCallback(() => setBridgeSelected(new Set()), []);
+
+  // ── 저니 탭(응답/명단/일정) SSOT — 셸을 controlled 로 구동. 브리지 전송
+  // 성공 시 탭②(명단)로 전환하면 JourneyCandidatesTab 이 (조건부 마운트라)
+  // fresh fetch 를 돌려 방금 인제스트된 인원이 바로 노출된다(D1-A 직접 인제스트).
+  const [journeyTab, setJourneyTab] = useState<JourneyTab>('responses');
+  const handleBridgeSent = useCallback(() => {
+    clearBridge();
+    setJourneyTab('candidates');
+  }, [clearBridge]);
 
   // 선택 응답자 서술자 — judgments 에서 selected 를 필터해 #번호·demographic·fit
   // 를 빌드(응답 name 은 PII 블랭킹으로 클라에 없음 → 마스킹 값만 모달 표시).
@@ -319,6 +331,9 @@ function ExpandedBody() {
           counts={undefined}
           shareButton={undefined}
           onRefresh={handleRefresh}
+          // 저니 탭 SSOT(controlled) — 브리지 전송 성공 시 host 가 탭②로 전환.
+          activeTab={journeyTab}
+          onTabChange={setJourneyTab}
           // 탭②(명단)·탭③(일정) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔
           // 활성 폼(탭③ 은 이 form 으로 scheduling 데이터 페치 = P0 project resolve).
           formId={activeFormId}
@@ -357,7 +372,8 @@ function ExpandedBody() {
               // activeProject.id 를 sched project_id 로 오용하지 않는다).
               bridgeProjectId={null}
               onClearSelection={clearBridge}
-              onBridgeSent={clearBridge}
+              // D1-A: 전송 성공 = 즉시 명단 반영 → 선택 리셋 + 탭②(명단) 전환.
+              onBridgeSent={handleBridgeSent}
               rawTabContent={
                 <ResponsesSpreadsheet
                   selectedFormId={activeFormId}
