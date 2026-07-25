@@ -132,6 +132,13 @@ export const env = createEnv({
     LIVEKIT_API_SECRET: z.string().min(8).optional(),
     LIVEKIT_URL: z.string().url().optional(),
 
+    // Solapi (구 CoolSMS) — recruiting-scheduling 공지/메시지 문자 알림(lib/sms/
+    // solapi.ts). 3종 모두 optional: 미설정 시 SMS 는 조용히 스킵되고 채팅은
+    // 정상(회귀 0). SENDER_NUMBER 는 Solapi 콘솔에서 사전 승인된 발신번호.
+    SOLAPI_API_KEY: z.string().min(8).optional(),
+    SOLAPI_API_SECRET: z.string().min(8).optional(),
+    SOLAPI_SENDER_NUMBER: z.string().min(8).optional(),
+
     NAVER_CLIENT_ID: z.string().min(8).optional(),
     NAVER_CLIENT_SECRET: z.string().min(8).optional(),
     KAKAO_REST_API_KEY: z.string().min(8).optional(),
@@ -333,6 +340,9 @@ export const env = createEnv({
     LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET,
     LIVEKIT_URL: process.env.LIVEKIT_URL,
 
+    SOLAPI_API_KEY: process.env.SOLAPI_API_KEY,
+    SOLAPI_API_SECRET: process.env.SOLAPI_API_SECRET,
+    SOLAPI_SENDER_NUMBER: process.env.SOLAPI_SENDER_NUMBER,
     NAVER_CLIENT_ID: process.env.NAVER_CLIENT_ID,
     NAVER_CLIENT_SECRET: process.env.NAVER_CLIENT_SECRET,
     KAKAO_REST_API_KEY: process.env.KAKAO_REST_API_KEY,

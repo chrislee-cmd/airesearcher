@@ -11,10 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BrandLoader } from '@/components/ui/brand-loader';
-import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { Banner } from '../../shell/banner';
-import { useToast } from '@/components/toast-provider';
 import { isPiiColumn } from '@/lib/recruiting-pii';
 import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
@@ -41,9 +39,12 @@ type Criterion = RecruitingBrief['criteria'][number];
 // 브라우저 payload 로도 원본 PII 가 절대 흐르지 않는다 — 유저 뷰엔 어떤
 // 경우에도 연락처가 노출되지 않는다 (옛 크레딧 잠금-해제 흐름은 폐기).
 //
-// 대신 각 응답자 row 좌측에 초대 대상 체크박스를 두고, 상단 CTA 로 여러 명을
-// 한 번에 골라 초대 요청(POST /api/recruiting/invitations)을 넣는다. 요청은
-// 무료 — super admin 이 out-of-band 로 실제 초대를 대행한다.
+// 각 응답자 row 좌측에 브리지 대상 체크박스를 둔다. 선택은 controlled(호스트
+// SSOT)로 요약 탭(판단테이블)과 하나의 집합을 공유하며, 선택→전송(POST
+// /api/recruiting/invitations)은 상위 브리지 바/모달(RecruitingBridge)이 소유
+// 한다 — 구 "📧 초대 보내기" 인라인 CTA·confirm 모달은 통합·제거(이중 CTA
+// 금지, WRITER-GAP-AUDIT §0). 요청은 무료 — super admin 이 승인 시 서버가
+// sched_candidates 로 자동 인제스트(D1-A).
 const ROW_CAP = 200;
 
 export type FormSummary = {
@@ -113,6 +114,10 @@ export function ResponsesSpreadsheet({
   onSelectFormId,
   onFormsChange,
   hideSelector = false,
+  selected: controlledSelected,
+  onToggleRow: onToggleRowProp,
+  onToggleAll: onToggleAllProp,
+  footerVisible = true,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
@@ -151,8 +156,19 @@ export function ResponsesSpreadsheet({
   onFormsChange?: (forms: FormSummary[]) => void;
   // host 가 자체 셀렉터를 그릴 때 내부 <Select> 를 숨긴다(중복 방지).
   hideSelector?: boolean;
+  // 브리지 선택(호스트 SSOT). 제공되면 controlled — 요약 탭과 하나의 선택 집합을
+  // 공유하고, 선택 시 전송은 상위 브리지 바/모달이 소유한다(구 "📧 초대 보내기"
+  // CTA·confirm 모달은 통합·제거, 이중 CTA 금지). 미제공 시 내부 상태 폴백(단독
+  // 사용 호환) — 이때는 체크박스만 있고 전송 액션은 없다.
+  selected?: Set<string>;
+  onToggleRow?: (id: string) => void;
+  onToggleAll?: (ids: string[], checked: boolean) => void;
+  // footer("총 N 응답 · ↗ Google Sheets 에서 열기") 노출 여부. 풀뷰에서 이
+  // 스프레드시트는 raw 탭에서만 보이지만 상시 마운트라, footer 가 요약 탭 아래로
+  // 새지 않도록 host 가 raw 탭일 때만 true 로 준다(round-2 feedback #4). 단독
+  // 사용(기본 true) 호환.
+  footerVisible?: boolean;
 } = {}) {
-  const { push: pushToast } = useToast();
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
   const [internalFormId, setInternalFormId] = useState<string | null>(null);
@@ -176,11 +192,13 @@ export function ResponsesSpreadsheet({
   // 세팅된다 — 이 경우 일반 에러 배너 대신 재연결 CTA 배너를 띄운다.
   const [reauthUrl, setReauthUrl] = useState<string | null>(null);
 
-  // 초대 대상으로 체크된 응답 row 들 (responseId set). 폼을 바꾸거나 응답을
-  // 다시 로드하면 리셋된다 — 다른 폼의 응답을 잘못 초대하지 않도록.
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [inviteConfirmOpen, setInviteConfirmOpen] = useState(false);
-  const [sending, setSending] = useState(false);
+  // 브리지 선택 = 체크된 응답 row 들(responseId set). controlled(호스트 SSOT)
+  // 이면 요약 탭과 공유하고, 아니면 내부 상태로 폴백(폼 전환 시 리셋).
+  const [internalSelected, setInternalSelected] = useState<Set<string>>(
+    new Set(),
+  );
+  const selectionControlled = controlledSelected !== undefined;
+  const selected = selectionControlled ? controlledSelected : internalSelected;
 
   // 1) 발행 폼 목록 로드 — 가장 최근 발행 폼을 default 선택.
   const loadForms = useCallback(async () => {
@@ -222,7 +240,9 @@ export function ResponsesSpreadsheet({
     setLoading(true);
     setError(null);
     setReauthUrl(null);
-    setSelected(new Set());
+    // uncontrolled 폴백일 때만 내부 선택 리셋 — controlled 는 호스트가 폼 전환 시
+    // 리셋한다(다른 폼 응답을 잘못 초대하지 않도록).
+    setInternalSelected(new Set());
     try {
       const res = await fetch(
         `/api/recruiting/google/forms/${encodeURIComponent(formId)}/responses`,
@@ -334,65 +354,34 @@ export function ResponsesSpreadsheet({
     [displayRows],
   );
 
-  const toggleRow = useCallback((rowId: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(rowId)) next.delete(rowId);
-      else next.add(rowId);
-      return next;
-    });
-  }, []);
+  const toggleRow = useCallback(
+    (rowId: string) => {
+      if (selectionControlled) {
+        onToggleRowProp?.(rowId);
+        return;
+      }
+      setInternalSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(rowId)) next.delete(rowId);
+        else next.add(rowId);
+        return next;
+      });
+    },
+    [selectionControlled, onToggleRowProp],
+  );
 
   // 전체 선택 = 현재 보이는 행 전부 선택, 해제 = 전부 해제. 필터 중이면 화면에
   // 안 보이는 행까지 선택되는 혼란을 피해 visibleIds 만 대상으로 한다.
   const toggleAll = useCallback(
     (checked: boolean) => {
-      setSelected(checked ? new Set(visibleIds) : new Set());
-    },
-    [visibleIds],
-  );
-
-  const sendInvitations = useCallback(async () => {
-    if (!selectedFormId || selected.size === 0) return;
-    setSending(true);
-    try {
-      const res = await fetch('/api/recruiting/invitations', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          form_id: selectedFormId,
-          // FormSummary 엔 project_id 가 없어 항상 null 로 보낸다 (스펙의
-          // selectedForm.project_id 는 이 payload 에 존재하지 않는 필드 —
-          // 가장 보수적으로 null 처리). API 는 nullable 이라 안전.
-          project_id: null,
-          response_ids: Array.from(selected),
-        }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        pushToast(`초대 요청 실패: ${j.error ?? res.status}`, { tone: 'warn' });
+      if (selectionControlled) {
+        onToggleAllProp?.(visibleIds, checked);
         return;
       }
-      const j = (await res.json().catch(() => ({}))) as { count?: number };
-      const count = j.count ?? selected.size;
-      trackEvent('widget_action', {
-        widget: 'recruiting',
-        action: 'invitation_request',
-        metadata: { count },
-      });
-      pushToast(`${count}명 초대 요청 완료. 관리자가 처리합니다.`, {
-        tone: 'amore',
-      });
-      setSelected(new Set());
-      setInviteConfirmOpen(false);
-    } catch {
-      pushToast('초대 요청 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.', {
-        tone: 'warn',
-      });
-    } finally {
-      setSending(false);
-    }
-  }, [selectedFormId, selected, pushToast]);
+      setInternalSelected(checked ? new Set(visibleIds) : new Set());
+    },
+    [selectionControlled, onToggleAllProp, visibleIds],
+  );
 
   // Google 미연동 / 재동의 필요는 responses 엔드포인트가 412 + 명시
   // 에러코드로 알려준다. 그 경우 일반 에러 배너 대신 연동 안내를 띄운다.
@@ -425,12 +414,13 @@ export function ResponsesSpreadsheet({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Form selector + 초대 CTA. hideSelector 면 host 가 공유 셀렉터를
-          그리므로 내부 <Select> 는 숨긴다(초대 CTA 는 유지). 셀렉터도 숨기고
-          선택된 초대 대상도 없으면 헤더 바 자체를 렌더하지 않는다(빈 바 방지). */}
-      {(!hideSelector || selected.size > 0) && (
+      {/* Form selector. hideSelector 면 host 가 공유 셀렉터를 그리므로 내부
+          <Select> 는 숨기고 바 자체를 렌더하지 않는다(빈 바 방지). 선택→전송
+          CTA 는 상위 브리지 바/모달로 통합됐다(구 "📧 초대 보내기" 제거, 이중
+          CTA 금지 — GAP-AUDIT §0). */}
+      {!hideSelector && (
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-5 py-3">
-        {hideSelector ? null : forms.length > 0 ? (
+        {forms.length > 0 ? (
           <Select
             size="sm"
             fullWidth={false}
@@ -445,18 +435,6 @@ export function ResponsesSpreadsheet({
           />
         ) : (
           <span className="text-sm text-mute-soft">발행된 설문 없음</span>
-        )}
-        {/* 새로고침 버튼은 fullview 상단 통합 버튼으로 이동 (spec B). 최소 1명
-            선택 시 초대 요청 CTA 활성 — confirm modal 을 연다. */}
-        {selected.size > 0 && (
-          <Button
-            variant="primary"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setInviteConfirmOpen(true)}
-          >
-            📧 초대 보내기 ({selected.size}명)
-          </Button>
         )}
       </div>
       )}
@@ -578,7 +556,8 @@ export function ResponsesSpreadsheet({
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer — raw 탭 전용(footerVisible). 요약 탭 아래로 밴드가 새지 않도록. */}
+      {footerVisible && (
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line-soft bg-paper-soft px-5 py-2 text-xs-soft text-mute-soft">
         <span className="tabular-nums">
           {data && totalRows > 0
@@ -609,43 +588,8 @@ export function ResponsesSpreadsheet({
           </a>
         ) : null}
       </footer>
+      )}
 
-      {/* 초대 요청 확인 modal — 크레딧 차감 없음(무료), super admin 이 대행. */}
-      <Modal
-        open={inviteConfirmOpen}
-        onClose={() => !sending && setInviteConfirmOpen(false)}
-        size="sm"
-        title="초대 요청 보내기"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={sending}
-              onClick={() => setInviteConfirmOpen(false)}
-            >
-              취소
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={sending}
-              onClick={() => void sendInvitations()}
-            >
-              {sending ? '요청 중…' : `${selected.size}명 초대 요청`}
-            </Button>
-          </>
-        }
-      >
-        <p className="text-md leading-[1.65] text-ink-2">
-          선택한 응답자 <span className="font-semibold">{selected.size}명</span>{' '}
-          에게 초대를 보내달라고 요청합니다.
-        </p>
-        <p className="mt-3 text-xs-soft text-mute-soft">
-          크레딧이 차감되지 않으며, 실제 초대 발송은 관리자가 연락처를 확인해
-          대행합니다.
-        </p>
-      </Modal>
     </div>
   );
 }
@@ -734,8 +678,12 @@ function ResponseTable({
   const someSelected =
     visibleSelectedCount > 0 && visibleSelectedCount < rows.length;
 
+  // w-full min-w-max: 내용이 프레임보다 좁으면 가용 폭을 채우고(우측 dead
+  // space 제거, journey R3 #3), 넓으면 max-content 로 넘쳐 overflow-auto 가로
+  // 스크롤이 살아난다. min-w-max 단독은 좁은 폼에서 테이블이 max-content 에
+  // 멈춰 우측 여백을 남겼다.
   return (
-    <table className="min-w-max border-collapse text-md">
+    <table className="w-full min-w-max border-collapse text-md">
       <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
         <tr>
           {renderCols.map((rc, i) => (

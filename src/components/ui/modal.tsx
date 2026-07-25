@@ -23,7 +23,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 //
 // Status: NOT YET CONSUMED. Migrations land in follow-up PRs.
 
-type Size = 'sm' | 'md' | 'lg' | 'xl' | 'wide' | 'full';
+type Size = 'sm' | 'md' | 'lg' | 'xl' | 'wide' | 'wide-tall' | 'full';
 
 type Props = {
   open: boolean;
@@ -63,6 +63,9 @@ const SIZE: Record<Size, string> = {
   // unboundedly on ultra-wide displays. Used by full-view widget
   // surfaces (probing 등) that own their own internal grid.
   wide: 'w-[90vw] h-[90vh] max-w-[1600px] max-h-[900px]',
+  // wide 의 세로 확장판 — max-h 940. recruiting 저니 풀뷰(2-row 헤더:
+  // 액션 row + 3탭 폴더 내비)만 사용(D2). 다른 wide 위젯은 900 불변.
+  'wide-tall': 'w-[90vw] h-[90vh] max-w-[1600px] max-h-[940px]',
   // Edge-to-edge fullscreen — overrides the outer padding so the panel
   // covers the entire viewport. Used by full-view widget surfaces
   // (interviews 등) that own their own layout (2-col / 3-col grid).
@@ -201,7 +204,11 @@ export function Modal({
           bare ? '' : 'overflow-hidden border-[3px] border-ink bg-paper',
           // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide / 우측 드로어는
           // 자체적으로 h-screen / h-[90vh] / h-full 을 직접 잡는다.
-          bare || size === 'full' || size === 'wide' || side === 'right'
+          bare ||
+          size === 'full' ||
+          size === 'wide' ||
+          size === 'wide-tall' ||
+          side === 'right'
             ? ''
             : 'max-h-[calc(100vh-2rem)]',
           // Memphis 외곽: 3px 검정 border + 8px offset 검정 그림자. full size 와
@@ -255,7 +262,7 @@ export function Modal({
             // full / wide size: 자체 layout (헤더/2-column/3-column grid) 을
             // children 이 owning. body padding + overflow-auto 끈다
             // (이중 스크롤 회피).
-            size === 'full' || size === 'wide'
+            size === 'full' || size === 'wide' || size === 'wide-tall'
               ? 'flex min-h-0 flex-col overflow-hidden'
               : 'overflow-auto px-5 py-4',
           ].join(' ')}

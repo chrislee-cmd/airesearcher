@@ -21,22 +21,55 @@ const phoneDigits = (p: string): string => p.replace(/\D/g, '');
 // re-import never drops earlier columns); a miss becomes an INSERT (omits id so
 // the DB default mints a fresh uuid + participant_token). Anonymous rows (no
 // email/phone/name) always insert.
+//
+// `source` (optional) stamps the provenance column ('bridge' | 'upload' |
+// 'sheet') so downstream reads can mask response-derived contacts. To avoid ever
+// downgrading masking, an UPDATE keeps the existing row's source unless it was
+// null (a re-import of the same identity never flips 'bridge' → 'upload'). The
+// column is additive: on a preview DB that lacks it the upsert transparently
+// retries without `source` (wide/narrow degrade).
 export async function upsertCandidatesIntoBatch(
   admin: SupabaseClient,
   batchId: string,
   candidates: ParsedCandidate[],
-): Promise<{ upserted: number } | { error: string }> {
-  const { data: existingRows } = await admin
+  source?: 'bridge' | 'upload' | 'sheet',
+): Promise<
+  { upserted: number } | { error: string; code?: string | null; detail?: string | null }
+> {
+  // Wide select (with source) so an UPDATE can preserve a stronger existing
+  // source; fall back to the pre-source column set on a preview DB.
+  let existingRows: {
+    id: string;
+    email: string | null;
+    phone: string | null;
+    name: string | null;
+    fields: Record<string, string> | null;
+    source?: string | null;
+  }[] = [];
+  const wideExisting = await admin
     .from('sched_candidates')
-    .select('id, email, name, phone, fields')
+    .select('id, email, name, phone, fields, source')
     .eq('batch_id', batchId);
+  let hasSourceColumn = true;
+  if (wideExisting.error) {
+    hasSourceColumn = false;
+    const narrow = await admin
+      .from('sched_candidates')
+      .select('id, email, name, phone, fields')
+      .eq('batch_id', batchId);
+    existingRows = (narrow.data ?? []) as typeof existingRows;
+  } else {
+    existingRows = (wideExisting.data ?? []) as typeof existingRows;
+  }
 
   const byEmail = new Map<string, string>();
   const byPhone = new Map<string, string>();
   const byName = new Map<string, string>();
   const fieldsById = new Map<string, Record<string, string>>();
+  const sourceById = new Map<string, string | null>();
   for (const r of existingRows ?? []) {
     fieldsById.set(r.id, (r.fields ?? {}) as Record<string, string>);
+    sourceById.set(r.id, r.source ?? null);
     if (r.email) byEmail.set(r.email.trim().toLowerCase(), r.id);
     if (r.phone) {
       const d = phoneDigits(r.phone);
@@ -62,13 +95,18 @@ export async function upsertCandidatesIntoBatch(
     const id = matchExistingId(c);
     if (id) claimed.add(id);
     const existingFields = id ? (fieldsById.get(id) ?? {}) : {};
-    const base = {
+    const base: Record<string, unknown> = {
       batch_id: batchId,
       email: c.email,
       name: c.name,
       phone: c.phone,
       fields: id ? { ...existingFields, ...c.fields } : c.fields,
     };
+    if (hasSourceColumn && source) {
+      // Never downgrade masking: an existing 'bridge'/'upload'/'sheet' row keeps
+      // its source; only a null (or missing) source takes the new stamp.
+      base.source = id ? (sourceById.get(id) ?? source) : source;
+    }
     return id ? { id, ...base } : base;
   });
 
@@ -84,7 +122,12 @@ export async function upsertCandidatesIntoBatch(
     .from('sched_candidates')
     .upsert(payload, { onConflict: 'id', defaultToNull: false })
     .select('id');
-  if (error) return { error: 'save_failed' };
+  // Carry the raw Postgres code + message so the upload/import routes can surface
+  // the real cause instead of a blanket "save_failed" (journey R3 #2 — an upload
+  // that "looks successful" but silently no-ops must instead show why). This runs
+  // through the service-role client on the user's own batch, so the DB error
+  // leaks no cross-tenant secrets.
+  if (error) return { error: 'save_failed', code: error.code ?? null, detail: error.message ?? null };
 
   return { upserted: data?.length ?? 0 };
 }

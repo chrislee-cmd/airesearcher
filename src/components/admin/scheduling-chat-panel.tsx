@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { IconButton } from '@/components/ui/icon-button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +22,9 @@ import {
 } from '@/lib/scheduling/slots';
 
 export type ChatCandidate = { id: string; label: string };
-export type ChatGroup = { id: string; title: string };
+// count = 그룹 인원(SMS 대상 수 힌트용, 선택). 미제공 시 그룹 reach 의 (N명)
+// 힌트는 생략된다.
+export type ChatGroup = { id: string; title: string; count?: number };
 
 // The top-level kind toggle: 공지글(announcement banner) vs 채팅 메세지(chat bubble).
 type AnnounceMode = 'announcement' | 'chat';
@@ -119,6 +122,28 @@ export function SchedulingChatPanel({
     groups.some((g) => g.id === batchId) ? batchId : (groups[0]?.id ?? ''),
   );
 
+  // SMS 알림(Solapi) 설정 여부 — 서버가 결정(env 3종). 미설정이면 체크박스 미노출
+  // (회귀 0). 한 번만 조회(마운트 시). 비인가/에러면 false 유지.
+  const [smsConfigured, setSmsConfigured] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/scheduling/sms-config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive && j && typeof j.configured === 'boolean')
+          setSmsConfigured(j.configured);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // 문자 알림 opt-in. 기본은 kind 파생(공지=on, 채팅=off — 사용자 결정). null 이면
+  // 파생 기본을, 사용자가 토글하면(override) 그 값을 쓴다(effect 없는 파생-with-override).
+  const [notifySmsOverride, setNotifySmsOverride] = useState<boolean | null>(
+    null,
+  );
+
   const { broadcast, byCandidate } = useMemo(
     () => groupMessages(messages),
     [messages],
@@ -156,6 +181,26 @@ export function SchedulingChatPanel({
   // 채팅→개인; otherwise the stored broadcast kind/reach apply.
   const kind: AnnounceMode = isPersonal ? 'chat' : announceMode;
   const reachScope: ReachScope = isPersonal ? 'personal' : broadcastReach;
+
+  // 문자 알림 기본값: 사용자가 안 건드렸으면(override null) kind 파생 — 공지=on /
+  // 채팅=off. 토글하면 override 값 우선.
+  const notifySms = notifySmsOverride ?? kind === 'announcement';
+
+  // SMS 대상 수 힌트(N명) — 서버가 phone 보유자만 최종 필터하므로 어디까지나 근사.
+  //   전체=프로젝트 전 후보 · 그룹=그룹 인원(count 제공 시) · 개인=1.
+  const groupCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const g of groups)
+      if (typeof g.count === 'number') map.set(g.id, g.count);
+    return map;
+  }, [groups]);
+  const smsTargetCount: number | null =
+    reachScope === 'personal'
+      ? 1
+      : reachScope === 'group'
+        ? (groupCountById.get(groupTarget) ??
+          (groupTarget === batchId ? candidates.length : null))
+        : (totalCount ?? candidates.length);
   const threadMessages: SchedMessage[] = isBroadcast
     ? broadcast
     : (byCandidate.get(selectedThread) ?? []);
@@ -246,6 +291,9 @@ export function SchedulingChatPanel({
     setSending(true);
     setError(null);
     const scope: MessageScope = isPersonal ? 'private' : 'broadcast';
+    // 문자 알림은 설정된 배포에서 체크된 경우에만. sms_context_batch_id 는 전체
+    // reach 에서 프로젝트를 특정하기 위한 컨텍스트(타일 batchId).
+    const smsOn = smsConfigured && notifySms;
     try {
       const res = await fetch('/api/scheduling/messages', {
         method: 'POST',
@@ -253,6 +301,9 @@ export function SchedulingChatPanel({
         body: JSON.stringify({
           scope,
           body: text,
+          ...(smsOn
+            ? { notify_sms: true, sms_context_batch_id: batchId }
+            : {}),
           ...(isPersonal
             ? { candidate_id: selectedThread }
             : {
@@ -266,6 +317,17 @@ export function SchedulingChatPanel({
       if (!res.ok) {
         setError(t('chatSendFailed'));
         return;
+      }
+      // 메시지 저장은 성공. SMS 는 best-effort 후처리라 스킵/실패해도 채팅은 정상 —
+      // 상한 초과만 사용자에게 한 줄 안내(그 외 스킵은 무음).
+      if (smsOn) {
+        const j = (await res.json().catch(() => null)) as {
+          smsSkipped?: string;
+          smsTargetCount?: number;
+        } | null;
+        if (j?.smsSkipped === 'limit_exceeded') {
+          setError(t('chatSmsLimit', { count: j.smsTargetCount ?? 0 }));
+        }
       }
       setDraft('');
       // Realtime will also fire, but refetch guarantees the sender sees their
@@ -657,6 +719,21 @@ export function SchedulingChatPanel({
       {/* Composer — border-2 ink field + ➤ ink button. */}
       <div className="shrink-0 border-t-2 border-ink bg-paper p-3">
         {error && <p className="mb-2 text-sm text-warning">{error}</p>}
+        {/* 문자 알림 opt-in — Solapi 설정된 배포에서만 노출. 대상 수(N명)는 근사
+            힌트(서버가 phone 보유자만 최종 필터). */}
+        {smsConfigured && (
+          <label className="mb-2 flex w-fit cursor-pointer items-center gap-2 text-sm text-mute">
+            <Checkbox
+              checked={notifySms}
+              onChange={(e) => setNotifySmsOverride(e.target.checked)}
+            />
+            <span>
+              {smsTargetCount != null
+                ? t('chatSmsNotify', { count: smsTargetCount })
+                : t('chatSmsNotifyNoCount')}
+            </span>
+          </label>
+        )}
         <div className="flex items-end gap-2.5">
           <Textarea
             aria-label={t('chatComposerLabel')}

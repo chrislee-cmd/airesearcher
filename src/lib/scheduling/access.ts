@@ -82,6 +82,70 @@ export async function getSchedulingAccess(): Promise<SchedulingAccess | null> {
   return { superadmin: false, userId: user.id, ownerUserIds };
 }
 
+// Form-anchored access for the fused recruiting journey (BUILD-SPEC §5.5). The
+// fused surface is keyed on a recruiting form, so its gate is: super-admin OR the
+// form's owner OR someone who shares an org with the form owner. This is layered
+// ON TOP OF the existing owner_user_id scoping (getSchedulingAccess) — it does not
+// replace it, keeping the tested tenancy wall intact (regression 0).
+//
+// Returns null (→ caller 404s, route unobservable) when there's no session, the
+// form doesn't exist, or the caller is neither the owner nor an org co-member.
+// `ownerUserIds` mirrors getSchedulingAccess so downstream candidate/batch
+// scoping stays uniform.
+export type FormAnchoredAccess = {
+  superadmin: boolean;
+  userId: string;
+  ownerUserIds: string[] | null; // null only for super-admin (unrestricted)
+  form: { form_id: string; user_id: string; org_id: string | null; title: string };
+};
+
+export async function getFormAnchoredAccess(
+  formId: string,
+): Promise<FormAnchoredAccess | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const admin = createAdminClient();
+  // owner_email may exist too, but user_id + org_id + title are all we need.
+  const { data: form } = await admin
+    .from('recruiting_forms')
+    .select('form_id, user_id, org_id, title')
+    .eq('form_id', formId)
+    .maybeSingle();
+  if (!form) return null;
+  const f = form as {
+    form_id: string;
+    user_id: string;
+    org_id: string | null;
+    title: string | null;
+  };
+  const anchoredForm = {
+    form_id: f.form_id,
+    user_id: f.user_id,
+    org_id: f.org_id ?? null,
+    title: f.title ?? '',
+  };
+
+  if (isSuperAdminEmail(user.email)) {
+    return { superadmin: true, userId: user.id, ownerUserIds: null, form: anchoredForm };
+  }
+
+  // Reuse the tested org-membership computation (also self-heals pending
+  // invites). A form owner with no org membership still gets access to their own
+  // form's surface, scoped to just themselves.
+  const base = await getSchedulingAccess();
+  const coMembers =
+    base && !base.superadmin ? base.ownerUserIds : [user.id];
+  const isFormOwner = f.user_id === user.id;
+  if (isFormOwner || coMembers.includes(f.user_id)) {
+    const ownerUserIds = coMembers.includes(user.id)
+      ? coMembers
+      : [...coMembers, user.id];
+    return { superadmin: false, userId: user.id, ownerUserIds, form: anchoredForm };
+  }
+  return null;
+}
+
 // True when the caller may touch a resource owned by ownerUserId.
 export function ownerAllowed(
   access: SchedulingAccess,

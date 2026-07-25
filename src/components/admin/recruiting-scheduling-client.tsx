@@ -1610,6 +1610,10 @@ export function RecruitingSchedulingClient({
                           groups={namedGroups.map((g) => ({
                             id: g.id,
                             title: g.title,
+                            // SMS 대상 수 힌트용 그룹 인원.
+                            count: candidates.filter(
+                              (c) => c.batch_id === g.id,
+                            ).length,
                           }))}
                           layout="sidebar"
                           selectedThread={thread}

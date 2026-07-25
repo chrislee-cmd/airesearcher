@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { ingestApprovedInvitation } from '@/lib/scheduling/bridge-approval';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // PATCH /api/recruiting/invitations/[id]
 // Super-admin-only status update as the request is fulfilled (sent / declined /
@@ -35,6 +36,25 @@ export async function PATCH(
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
+  const admin = createAdminClient();
+
+  // Approval (status='sent') triggers the bridge auto-ingest (D1-A). Run it
+  // BEFORE flipping status so a failed ingest leaves the invitation actionable
+  // (its status is preserved) rather than marking it sent with no candidates —
+  // the "실패 시 invitation 상태 보존 + 에러 반환" contract. The upsert is
+  // idempotent, so re-approving a partially-ingested request is safe.
+  let ingested: number | null = null;
+  if (parsed.data.status === 'sent') {
+    const result = await ingestApprovedInvitation(admin, id);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: 'ingest_failed', reason: result.error },
+        { status: result.status },
+      );
+    }
+    ingested = result.ingested;
+  }
+
   const update: {
     status: 'sent' | 'declined' | 'archived';
     processed_at: string;
@@ -47,7 +67,6 @@ export async function PATCH(
     update.admin_note = parsed.data.admin_note;
   }
 
-  const admin = createAdminClient();
   const { data, error } = await admin
     .from('recruiting_invitations')
     .update(update)
@@ -64,5 +83,5 @@ export async function PATCH(
     return NextResponse.json({ error: 'update_failed' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, invitation: data });
+  return NextResponse.json({ ok: true, invitation: data, ingested });
 }

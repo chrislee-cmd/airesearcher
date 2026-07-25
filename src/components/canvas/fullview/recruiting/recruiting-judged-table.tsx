@@ -13,11 +13,12 @@
    상단 fit 칩(전체/높음/중간/낮음, active = bg-ink white), 하단 요약 footer.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Banner } from '../../shell/banner';
 import { track as trackEvent } from '@/lib/analytics/events';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
@@ -119,10 +120,21 @@ export function RecruitingJudgedTable({
   formId,
   responseData,
   refreshSignal,
+  selected,
+  onToggleRow,
+  onToggleAll,
+  onJudgmentsChange,
 }: {
   formId: string | null;
   responseData: { columns: FormColumn[]; rows: FormResponseRow[] } | null;
   refreshSignal: number;
+  // 브리지 선택 — 호스트가 SSOT(요약/raw 두 뷰가 공유하는 responseId 집합).
+  // key = response_key (= responseId = invitations response_id).
+  selected: Set<string>;
+  onToggleRow: (id: string) => void;
+  onToggleAll: (ids: string[], checked: boolean) => void;
+  // 판단 로드 시 호스트로 lift → 브리지 모달이 선택 응답자 서술자(fit/demo)를 빌드.
+  onJudgmentsChange: (judgments: ResponseJudgment[]) => void;
 }) {
   const t = useTranslations('Recruiting.fv');
   const [payload, setPayload] = useState<JudgmentsPayload | null>(null);
@@ -208,6 +220,25 @@ export function RecruitingJudgedTable({
       });
   }, [payload, fitFilter]);
 
+  // 판단 목록을 호스트로 lift → 브리지 모달 서술자 빌드(응답 없으면 빈 배열).
+  useEffect(() => {
+    onJudgmentsChange(payload?.judgments ?? []);
+  }, [payload, onJudgmentsChange]);
+
+  // 전체 선택 대상 = 현재 fit 필터로 보이는 행들(displayItems)의 response_key.
+  const visibleIds = useMemo(
+    () => displayItems.map((x) => x.j.response_key),
+    [displayItems],
+  );
+  const visibleSelectedCount = useMemo(
+    () => visibleIds.filter((id) => selected.has(id)).length,
+    [visibleIds, selected],
+  );
+  const allSelected =
+    visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
+  const someSelected =
+    visibleSelectedCount > 0 && visibleSelectedCount < visibleIds.length;
+
   const openRow = useCallback((pos: number) => {
     setOpenPos(pos);
     trackEvent('widget_action', {
@@ -228,7 +259,10 @@ export function RecruitingJudgedTable({
   const active = open ? displayItems[openPos] : null;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    // min-w-0 = 폭 봉쇄 체인의 리프(round-2 feedback #1). 요약 탭 본문이
+    // 판단테이블 intrinsic 폭으로 팽창해 상위 min-w-0 를 뚫는 케이스 차단 —
+    // 가로 스크롤은 아래 overflow-auto 본문 한 겹에만.
+    <div className="relative flex h-full min-h-0 min-w-0 flex-col">
       {/* fit 칩 바 (CD state 08) — active = bg-ink white pill */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-ink/10 px-5 py-[11px]">
         {FILTER_CHIPS.map((chip) => {
@@ -266,8 +300,8 @@ export function RecruitingJudgedTable({
         )}
       </div>
 
-      {/* 본문 */}
-      <div className="min-h-0 flex-1 overflow-auto bg-paper">
+      {/* 본문 — min-w-0 로 테이블 intrinsic 폭을 이 래퍼 안에 가둔다(가로 스크롤 복원). */}
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto bg-paper">
         {noForm ? (
           <div className="flex h-full items-center justify-center p-8">
             <EmptyState
@@ -313,6 +347,15 @@ export function RecruitingJudgedTable({
           <table className="w-full border-collapse text-md">
             <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
               <tr>
+                {/* 브리지 선택 열 — 전체선택(현재 fit 필터로 보이는 행 대상). */}
+                <th className="w-10 border-b border-line px-4 py-2.5">
+                  <SelectAllCheckbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    ariaLabel={t('selectAllAria')}
+                    onChange={(checked) => onToggleAll(visibleIds, checked)}
+                  />
+                </th>
                 {[
                   t('colRespondent'),
                   t('colGender'),
@@ -320,9 +363,11 @@ export function RecruitingJudgedTable({
                   t('colRegion'),
                   t('colFitReason'),
                 ].map((h) => (
+                  // whitespace-nowrap = 헤더 컬럼명 줄바꿈 금지(round-2 feedback
+                  // #1: RESPONDENT → RESPONDEN/T wrap). 좁은 폭에서도 라벨 한 줄 유지.
                   <th
                     key={h}
-                    className="border-b border-line px-4 py-2.5 font-mono-label text-xs-soft uppercase tracking-[0.05em] text-mute-soft"
+                    className="whitespace-nowrap border-b border-line px-4 py-2.5 font-mono-label text-xs-soft uppercase tracking-[0.05em] text-mute-soft"
                   >
                     {h}
                   </th>
@@ -332,12 +377,27 @@ export function RecruitingJudgedTable({
             <tbody>
               {displayItems.map((item, pos) => {
                 const { j, num } = item;
+                const isSelected = selected.has(j.response_key);
                 return (
                   <tr
                     key={j.response_key}
                     onClick={() => openRow(pos)}
-                    className="cursor-pointer border-b border-ink/[0.08] last:border-b-0 hover:bg-paper-soft"
+                    className={`cursor-pointer border-b border-ink/[0.08] last:border-b-0 ${
+                      // 선택행 = mint 틴트(#f4fbf6 = success-bg). 미선택 hover 만.
+                      isSelected ? 'bg-success-bg' : 'hover:bg-paper-soft'
+                    }`}
                   >
+                    {/* 체크박스 셀 — 클릭이 드로어를 열지 않도록 stopPropagation. */}
+                    <td
+                      className="w-10 px-4 py-[11px] align-top"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        aria-label={t('selectRowAria')}
+                        onChange={() => onToggleRow(j.response_key)}
+                      />
+                    </td>
                     <td className="whitespace-nowrap px-4 py-[11px] align-top">
                       <span className="flex items-center gap-1.5 font-mono-label font-extrabold tabular-nums text-ink-2">
                         #{num}
@@ -416,6 +476,34 @@ export function RecruitingJudgedTable({
         hasNext={openPos != null && openPos < displayItems.length - 1}
       />
     </div>
+  );
+}
+
+// 전체 선택 헤더 체크박스 — Checkbox primitive 은 native <input> 이라
+// indeterminate 를 prop 으로 못 받는다(DOM 프로퍼티). 일부만 선택된 상태를
+// ref 로 직접 세팅(responses-spreadsheet 선례 미러).
+function SelectAllCheckbox({
+  checked,
+  indeterminate,
+  ariaLabel,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  ariaLabel: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <Checkbox
+      ref={ref}
+      checked={checked}
+      aria-label={ariaLabel}
+      onChange={(e) => onChange(e.target.checked)}
+    />
   );
 }
 

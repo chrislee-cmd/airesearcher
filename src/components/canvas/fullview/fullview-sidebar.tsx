@@ -15,10 +15,19 @@
      pulse) · done→DONE(mint·success-text). CD 정적 comps 는 happy-path 만
      그리므로 idle/error 는 배지 없음 — error 스타일은 CD 확정 시 후속.
    - locked(준비중) 위젯 = 중립 배지 + dim, 라이브 위젯과 시각 구분.
+
+   Collapse (card #567): 사용자가 좌측 네비를 슬림 아이콘 레일(~52px)로 접을
+   수 있다. 접힘 상태에서도 위젯 전환성을 유지하기 위해 완전 숨김이 아니라
+   위젯별 파스텔 dot + LIVE/DONE/locked 배지(dot 형태)만 세로 나열하고, hover
+   시 native title tooltip 으로 라벨을 노출한다. 클릭 전환·숫자키 1-9(보드
+   레벨 핸들러)는 접힘/펼침 무관하게 동작. 상태는 localStorage 로 영속
+   (`fv-sidebar-collapsed`) — 접은 채 위젯 전환/재오픈해도 유지. footnote 는
+   접힘 시 숨김(공간 부족, 제약상 허용). 토글 핸들은 기존 폴드-레일 톤
+   (Memphis, ‹/› 글리프, border-ink · bg-paper-soft) 재사용.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
+import { type ReactNode, useSyncExternalStore } from 'react';
 import {
   resolveWidgetLabel,
   type WidgetContent,
@@ -31,6 +40,49 @@ import { useWidgetStateOf } from '../shell/widget-state-context';
 // 없다. §F6(B) 가 off-scale radius 를 raw rounded-[Npx] 로 두는 규약과 동일.
 // design-allow-hardcoded -- CD §F2 배지 radius 6 (승격 fv radius 스케일 8~16 밖, 매칭 토큰 없음)
 const NAV_BADGE_RADIUS = 'rounded-[6px]';
+
+// ── collapse 상태 store — localStorage 영속 + in-tab/ cross-tab notify.
+//    (widget-header-color 의 external store 패턴과 동일 — SSR 안전, useEffect
+//    set-state 없이 useSyncExternalStore 로 hydration-mismatch 방지.)
+const COLLAPSE_KEY = 'fv-sidebar-collapsed';
+const collapseListeners = new Set<() => void>();
+
+function subscribeCollapse(cb: () => void): () => void {
+  collapseListeners.add(cb);
+  if (typeof window !== 'undefined') window.addEventListener('storage', cb);
+  return () => {
+    collapseListeners.delete(cb);
+    if (typeof window !== 'undefined') window.removeEventListener('storage', cb);
+  };
+}
+
+function readCollapse(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function useSidebarCollapsed(): [boolean, () => void] {
+  const collapsed = useSyncExternalStore(
+    subscribeCollapse,
+    readCollapse,
+    () => false,
+  );
+  function toggle() {
+    if (typeof window === 'undefined') return;
+    const next = !readCollapse();
+    try {
+      window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+    } catch {
+      return;
+    }
+    collapseListeners.forEach((cb) => cb());
+  }
+  return [collapsed, toggle];
+}
 
 // 항목의 라이브 배지 — running→LIVE, done→DONE (§F2/§F7). 그 외(idle/error)
 // 는 배지 없음. LIVE 는 amore fill + pulse 도트, DONE 은 mint + success-text.
@@ -64,6 +116,30 @@ function NavBadge({ widgetKey }: { widgetKey: string }) {
   return null;
 }
 
+// 접힘 레일용 배지 — 펼침의 LIVE/DONE pill 을 코너 dot 으로 축약(라벨 텍스트가
+// 들어갈 공간이 없으므로). running→amore pulse dot, done→mint dot. idle/error
+// 는 null(펼침과 동일 소스). 상태 색은 배지 pill 과 동일 토큰 유지 → 시각 매핑.
+function NavRailBadgeDot({ widgetKey }: { widgetKey: string }) {
+  const state = useWidgetStateOf(widgetKey);
+  if (state.kind === 'running') {
+    return (
+      <span
+        aria-hidden
+        className="absolute right-1 top-1 h-[7px] w-[7px] animate-pulse rounded-full border border-white bg-amore"
+      />
+    );
+  }
+  if (state.kind === 'done') {
+    return (
+      <span
+        aria-hidden
+        className="absolute right-1 top-1 h-[7px] w-[7px] rounded-full border border-white bg-mint"
+      />
+    );
+  }
+  return null;
+}
+
 // state.kind 변경 시 key remount → .pop-in 재생 (reduced-motion 은 globals.css
 // 가 독립 존중). idle/error 는 NavBadge 가 null 이라 여기 도달 안 함.
 function badgeKey(state: WidgetStateInfo): string {
@@ -81,6 +157,39 @@ function LockedBadge() {
     >
       {t('locked')}
     </span>
+  );
+}
+
+// 접힘 레일용 locked dot — 중립 토큰(펼침 LockedBadge 와 동일 색 계열).
+function LockedRailDot() {
+  return (
+    <span
+      aria-hidden
+      className="absolute right-1 top-1 h-[7px] w-[7px] rounded-full border border-white bg-line-soft"
+    />
+  );
+}
+
+// 접기/펼치기 토글 핸들 — 기존 폴드-레일 톤(Memphis) 재사용. 사이드바 하단.
+function CollapseToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const t = useTranslations('Shell');
+  return (
+    // eslint-disable-next-line react/forbid-elements -- fold 핸들; Button primitive chrome 은 rail 토글에 부적합(§7.11). 탭③ 캘린더 레일·recruiting-fullview-body 와 동일 선례.
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={collapsed ? t('navExpand') : t('navCollapse')}
+      title={collapsed ? t('navExpand') : t('navCollapse')}
+      className="flex h-[34px] w-full shrink-0 items-center justify-center rounded-[var(--fv-radius-nav)] border-2 border-ink bg-paper-soft text-lg font-bold text-ink transition-colors hover:bg-paper"
+    >
+      <span aria-hidden>{collapsed ? '›' : '‹'}</span>
+    </button>
   );
 }
 
@@ -102,8 +211,59 @@ export function FullviewSidebar({
 }) {
   const t = useTranslations('Shell');
   const tRoot = useTranslations();
+  const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const locked =
     lockedKeys && lockedKeys.length > 0 ? new Set(lockedKeys) : null;
+
+  // ── 접힘: 슬림 아이콘 레일(~52px). 파스텔 dot + 배지 dot 만, hover=title.
+  if (collapsed) {
+    return (
+      <nav
+        aria-label={t('navLabel')}
+        className="flex w-[52px] shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r-2 border-ink bg-paper-soft px-1.5 py-3.5"
+      >
+        {widgets.map((w) => {
+          const active = w.key === activeKey;
+          const isLocked = locked?.has(w.key) ?? false;
+          const label = resolveWidgetLabel(tRoot, w.meta);
+          return (
+            // eslint-disable-next-line react/forbid-elements -- 좌측 nav 항목은 Button primitive 의 어떤 variant 와도 맞지 않는 rich 레이아웃(status dot + 배지 dot + Memphis 활성 박스)이라 native <button> 사용. 펼침 항목과 동일 선례.
+            <button
+              key={w.key}
+              type="button"
+              onClick={() => onSwitch(w.key)}
+              aria-current={active ? 'page' : undefined}
+              aria-label={label}
+              title={label}
+              className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--fv-radius-nav)] border-2 transition-colors ${
+                active
+                  ? 'border-ink bg-paper shadow-memphis-sm'
+                  : 'border-transparent hover:bg-paper'
+              } ${isLocked && !active ? 'opacity-60' : ''}`}
+            >
+              <span
+                className="h-3.5 w-3.5 shrink-0 rounded-full border-[1.5px] border-ink/30"
+                style={{
+                  background: `var(--widget-header-bg-${w.meta.accent})`,
+                }}
+                aria-hidden
+              />
+              {isLocked ? (
+                <LockedRailDot />
+              ) : (
+                <NavRailBadgeDot widgetKey={w.key} />
+              )}
+            </button>
+          );
+        })}
+        <div className="mt-auto w-full pt-1.5">
+          <CollapseToggle collapsed={collapsed} onToggle={toggleCollapsed} />
+        </div>
+      </nav>
+    );
+  }
+
+  // ── 펼침: 기존 240px 네비.
   return (
     <nav
       aria-label={t('navLabel')}
@@ -155,11 +315,14 @@ export function FullviewSidebar({
           </button>
         );
       })}
-      {footnote ? (
-        <div className="mt-auto rounded-[var(--fv-radius-field)] border border-line bg-paper px-3 py-2.5 text-sm leading-[1.5] text-mute-soft">
-          {footnote}
-        </div>
-      ) : null}
+      <div className="mt-auto flex flex-col gap-1.5 pt-1.5">
+        {footnote ? (
+          <div className="rounded-[var(--fv-radius-field)] border border-line bg-paper px-3 py-2.5 text-sm leading-[1.5] text-mute-soft">
+            {footnote}
+          </div>
+        ) : null}
+        <CollapseToggle collapsed={collapsed} onToggle={toggleCollapsed} />
+      </div>
     </nav>
   );
 }

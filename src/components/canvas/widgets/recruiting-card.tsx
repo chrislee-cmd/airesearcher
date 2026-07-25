@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { parsePartialJson } from 'ai';
 import type { WidgetContent } from '../widget-types';
@@ -10,7 +10,8 @@ import { useRequireAuth } from '@/components/auth-provider';
 import { useGenerationJobs } from '@/components/generation-job-provider';
 import { useWorkspace } from '@/components/workspace-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
-import { useActiveProject } from '@/components/active-project-provider';
+import { useProjectSelection } from '@/components/project-selection-provider';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { ControlBoardPanel } from '../shell/control-board-panel';
 import { WidgetPrimaryCta } from '../shell/widget-primary-cta';
 import { useWidgetState } from '../shell/widget-state-context';
@@ -29,6 +30,9 @@ import {
   type FormSummary,
 } from './recruiting/responses-spreadsheet';
 import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
+import { RecruitingJourneyShell } from '../fullview/recruiting/recruiting-journey-shell';
+import type { BridgeCandidate } from '../fullview/recruiting/recruiting-bridge';
+import type { ResponseJudgment } from '@/lib/recruiting/persona-fit';
 import {
   clearDraft,
   loadDraft,
@@ -59,7 +63,31 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
-  const { active: activeProject } = useActiveProject();
+  // 헤더 프로젝트 pill = **위젯 프로젝트 귀속** 축. probing/interpreter 와 동일
+  // 단위로 통일한다 — 프로젝트 엔티티는 공유(useInterviewV2Projects =
+  // interview_projects SSOT), 선택은 위젯별 독립(useProjectSelection('recruiting'),
+  // translate/probing 미러). 예전엔 useActiveProject(워크스페이스 단일 활성
+  // 프로젝트)를 써서 다른 위젯 피커와 단위가 어긋났다(round-2 feedback #3).
+  //
+  // ⚠️ 이 pill 축은 탭②·③ 의 sched form-anchor 프로젝트(형별 데이터 앵커,
+  // formId → resolveOrCreateProjectForForm)와는 **별개 축**이다. pill = 위젯이
+  // 어느 리서치 프로젝트에 귀속되는지(표시/그룹핑), form-anchor = 그 폼의 응답·
+  // 명단·일정이 어느 sched_projects row 에 저장되는지(내부 데이터). 둘을 엮지 않는다.
+  const { getSelection, setSelection } = useProjectSelection();
+  const recruitingProjectId = getSelection('recruiting');
+  const { projects: interviewProjects } = useInterviewV2Projects();
+  const projects = useMemo(
+    () => interviewProjects.map((p) => ({ id: p.id, name: p.name })),
+    [interviewProjects],
+  );
+  const activeProject = useMemo(
+    () => projects.find((p) => p.id === recruitingProjectId) ?? null,
+    [projects, recruitingProjectId],
+  );
+  const handleSelectProject = useCallback(
+    (projectId: string) => setSelection('recruiting', projectId),
+    [setSelection],
+  );
   // Published state emitted by the wizard. When true, the card shows the
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
@@ -105,6 +133,47 @@ function ExpandedBody() {
   // 상단 통합 새로고침 시 요약 탭의 판단도 재조회하도록 신호를 증가시킨다.
   const [judgeRefreshSignal, setJudgeRefreshSignal] = useState(0);
 
+  // ── 브리지(N1·N4) 선택 SSOT — 요약(판단테이블)·raw(스프레드시트) 두 뷰가
+  // 하나의 선택 집합(responseId)을 공유한다. 폼 전환 시 리셋(다른 폼 응답을
+  // 잘못 브리지하지 않도록). judgments 는 요약 탭에서 lift — 모달 서술자용.
+  const [bridgeSelected, setBridgeSelected] = useState<Set<string>>(new Set());
+  const [judgments, setJudgments] = useState<ResponseJudgment[]>([]);
+
+  const toggleBridgeRow = useCallback((id: string) => {
+    setBridgeSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const toggleBridgeAll = useCallback((ids: string[], checked: boolean) => {
+    setBridgeSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) ids.forEach((id) => next.add(id));
+      else ids.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, []);
+  const clearBridge = useCallback(() => setBridgeSelected(new Set()), []);
+
+  // 선택 응답자 서술자 — judgments 에서 selected 를 필터해 #번호·demographic·fit
+  // 를 빌드(응답 name 은 PII 블랭킹으로 클라에 없음 → 마스킹 값만 모달 표시).
+  const bridgeCandidates = useMemo<BridgeCandidate[]>(() => {
+    const byKey = new Map(
+      judgments.map((j, i) => [j.response_key, { j, num: i + 1 }]),
+    );
+    return Array.from(bridgeSelected).map((id) => {
+      const hit = byKey.get(id);
+      if (!hit) return { id, num: null, demo: null, fit: null };
+      const demo =
+        [hit.j.gender, hit.j.age_group, hit.j.region]
+          .filter(Boolean)
+          .join(' · ') || null;
+      return { id, num: hit.num, demo, fit: hit.j.fit };
+    });
+  }, [bridgeSelected, judgments]);
+
   const handleFormsChange = useCallback((list: FormSummary[]) => {
     setForms(list);
     setActiveFormId((prev) => prev ?? list[0]?.formId ?? null);
@@ -118,6 +187,9 @@ function ExpandedBody() {
   if (selectedFormId !== prevFormId) {
     setPrevFormId(selectedFormId);
     setActiveFilter(EMPTY_FILTER);
+    // 폼 전환 = 브리지 선택도 무효(다른 폼 응답을 잘못 브리지하지 않도록).
+    setBridgeSelected(new Set());
+    setJudgments([]);
   }
 
   // 응답 spreadsheet 의 refetch 함수를 여기로 등록한다. fullview 상단 통합
@@ -235,40 +307,80 @@ function ExpandedBody() {
           ResponsesSpreadsheet(rawTabContent 으로 마운트 유지 → 좌측 패널 공급
           + "전체 데이터" 탭). 상태/로직은 위 host 가 그대로 소유. */}
       {renderInSlot(
-        <RecruitingFullviewBody
+        <RecruitingJourneyShell
           projectName={activeProject?.name ?? null}
-          conditionsForPanel={conditionsForPanel}
-          criteriaPersistMissing={criteriaPersistMissing}
-          onCriteriaRepublish={handleCriteriaRepublish}
-          responseData={responseData}
-          responsesLoading={responsesLoading}
-          formsLoading={formsLoading}
-          hasForm={selectedForm != null}
-          filterableQuestions={filterableQuestions}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          forms={forms}
-          activeFormId={activeFormId}
-          onSelectFormId={setActiveFormId}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          judgeRefreshSignal={judgeRefreshSignal}
-          hasResponses={hasResponses}
-          onDownloadCsv={handleDownloadCsv}
+          projects={projects}
+          activeProjectId={activeProject?.id ?? null}
+          onSelectProject={handleSelectProject}
+          // P0(백엔드) 미머지 — 마스터링크 lazy 프로비저닝 · counts API ·
+          // 접근통일(Share orgId+members) 은 각 웨이브가 배선. P1 은 셸 구조만
+          // 완성하고 이 슬롯들은 graceful 숨김(스펙 §제약).
+          masterLink={null}
+          counts={undefined}
+          shareButton={undefined}
           onRefresh={handleRefresh}
-          rawTabContent={
-            <ResponsesSpreadsheet
-              selectedFormId={activeFormId}
+          // 탭②(명단)·탭③(일정) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔
+          // 활성 폼(탭③ 은 이 form 으로 scheduling 데이터 페치 = P0 project resolve).
+          formId={activeFormId}
+          responsesTab={
+            <RecruitingFullviewBody
+              conditionsForPanel={conditionsForPanel}
+              criteriaPersistMissing={criteriaPersistMissing}
+              onCriteriaRepublish={handleCriteriaRepublish}
+              responseData={responseData}
+              responsesLoading={responsesLoading}
+              formsLoading={formsLoading}
+              hasForm={selectedForm != null}
+              filterableQuestions={filterableQuestions}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              forms={forms}
+              activeFormId={activeFormId}
               onSelectFormId={setActiveFormId}
-              onFormsChange={handleFormsChange}
-              hideSelector
-              onSelectedFormChange={setSelectedForm}
-              onFormsLoadingChange={setFormsLoading}
-              onRegisterRefresh={registerResponsesRefresh}
-              filter={activeFilter}
-              onFilterableQuestionsChange={setFilterableQuestions}
-              onResponsesChange={setResponseData}
-              onResponsesLoadingChange={setResponsesLoading}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              judgeRefreshSignal={judgeRefreshSignal}
+              // CSV = 응답 내보내기 → 탭①(응답)의 요약/raw 토글 밴드 우측에 둔다
+              // (round-2 feedback #7: 셸 헤더에서 이관). 헤더는 전 탭 공용이라
+              // CSV(응답 전용)엔 부적합.
+              onDownloadCsv={handleDownloadCsv}
+              hasResponses={hasResponses}
+              // 브리지(N1·N4) — 선택 SSOT + judgments lift + 서술자.
+              bridgeSelected={bridgeSelected}
+              onToggleRow={toggleBridgeRow}
+              onToggleAll={toggleBridgeAll}
+              onJudgmentsChange={setJudgments}
+              bridgeCandidates={bridgeCandidates}
+              bridgeFormId={activeFormId}
+              // 초대 인제스트 타깃은 form_id 로 resolve(P0) — invitation 의
+              // project_id 는 부수적이라 null(구 CTA 와 동일한 보수적 처리; 캔버스
+              // activeProject.id 를 sched project_id 로 오용하지 않는다).
+              bridgeProjectId={null}
+              onClearSelection={clearBridge}
+              onBridgeSent={clearBridge}
+              rawTabContent={
+                <ResponsesSpreadsheet
+                  selectedFormId={activeFormId}
+                  onSelectFormId={setActiveFormId}
+                  onFormsChange={handleFormsChange}
+                  hideSelector
+                  onSelectedFormChange={setSelectedForm}
+                  onFormsLoadingChange={setFormsLoading}
+                  onRegisterRefresh={registerResponsesRefresh}
+                  filter={activeFilter}
+                  onFilterableQuestionsChange={setFilterableQuestions}
+                  onResponsesChange={setResponseData}
+                  onResponsesLoadingChange={setResponsesLoading}
+                  // raw 탭 선택 = 요약 탭과 동일 브리지 집합(controlled) → 구
+                  // 스프레드시트 CTA 통합.
+                  selected={bridgeSelected}
+                  onToggleRow={toggleBridgeRow}
+                  onToggleAll={toggleBridgeAll}
+                  // footer("총 N 응답 · ↗ Google Sheets") 는 raw 탭에서만 —
+                  // 요약 탭 아래로 새지 않도록(round-2 feedback #4).
+                  footerVisible={activeTab === 'raw'}
+                />
+              }
             />
           }
         />,
@@ -970,8 +1082,12 @@ export const recruitingCard: WidgetContent = {
     // 통합 툴바(💎10). probing·전사록·통역·UT 와 동일 프레임 상속.
     cardFrame: true,
     // 풀뷰 V2 opt-in — 전체보기를 공유 <FullviewShell>(프레임+사이드바+헤더
-    // 스캐폴드)로 렌더하고 본문은 CD state 08(RecruitingFullviewBody)로.
+    // 스캐폴드)로 렌더하고 본문은 3탭 저니 셸(RecruitingJourneyShell)로.
     fullviewV2: true,
+    // 저니 셸 = 2-row 헤더(액션+3탭) + ③ 내부 스크롤 → 1600×940(D2, recruiting
+    // 한정). 사이드바 하단 노트 = "풀뷰가 유일 진입"(CD N2).
+    fullviewTall: true,
+    fullviewFootnoteKey: 'Recruiting.journey.sidebarNote',
   },
   state: 'idle',
   ExpandedBody,

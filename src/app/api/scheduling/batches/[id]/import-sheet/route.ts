@@ -49,7 +49,7 @@ export async function POST(
   const admin = createAdminClient();
   const { data: batch } = await admin
     .from('sched_batches')
-    .select('id, owner_user_id')
+    .select('id, owner_user_id, project_id')
     .eq('id', batchId)
     .maybeSingle();
   if (!batch) {
@@ -58,6 +58,7 @@ export async function POST(
   if (!ownerAllowed(access, (batch as { owner_user_id?: string }).owner_user_id)) {
     return NextResponse.json({ error: 'batch_not_found' }, { status: 404 });
   }
+  const projectId = (batch as { project_id?: string | null }).project_id ?? null;
 
   let body: unknown;
   try {
@@ -106,10 +107,12 @@ export async function POST(
 
   let headers: string[];
   let rows: Record<string, string>[];
+  let spreadsheetTitle: string | null = null;
   try {
     const sheet = await readGoogleSheetValues(accessToken, spreadsheetId);
     headers = sheet.headers;
     rows = sheet.rows;
+    spreadsheetTitle = sheet.spreadsheetTitle;
   } catch {
     return NextResponse.json({ error: 'sheet_read_failed' }, { status: 502 });
   }
@@ -119,9 +122,30 @@ export async function POST(
     return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
   }
 
-  const result = await upsertCandidatesIntoBatch(admin, batchId, parsed.candidates);
+  const result = await upsertCandidatesIntoBatch(
+    admin,
+    batchId,
+    parsed.candidates,
+    'sheet',
+  );
   if ('error' in result) {
     return NextResponse.json({ error: result.error }, { status: 500 });
+  }
+
+  // Remember the linked sheet on the project so the 명단 "연동됨 카드"(R9) can
+  // show its title + last-sync and offer 재동기화/재연결. Best-effort: the
+  // source_sheet_* columns are additive, so a preview DB that lacks them (or any
+  // write error) simply leaves the card in its empty url state — never fails the
+  // import that already succeeded. Store the canonical edit URL so re-sync reuses it.
+  if (projectId) {
+    await admin
+      .from('sched_projects')
+      .update({
+        source_sheet_url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+        source_sheet_title: spreadsheetTitle,
+        source_sheet_synced_at: new Date().toISOString(),
+      })
+      .eq('id', projectId);
   }
 
   return NextResponse.json(
