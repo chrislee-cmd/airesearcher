@@ -192,7 +192,7 @@ export function RecruitingFullviewBody({
             <div
               role="tablist"
               aria-label={t('tablistLabel')}
-              className="ml-auto flex items-center gap-1.5"
+              className="flex shrink-0 items-center gap-1.5"
             >
               {(
                 [
