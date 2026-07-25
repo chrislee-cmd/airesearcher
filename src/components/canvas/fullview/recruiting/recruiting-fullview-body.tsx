@@ -9,8 +9,11 @@
    spreadsheet 프레젠테이션은 supersede — 편집·재사용 금지). 로직/데이터
    (host state · buildDistributionTable · judgments fetch · CSV export)만 재사용.
 
-   공유 FullviewShell 의 본문 slot 에 portal 되며, 헤더 액션(프로젝트 pill ·
-   CSV · 새로고침)은 §F3 header slot(renderInHeaderStart/End)으로 주입한다.
+   저니 셸(RecruitingJourneyShell)의 탭① 본문으로 re-home 됨 — 헤더 액션
+   (프로젝트 pill · CSV · refresh · 마스터링크 · Share · 3탭 내비)은 저니
+   셸이 소유해 FullviewHeaderSlot 로 publish 한다(데드포털 fix: 옛
+   renderInHeaderStart/End 는 셸이 포털 타깃을 세팅 안 해 렌더 안 됐음 —
+   CONTEXTRECRUITINGFULLVIEW A1). 이 본문은 응답 분석만 렌더한다.
    본문 = 좌 400px (criteria + distribution) + 우 flex-1 (폼 셀렉터 + 요약/
    raw 탭 + fit 판단 테이블). raw 탭 = 데이터 SSOT(ResponsesSpreadsheet) 를
    그대로 마운트해 좌측 패널에 응답을 공급 + "전체 데이터" 뷰로 노출.
@@ -22,11 +25,7 @@ import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
 import { Banner } from '../../shell/banner';
 import { Button } from '@/components/ui/button';
-import {
-  FullviewProjectPill,
-  FullviewStatusChip,
-} from '../fullview-header';
-import { useFullview } from '../../shell/fullview-shell-context';
+import { FullviewStatusChip } from '../fullview-header';
 import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage';
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import {
@@ -42,7 +41,6 @@ import { RecruitingDistribution } from './recruiting-distribution';
 import { RecruitingJudgedTable } from './recruiting-judged-table';
 
 export function RecruitingFullviewBody({
-  projectName,
   conditionsForPanel,
   criteriaPersistMissing,
   onCriteriaRepublish,
@@ -59,12 +57,8 @@ export function RecruitingFullviewBody({
   activeTab,
   onTabChange,
   judgeRefreshSignal,
-  hasResponses,
-  onDownloadCsv,
-  onRefresh,
   rawTabContent,
 }: {
-  projectName: string | null;
   conditionsForPanel: EditableBrief | null;
   criteriaPersistMissing: boolean;
   onCriteriaRepublish: () => void;
@@ -81,45 +75,13 @@ export function RecruitingFullviewBody({
   activeTab: 'summary' | 'raw';
   onTabChange: (tab: 'summary' | 'raw') => void;
   judgeRefreshSignal: number;
-  hasResponses: boolean;
-  onDownloadCsv: () => void;
-  onRefresh: () => void;
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
 }) {
   const t = useTranslations('Recruiting.fv');
-  const { renderInHeaderStart, renderInHeaderEnd } = useFullview('recruiting');
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
-      {/* §F3 헤더 slot 주입 — 좌: 프로젝트 pill / 우: CSV · 새로고침 */}
-      {projectName &&
-        renderInHeaderStart(<FullviewProjectPill name={projectName} />)}
-      {renderInHeaderEnd(
-        <div className="flex items-center gap-2.5">
-          {/* CD state 08 헤더 액션 — pill chrome(radius-pill·memphis-sm). Button
-              primitive 의 radius/variant 와 불일치(§7.11)라 sanctioned native. */}
-          {/* eslint-disable-next-line react/forbid-elements -- CD §F3 CSV 는 radius-pill·border-ink·memphis-sm 전용 chrome 으로 Button primitive 와 불일치. */}
-          <button
-            type="button"
-            onClick={onDownloadCsv}
-            disabled={!hasResponses}
-            title={t('csvTitle')}
-            className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1.5 text-sm font-bold text-ink shadow-memphis-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            ↓ CSV
-          </button>
-          {/* eslint-disable-next-line react/forbid-elements -- CD §F3 Refresh 는 radius-pill·border-ink/16·무그림자 mute 전용 chrome 으로 Button primitive 와 불일치. */}
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink/16 bg-paper px-3 py-1.5 text-sm font-semibold text-mute-soft hover:text-ink"
-          >
-            ↻ {t('refresh')}
-          </button>
-        </div>,
-      )}
-
       {criteriaPersistMissing && (
         <Banner tone="warning" divider="none">
           {t('criteriaMissingBanner')}

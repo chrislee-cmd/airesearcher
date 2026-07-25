@@ -17,8 +17,9 @@ type Props = {
   email: string | null;
   credits: number | null;
   isSuperAdmin?: boolean;
-  // Org members (non-super-admin) get a single entry point to the shared
-  // recruiting-scheduling workspace so an invitee can find it after accepting.
+  // 예약(현재 미사용): 옛 org-member 스케줄링 진입점 게이트였으나 스케줄링이
+  // recruiting 풀뷰로 re-home 되며 계정메뉴 엔트리 제거(§5-D4). 호출부 계약
+  // 보존을 위해 prop 은 남겨둔다.
   isOrgMember?: boolean;
 };
 
@@ -35,7 +36,7 @@ const localeOptions = [
 // PR-D7: 사이드바 → 헤더 탭 전환 후, 우측 끝의 account trigger. 기존
 // SidebarAccount 의 popover 동작을 가로 헤더용으로 정렬 — 트리거 = 아바타
 // + 이름 + 크레딧 + gear 한 줄, dropdown 은 트리거 아래로 펼침.
-export function TopbarAccount({ email, credits, isSuperAdmin, isOrgMember }: Props) {
+export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
   const t = useTranslations('Sidebar');
   const tCommon = useTranslations('Common');
   const tAuth = useTranslations('Auth');
@@ -379,33 +380,13 @@ export function TopbarAccount({ email, credits, isSuperAdmin, isOrgMember }: Pro
               >
                 {t('adminRecruitingInvitations')}
               </PopoverLink>
-              <PopoverLink
-                href="/admin/recruiting-scheduling"
-                onClick={() => {
-                  track('admin_recruiting_scheduling_open_click');
-                  setOpen(false);
-                }}
-              >
-                {t('adminRecruitingScheduling')}
-              </PopoverLink>
             </>
           )}
-          {/* Org members who aren't super-admins get just the shared scheduling
-              entry (so an invitee can find it after accepting). */}
-          {!isSuperAdmin && isOrgMember && (
-            <>
-              <div className="my-1 h-px bg-line-soft" />
-              <PopoverLink
-                href="/admin/recruiting-scheduling"
-                onClick={() => {
-                  track('admin_recruiting_scheduling_open_click');
-                  setOpen(false);
-                }}
-              >
-                {t('adminRecruitingScheduling')}
-              </PopoverLink>
-            </>
-          )}
+          {/* 스케줄링 진입 제거(recruiting-journey §5-D4): 독립
+              /admin/recruiting-scheduling 셸은 폐기되고 recruiting 풀뷰 3탭
+              (② 명단·③ 일정)으로 re-home. 계정메뉴 엔트리(슈퍼어드민·org
+              멤버)를 제거한다. /admin/recruiting-invitations(승인 처리대)는
+              D1-A 로 존치. */}
           <div className="my-1 h-px bg-line-soft" />
           <Button
             variant="destructive-link"

@@ -96,6 +96,14 @@ export type WidgetContent = {
     // 위젯별 body 전환은 각 위젯 후속 PR 이 이 플래그를 켜며 수행 (셸 PR 은
     // 플래그 0건 — 회귀 0).
     fullviewV2?: boolean;
+    // 옵션: 풀뷰 V2 프레임을 recruiting 저니 셸용 1600×940(D2)로 키운다.
+    // 미지정(기본)이면 공유 wide 프레임(1600×900) — 다른 5위젯 불변. 셸에
+    // per-widget 치수 옵션만 추가하는 격리 방식(GAP-AUDIT §1-9).
+    fullviewTall?: boolean;
+    // 옵션: 풀뷰 V2 사이드바 하단 안내 카드(footnote) i18n 키. 지정 시
+    // canvas-board 가 t(key) 를 FullviewShell.footnote 로 주입. recruiting
+    // 저니 = "풀뷰가 유일 진입" 노트(CD N2).
+    fullviewFootnoteKey?: string;
   };
   state: WidgetState;
   ExpandedBody: FC;

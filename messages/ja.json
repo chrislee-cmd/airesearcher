@@ -2846,6 +2846,20 @@
     "offlineNote": "1台のマイクで部屋全体を収録 · 話者の区別なし"
   },
   "Recruiting": {
+    "journey": {
+      "tabResponses": "① 回答",
+      "tabCandidates": "② 名簿",
+      "tabSchedule": "③ 日程",
+      "projectNone": "プロジェクト",
+      "projectMenuLabel": "プロジェクトを選択",
+      "masterLinkCopy": "コピー",
+      "masterLinkCopied": "コピーしました",
+      "sidebarNote": "フルビューがリクルーティング導線の唯一の入口です。",
+      "candidatesEmptyTitle": "まだ候補者がいません",
+      "candidatesEmptyDesc": "① 回答で条件に合う回答者を選んで送るか、CSV・Google スプレッドシートで候補者を追加してください。",
+      "scheduleEmptyTitle": "まだ日程がありません",
+      "scheduleEmptyDesc": "名簿で候補者を確定すると、ここで面談枠を設定して招待を送れます。"
+    },
     "fv": {
       "criteriaTitle": "参加者条件",
       "criteriaCount": "{count}件",

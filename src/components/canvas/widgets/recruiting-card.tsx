@@ -29,6 +29,7 @@ import {
   type FormSummary,
 } from './recruiting/responses-spreadsheet';
 import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
+import { RecruitingJourneyShell } from '../fullview/recruiting/recruiting-journey-shell';
 import {
   clearDraft,
   loadDraft,
@@ -59,7 +60,16 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
-  const { active: activeProject } = useActiveProject();
+  const { active: activeProject, projects, setActive } = useActiveProject();
+  // 헤더 프로젝트 pill(인터랙티브) — 셸 onSelect 모드 배선(BUILD-SPEC §5.4).
+  // projects.length<=1 이면 FullviewProjectPill 이 display-only 로 폴백.
+  const handleSelectProject = useCallback(
+    (projectId: string) => {
+      const next = projects.find((p) => p.id === projectId);
+      if (next) setActive(next);
+    },
+    [projects, setActive],
+  );
   // Published state emitted by the wizard. When true, the card shows the
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
   // opens the responses fullview modal — mirroring 전사록/데스크/인터뷰.
@@ -235,40 +245,53 @@ function ExpandedBody() {
           ResponsesSpreadsheet(rawTabContent 으로 마운트 유지 → 좌측 패널 공급
           + "전체 데이터" 탭). 상태/로직은 위 host 가 그대로 소유. */}
       {renderInSlot(
-        <RecruitingFullviewBody
+        <RecruitingJourneyShell
           projectName={activeProject?.name ?? null}
-          conditionsForPanel={conditionsForPanel}
-          criteriaPersistMissing={criteriaPersistMissing}
-          onCriteriaRepublish={handleCriteriaRepublish}
-          responseData={responseData}
-          responsesLoading={responsesLoading}
-          formsLoading={formsLoading}
-          hasForm={selectedForm != null}
-          filterableQuestions={filterableQuestions}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          forms={forms}
-          activeFormId={activeFormId}
-          onSelectFormId={setActiveFormId}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          judgeRefreshSignal={judgeRefreshSignal}
-          hasResponses={hasResponses}
-          onDownloadCsv={handleDownloadCsv}
+          projects={projects}
+          activeProjectId={activeProject?.id ?? null}
+          onSelectProject={handleSelectProject}
+          // P0(백엔드) 미머지 — 마스터링크 lazy 프로비저닝 · counts API ·
+          // 접근통일(Share orgId+members) 은 각 웨이브가 배선. P1 은 셸 구조만
+          // 완성하고 이 슬롯들은 graceful 숨김(스펙 §제약).
+          masterLink={null}
+          counts={undefined}
+          shareButton={undefined}
           onRefresh={handleRefresh}
-          rawTabContent={
-            <ResponsesSpreadsheet
-              selectedFormId={activeFormId}
+          onDownloadCsv={handleDownloadCsv}
+          hasResponses={hasResponses}
+          responsesTab={
+            <RecruitingFullviewBody
+              conditionsForPanel={conditionsForPanel}
+              criteriaPersistMissing={criteriaPersistMissing}
+              onCriteriaRepublish={handleCriteriaRepublish}
+              responseData={responseData}
+              responsesLoading={responsesLoading}
+              formsLoading={formsLoading}
+              hasForm={selectedForm != null}
+              filterableQuestions={filterableQuestions}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              forms={forms}
+              activeFormId={activeFormId}
               onSelectFormId={setActiveFormId}
-              onFormsChange={handleFormsChange}
-              hideSelector
-              onSelectedFormChange={setSelectedForm}
-              onFormsLoadingChange={setFormsLoading}
-              onRegisterRefresh={registerResponsesRefresh}
-              filter={activeFilter}
-              onFilterableQuestionsChange={setFilterableQuestions}
-              onResponsesChange={setResponseData}
-              onResponsesLoadingChange={setResponsesLoading}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              judgeRefreshSignal={judgeRefreshSignal}
+              rawTabContent={
+                <ResponsesSpreadsheet
+                  selectedFormId={activeFormId}
+                  onSelectFormId={setActiveFormId}
+                  onFormsChange={handleFormsChange}
+                  hideSelector
+                  onSelectedFormChange={setSelectedForm}
+                  onFormsLoadingChange={setFormsLoading}
+                  onRegisterRefresh={registerResponsesRefresh}
+                  filter={activeFilter}
+                  onFilterableQuestionsChange={setFilterableQuestions}
+                  onResponsesChange={setResponseData}
+                  onResponsesLoadingChange={setResponsesLoading}
+                />
+              }
             />
           }
         />,
@@ -970,8 +993,12 @@ export const recruitingCard: WidgetContent = {
     // 통합 툴바(💎10). probing·전사록·통역·UT 와 동일 프레임 상속.
     cardFrame: true,
     // 풀뷰 V2 opt-in — 전체보기를 공유 <FullviewShell>(프레임+사이드바+헤더
-    // 스캐폴드)로 렌더하고 본문은 CD state 08(RecruitingFullviewBody)로.
+    // 스캐폴드)로 렌더하고 본문은 3탭 저니 셸(RecruitingJourneyShell)로.
     fullviewV2: true,
+    // 저니 셸 = 2-row 헤더(액션+3탭) + ③ 내부 스크롤 → 1600×940(D2, recruiting
+    // 한정). 사이드바 하단 노트 = "풀뷰가 유일 진입"(CD N2).
+    fullviewTall: true,
+    fullviewFootnoteKey: 'Recruiting.journey.sidebarNote',
   },
   state: 'idle',
   ExpandedBody,
