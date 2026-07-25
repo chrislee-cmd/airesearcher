@@ -2846,6 +2846,20 @@
     "offlineNote": "ไมค์เครื่องเดียวเก็บเสียงทั้งห้อง · ไม่แยกผู้พูด"
   },
   "Recruiting": {
+    "journey": {
+      "tabResponses": "① คำตอบ",
+      "tabCandidates": "② รายชื่อ",
+      "tabSchedule": "③ ตารางเวลา",
+      "projectNone": "โปรเจกต์",
+      "projectMenuLabel": "เลือกโปรเจกต์",
+      "masterLinkCopy": "คัดลอก",
+      "masterLinkCopied": "คัดลอกแล้ว",
+      "sidebarNote": "ฟูลวิวคือทางเข้าเดียวของเส้นทางการรีครูท",
+      "candidatesEmptyTitle": "ยังไม่มีผู้สมัคร",
+      "candidatesEmptyDesc": "เลือกผู้ตอบที่ตรงเงื่อนไขใน ① คำตอบ เพื่อส่งมาที่นี่ หรือเพิ่มผู้สมัครผ่าน CSV · Google Sheets",
+      "scheduleEmptyTitle": "ยังไม่มีตารางเวลา",
+      "scheduleEmptyDesc": "ยืนยันผู้สมัครจากรายชื่อเพื่อจองช่วงเวลาสัมภาษณ์และส่งคำเชิญที่นี่"
+    },
     "fv": {
       "criteriaTitle": "เกณฑ์ผู้เข้าร่วม",
       "criteriaCount": "{count}",

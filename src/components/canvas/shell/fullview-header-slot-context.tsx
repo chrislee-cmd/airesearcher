@@ -38,6 +38,10 @@ export type FullviewHeaderSlot = {
   statusChip?: ReactNode;
   // Right-aligned actions (e.g. End-session). Rendered left of the close ✕.
   actions?: ReactNode;
+  // Optional second header row rendered BELOW row-1, inside the same header
+  // band. Recruiting's journey shell publishes its 3-tab folder nav here
+  // (CD row-2). Other widgets omit it → single-row header (backward compat).
+  tabs?: ReactNode;
 };
 
 const EMPTY: FullviewHeaderSlot = {};

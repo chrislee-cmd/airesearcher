@@ -211,7 +211,7 @@ function FullviewHeaderConnected({
   tone?: string;
   onClose?: () => void;
 }) {
-  const { projectPill, statusChip, actions } = useFullviewHeaderSlot();
+  const { projectPill, statusChip, actions, tabs } = useFullviewHeaderSlot();
   return (
     <FullviewHeader
       title={title}
@@ -220,6 +220,7 @@ function FullviewHeaderConnected({
       projectPill={projectPill}
       statusChip={statusChip}
       actions={actions}
+      tabs={tabs}
     />
   );
 }
@@ -1293,6 +1294,12 @@ export function CanvasBoard({
         activeKey={currentWidgetKey}
         onSwitch={switchFullview}
         lockedKeys={lockedKeys}
+        tall={currentWidget.meta.fullviewTall}
+        footnote={
+          currentWidget.meta.fullviewFootnoteKey
+            ? tRoot(currentWidget.meta.fullviewFootnoteKey)
+            : undefined
+        }
         header={
           <FullviewHeaderConnected
             title={resolveWidgetLabel(tRoot, currentWidget.meta)}

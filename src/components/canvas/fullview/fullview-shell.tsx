@@ -33,10 +33,14 @@ export function FullviewShell({
   lockedKeys,
   header,
   footnote,
+  tall,
   children,
 }: {
   open: boolean;
   onClose: () => void;
+  // recruiting 저니 전용 세로 확장 프레임(1600×940, D2). 미지정 시 공유
+  // wide(1600×900) — 다른 위젯 불변.
+  tall?: boolean;
   widgets: WidgetContent[];
   // 현재 풀뷰가 보여주는 위젯 key (사이드바 활성 표시).
   activeKey: string | null;
@@ -52,7 +56,7 @@ export function FullviewShell({
   children: ReactNode;
 }) {
   return (
-    <Modal open={open} onClose={onClose} size="wide" bare>
+    <Modal open={open} onClose={onClose} size={tall ? 'wide-tall' : 'wide'} bare>
       {/* §F1 프레임 — 유일한 비주얼 박스 (bare Modal 위) */}
       <div className="flex h-full w-full overflow-hidden rounded-sm border-[3px] border-ink bg-surface-canvas shadow-[var(--fv-frame-shadow)]">
         <FullviewSidebar

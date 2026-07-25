@@ -34,6 +34,7 @@ export function FullviewHeader({
   projectPill,
   statusChip,
   actions,
+  tabs,
   onClose,
   closeLabel,
 }: {
@@ -46,6 +47,9 @@ export function FullviewHeader({
   projectPill?: ReactNode;
   statusChip?: ReactNode;
   actions?: ReactNode;
+  // 옵션 row-2 — 밴드 안쪽 아래줄. recruiting 저니 셸이 3탭 폴더 내비를
+  // 여기로 주입(CD row-2). 미지정 위젯은 단일 행(하위호환).
+  tabs?: ReactNode;
   // 닫기 ✕ (모달 닫기). 미지정 시 ✕ 미렌더 (풀페이지 chrome 등).
   onClose?: () => void;
   closeLabel?: string;
@@ -53,42 +57,50 @@ export function FullviewHeader({
   const tCommon = useTranslations('Common');
   const resolvedCloseLabel = closeLabel ?? tCommon('close');
   return (
+    // 밴드 = border-b-2 ink + per-widget 파스텔 톤. row-1(액션) 은 항상,
+    // row-2(탭) 는 tabs 주입 시에만. 탭이 밴드 하단 border 를 -2px 로 덮어
+    // 폴더 오버랩(active=surface-canvas)을 만든다(CD).
     <header
-      className="flex shrink-0 items-center gap-[11px] border-b-2 border-ink px-6 py-[13px]"
+      className="shrink-0 border-b-2 border-ink"
       style={tone ? { background: tone } : undefined}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-[14px]">
-        <div className="min-w-0">
-          <h2 className="truncate text-ink" style={FV_TITLE_STYLE}>
-            {title}
-          </h2>
+      <div className="flex items-center gap-[11px] px-6 py-[13px]">
+        <div className="flex min-w-0 flex-1 items-center gap-[14px]">
+          <div className="min-w-0">
+            <h2 className="truncate text-ink" style={FV_TITLE_STYLE}>
+              {title}
+            </h2>
+          </div>
+          {projectPill}
         </div>
-        {projectPill}
-      </div>
-      {statusChip}
-      {actions}
-      {onClose ? (
-        // eslint-disable-next-line react/forbid-elements -- CD §F3 close ✕ 는 32px·fv-radius-close(9)·memphis-sm 스퀘어 chrome 으로 IconButton 의 고정 radius(rounded-xs/full) variant 와 맞지 않음(§7.11: className 으로 variant radius override 불가). 레거시 셸의 닫기 처리와 동일 선례.
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={resolvedCloseLabel}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border-[1.5px] border-ink bg-paper text-xl font-bold text-ink shadow-memphis-sm"
-        >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
+        {statusChip}
+        {actions}
+        {onClose ? (
+          // eslint-disable-next-line react/forbid-elements -- CD §F3 close ✕ 는 32px·fv-radius-close(9)·memphis-sm 스퀘어 chrome 으로 IconButton 의 고정 radius(rounded-xs/full) variant 와 맞지 않음(§7.11: className 으로 variant radius override 불가). 레거시 셸의 닫기 처리와 동일 선례.
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={resolvedCloseLabel}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border-[1.5px] border-ink bg-paper text-xl font-bold text-ink shadow-memphis-sm"
           >
-            <path
-              d="M4 4l8 8M12 4l-8 8"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 4l8 8M12 4l-8 8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        ) : null}
+      </div>
+      {tabs ? (
+        <div className="flex items-center gap-1 px-6">{tabs}</div>
       ) : null}
     </header>
   );

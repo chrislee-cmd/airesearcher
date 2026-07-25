@@ -2753,6 +2753,20 @@
     "offlineNote": "One device mic captures the whole room · no speaker separation"
   },
   "Recruiting": {
+    "journey": {
+      "tabResponses": "① Responses",
+      "tabCandidates": "② Candidates",
+      "tabSchedule": "③ Schedule",
+      "projectNone": "Project",
+      "projectMenuLabel": "Select project",
+      "masterLinkCopy": "Copy",
+      "masterLinkCopied": "Copied",
+      "sidebarNote": "The fullview is the only entry into the recruiting journey.",
+      "candidatesEmptyTitle": "No candidates yet",
+      "candidatesEmptyDesc": "Select matching respondents in ① Responses to send them here, or add candidates via CSV · Google Sheets.",
+      "scheduleEmptyTitle": "No schedule yet",
+      "scheduleEmptyDesc": "Confirm candidates from the list to book interview slots and send invitations here."
+    },
     "fv": {
       "criteriaTitle": "Participant criteria",
       "criteriaCount": "{count}",
