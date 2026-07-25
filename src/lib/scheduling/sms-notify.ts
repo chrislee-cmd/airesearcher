@@ -9,12 +9,18 @@
 //   — 모두 phone 보유자만(무전화 skip), 숫자만 정규화.
 //
 // 문자 템플릿(알림형): 본문은 미포함(개인정보·SMS 단가). 안내 + 마스터링크만.
-//   [{프로젝트 제목}] 새 {공지|메시지}가 도착했습니다. 확인: {origin}/schedule/{share_token}
+// 수신자 대면 카피이므로 i18n(messages/*.json 의 SchedulingSms 네임스페이스)에 두고
+// 서버에서 로드한다 — 후보의 locale 은 알 수 없어 ko 기본(참여자 locale 을 알게
+// 되면 그 값으로 확장 가능).
 //
 // 전화번호가 클라로 새는 경로 0 — 이 산출/발송은 전 과정 서버(service-role).
 
+import { getTranslations } from 'next-intl/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendSms, type SolapiMessage } from '@/lib/sms/solapi';
+
+// SMS 카피 로드 locale. 수신자(후보)의 locale 은 미상 → ko 기본.
+const SMS_LOCALE = 'ko';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -82,10 +88,25 @@ function toPhoneList(rows: { phone: string | null }[]): string[] {
   return phones;
 }
 
-function buildText(project: ResolvedProject, announcement: boolean, origin: string): string {
-  const kind = announcement ? '공지' : '메시지';
-  const title = project.title || '일정';
-  return `[${title}] 새 ${kind}가 도착했습니다.\n확인: ${origin}/schedule/${project.share_token}`;
+// 알림형 본문 + LMS 제목을 i18n(SchedulingSms)에서 로드해 구성. announcement 여부로
+// 공지/메시지 문구가 갈린다.
+async function buildSmsCopy(
+  project: ResolvedProject,
+  announcement: boolean,
+  origin: string,
+): Promise<{ text: string; subject: string }> {
+  const t = await getTranslations({
+    locale: SMS_LOCALE,
+    namespace: 'SchedulingSms',
+  });
+  const title = project.title || t('defaultTitle');
+  const url = `${origin}/schedule/${project.share_token}`;
+  const text = t(announcement ? 'bodyAnnouncement' : 'bodyMessage', {
+    title,
+    url,
+  });
+  const subject = t('subject', { title });
+  return { text, subject };
 }
 
 /**
@@ -148,8 +169,11 @@ export async function notifyBySms(
       return { status: 'skipped', reason: 'limit_exceeded', targetCount: phones.length };
     }
 
-    const text = buildText(project, params.announcementWord, params.origin);
-    const subject = `[${project.title || '일정'}] 알림`;
+    const { text, subject } = await buildSmsCopy(
+      project,
+      params.announcementWord,
+      params.origin,
+    );
     const messages: SolapiMessage[] = phones.map((to) => ({ to, text }));
     const { smsSent, smsFailed } = await sendSms(messages, subject);
     console.log(

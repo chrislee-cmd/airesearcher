@@ -3068,6 +3068,12 @@
     "notFoundBody": "このアカウント（{email}）宛ての招待が見つかりませんでした。招待が送られたアドレスでサインインしているか確認してください。",
     "switchAccount": "別のアカウントでサインイン"
   },
+  "SchedulingSms": {
+    "bodyAnnouncement": "[{title}] 新しいお知らせが届きました。\n確認: {url}",
+    "bodyMessage": "[{title}] 新しいメッセージが届きました。\n確認: {url}",
+    "subject": "[{title}] 通知",
+    "defaultTitle": "スケジュール"
+  },
   "RecruitingScheduling": {
     "calClickHint": "セルをクリックして30分の枠を作成",
     "chatKindLabel": "メッセージの種類",
