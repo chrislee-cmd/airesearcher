@@ -119,7 +119,12 @@ export async function POST(
     return NextResponse.json({ error: 'no_candidates' }, { status: 400 });
   }
 
-  const result = await upsertCandidatesIntoBatch(admin, batchId, parsed.candidates);
+  const result = await upsertCandidatesIntoBatch(
+    admin,
+    batchId,
+    parsed.candidates,
+    'sheet',
+  );
   if ('error' in result) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
