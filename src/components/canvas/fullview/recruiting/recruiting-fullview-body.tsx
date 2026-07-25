@@ -105,7 +105,11 @@ export function RecruitingFullviewBody({
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
+    // min-w-0 = 폭 봉쇄 체인(568). 본문 루트가 판단테이블/스프레드시트의
+    // intrinsic 폭으로 팽창하지 않도록 flex 자식 min-width:auto(min-content)를
+    // 0 으로 눌러, 우측 컬럼이 가시 폭에 고정되고 브리지 CTA 가 클립 밖으로
+    // 밀려나지 않게 한다. 가로 스크롤은 테이블 wrapper 한 겹에만 남는다.
+    <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas">
       {criteriaPersistMissing && (
         <Banner tone="warning" divider="none">
           {t('criteriaMissingBanner')}
@@ -120,7 +124,7 @@ export function RecruitingFullviewBody({
         </Banner>
       )}
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1">
         {/* 좌측 = 참여자 조건(위) + 분포 통계(아래). border-r-2 ink.
             가로 collapse 가능 (탭③ 캘린더 레일 패턴) — 접히면 우측 콘텐츠 전폭. */}
         {!panelCollapsed && (

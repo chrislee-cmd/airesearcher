@@ -224,8 +224,15 @@ export function RecruitingJourneyShell({
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
       {/* 탭① 응답 — 상시 마운트(R3: ResponsesSpreadsheet 데이터 파이프 SSOT
-          가 이 본문 안에 있으므로 탭 전환 시에도 hidden 으로 유지). */}
-      <div className={activeTab === 'responses' ? 'flex min-h-0 flex-1' : 'hidden'}>
+          가 이 본문 안에 있으므로 탭 전환 시에도 hidden 으로 유지). min-w-0 = 폭 봉쇄
+          체인의 최상단 링크(568) — 본문이 판단테이블/스프레드시트의 intrinsic
+          폭으로 팽창해 셸 슬롯(overflow-hidden)을 뚫고 브리지 CTA 를 클립
+          밖으로 밀어내던 회귀 차단. 가로 스크롤은 테이블 wrapper 한 겹에만. */}
+      <div
+        className={
+          activeTab === 'responses' ? 'flex min-h-0 min-w-0 flex-1' : 'hidden'
+        }
+      >
         {responsesTab}
       </div>
       {/* 탭②·③ — 각 탭은 자체 내부 스크롤 소유. 탭②(명단)·탭③(일정) 모두
