@@ -3070,6 +3070,12 @@
     "notFoundBody": "このアカウント（{email}）宛ての招待が見つかりませんでした。招待が送られたアドレスでサインインしているか確認してください。",
     "switchAccount": "別のアカウントでサインイン"
   },
+  "SchedulingSms": {
+    "bodyAnnouncement": "[{title}] 新しいお知らせが届きました。\n確認: {url}",
+    "bodyMessage": "[{title}] 新しいメッセージが届きました。\n確認: {url}",
+    "subject": "[{title}] 通知",
+    "defaultTitle": "スケジュール"
+  },
   "RecruitingScheduling": {
     "calClickHint": "セルをクリックして30分の枠を作成",
     "chatKindLabel": "メッセージの種類",
@@ -3212,6 +3218,9 @@
     "chatSend": "送信",
     "chatSending": "送信中…",
     "chatSendFailed": "メッセージの送信に失敗しました。",
+    "chatSmsNotify": "📱 SMS通知（{count}名）",
+    "chatSmsNotifyNoCount": "📱 SMS通知",
+    "chatSmsLimit": "SMS通知の対象が多すぎます（{count}名）。メッセージは保存されましたが、SMSは送信されていません。",
     "chatMsgEdit": "編集",
     "chatMsgDelete": "削除",
     "chatMsgSave": "保存",

@@ -2977,6 +2977,12 @@
     "notFoundBody": "이 계정({email})으로 도착한 초대를 찾지 못했습니다. 초대받은 주소로 로그인했는지 확인하세요.",
     "switchAccount": "다른 계정으로 로그인"
   },
+  "SchedulingSms": {
+    "bodyAnnouncement": "[{title}] 새 공지가 도착했습니다.\n확인: {url}",
+    "bodyMessage": "[{title}] 새 메시지가 도착했습니다.\n확인: {url}",
+    "subject": "[{title}] 알림",
+    "defaultTitle": "일정"
+  },
   "RecruitingScheduling": {
     "calClickHint": "셀을 클릭해 30분 슬롯을 만드세요",
     "chatKindLabel": "메시지 유형",
@@ -3119,6 +3125,9 @@
     "chatSend": "보내기",
     "chatSending": "보내는 중…",
     "chatSendFailed": "메시지 전송에 실패했습니다.",
+    "chatSmsNotify": "📱 문자 알림 ({count}명)",
+    "chatSmsNotifyNoCount": "📱 문자 알림",
+    "chatSmsLimit": "문자 알림 대상이 너무 많습니다({count}명). 메시지는 저장됐지만 문자는 발송되지 않았습니다.",
     "chatMsgEdit": "수정",
     "chatMsgDelete": "삭제",
     "chatMsgSave": "저장",

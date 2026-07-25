@@ -3070,6 +3070,12 @@
     "notFoundBody": "เราไม่พบคำเชิญสำหรับบัญชีนี้ ({email}) โปรดตรวจสอบว่าคุณเข้าสู่ระบบด้วยอีเมลที่ได้รับคำเชิญ",
     "switchAccount": "เข้าสู่ระบบด้วยบัญชีอื่น"
   },
+  "SchedulingSms": {
+    "bodyAnnouncement": "[{title}] มีประกาศใหม่\nดู: {url}",
+    "bodyMessage": "[{title}] มีข้อความใหม่\nดู: {url}",
+    "subject": "[{title}] การแจ้งเตือน",
+    "defaultTitle": "กำหนดการ"
+  },
   "RecruitingScheduling": {
     "calClickHint": "คลิกช่องเพื่อสร้างช่วงเวลา 30 นาที",
     "chatKindLabel": "ประเภทข้อความ",
@@ -3212,6 +3218,9 @@
     "chatSend": "ส่ง",
     "chatSending": "กำลังส่ง…",
     "chatSendFailed": "ส่งข้อความไม่สำเร็จ",
+    "chatSmsNotify": "📱 แจ้งเตือน SMS ({count} คน)",
+    "chatSmsNotifyNoCount": "📱 แจ้งเตือน SMS",
+    "chatSmsLimit": "ผู้รับ SMS มากเกินไป ({count} คน) ข้อความถูกบันทึกแล้วแต่ไม่ได้ส่ง SMS",
     "chatMsgEdit": "แก้ไข",
     "chatMsgDelete": "ลบ",
     "chatMsgSave": "บันทึก",

@@ -15,6 +15,19 @@ import {
   type MessageScope,
   type SchedMessage,
 } from '@/lib/scheduling/messages';
+import { isSolapiConfigured } from '@/lib/sms/solapi';
+import { notifyBySms } from '@/lib/scheduling/sms-notify';
+
+// SMS 알림 링크의 origin 을 요청에서 산출. Vercel 프록시 뒤에서는 request.url 이
+// 내부 URL 일 수 있어 x-forwarded-* 를 우선한다. 링크는 공개 참여자 뷰
+// (/schedule/<share_token>) 로 향한다.
+function resolveOrigin(request: Request): string {
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https';
+  const host =
+    request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  if (host) return `${proto}://${host}`;
+  return new URL(request.url).origin;
+}
 
 // Recruiting-scheduling chat (PR3), admin side. Same gate as the other
 // /api/scheduling/* routes: non-admins get 404 (route stays unobservable) and
@@ -201,6 +214,16 @@ export async function POST(request: Request) {
       ? b.batch_id
       : null;
 
+  // SMS 알림 opt-in(발송 시 체크박스). notify_sms=true 면 메시지 저장 성공 후
+  // 서버가 대상 후보의 전화번호로 알림 문자를 발송한다. sms_context_batch_id 는
+  // 전체 reach(batch_id null)에서 프로젝트를 특정하기 위한 컨텍스트 batch(타일
+  // batchId) — 메시지 row 에는 반영되지 않는다.
+  const notifySms = b.notify_sms === true;
+  const smsContextBatchId =
+    typeof b.sms_context_batch_id === 'string' && b.sms_context_batch_id
+      ? b.sms_context_batch_id
+      : null;
+
   const admin = createAdminClient();
 
   // A global broadcast (batch_id null) reaches every tenant's participants, so
@@ -251,6 +274,17 @@ export async function POST(request: Request) {
     }
   }
 
+  // 전체 broadcast + SMS: 프로젝트를 특정하는 컨텍스트 batch 의 소유권을 확인한다
+  // (임의 batch 를 넣어 타 테넌트 프로젝트로 문자를 뿌리는 것 방지). 그룹 broadcast
+  // 는 batchId 자체가 위에서 검증되고, private 는 candidate 소유권이 검증됐다.
+  let smsContextAllowed = smsContextBatchId;
+  if (notifySms && scope === 'broadcast' && !batchId && smsContextBatchId) {
+    const owner = await ownerOfBatch(admin, smsContextBatchId);
+    if (!access.superadmin && !ownerAllowed(access, owner)) {
+      smsContextAllowed = null; // 소유 아님 → 전체 SMS 스킵(메시지 저장은 진행).
+    }
+  }
+
   const baseRow = {
     candidate_id: candidateId,
     scope,
@@ -287,8 +321,38 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: 'create_failed' }, { status: 500 });
   }
+
+  // SMS 알림 후처리 — 메시지 저장이 성공한 뒤에만, best-effort 로. 어떤 실패도
+  // 위 저장을 되돌리지 않는다(하드 제약). 규제 메모: 일정 안내는 정보성 메시지라
+  // 광고 표기·080 수신거부 불요. per-candidate 수신거부 플래그는 백로그(스팸 신고
+  // 대비 후속).
+  const smsFields: Record<string, unknown> = {};
+  if (notifySms) {
+    if (!isSolapiConfigured()) {
+      smsFields.smsSkipped = 'not_configured';
+    } else {
+      const outcome = await notifyBySms(admin, {
+        scope,
+        // 문구 {공지|메시지}: broadcast 공지만 '공지', 그 외(broadcast 채팅·private)
+        // 는 '메시지'.
+        announcementWord: scope === 'broadcast' && isAnnouncement,
+        candidateId,
+        messageBatchId: batchId,
+        contextBatchId: smsContextAllowed,
+        origin: resolveOrigin(request),
+      });
+      if (outcome.status === 'sent') {
+        smsFields.smsSent = outcome.smsSent;
+        smsFields.smsFailed = outcome.smsFailed;
+      } else {
+        smsFields.smsSkipped = outcome.reason;
+        smsFields.smsTargetCount = outcome.targetCount;
+      }
+    }
+  }
+
   return NextResponse.json(
-    { message: data },
+    { message: data, ...smsFields },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

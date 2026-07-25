@@ -2977,6 +2977,12 @@
     "notFoundBody": "We couldn't find an invite for this account ({email}). Check that you signed in with the address the invite was sent to.",
     "switchAccount": "Sign in with a different account"
   },
+  "SchedulingSms": {
+    "bodyAnnouncement": "[{title}] A new announcement has arrived.\nView: {url}",
+    "bodyMessage": "[{title}] A new message has arrived.\nView: {url}",
+    "subject": "[{title}] Notification",
+    "defaultTitle": "Schedule"
+  },
   "RecruitingScheduling": {
     "calClickHint": "Click a cell to create a 30-min slot",
     "chatKindLabel": "Message type",
@@ -3119,6 +3125,9 @@
     "chatSend": "Send",
     "chatSending": "Sending…",
     "chatSendFailed": "Failed to send the message.",
+    "chatSmsNotify": "📱 SMS alert ({count})",
+    "chatSmsNotifyNoCount": "📱 SMS alert",
+    "chatSmsLimit": "Too many SMS recipients ({count}). The message was saved but no SMS was sent.",
     "chatMsgEdit": "Edit",
     "chatMsgDelete": "Delete",
     "chatMsgSave": "Save",
