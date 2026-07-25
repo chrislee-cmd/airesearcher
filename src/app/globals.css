@@ -573,6 +573,7 @@
   --color-success-bg: #f4fbf6;          /* Done/complete 틴트 (= --raw-signal-success-soft 값과 동일; §F6 는 Done 틴트 역할로 success-bg 명명) */
   --color-success-line: #cdeed8;        /* Done 틴트 보더 */
   --color-success-bg-soft: #eafaf0;     /* Interpreter OUTPUT 헤더 */
+  --color-bridge-bar-bg: #e8f7ee;       /* recruiting 저니 ① 브리지 선택 바 (WRITER-GAP-AUDIT §3: BUILD-SPEC §2 의 #eafaf0 를 comp 실측 #e8f7ee 로 정정 — CD authority, 근사 DS값 다운그레이드 금지). `bg-bridge-bar-bg` util. */
   --color-rec: #ef4444;                 /* AI UT recording (amore 와 구분) */
   --color-rec-soft: #ff9a9a;            /* recording edge/label on dark */
   --color-amber: #e0a83a;               /* spotlight border·confidence 🟡·fill-2 dots */

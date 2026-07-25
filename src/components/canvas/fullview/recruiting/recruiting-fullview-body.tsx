@@ -36,9 +36,11 @@ import type {
   FilterableQuestion,
   RecruitingFilter,
 } from '@/lib/recruiting/distribution';
+import type { ResponseJudgment } from '@/lib/recruiting/persona-fit';
 import { RecruitingCriteriaPanel } from './recruiting-criteria-panel';
 import { RecruitingDistribution } from './recruiting-distribution';
 import { RecruitingJudgedTable } from './recruiting-judged-table';
+import { RecruitingBridge, type BridgeCandidate } from './recruiting-bridge';
 
 export function RecruitingFullviewBody({
   conditionsForPanel,
@@ -58,6 +60,15 @@ export function RecruitingFullviewBody({
   onTabChange,
   judgeRefreshSignal,
   rawTabContent,
+  bridgeSelected,
+  onToggleRow,
+  onToggleAll,
+  onJudgmentsChange,
+  bridgeCandidates,
+  bridgeFormId,
+  bridgeProjectId,
+  onClearSelection,
+  onBridgeSent,
 }: {
   conditionsForPanel: EditableBrief | null;
   criteriaPersistMissing: boolean;
@@ -77,6 +88,17 @@ export function RecruitingFullviewBody({
   judgeRefreshSignal: number;
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
+  // ── 브리지(N1·N4) — 요약/raw 두 뷰가 공유하는 선택 집합. 호스트가 SSOT.
+  bridgeSelected: Set<string>;
+  onToggleRow: (id: string) => void;
+  onToggleAll: (ids: string[], checked: boolean) => void;
+  onJudgmentsChange: (judgments: ResponseJudgment[]) => void;
+  // 선택 응답자 서술자(호스트가 judgments+selected 로 빌드) — 브리지 모달용.
+  bridgeCandidates: BridgeCandidate[];
+  bridgeFormId: string | null;
+  bridgeProjectId: string | null;
+  onClearSelection: () => void;
+  onBridgeSent: () => void;
 }) {
   const t = useTranslations('Recruiting.fv');
 
@@ -187,10 +209,26 @@ export function RecruitingFullviewBody({
                   formId={activeFormId}
                   responseData={responseData}
                   refreshSignal={judgeRefreshSignal}
+                  selected={bridgeSelected}
+                  onToggleRow={onToggleRow}
+                  onToggleAll={onToggleAll}
+                  onJudgmentsChange={onJudgmentsChange}
                 />
               </div>
             )}
           </div>
+
+          {/* 브리지 바 + N4 모달 — 선택 시 우측 패널 하단 밴드로 노출. 요약/raw
+              두 뷰가 같은 선택 집합을 공유하므로 탭 무관 상시 배치(이중 CTA 금지,
+              구 스프레드시트 CTA 는 통합·제거). 선택 0 이면 바 미렌더. */}
+          <RecruitingBridge
+            selectedCount={bridgeSelected.size}
+            candidates={bridgeCandidates}
+            formId={bridgeFormId}
+            projectId={bridgeProjectId}
+            onClear={onClearSelection}
+            onSent={onBridgeSent}
+          />
         </div>
       </div>
     </div>

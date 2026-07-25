@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { parsePartialJson } from 'ai';
 import type { WidgetContent } from '../widget-types';
@@ -30,6 +30,8 @@ import {
 } from './recruiting/responses-spreadsheet';
 import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
 import { RecruitingJourneyShell } from '../fullview/recruiting/recruiting-journey-shell';
+import type { BridgeCandidate } from '../fullview/recruiting/recruiting-bridge';
+import type { ResponseJudgment } from '@/lib/recruiting/persona-fit';
 import {
   clearDraft,
   loadDraft,
@@ -115,6 +117,47 @@ function ExpandedBody() {
   // 상단 통합 새로고침 시 요약 탭의 판단도 재조회하도록 신호를 증가시킨다.
   const [judgeRefreshSignal, setJudgeRefreshSignal] = useState(0);
 
+  // ── 브리지(N1·N4) 선택 SSOT — 요약(판단테이블)·raw(스프레드시트) 두 뷰가
+  // 하나의 선택 집합(responseId)을 공유한다. 폼 전환 시 리셋(다른 폼 응답을
+  // 잘못 브리지하지 않도록). judgments 는 요약 탭에서 lift — 모달 서술자용.
+  const [bridgeSelected, setBridgeSelected] = useState<Set<string>>(new Set());
+  const [judgments, setJudgments] = useState<ResponseJudgment[]>([]);
+
+  const toggleBridgeRow = useCallback((id: string) => {
+    setBridgeSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const toggleBridgeAll = useCallback((ids: string[], checked: boolean) => {
+    setBridgeSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) ids.forEach((id) => next.add(id));
+      else ids.forEach((id) => next.delete(id));
+      return next;
+    });
+  }, []);
+  const clearBridge = useCallback(() => setBridgeSelected(new Set()), []);
+
+  // 선택 응답자 서술자 — judgments 에서 selected 를 필터해 #번호·demographic·fit
+  // 를 빌드(응답 name 은 PII 블랭킹으로 클라에 없음 → 마스킹 값만 모달 표시).
+  const bridgeCandidates = useMemo<BridgeCandidate[]>(() => {
+    const byKey = new Map(
+      judgments.map((j, i) => [j.response_key, { j, num: i + 1 }]),
+    );
+    return Array.from(bridgeSelected).map((id) => {
+      const hit = byKey.get(id);
+      if (!hit) return { id, num: null, demo: null, fit: null };
+      const demo =
+        [hit.j.gender, hit.j.age_group, hit.j.region]
+          .filter(Boolean)
+          .join(' · ') || null;
+      return { id, num: hit.num, demo, fit: hit.j.fit };
+    });
+  }, [bridgeSelected, judgments]);
+
   const handleFormsChange = useCallback((list: FormSummary[]) => {
     setForms(list);
     setActiveFormId((prev) => prev ?? list[0]?.formId ?? null);
@@ -128,6 +171,9 @@ function ExpandedBody() {
   if (selectedFormId !== prevFormId) {
     setPrevFormId(selectedFormId);
     setActiveFilter(EMPTY_FILTER);
+    // 폼 전환 = 브리지 선택도 무효(다른 폼 응답을 잘못 브리지하지 않도록).
+    setBridgeSelected(new Set());
+    setJudgments([]);
   }
 
   // 응답 spreadsheet 의 refetch 함수를 여기로 등록한다. fullview 상단 통합
@@ -277,6 +323,19 @@ function ExpandedBody() {
               activeTab={activeTab}
               onTabChange={setActiveTab}
               judgeRefreshSignal={judgeRefreshSignal}
+              // 브리지(N1·N4) — 선택 SSOT + judgments lift + 서술자.
+              bridgeSelected={bridgeSelected}
+              onToggleRow={toggleBridgeRow}
+              onToggleAll={toggleBridgeAll}
+              onJudgmentsChange={setJudgments}
+              bridgeCandidates={bridgeCandidates}
+              bridgeFormId={activeFormId}
+              // 초대 인제스트 타깃은 form_id 로 resolve(P0) — invitation 의
+              // project_id 는 부수적이라 null(구 CTA 와 동일한 보수적 처리; 캔버스
+              // activeProject.id 를 sched project_id 로 오용하지 않는다).
+              bridgeProjectId={null}
+              onClearSelection={clearBridge}
+              onBridgeSent={clearBridge}
               rawTabContent={
                 <ResponsesSpreadsheet
                   selectedFormId={activeFormId}
@@ -290,6 +349,11 @@ function ExpandedBody() {
                   onFilterableQuestionsChange={setFilterableQuestions}
                   onResponsesChange={setResponseData}
                   onResponsesLoadingChange={setResponsesLoading}
+                  // raw 탭 선택 = 요약 탭과 동일 브리지 집합(controlled) → 구
+                  // 스프레드시트 CTA 통합.
+                  selected={bridgeSelected}
+                  onToggleRow={toggleBridgeRow}
+                  onToggleAll={toggleBridgeAll}
                 />
               }
             />
