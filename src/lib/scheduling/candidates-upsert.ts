@@ -33,7 +33,9 @@ export async function upsertCandidatesIntoBatch(
   batchId: string,
   candidates: ParsedCandidate[],
   source?: 'bridge' | 'upload' | 'sheet',
-): Promise<{ upserted: number } | { error: string }> {
+): Promise<
+  { upserted: number } | { error: string; code?: string | null; detail?: string | null }
+> {
   // Wide select (with source) so an UPDATE can preserve a stronger existing
   // source; fall back to the pre-source column set on a preview DB.
   let existingRows: {
@@ -120,7 +122,12 @@ export async function upsertCandidatesIntoBatch(
     .from('sched_candidates')
     .upsert(payload, { onConflict: 'id', defaultToNull: false })
     .select('id');
-  if (error) return { error: 'save_failed' };
+  // Carry the raw Postgres code + message so the upload/import routes can surface
+  // the real cause instead of a blanket "save_failed" (journey R3 #2 — an upload
+  // that "looks successful" but silently no-ops must instead show why). This runs
+  // through the service-role client on the user's own batch, so the DB error
+  // leaks no cross-tenant secrets.
+  if (error) return { error: 'save_failed', code: error.code ?? null, detail: error.message ?? null };
 
   return { upserted: data?.length ?? 0 };
 }

@@ -678,8 +678,12 @@ function ResponseTable({
   const someSelected =
     visibleSelectedCount > 0 && visibleSelectedCount < rows.length;
 
+  // w-full min-w-max: 내용이 프레임보다 좁으면 가용 폭을 채우고(우측 dead
+  // space 제거, journey R3 #3), 넓으면 max-content 로 넘쳐 overflow-auto 가로
+  // 스크롤이 살아난다. min-w-max 단독은 좁은 폼에서 테이블이 max-content 에
+  // 멈춰 우측 여백을 남겼다.
   return (
-    <table className="min-w-max border-collapse text-md">
+    <table className="w-full min-w-max border-collapse text-md">
       <thead className="sticky top-0 z-table-sticky bg-paper-soft text-left">
         <tr>
           {renderCols.map((rc, i) => (

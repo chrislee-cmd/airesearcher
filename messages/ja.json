@@ -3142,6 +3142,7 @@
     "fileTooLarge": "ファイルが大きすぎます（最大10MB）。",
     "noCandidates": "ファイルに候補者が見つかりませんでした。",
     "uploadFailed": "アップロードに失敗しました。",
+    "uploadFailedReason": "アップロード失敗: {error}",
     "uploaded": "{count}件を反映しました。",
     "colEmail": "メール",
     "colName": "氏名",

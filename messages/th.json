@@ -3142,6 +3142,7 @@
     "fileTooLarge": "ไฟล์ใหญ่เกินไป (สูงสุด 10MB)",
     "noCandidates": "ไม่พบผู้สมัครในไฟล์",
     "uploadFailed": "อัปโหลดไม่สำเร็จ",
+    "uploadFailedReason": "อัปโหลดไม่สำเร็จ: {error}",
     "uploaded": "บันทึกแล้ว {count} คน",
     "colEmail": "อีเมล",
     "colName": "ชื่อ",

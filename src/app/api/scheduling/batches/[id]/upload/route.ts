@@ -71,7 +71,13 @@ export async function POST(
     'upload',
   );
   if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    // Surface the raw Postgres code + message (journey R3 #2): an upload that
+    // fails at the DB must show why, not silently look successful.
+    console.error('[scheduling/upload] upsert error', result);
+    return NextResponse.json(
+      { error: result.error, code: result.code ?? null, detail: result.detail ?? null },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json(
