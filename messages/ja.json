@@ -2875,7 +2875,11 @@
       "sheetSyncedAt": "{time} に同期",
       "sheetResync": "再同期",
       "sheetReconnect": "再接続",
-      "sheetChange": "別のシートを連携"
+      "sheetChange": "別のシートを連携",
+      "scheduleLoading": "日程を読み込み中…",
+      "scheduleErrorTitle": "日程を読み込めませんでした",
+      "scheduleErrorDesc": "しばらくしてからもう一度お試しください。",
+      "scheduleRetry": "再試行"
     },
     "fv": {
       "criteriaTitle": "参加者条件",

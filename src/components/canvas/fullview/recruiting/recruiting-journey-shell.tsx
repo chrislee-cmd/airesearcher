@@ -81,8 +81,10 @@ export function RecruitingJourneyShell({
   hasResponses: boolean;
   // 탭① 본문 — 기존 RecruitingFullviewBody(re-home). 상시 마운트(R3).
   responsesTab: ReactNode;
-  // 활성 폼 id — 탭②(명단)이 form-anchored 저니 데이터(candidates/batches/
-  // source-sheet)를 조회하는 앵커. 폼 미선택 시 null → 탭②는 안내 empty.
+  // 활성 폼 id — 탭②(명단)·탭③(일정)이 form-anchored 저니 데이터를 조회하는
+  // 앵커: 탭② candidates/batches/source-sheet · 탭③
+  // /api/scheduling/journey/schedule(form→project lazy resolve). 폼 미선택 시
+  // null → 해당 탭 안내 empty.
   formId: string | null;
 }) {
   const t = useTranslations('Recruiting');
@@ -226,12 +228,16 @@ export function RecruitingJourneyShell({
       <div className={activeTab === 'responses' ? 'flex min-h-0 flex-1' : 'hidden'}>
         {responsesTab}
       </div>
-      {/* 탭②·③ — 각 탭은 자체 내부 스크롤 소유. 탭②(명단)은 웨이브2에서
-          채워짐; 탭③(일정)은 별도 웨이브2 워커가 채운다. */}
+      {/* 탭②·③ — 각 탭은 자체 내부 스크롤 소유. 탭②(명단)·탭③(일정) 모두
+          form-anchored 데이터를 조회한다. */}
       {activeTab === 'candidates' ? (
         <JourneyCandidatesTab formId={formId} />
       ) : null}
-      {activeTab === 'schedule' ? <JourneyScheduleTab /> : null}
+      {activeTab === 'schedule' ? (
+        // key on the form so a form switch remounts the tab fresh (loading
+        // reset happens via mount, not an in-effect setState).
+        <JourneyScheduleTab key={formId ?? 'none'} formId={formId} />
+      ) : null}
     </div>
   );
 }

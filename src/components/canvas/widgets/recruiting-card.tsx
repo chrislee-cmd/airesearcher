@@ -305,7 +305,8 @@ function ExpandedBody() {
           onRefresh={handleRefresh}
           onDownloadCsv={handleDownloadCsv}
           hasResponses={hasResponses}
-          // 탭②(명단) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔 활성 폼.
+          // 탭②(명단)·탭③(일정) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔
+          // 활성 폼(탭③ 은 이 form 으로 scheduling 데이터 페치 = P0 project resolve).
           formId={activeFormId}
           responsesTab={
             <RecruitingFullviewBody

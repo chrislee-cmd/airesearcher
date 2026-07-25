@@ -2782,7 +2782,11 @@
       "sheetSyncedAt": "{time} 동기화됨",
       "sheetResync": "재동기화",
       "sheetReconnect": "재연결",
-      "sheetChange": "다른 시트 연결"
+      "sheetChange": "다른 시트 연결",
+      "scheduleLoading": "일정을 불러오는 중…",
+      "scheduleErrorTitle": "일정을 불러오지 못했어요",
+      "scheduleErrorDesc": "잠시 후 다시 시도해 주세요.",
+      "scheduleRetry": "다시 시도"
     },
     "fv": {
       "criteriaTitle": "참여자 조건",
