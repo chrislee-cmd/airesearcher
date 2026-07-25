@@ -18,11 +18,17 @@ const normalize = (s: string): string =>
 
 // Substring tokens — a survey often embeds the field in a longer label
 // ("연락 가능한 전화번호", "이메일 주소를 입력해주세요"). email > phone > name.
+// The non-ASCII entries are response-column-title matching TOKENS (a Korean form
+// labels its columns "이메일"/"전화번호"), NOT UI copy — they must stay as literals
+// so classification works. Mirrors candidates-parse.ts's alias tables.
+// i18n-allow-korean -- 응답 컬럼 제목 매칭 토큰(UI 아님)
 const EMAIL_TOKENS = ['이메일', '메일', 'email', 'mail', 'メール', 'อีเมล'];
 const PHONE_TOKENS = [
+  // i18n-allow-korean -- 응답 컬럼 제목 매칭 토큰(UI 아님)
   '전화번호', '전화', '연락처', '연락가능', '휴대폰', '핸드폰', '핸드폰번호',
   'phonenumber', 'phone', 'mobile', 'tel', '電話', '携帯', 'โทรศัพท์', 'เบอร์โทร',
 ];
+// i18n-allow-korean -- 응답 컬럼 제목 매칭 토큰(UI 아님)
 const NAME_TOKENS = ['이름', '성명', '성함', '닉네임', 'name', 'fullname', '氏名', '名前', 'ชื่อ'];
 
 function matchesAny(title: string, tokens: string[]): boolean {
