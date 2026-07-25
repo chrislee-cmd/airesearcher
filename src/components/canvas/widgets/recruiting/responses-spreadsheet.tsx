@@ -117,6 +117,7 @@ export function ResponsesSpreadsheet({
   selected: controlledSelected,
   onToggleRow: onToggleRowProp,
   onToggleAll: onToggleAllProp,
+  footerVisible = true,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
@@ -162,6 +163,11 @@ export function ResponsesSpreadsheet({
   selected?: Set<string>;
   onToggleRow?: (id: string) => void;
   onToggleAll?: (ids: string[], checked: boolean) => void;
+  // footer("총 N 응답 · ↗ Google Sheets 에서 열기") 노출 여부. 풀뷰에서 이
+  // 스프레드시트는 raw 탭에서만 보이지만 상시 마운트라, footer 가 요약 탭 아래로
+  // 새지 않도록 host 가 raw 탭일 때만 true 로 준다(round-2 feedback #4). 단독
+  // 사용(기본 true) 호환.
+  footerVisible?: boolean;
 } = {}) {
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
@@ -550,7 +556,8 @@ export function ResponsesSpreadsheet({
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer — raw 탭 전용(footerVisible). 요약 탭 아래로 밴드가 새지 않도록. */}
+      {footerVisible && (
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-line-soft bg-paper-soft px-5 py-2 text-xs-soft text-mute-soft">
         <span className="tabular-nums">
           {data && totalRows > 0
@@ -581,6 +588,7 @@ export function ResponsesSpreadsheet({
           </a>
         ) : null}
       </footer>
+      )}
 
     </div>
   );

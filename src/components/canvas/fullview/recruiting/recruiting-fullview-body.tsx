@@ -59,6 +59,8 @@ export function RecruitingFullviewBody({
   activeTab,
   onTabChange,
   judgeRefreshSignal,
+  onDownloadCsv,
+  hasResponses,
   rawTabContent,
   bridgeSelected,
   onToggleRow,
@@ -86,6 +88,10 @@ export function RecruitingFullviewBody({
   activeTab: 'summary' | 'raw';
   onTabChange: (tab: 'summary' | 'raw') => void;
   judgeRefreshSignal: number;
+  // CSV 내보내기 — 응답 전용 액션. 셸 헤더에서 이 토글 밴드 우측으로 이관됨
+  // (round-2 feedback #7). hasResponses=false 면 disabled.
+  onDownloadCsv: () => void;
+  hasResponses: boolean;
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
   // ── 브리지(N1·N4) — 요약/raw 두 뷰가 공유하는 선택 집합. 호스트가 SSOT.
@@ -224,6 +230,18 @@ export function RecruitingFullviewBody({
                 );
               })}
             </div>
+            {/* CSV(응답 내보내기) — 토글 밴드 우측 정렬(round-2 feedback #7:
+                셸 헤더에서 이관). 셸 헤더 CSV 와 동일 pill chrome 재사용. */}
+            {/* eslint-disable-next-line react/forbid-elements -- CSV pill 은 radius-pill·border-ink·memphis-sm 전용 chrome 으로 Button primitive 의 radius/variant 와 불일치(§7.11). 이전 셸 헤더 CSV 조각과 동일 선례. */}
+            <button
+              type="button"
+              onClick={onDownloadCsv}
+              disabled={!hasResponses}
+              title={t('csvTitle')}
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1.5 text-sm font-bold text-ink shadow-memphis-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            >
+              ↓ CSV
+            </button>
           </div>
 
           <div className="relative min-h-0 min-w-0 flex-1">

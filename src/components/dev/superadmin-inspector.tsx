@@ -406,11 +406,18 @@ function InspectorOverlay() {
 
 // 서버 layout 스택에 마운트되는 Provider. isSuperAdmin=false 면 완전 no-op
 // (InspectorOverlay 미마운트 → 리스너/렌더 0).
+//
+// DEV-ONLY 가드(round-2 feedback #8): 이 인스펙터는 디자인 감사용 데브 툴이라
+// **로컬 개발(pnpm dev)에서만** 활성화한다. 예전엔 슈퍼어드민이면 프리뷰/프로덕션
+// 에서도 Ctrl/Cmd+Shift+hover 시 "Button 132×30 pad…" 치수 배지가 떠 실사용
+// 화면을 방해했다. NODE_ENV 는 빌드 시 정적 치환되며 Vercel preview/production
+// 은 둘 다 'production' 이라, 이 체크 하나로 배포 환경 전부에서 비노출된다.
 export function SuperadminInspectorProvider({
   isSuperAdmin,
 }: {
   isSuperAdmin: boolean;
 }) {
+  if (process.env.NODE_ENV !== 'development') return null;
   if (!isSuperAdmin) return null;
   return <InspectorOverlay />;
 }

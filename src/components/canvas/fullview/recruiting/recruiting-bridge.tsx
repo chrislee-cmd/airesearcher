@@ -89,10 +89,18 @@ export function RecruitingBridge({
         }),
       });
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
-        pushToast(t('bridgeToastFail', { error: j.error ?? String(res.status) }), {
-          tone: 'warn',
-        });
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string | null;
+          detail?: string | null;
+        };
+        // Show the real Postgres code + message when the route exposes them so a
+        // failing preview is diagnosable at a glance (round-2 feedback #2a) —
+        // instead of the opaque "insert_failed".
+        const reason = j.code
+          ? `${j.error ?? 'error'} (${j.code}${j.detail ? `: ${j.detail}` : ''})`
+          : j.error ?? String(res.status);
+        pushToast(t('bridgeToastFail', { error: reason }), { tone: 'warn' });
         return;
       }
       const j = (await res.json().catch(() => ({}))) as { count?: number };
