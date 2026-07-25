@@ -2782,7 +2782,11 @@
       "sheetSyncedAt": "Synced {time}",
       "sheetResync": "Re-sync",
       "sheetReconnect": "Reconnect",
-      "sheetChange": "Link a different sheet"
+      "sheetChange": "Link a different sheet",
+      "scheduleLoading": "Loading schedule…",
+      "scheduleErrorTitle": "Couldn't load the schedule",
+      "scheduleErrorDesc": "Please try again in a moment.",
+      "scheduleRetry": "Retry"
     },
     "fv": {
       "criteriaTitle": "Participant criteria",

@@ -2875,7 +2875,11 @@
       "sheetSyncedAt": "ซิงค์เมื่อ {time}",
       "sheetResync": "ซิงค์อีกครั้ง",
       "sheetReconnect": "เชื่อมต่อใหม่",
-      "sheetChange": "เชื่อมชีตอื่น"
+      "sheetChange": "เชื่อมชีตอื่น",
+      "scheduleLoading": "กำลังโหลดตารางเวลา…",
+      "scheduleErrorTitle": "ไม่สามารถโหลดตารางเวลาได้",
+      "scheduleErrorDesc": "โปรดลองอีกครั้งในอีกสักครู่",
+      "scheduleRetry": "ลองอีกครั้ง"
     },
     "fv": {
       "criteriaTitle": "เกณฑ์ผู้เข้าร่วม",
