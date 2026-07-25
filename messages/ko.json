@@ -3049,6 +3049,7 @@
     "fileTooLarge": "파일이 너무 큽니다 (최대 10MB).",
     "noCandidates": "파일에서 후보자를 찾지 못했습니다.",
     "uploadFailed": "업로드에 실패했습니다.",
+    "uploadFailedReason": "업로드 실패: {error}",
     "uploaded": "{count}명 반영됨.",
     "colEmail": "이메일",
     "colName": "이름",

@@ -298,11 +298,21 @@ export function JourneyCandidatesTab({ formId }: { formId: string | null }) {
       const json = (await res.json().catch(() => ({}))) as {
         upserted?: number;
         error?: string;
+        code?: string | null;
+        detail?: string | null;
       };
       if (!res.ok) {
-        notifyErr(
-          json.error === 'no_candidates' ? t('noCandidates') : t('uploadFailed'),
-        );
+        if (json.error === 'no_candidates') {
+          notifyErr(t('noCandidates'));
+          return;
+        }
+        // Surface the real Postgres code + message when the route exposes them
+        // (journey R3 #2) so a failing upload is diagnosable instead of the
+        // opaque "업로드 실패" — mirrors the bridge Send fail toast (#2a).
+        const reason = json.code
+          ? `${json.error ?? 'error'} (${json.code}${json.detail ? `: ${json.detail}` : ''})`
+          : (json.error ?? String(res.status));
+        notifyErr(t('uploadFailedReason', { error: reason }));
         return;
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));

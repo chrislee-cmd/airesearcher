@@ -3049,6 +3049,7 @@
     "fileTooLarge": "File is too large (max 10MB).",
     "noCandidates": "No candidates were found in the file.",
     "uploadFailed": "Upload failed.",
+    "uploadFailedReason": "Upload failed: {error}",
     "uploaded": "{count} candidates saved.",
     "colEmail": "Email",
     "colName": "Name",

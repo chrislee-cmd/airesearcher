@@ -183,6 +183,8 @@ export async function resolveInboxBatch(
   // old code created a NEW empty batch on every resolve, so an upload's target
   // batch drifted between calls — same class of bug as the project drift above.
   if (existing.error) {
+    // Partial narrow (is_inbox missing but project_id present): the first batch
+    // under this project is the pool.
     const first = await admin
       .from('sched_batches')
       .select('id')
@@ -193,6 +195,15 @@ export async function resolveInboxBatch(
     if (!first.error && first.data) {
       return { batchId: (first.data as { id: string }).id };
     }
+    // Full narrow (project_id ALSO missing → the query above errors): fall back
+    // to the same deterministic (owner_user_id, title) anchor the project resolve
+    // uses. Without this the narrow insert below ran on every call and minted a
+    // fresh batch, so an upload's target still drifted between calls even after
+    // R2 fixed the project drift — the residual half of journey R3 #2 ("upload
+    // still fails / lands nowhere"). title = project.title (= form title), stable
+    // per form, so repeat resolves converge on one batch.
+    const anchored = await selectBatchByOwnerTitle(admin, ownerUserId, project.title);
+    if (anchored) return { batchId: anchored };
   }
 
   const wide = await admin
@@ -217,4 +228,26 @@ export async function resolveInboxBatch(
     .single();
   if (narrow.error || !narrow.data) return { error: 'inbox_failed' };
   return { batchId: (narrow.data as { id: string }).id };
+}
+
+// Deterministic degrade anchor for the inbox batch on a DB missing project_id /
+// is_inbox: the earliest batch owned by this user with the project's title. This
+// is the batch-level twin of selectByOwnerTitle above — it keeps repeated inbox
+// resolves converging on one row so an upload target never drifts on a pre-ship
+// preview.
+async function selectBatchByOwnerTitle(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  title: string,
+): Promise<string | null> {
+  const res = await admin
+    .from('sched_batches')
+    .select('id')
+    .eq('owner_user_id', ownerUserId)
+    .eq('title', title || 'Untitled')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (res.error || !res.data) return null;
+  return (res.data as { id: string }).id;
 }
