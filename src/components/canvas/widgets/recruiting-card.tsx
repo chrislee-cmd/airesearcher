@@ -259,6 +259,8 @@ function ExpandedBody() {
           onRefresh={handleRefresh}
           onDownloadCsv={handleDownloadCsv}
           hasResponses={hasResponses}
+          // 탭②(명단) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔 활성 폼.
+          formId={activeFormId}
           responsesTab={
             <RecruitingFullviewBody
               conditionsForPanel={conditionsForPanel}

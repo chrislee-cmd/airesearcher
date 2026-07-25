@@ -58,6 +58,7 @@ export function RecruitingJourneyShell({
   onDownloadCsv,
   hasResponses,
   responsesTab,
+  formId,
 }: {
   // 헤더 프로젝트 pill — projects.length>1 이면 인터랙티브 스위처, 아니면
   // display-only 폴백(FullviewProjectPill 내부 규칙).
@@ -80,6 +81,9 @@ export function RecruitingJourneyShell({
   hasResponses: boolean;
   // 탭① 본문 — 기존 RecruitingFullviewBody(re-home). 상시 마운트(R3).
   responsesTab: ReactNode;
+  // 활성 폼 id — 탭②(명단)이 form-anchored 저니 데이터(candidates/batches/
+  // source-sheet)를 조회하는 앵커. 폼 미선택 시 null → 탭②는 안내 empty.
+  formId: string | null;
 }) {
   const t = useTranslations('Recruiting');
   const publishHeaderSlot = useFullviewHeaderSlotPublisher();
@@ -222,8 +226,11 @@ export function RecruitingJourneyShell({
       <div className={activeTab === 'responses' ? 'flex min-h-0 flex-1' : 'hidden'}>
         {responsesTab}
       </div>
-      {/* 탭②·③ — 골격(웨이브2 워커가 채움). 각 탭은 자체 내부 스크롤 소유. */}
-      {activeTab === 'candidates' ? <JourneyCandidatesTab /> : null}
+      {/* 탭②·③ — 각 탭은 자체 내부 스크롤 소유. 탭②(명단)은 웨이브2에서
+          채워짐; 탭③(일정)은 별도 웨이브2 워커가 채운다. */}
+      {activeTab === 'candidates' ? (
+        <JourneyCandidatesTab formId={formId} />
+      ) : null}
       {activeTab === 'schedule' ? <JourneyScheduleTab /> : null}
     </div>
   );

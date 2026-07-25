@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getFormAnchoredAccess } from '@/lib/scheduling/access';
-import { resolveOrCreateProjectForForm } from '@/lib/scheduling/journey-project';
+import {
+  resolveOrCreateProjectForForm,
+  resolveInboxBatch,
+} from '@/lib/scheduling/journey-project';
 import { maskCandidatesBySource } from '@/lib/scheduling/candidate-masking';
 
 export const maxDuration = 30;
@@ -36,16 +39,68 @@ export async function GET(req: Request) {
   }
   const projectId = projRes.project.id;
 
-  // Batches under this project → their candidates.
-  const { data: batchRows } = await admin
+  // Linked-sheet card (R9): project's remembered Google Sheet (title/synced_at).
+  // Additive columns → wide/narrow degrade (a preview DB without them → nulls).
+  let sourceSheet: {
+    source_sheet_url: string | null;
+    source_sheet_title: string | null;
+    source_sheet_synced_at: string | null;
+  } = {
+    source_sheet_url: null,
+    source_sheet_title: null,
+    source_sheet_synced_at: null,
+  };
+  const sheetRes = await admin
+    .from('sched_projects')
+    .select('source_sheet_url, source_sheet_title, source_sheet_synced_at')
+    .eq('id', projectId)
+    .maybeSingle();
+  if (!sheetRes.error && sheetRes.data) {
+    sourceSheet = sheetRes.data as typeof sourceSheet;
+  }
+
+  // Resolve-or-create the inbox pool so uploads/sheet imports have a target
+  // batch id up front (명단 진입 = provisioning trigger, D5).
+  const inbox = await resolveInboxBatch(
+    admin,
+    { id: projectId, title: projRes.project.title, org_id: access.form.org_id },
+    access.form.user_id,
+  );
+  const inboxBatchId = 'batchId' in inbox ? inbox.batchId : null;
+
+  // Batches under this project → group sections + assign targets + their
+  // candidates. `is_inbox` is additive → default false on a narrow DB.
+  type Batch = { id: string; title: string; is_inbox: boolean };
+  let batches: Batch[] = [];
+  const wideBatches = await admin
     .from('sched_batches')
-    .select('id')
+    .select('id, title, is_inbox')
     .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
     .limit(500);
-  const batchIds = (batchRows ?? []).map((b) => (b as { id: string }).id);
+  if (wideBatches.error) {
+    const narrowBatches = await admin
+      .from('sched_batches')
+      .select('id, title')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true })
+      .limit(500);
+    batches = (narrowBatches.data ?? []).map((b) => ({
+      ...(b as { id: string; title: string }),
+      is_inbox: false,
+    }));
+  } else {
+    batches = (wideBatches.data ?? []) as Batch[];
+  }
+  const batchIds = batches.map((b) => b.id);
   if (batchIds.length === 0) {
     return NextResponse.json(
-      { project: projRes.project, candidates: [] },
+      {
+        project: { ...projRes.project, ...sourceSheet },
+        candidates: [],
+        batches,
+        inbox_batch_id: inboxBatchId,
+      },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   }
@@ -86,7 +141,12 @@ export async function GET(req: Request) {
   const masked = maskCandidatesBySource(candidates, access.superadmin);
 
   return NextResponse.json(
-    { project: projRes.project, candidates: masked },
+    {
+      project: { ...projRes.project, ...sourceSheet },
+      candidates: masked,
+      batches,
+      inbox_batch_id: inboxBatchId,
+    },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }
