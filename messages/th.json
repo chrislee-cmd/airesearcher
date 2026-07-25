@@ -2472,6 +2472,8 @@
   "Shell": {
     "locked": "เร็วๆ นี้",
     "navLabel": "การนำทางวิดเจ็ต",
+    "navCollapse": "ยุบแถบด้านข้าง",
+    "navExpand": "ขยายแถบด้านข้าง",
     "outputsTotal": "ทั้งหมด {count} รายการ",
     "outputsMore": "ดูเพิ่มเติม ({count})",
     "outputsEmpty": "ยังไม่มีผลลัพธ์",

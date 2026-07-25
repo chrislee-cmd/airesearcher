@@ -2379,6 +2379,8 @@
   "Shell": {
     "locked": "Coming soon",
     "navLabel": "Widget navigation",
+    "navCollapse": "Collapse sidebar",
+    "navExpand": "Expand sidebar",
     "outputsTotal": "{count} total",
     "outputsMore": "Show more ({count})",
     "outputsEmpty": "No outputs yet",
