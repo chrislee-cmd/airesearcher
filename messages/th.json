@@ -2907,6 +2907,8 @@
       "tablistLabel": "โหมดการดูคำตอบ",
       "tabSummary": "สรุปความเหมาะสม",
       "tabRaw": "ข้อมูลดิบ",
+      "panelFold": "ยุบแผง",
+      "panelExpand": "ขยายแผง",
       "fitHigh": "สูง",
       "fitMedium": "กลาง",
       "fitLow": "ต่ำ",

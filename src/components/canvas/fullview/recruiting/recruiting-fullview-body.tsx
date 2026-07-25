@@ -19,7 +19,7 @@
    그대로 마운트해 좌측 패널에 응답을 공급 + "전체 데이터" 뷰로 노출.
    ──────────────────────────────────────────────────────────────────── */
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
@@ -101,6 +101,8 @@ export function RecruitingFullviewBody({
   onBridgeSent: () => void;
 }) {
   const t = useTranslations('Recruiting.fv');
+  // 좌측 패널 가로 collapse — 로컬 state, 기본 펼침 (탭③ 캘린더 레일과 동일 패턴).
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -119,23 +121,45 @@ export function RecruitingFullviewBody({
       )}
 
       <div className="flex min-h-0 flex-1">
-        {/* 좌측 = 참여자 조건(위) + 분포 통계(아래). border-r-2 ink. */}
-        <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r-2 border-ink p-4">
-          <RecruitingCriteriaPanel brief={conditionsForPanel} />
-          <RecruitingDistribution
-            columns={responseData?.columns ?? []}
-            rows={responseData?.rows ?? []}
-            loading={responsesLoading}
-            formsLoading={formsLoading}
-            hasForm={hasForm}
-            filterableQuestions={filterableQuestions}
-            filter={activeFilter}
-            onFilterChange={onFilterChange}
-          />
-        </div>
+        {/* 좌측 = 참여자 조건(위) + 분포 통계(아래). border-r-2 ink.
+            가로 collapse 가능 (탭③ 캘린더 레일 패턴) — 접히면 우측 콘텐츠 전폭. */}
+        {!panelCollapsed && (
+          <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r-2 border-ink p-4">
+            <RecruitingCriteriaPanel brief={conditionsForPanel} />
+            <RecruitingDistribution
+              columns={responseData?.columns ?? []}
+              rows={responseData?.rows ?? []}
+              loading={responsesLoading}
+              formsLoading={formsLoading}
+              hasForm={hasForm}
+              filterableQuestions={filterableQuestions}
+              filter={activeFilter}
+              onFilterChange={onFilterChange}
+            />
+          </div>
+        )}
 
-        {/* 우측 = 폼 셀렉터 + 탭(요약 default / 전체 데이터). */}
-        <div className="flex min-h-0 flex-1 flex-col">
+        {/* Fold rail — 세로 핸들(‹/›). 접힘 시 세로 mono 라벨 노출. */}
+        {/* eslint-disable-next-line react/forbid-elements -- full-height vertical fold handle; Button primitive chrome unsuitable for a rail toggle (§7.11). 탭③ 캘린더 레일과 동일 선례. */}
+        <button
+          type="button"
+          onClick={() => setPanelCollapsed((v) => !v)}
+          aria-label={panelCollapsed ? t('panelExpand') : t('panelFold')}
+          className="flex w-9 shrink-0 flex-col items-center justify-center gap-3 border-r-2 border-ink bg-paper-soft transition-colors hover:bg-paper"
+        >
+          <span className="text-lg font-bold text-ink" aria-hidden>
+            {panelCollapsed ? '›' : '‹'}
+          </span>
+          {panelCollapsed && (
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft [writing-mode:vertical-rl]">
+              {t('panelExpand')}
+            </span>
+          )}
+        </button>
+
+        {/* 우측 = 폼 셀렉터 + 탭(요약 default / 전체 데이터). min-w-0 = flex 자식
+            intrinsic 폭 팽창 차단(가로 스크롤 복원 + 토글 헤더 off-screen 방지). */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex shrink-0 flex-wrap items-center gap-[10px] border-b border-ink/10 bg-paper px-5 py-[11px]">
             {forms.length > 0 ? (
               <div className="min-w-[240px]">
@@ -198,13 +222,15 @@ export function RecruitingFullviewBody({
             </div>
           </div>
 
-          <div className="relative min-h-0 flex-1">
-            {/* raw = 데이터 SSOT(항상 마운트). 요약 탭일 땐 display:none. */}
-            <div className={activeTab === 'raw' ? 'h-full' : 'hidden'}>
+          <div className="relative min-h-0 min-w-0 flex-1">
+            {/* raw = 데이터 SSOT(항상 마운트). 요약 탭일 땐 display:none.
+                min-w-0 = 스프레드시트(min-w-max)의 내부 overflow-auto 가로
+                스크롤이 살아나도록 래퍼 폭을 clip. */}
+            <div className={activeTab === 'raw' ? 'h-full min-w-0' : 'hidden'}>
               {rawTabContent}
             </div>
             {activeTab === 'summary' && (
-              <div className="h-full">
+              <div className="h-full min-w-0">
                 <RecruitingJudgedTable
                   formId={activeFormId}
                   responseData={responseData}

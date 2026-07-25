@@ -2814,6 +2814,8 @@
       "tablistLabel": "Response view mode",
       "tabSummary": "Fit summary",
       "tabRaw": "Raw data",
+      "panelFold": "Collapse panel",
+      "panelExpand": "Expand panel",
       "fitHigh": "High",
       "fitMedium": "Medium",
       "fitLow": "Low",

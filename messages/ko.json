@@ -2814,6 +2814,8 @@
       "tablistLabel": "응답 보기 방식",
       "tabSummary": "부합도 요약",
       "tabRaw": "전체 데이터",
+      "panelFold": "패널 접기",
+      "panelExpand": "패널 펼치기",
       "fitHigh": "높음",
       "fitMedium": "중간",
       "fitLow": "낮음",
