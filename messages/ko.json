@@ -2379,6 +2379,8 @@
   "Shell": {
     "locked": "준비중",
     "navLabel": "위젯 전체보기 네비게이션",
+    "navCollapse": "사이드바 접기",
+    "navExpand": "사이드바 펼치기",
     "outputsTotal": "총 {count}건",
     "outputsMore": "더보기 ({count}건 더)",
     "outputsEmpty": "아직 생성된 산출물이 없습니다",

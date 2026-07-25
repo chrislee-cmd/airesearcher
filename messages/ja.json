@@ -2472,6 +2472,8 @@
   "Shell": {
     "locked": "近日公開",
     "navLabel": "ウィジェットナビゲーション",
+    "navCollapse": "サイドバーを折りたたむ",
+    "navExpand": "サイドバーを広げる",
     "outputsTotal": "合計 {count} 件",
     "outputsMore": "もっと見る（{count}）",
     "outputsEmpty": "出力結果はまだありません",
