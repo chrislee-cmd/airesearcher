@@ -60,11 +60,18 @@ export function extractSpreadsheetId(input: string): string | null {
 export async function readGoogleSheetValues(
   accessToken: string,
   spreadsheetId: string,
-): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
+): Promise<{
+  headers: string[];
+  rows: Record<string, string>[];
+  // Spreadsheet's own title (properties.title) — surfaced so the 명단 "연동됨
+  // 카드"(R9) can label the linked sheet. Null when Google omits it.
+  spreadsheetTitle: string | null;
+}> {
   // Fetch the first sheet's title so the values range targets it explicitly
-  // (a spreadsheet's first tab isn't always named "Sheet1").
+  // (a spreadsheet's first tab isn't always named "Sheet1"), plus the
+  // spreadsheet's own title for the linked-source card.
   const metaRes = await fetch(
-    `${SHEETS_BASE}/${spreadsheetId}?fields=sheets.properties.title`,
+    `${SHEETS_BASE}/${spreadsheetId}?fields=properties.title,sheets.properties.title`,
     { headers: { authorization: `Bearer ${accessToken}` } },
   );
   if (!metaRes.ok) {
@@ -72,8 +79,10 @@ export async function readGoogleSheetValues(
     throw new Error(`sheets_meta_failed: ${metaRes.status} ${msg}`);
   }
   const meta = (await metaRes.json()) as {
+    properties?: { title?: string };
     sheets?: { properties?: { title?: string } }[];
   };
+  const spreadsheetTitle = meta.properties?.title ?? null;
   const firstTitle = meta.sheets?.[0]?.properties?.title;
   if (!firstTitle) {
     throw new Error('sheets_empty');
@@ -90,7 +99,7 @@ export async function readGoogleSheetValues(
   }
   const data = (await valRes.json()) as { values?: unknown[][] };
   const values = data.values ?? [];
-  if (values.length === 0) return { headers: [], rows: [] };
+  if (values.length === 0) return { headers: [], rows: [], spreadsheetTitle };
 
   const headers = values[0].map((h) => String(h ?? '').trim());
   const rows: Record<string, string>[] = [];
@@ -102,5 +111,5 @@ export async function readGoogleSheetValues(
     });
     rows.push(row);
   }
-  return { headers, rows };
+  return { headers, rows, spreadsheetTitle };
 }
