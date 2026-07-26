@@ -37,12 +37,24 @@ type IntakeProject = {
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-export function JourneyIntakeBand({ formId }: { formId: string | null }) {
+export function JourneyIntakeBand({
+  formId,
+  projectId = null,
+}: {
+  formId: string | null;
+  // Pill (interview_projects) id — the form-free intake anchor (card 583). When
+  // no form is published the band still opens on the pill project so CSV/Sheets
+  // intake works; when both are present the server converges them on one project.
+  projectId?: string | null;
+}) {
   const t = useTranslations('RecruitingScheduling');
   const tj = useTranslations('Recruiting.journey');
   const toast = useToast();
   const notifyOk = (msg: string) => toast.push(msg, { tone: 'info' });
   const notifyErr = (msg: string) => toast.push(msg, { tone: 'warn' });
+  // Journey anchor id — form takes priority, else the pill project. Drives the
+  // one-shot auto-expand seed + no-anchor early return.
+  const anchorId = formId ?? projectId;
 
   // --- Journey anchor (form → project + inbox batch + roster count) -------
   const [loading, setLoading] = useState(true);
@@ -52,14 +64,19 @@ export function JourneyIntakeBand({ formId }: { formId: string | null }) {
   const [rosterCount, setRosterCount] = useState(0);
 
   const load = useCallback(async () => {
-    if (!formId) {
+    if (!formId && !projectId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
+      // Pass whichever anchors we have — both when known so the server converges
+      // the form + pill axes on one project (card 583).
+      const params = new URLSearchParams();
+      if (formId) params.set('form_id', formId);
+      if (projectId) params.set('project_id', projectId);
       const res = await fetch(
-        `/api/scheduling/journey/candidates?form_id=${encodeURIComponent(formId)}`,
+        `/api/scheduling/journey/candidates?${params.toString()}`,
         { cache: 'no-store' },
       );
       if (!res.ok) return;
@@ -78,7 +95,7 @@ export function JourneyIntakeBand({ formId }: { formId: string | null }) {
     } finally {
       setLoading(false);
     }
-  }, [formId]);
+  }, [formId, projectId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- form-anchored fetch-on-mount (load() sets loading/data); re-fetch also runs from handlers
@@ -87,17 +104,17 @@ export function JourneyIntakeBand({ formId }: { formId: string | null }) {
 
   // --- Collapse (접힘 기본, 명단 0명이면 자동 펼침) -----------------------
   const [sourceOpen, setSourceOpen] = useState(false);
-  // Re-seed the auto-expand once per form after its first successful load.
+  // Re-seed the auto-expand once per anchor (form or pill) after its first load.
   const [seedForm, setSeedForm] = useState<string | null>(null);
   const [seededForm, setSeededForm] = useState<string | null>(null);
-  if (formId !== seedForm) {
-    // form switched → allow a fresh auto-seed for the new form's roster.
-    setSeedForm(formId);
+  if (anchorId !== seedForm) {
+    // anchor switched → allow a fresh auto-seed for the new anchor's roster.
+    setSeedForm(anchorId);
     setSeededForm(null);
   }
-  if (!loading && formId && seededForm !== formId) {
-    // First settled load for this form: default-expand only when 명단 0명.
-    setSeededForm(formId);
+  if (!loading && anchorId && seededForm !== anchorId) {
+    // First settled load for this anchor: default-expand only when 명단 0명.
+    setSeededForm(anchorId);
     setSourceOpen(rosterCount === 0);
   }
 
@@ -200,8 +217,9 @@ export function JourneyIntakeBand({ formId }: { formId: string | null }) {
     window.location.href = '/api/recruiting/google/start?share=1';
   }
 
-  // formId 없으면 밴드 자체를 숨긴다(응답 탭의 no-form 안내가 상위에서 담당).
-  if (!formId) return null;
+  // 앵커(폼·pill) 둘 다 없으면 밴드 자체를 숨긴다(상위 no-form 안내가 담당).
+  // pill 만 있어도(폼 미발행) 밴드는 뜬다 — form-free intake(583)의 핵심.
+  if (!formId && !projectId) return null;
 
   const sheetLinked = !!project?.source_sheet_url;
 

@@ -61,18 +61,30 @@ type LoadedData = {
   slots: SchedSlot[];
 };
 
-export function JourneyScheduleTab({ formId }: { formId: string | null }) {
+export function JourneyScheduleTab({
+  formId,
+  projectId = null,
+}: {
+  formId: string | null;
+  // Pill (interview_projects) id — form-free schedule anchor (card 583). Lets the
+  // 일정 tab render even before a form is published; when both are present the
+  // server converges them on one sched project.
+  projectId?: string | null;
+}) {
   const t = useTranslations('Recruiting.journey');
   const toast = useToast();
   const [state, setState] = useState<LoadState>({ phase: 'loading' });
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
-      // Guarded by the caller (effect / refetch) — never invoked without a form.
-      if (!formId) return;
+      // Guarded by the caller (effect / refetch) — never invoked without an anchor.
+      if (!formId && !projectId) return;
       try {
+        const params = new URLSearchParams();
+        if (formId) params.set('form_id', formId);
+        if (projectId) params.set('project_id', projectId);
         const res = await fetch(
-          `/api/scheduling/journey/schedule?form_id=${encodeURIComponent(formId)}`,
+          `/api/scheduling/journey/schedule?${params.toString()}`,
           { cache: 'no-store', signal },
         );
         if (!res.ok) {
@@ -98,7 +110,7 @@ export function JourneyScheduleTab({ formId }: { formId: string | null }) {
         setState({ phase: 'error' });
       }
     },
-    [formId],
+    [formId, projectId],
   );
 
   // Mount starts at 'loading' (initial state); the parent keys this component on
@@ -106,12 +118,12 @@ export function JourneyScheduleTab({ formId }: { formId: string | null }) {
   // effect (react-hooks/set-state-in-effect). A post-mutation refetch stays
   // silent — it never re-enters loading, so the surface doesn't unmount mid-edit.
   useEffect(() => {
-    if (!formId) return;
+    if (!formId && !projectId) return;
     const ctrl = new AbortController();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load()'s setState calls all fire AFTER `await fetch` (async data load), not a synchronous cascade; the rule can't see through the await in a useCallback fetcher.
     void load(ctrl.signal);
     return () => ctrl.abort();
-  }, [load, formId]);
+  }, [load, formId, projectId]);
 
   // Client-side re-fetch after a mutation (slot save/delete, group rename) —
   // the journey fullview fetches client-side, so router.refresh() wouldn't
@@ -120,9 +132,9 @@ export function JourneyScheduleTab({ formId }: { formId: string | null }) {
     void load();
   }, [load]);
 
-  // No form selected yet — nothing to anchor a project on. Show the 아직 일정
-  // 없음 empty (N5) rather than spinning forever.
-  if (!formId) {
+  // No anchor (neither form nor pill) — nothing to anchor a project on. Show the
+  // 아직 일정 없음 empty (N5) rather than spinning forever.
+  if (!formId && !projectId) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-10">
         <EmptyState
