@@ -3194,6 +3194,7 @@
     "slotMissingFields": "กรอกชื่อกิจกรรม (หรือผู้สมัคร) และเวลาเริ่ม/สิ้นสุด",
     "slotEndBeforeStart": "เวลาสิ้นสุดอยู่ก่อนเวลาเริ่ม",
     "slotSaveFailed": "บันทึกช่วงเวลาไม่สำเร็จ",
+    "slotSaveFailedCode": "บันทึกช่วงเวลาไม่สำเร็จ (ข้อผิดพลาด: {code})",
     "slotDeleteFailed": "ลบช่วงเวลาไม่สำเร็จ",
     "tabChat": "แชท",
     "chatBroadcast": "ประกาศทั้งหมด",

@@ -46,6 +46,10 @@ type Props = {
   // Batch the new slot belongs to — scopes candidate-less titled events (PR-B)
   // and is the default fan-out target in group mode.
   batchId: string;
+  // Journey (form-anchored) context. When set, an anchorless standalone slot is
+  // routed to the project's inbox batch server-side so the batch-filtered schedule
+  // read surfaces it (card #572). Absent on the old admin surface (unchanged).
+  formId?: string | null;
   // Every assignment group — the group-mode picker lists them all so the admin
   // can fan out to any group, not just the calendar's active one.
   groupOptions: GroupOption[];
@@ -67,6 +71,7 @@ export function SlotEditorModal({
   draft,
   candidates,
   batchId,
+  formId,
   groupOptions,
   allSlots,
   onSaved,
@@ -191,6 +196,9 @@ export function SlotEditorModal({
                     title,
                     candidate_id: candidateId,
                     batch_id: batchId,
+                    // Journey context so the server can anchor an otherwise
+                    // batch-less standalone slot to the project's inbox batch.
+                    ...(formId ? { form_id: formId } : {}),
                     start_at: startIso,
                     end_at: endIso,
                     status,
@@ -200,18 +208,18 @@ export function SlotEditorModal({
             ),
           });
       if (!res.ok) {
-        if (isGroup) {
-          const body = (await res.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          setError(
-            body?.error === 'no_candidates'
-              ? t('slotGroupEmpty')
+        // Surface the concrete server error code — never let a failed save look
+        // like a success that quietly vanishes (R2/R3 원칙, spec §3).
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(
+          body?.error === 'no_candidates'
+            ? t('slotGroupEmpty')
+            : body?.error
+              ? t('slotSaveFailedCode', { code: body.error })
               : t('slotSaveFailed'),
-          );
-        } else {
-          setError(t('slotSaveFailed'));
-        }
+        );
         return;
       }
       onSaved();

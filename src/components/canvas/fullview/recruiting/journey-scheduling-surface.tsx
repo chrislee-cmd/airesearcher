@@ -96,6 +96,7 @@ export function JourneySchedulingSurface({
   groups,
   candidates,
   slots,
+  formId,
   onRefetch,
   notifyErr,
 }: {
@@ -103,6 +104,11 @@ export function JourneySchedulingSurface({
   groups: JourneyScheduleGroup[];
   candidates: JourneyScheduleCandidate[];
   slots: SchedSlot[];
+  // The form this journey surface is anchored on — forwarded to the slot editor
+  // so an anchorless standalone slot resolves to the project's inbox batch on the
+  // server (card #572). Always set in the journey shell (tab renders only with a
+  // form).
+  formId: string | null;
   // Re-fetch the journey/schedule bundle after a mutation (slot save/delete,
   // group rename) — the client-side analog of the admin surface's
   // router.refresh().
@@ -739,6 +745,7 @@ export function JourneySchedulingSurface({
         draft={draft}
         candidates={editorCandidateOptions}
         batchId={editorBatchId}
+        formId={formId}
         groupOptions={groupModeOptions}
         allSlots={editorSlots}
         onSaved={onSaved}

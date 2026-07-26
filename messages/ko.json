@@ -3101,6 +3101,7 @@
     "slotMissingFields": "제목(또는 후보자)과 시작·종료 시간을 입력하세요.",
     "slotEndBeforeStart": "종료 시간이 시작 시간보다 빠릅니다.",
     "slotSaveFailed": "슬롯 저장에 실패했습니다.",
+    "slotSaveFailedCode": "슬롯 저장에 실패했습니다 (오류: {code}).",
     "slotDeleteFailed": "슬롯 삭제에 실패했습니다.",
     "tabChat": "채팅",
     "chatBroadcast": "전체 공지",
