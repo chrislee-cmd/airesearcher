@@ -112,24 +112,54 @@ export async function GET(req: Request) {
   }
   const maskedCandidates = maskCandidatesBySource(candidates, access.superadmin);
 
-  // Slots under this project's batches. Non-cancelled and cancelled alike — the
-  // calendar renders cancelled blocks (no strikethrough, comp 승). `batch_id`
-  // null rows (pre-migration) are out of scope for a form-anchored project.
-  const { data: slotRows } = await admin
+  // Slots under this project. Non-cancelled and cancelled alike — the calendar
+  // renders cancelled blocks (no strikethrough, comp 승).
+  //   Primary anchor  = batch membership (`.in('batch_id', batchIds)`).
+  //   Safety net (#572) = slots anchored ONLY by candidate_id (batch_id NULL rows
+  //     that slipped batch anchoring) as long as the candidate belongs to THIS
+  //     project. Project-scoped via the project's candidate ids — never owner-wide,
+  //     which would leak a user's other-project slots into this calendar (spec §2
+  //     cross-contamination guard).
+  const slotCols =
+    'id, candidate_id, batch_id, title, start_at, end_at, status, location, note';
+  type SlotRow = { id: string; start_at: string } & Record<string, unknown>;
+  const batchSlots = await admin
     .from('sched_slots')
-    .select(
-      'id, candidate_id, batch_id, title, start_at, end_at, status, location, note',
-    )
+    .select(slotCols)
     .in('batch_id', batchIds)
     .order('start_at', { ascending: true })
     .limit(5000);
+  const candidateIds = candidates.map((c) => c.id);
+  let candidateSlots: SlotRow[] = [];
+  if (candidateIds.length > 0) {
+    const res = await admin
+      .from('sched_slots')
+      .select(slotCols)
+      .in('candidate_id', candidateIds)
+      .order('start_at', { ascending: true })
+      .limit(5000);
+    candidateSlots = (res.data ?? []) as SlotRow[];
+  }
+  // Merge unique by id (a candidate-anchored slot that also has a batch appears in
+  // both queries), then keep the start-time order for the calendar.
+  const seen = new Set<string>();
+  const slotRows: SlotRow[] = [];
+  for (const s of [
+    ...((batchSlots.data ?? []) as SlotRow[]),
+    ...candidateSlots,
+  ]) {
+    if (seen.has(s.id)) continue;
+    seen.add(s.id);
+    slotRows.push(s);
+  }
+  slotRows.sort((a, b) => (a.start_at < b.start_at ? -1 : 1));
 
   return NextResponse.json(
     {
       project: projRes.project,
       groups,
       candidates: maskedCandidates,
-      slots: slotRows ?? [],
+      slots: slotRows,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

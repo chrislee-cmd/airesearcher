@@ -3101,6 +3101,7 @@
     "slotMissingFields": "Enter a title (or candidate) and start/end times.",
     "slotEndBeforeStart": "End time is before start time.",
     "slotSaveFailed": "Failed to save the slot.",
+    "slotSaveFailedCode": "Failed to save the slot (error: {code}).",
     "slotDeleteFailed": "Failed to delete the slot.",
     "tabChat": "Chat",
     "chatBroadcast": "Broadcast",

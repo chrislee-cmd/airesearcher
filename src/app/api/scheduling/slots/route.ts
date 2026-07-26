@@ -2,11 +2,46 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   getSchedulingAccess,
+  getFormAnchoredAccess,
   ownerOfBatch,
   ownerOfCandidate,
   ownerAllowed,
 } from '@/lib/scheduling/access';
+import {
+  resolveOrCreateProjectForForm,
+  resolveInboxBatch,
+} from '@/lib/scheduling/journey-project';
 import { isSlotStatus, type SlotStatus } from '@/lib/scheduling/slots';
+
+// Resolve a journey form's inbox batch — the SAME anchor the schedule read uses
+// (getFormAnchoredAccess → resolveOrCreateProjectForForm → resolveInboxBatch), so
+// a slot written here lands in the exact batch the read filters on. Returns null
+// when the caller lacks form access or provisioning fails, in which case the slot
+// stays standalone rather than being silently misattributed to a wrong project.
+async function resolveJourneyInboxBatch(
+  admin: ReturnType<typeof createAdminClient>,
+  formId: string,
+): Promise<string | null> {
+  const formAccess = await getFormAnchoredAccess(formId);
+  if (!formAccess) return null;
+  const projRes = await resolveOrCreateProjectForForm(admin, {
+    formId: formAccess.form.form_id,
+    ownerUserId: formAccess.form.user_id,
+    title: formAccess.form.title,
+    orgId: formAccess.form.org_id,
+  });
+  if ('error' in projRes) return null;
+  const inbox = await resolveInboxBatch(
+    admin,
+    {
+      id: projRes.project.id,
+      title: projRes.project.title,
+      org_id: formAccess.form.org_id,
+    },
+    formAccess.form.user_id,
+  );
+  return 'error' in inbox ? null : inbox.batchId;
+}
 
 // Create an interview slot for a candidate. Open to super-admin OR org member;
 // non-members get 404 (route stays unobservable). Org members are tenancy-
@@ -33,7 +68,12 @@ export async function POST(request: Request) {
   // Group mode fans out one slot per candidate in the batch (this PR).
   const isGroup = b.mode === 'group';
   const candidateId = typeof b.candidate_id === 'string' ? b.candidate_id : '';
-  const batchId = typeof b.batch_id === 'string' ? b.batch_id : '';
+  let batchId = typeof b.batch_id === 'string' ? b.batch_id : '';
+  // Journey (form-anchored) context, sent by the 저니 탭③ calendar. Present → an
+  // otherwise-anchorless standalone slot is anchored to the project's inbox batch
+  // below so the batch-filtered read surfaces it (card #572). Absent (old admin
+  // surface) → path is skipped, behaviour unchanged.
+  const formId = typeof b.form_id === 'string' ? b.form_id : '';
   const title =
     typeof b.title === 'string' && b.title.trim() ? b.title.trim() : '';
   const startAt = typeof b.start_at === 'string' ? b.start_at : '';
@@ -64,6 +104,17 @@ export async function POST(request: Request) {
     typeof b.note === 'string' && b.note.trim() ? b.note.trim() : null;
 
   const admin = createAdminClient();
+
+  // Card #572 root fix — a 저니 캘린더 slot created with neither candidate nor
+  // group used to save with batch_id=NULL, which the schedule read
+  // (`.in('batch_id', batchIds)`) filters out → a write-only ghost. When the
+  // request carries journey context (form_id), resolve the project's inbox batch
+  // with the SAME resolve the read uses (no re-derive — R2 사고 클래스) and anchor
+  // the slot there. The tenancy check below then runs on the resolved batch.
+  if (!isGroup && !batchId && !candidateId && formId) {
+    const anchored = await resolveJourneyInboxBatch(admin, formId);
+    if (anchored) batchId = anchored;
+  }
 
   // Tenancy scoping — the slot's batch (or candidate) must belong to an owner
   // the caller may touch (super-admin bypasses).

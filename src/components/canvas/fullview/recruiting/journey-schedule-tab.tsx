@@ -187,6 +187,7 @@ export function JourneyScheduleTab({ formId }: { formId: string | null }) {
         groups={groups}
         candidates={candidates}
         slots={slots}
+        formId={formId}
         onRefetch={refetch}
         notifyErr={(msg) => toast.push(msg, { tone: 'warn' })}
       />
