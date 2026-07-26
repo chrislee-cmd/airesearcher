@@ -2879,6 +2879,11 @@
     "setup": {
       "chipRequired": "Required",
       "standardBadge": "Standard",
+      "projectShort": "Project",
+      "projectTitle": "Select the project you're working on",
+      "projectSelected": "Selected",
+      "projectBulkTag": "All widgets",
+      "fieldProject": "Project",
       "extractCta": "Extract criteria →",
       "criteriaReviewNote": "<b>{count} criteria</b> extracted from your RFP. Preview or edit, then approve to continue.",
       "preview": "Preview",

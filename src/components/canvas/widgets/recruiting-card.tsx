@@ -329,6 +329,7 @@ function ExpandedBody() {
           onPublishedChange={setIsPublished}
           onConditionsChange={setConditionsBrief}
           interviewProjectId={recruitingProjectId}
+          onProjectChange={handleSelectProject}
         />
       </div>
 
@@ -535,12 +536,17 @@ function RecruitingSetupFlow({
   onPublishedChange,
   onConditionsChange,
   interviewProjectId,
+  onProjectChange,
 }: {
   onPublishedChange?: (published: boolean) => void;
   onConditionsChange?: (brief: EditableBrief | null) => void;
   // 헤더 pill 선택값(interview_projects id). 발행 시 forms/create 에 전달해
   // 새 폼을 이 프로젝트에 stamp 한다. null 이면 서버가 기본 프로젝트로 폴백.
+  // 카드 세팅 STEP1 프로젝트 피커의 value 로도 재사용(풀뷰 pill 과 같은 SSOT).
   interviewProjectId?: string | null;
+  // STEP1 피커 onChange — 호스트의 handleSelectProject(같은 useProjectSelection
+  // scope 'recruiting'). 카드 피커 ↔ 풀뷰 pill 양방향 동기.
+  onProjectChange?: (projectId: string | null) => void;
 }) {
   const t = useTranslations('Recruiting.setup');
   const requireAuth = useRequireAuth();
@@ -1061,6 +1067,8 @@ function RecruitingSetupFlow({
       <ControlBoardPanel gap="none" fill>
         <ControlBoardPanel.Region fill>
           <RecruitingSetupAccordion
+            recruitingProjectId={interviewProjectId ?? null}
+            onProjectChange={onProjectChange ?? (() => {})}
             files={files}
             pasted={pasted}
             rejected={rejected}
