@@ -2972,6 +2972,11 @@
     "setup": {
       "chipRequired": "จำเป็น",
       "standardBadge": "มาตรฐาน",
+      "projectShort": "โปรเจกต์",
+      "projectTitle": "เลือกโปรเจกต์ที่คุณกำลังทำอยู่",
+      "projectSelected": "เลือกแล้ว",
+      "projectBulkTag": "ทั้งหมด",
+      "fieldProject": "โปรเจกต์",
       "extractCta": "ดึงเกณฑ์ →",
       "criteriaReviewNote": "ดึง<b>เกณฑ์ {count} รายการ</b>จาก RFP ของคุณ ดูตัวอย่างหรือแก้ไข แล้วอนุมัติเพื่อดำเนินการต่อ",
       "preview": "ดูตัวอย่าง",

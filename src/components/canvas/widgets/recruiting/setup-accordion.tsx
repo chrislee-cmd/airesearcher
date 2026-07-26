@@ -45,6 +45,10 @@ import {
   useWidgetAccordion,
   type AccordionStepConfig,
 } from '@/components/canvas/shell/widget-accordion';
+import { Field } from '@/components/canvas/shell/field';
+import { ProjectPicker } from '@/components/project-picker';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
+import { useProjectSelection } from '@/components/project-selection-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IconButton } from '@/components/ui/icon-button';
@@ -917,7 +921,12 @@ function PublishStepBody({
 }
 
 export type RecruitingSetupAccordionProps = {
-  // STEP1 — source
+  // STEP1 — project (probing/interpreter 미러). 값/핸들러는 호스트(recruiting-card)
+  // 가 useProjectSelection('recruiting') 로 소유 — 풀뷰 pill 과 같은 scope key 라
+  // 카드 피커 ↔ 헤더 pill 이 같은 선택값을 가리킨다(양방향 동기).
+  recruitingProjectId: string | null;
+  onProjectChange: (projectId: string | null) => void;
+  // STEP2 — source
   files: File[];
   pasted: string;
   rejected: string[];
@@ -960,19 +969,36 @@ export type RecruitingSetupAccordionProps = {
 export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
   const t = useTranslations('Recruiting.setup');
   const accordion = useWidgetAccordion();
+  const { projects } = useInterviewV2Projects();
+  const { selection } = useProjectSelection();
 
   // 승인 즉시 해당 스텝을 접는다 — 승인 후 요약행으로 컬랩스해 스크롤 절감
   // (사용자 요청). 사용자가 다시 펼치면(onOpenStep) manual override 로 유지되고,
   // phase 가 그대로 approved 면 이 effect 는 재발화하지 않아 강제로 안 닫는다.
+  // ⚠️ project STEP1 추가로 인덱스 +1 시프트: criteria=2 / survey=3.
   const { collapse } = accordion;
   useEffect(() => {
-    if (props.criteriaPhase === 'approved') collapse(1);
+    if (props.criteriaPhase === 'approved') collapse(2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.criteriaPhase]);
   useEffect(() => {
-    if (props.surveyPhase === 'approved') collapse(2);
+    if (props.surveyPhase === 'approved') collapse(3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.surveyPhase]);
+
+  // STEP1 프로젝트 요약 — probing STEP1 미러. 선택 프로젝트명, "전체 적용" 상태면
+  // "· 일괄" 태그(등장한 모든 위젯 선택이 이 프로젝트와 동일할 때).
+  const projectName =
+    projects.find((p) => p.id === props.recruitingProjectId)?.name ??
+    t('projectSelected');
+  const selValues = Object.values(selection);
+  const appliedToAll =
+    props.recruitingProjectId != null &&
+    selValues.length > 0 &&
+    selValues.every((v) => v === props.recruitingProjectId);
+  const projectSummary = appliedToAll
+    ? `${projectName} · ${t('projectBulkTag')}`
+    : projectName;
 
   const sourceSummary = (() => {
     const fileN = props.files.length;
@@ -1003,8 +1029,25 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
 
   const steps: AccordionStepConfig[] = [
     {
+      key: 'project',
+      eyebrow: t('stepEyebrow', { n: 1, label: t('projectShort') }),
+      title: t('projectTitle'),
+      summary: projectSummary,
+      summaryIcon: <DuotoneIcon name="project" size={15} />,
+      body: (
+        <Field label={t('fieldProject')}>
+          <ProjectPicker
+            widget="recruiting"
+            value={props.recruitingProjectId}
+            onChange={props.onProjectChange}
+            fullWidth
+          />
+        </Field>
+      ),
+    },
+    {
       key: 'source',
-      eyebrow: t('stepEyebrow', { n: 1, label: t('step1Short') }),
+      eyebrow: t('stepEyebrow', { n: 2, label: t('step1Short') }),
       title: t('step1Title'),
       summary: sourceSummary,
       summaryIcon: <DuotoneIcon name="document" size={15} />,
@@ -1025,7 +1068,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
     },
     {
       key: 'criteria',
-      eyebrow: t('stepEyebrow', { n: 2, label: t('step2Short') }),
+      eyebrow: t('stepEyebrow', { n: 3, label: t('step2Short') }),
       title: t('step2Title'),
       summary: criteriaSummary,
       summaryIcon: <DuotoneIcon name="target" size={15} />,
@@ -1043,7 +1086,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
     },
     {
       key: 'survey',
-      eyebrow: t('stepEyebrow', { n: 3, label: t('step3Short') }),
+      eyebrow: t('stepEyebrow', { n: 4, label: t('step3Short') }),
       title: t('step3Title'),
       summary: surveySummary,
       summaryIcon: <DuotoneIcon name="minutes" size={15} />,
@@ -1061,7 +1104,7 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
     },
     {
       key: 'publish',
-      eyebrow: t('stepEyebrow', { n: 4, label: t('step4Short') }),
+      eyebrow: t('stepEyebrow', { n: 5, label: t('step4Short') }),
       title: t('step4Title'),
       summary: publishSummary,
       summaryIcon: <DuotoneIcon name="link" size={15} />,
@@ -1084,23 +1127,26 @@ export function RecruitingSetupAccordion(props: RecruitingSetupAccordionProps) {
     },
   ];
 
-  // 완료 판정 = 승인 기반 (CD: green ✓ 는 승인 후에만). 조건/설문은 *승인* 시
-  // done, 소스는 추출 시작 후, 발행은 published 시.
+  // 완료 판정 = 승인 기반 (CD: green ✓ 는 승인 후에만). project STEP1 추가로
+  // 인덱스 +1 시프트: 0=project(선택 시) · 1=source(추출 시작 후) · 2=criteria(승인) ·
+  // 3=survey(승인) · 4=publish(발행).
   const isComplete = (index: number): boolean =>
     index === 0
-      ? props.criteriaPhase !== 'idle'
+      ? props.recruitingProjectId != null
       : index === 1
-        ? props.criteriaPhase === 'approved'
+        ? props.criteriaPhase !== 'idle'
         : index === 2
-          ? props.surveyPhase === 'approved'
-          : props.published != null;
+          ? props.criteriaPhase === 'approved'
+          : index === 3
+            ? props.surveyPhase === 'approved'
+            : props.published != null;
 
-  // 승인 대기 스텝 = amore review 링 노드 (CD NodeReview). 조건 리뷰(step2) /
-  // 설문 리뷰(step3) 가 review phase 일 때. 셸의 4번째 노드 상태로 표시.
+  // 승인 대기 스텝 = amore review 링 노드 (CD NodeReview). 조건 리뷰(criteria=2) /
+  // 설문 리뷰(survey=3) 가 review phase 일 때. project STEP1 추가로 +1 시프트.
   const isReview = (index: number): boolean =>
-    index === 1
+    index === 2
       ? props.criteriaPhase === 'review'
-      : index === 2
+      : index === 3
         ? props.surveyPhase === 'review'
         : false;
 

@@ -2972,6 +2972,11 @@
     "setup": {
       "chipRequired": "必須",
       "standardBadge": "標準",
+      "projectShort": "プロジェクト",
+      "projectTitle": "作業中のプロジェクトを選択してください",
+      "projectSelected": "選択済み",
+      "projectBulkTag": "一括",
+      "fieldProject": "プロジェクト",
       "extractCta": "条件を抽出 →",
       "criteriaReviewNote": "RFP から<b>条件 {count}件</b>を抽出しました。プレビュー・編集のうえ承認してください。",
       "preview": "プレビュー",
