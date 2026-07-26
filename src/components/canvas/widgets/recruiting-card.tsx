@@ -78,7 +78,12 @@ function ExpandedBody() {
   // 명단·일정이 어느 sched_projects row 에 저장되는지(내부 데이터). 둘을 엮지 않는다.
   const { getSelection, setSelection } = useProjectSelection();
   const recruitingProjectId = getSelection('recruiting');
-  const { projects: interviewProjects } = useInterviewV2Projects();
+  const {
+    projects: interviewProjects,
+    create,
+    archive,
+    unarchive,
+  } = useInterviewV2Projects();
   const projects = useMemo(
     () => interviewProjects.map((p) => ({ id: p.id, name: p.name })),
     [interviewProjects],
@@ -88,8 +93,18 @@ function ExpandedBody() {
     [projects, recruitingProjectId],
   );
   const handleSelectProject = useCallback(
-    (projectId: string) => setSelection('recruiting', projectId),
+    (projectId: string | null) => setSelection('recruiting', projectId),
     [setSelection],
+  );
+  // pill 생성 배선 — 훅 create({project|null}) 를 pill 계약({id}|null)으로 어댑트.
+  // 보관/취소는 훅 archive/unarchive 를 그대로 넘긴다. ⚠️ 이 축은 interview_projects
+  // 만 — 탭②·③ 의 sched form-anchor 프로젝트는 별개 축(위 pill 주석 계약 유지).
+  const handleCreateProject = useCallback(
+    async (nm: string) => {
+      const { project } = await create(nm);
+      return project ? { id: project.id } : null;
+    },
+    [create],
   );
   // Published state emitted by the wizard. When true, the card shows the
   // shared completion footer ("신청서 제작이 완료되었습니다") whose click
@@ -324,6 +339,9 @@ function ExpandedBody() {
           projects={projects}
           activeProjectId={activeProject?.id ?? null}
           onSelectProject={handleSelectProject}
+          onCreateProject={handleCreateProject}
+          onArchiveProject={archive}
+          onUnarchiveProject={unarchive}
           // P0(백엔드) 미머지 — 마스터링크 lazy 프로비저닝 · counts API ·
           // 접근통일(Share orgId+members) 은 각 웨이브가 배선. P1 은 셸 구조만
           // 완성하고 이 슬롯들은 graceful 숨김(스펙 §제약).

@@ -18,7 +18,7 @@
    렌더한다(세션 스냅샷이 카드 subtree 라 헤더에 직접 닿지 못하는 걸 bridge).
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { CaptionLine } from '@/components/translate-console';
 import { useTranslateSession } from '@/components/translate/translate-session-context';
@@ -44,9 +44,20 @@ export function InterpreterFullview() {
   // translate-console/translate-session-context 를 건드리지 않는다(보수적).
   const { getSelection, setSelection } = useProjectSelection();
   const translateProjectId = getSelection('translate');
-  const { projects } = useInterviewV2Projects();
+  const { projects, create, archive, unarchive } = useInterviewV2Projects();
   const projectName =
     projects.find((p) => p.id === translateProjectId)?.name ?? t('project');
+
+  // pill 생성/보관 배선 — 부모(이 훅 인스턴스)가 뮤테이션 소유 → refetch 후
+  // projects 갱신이 pill 로 흘러간다. create 는 {project|null} 를 pill 계약({id}
+  // |null)으로 어댑트.
+  const handleCreateProject = useCallback(
+    async (nm: string) => {
+      const { project } = await create(nm);
+      return project ? { id: project.id } : null;
+    },
+    [create],
+  );
   const {
     promptedLines,
     inputLines,
@@ -84,6 +95,9 @@ export function InterpreterFullview() {
         onSelect={
           isLive ? undefined : (id) => setSelection('translate', id)
         }
+        onCreateProject={isLive ? undefined : handleCreateProject}
+        onArchiveProject={isLive ? undefined : archive}
+        onUnarchiveProject={isLive ? undefined : unarchive}
         menuLabel={tPicker('menu')}
       />
     );
@@ -107,6 +121,9 @@ export function InterpreterFullview() {
     translateProjectId,
     projects,
     setSelection,
+    handleCreateProject,
+    archive,
+    unarchive,
     tPicker,
     sourceLangLabel,
     targetLangLabel,

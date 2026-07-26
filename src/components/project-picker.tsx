@@ -10,6 +10,26 @@ import { IconButton } from '@/components/ui/icon-button';
 import { isComposingEnter } from '@/components/ui/chip-input';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useProjectSelection } from '@/components/project-selection-provider';
+import { useToast } from '@/components/toast-provider';
+
+// 보관 액션 아이콘 — 행 hover 시 노출되는 archive 글리프. 풀뷰 pill 과 동일한
+// 뚜껑 상자 형태(FullviewProjectPill ARCHIVE_ICON 미러 — 두 표면 UX 일치).
+const ARCHIVE_ICON = (
+  <svg
+    className="h-[15px] w-[15px]"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M2 2.5h12v2.5H2zM3.25 5V13h9.5V5M6.25 8h3.5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 // 통합 프로젝트 기반 — 공용 ProjectPicker (V2 세팅 STEP1 피커, PR-C).
 //
@@ -48,8 +68,10 @@ export function ProjectPicker({
   fullWidth?: boolean;
 }) {
   const t = useTranslations('ProjectPicker');
-  const { projects, isLoading, create } = useInterviewV2Projects();
+  const { projects, isLoading, create, archive, unarchive } =
+    useInterviewV2Projects();
   const { applyToAll, selection } = useProjectSelection();
+  const { push } = useToast();
 
   // 인라인 생성행 상태 — "＋ 새 프로젝트" 클릭 시 필드 아래 입력행이 펼쳐진다.
   const [creating, setCreating] = useState(false);
@@ -97,8 +119,29 @@ export function ProjectPicker({
     }
   }
 
-  // 각 프로젝트 행 = [이름(선택) | 체크박스(전체 적용)] + 맨 아래 "+ 새 프로젝트".
-  // 이 위젯의 현재 선택은 이름을 강조해서 표시하고, 전체 적용 여부는 체크박스로.
+  async function handleArchive(id: string, projectName: string) {
+    // 선택 중이던 프로젝트를 보관하면 다른 활성 프로젝트로 선택을 옮긴다(없으면
+    // null → 미선택). 풀뷰 pill 과 동일 규칙 — 존재하지 않는 프로젝트 참조 금지.
+    const wasSelected = id === value;
+    if (wasSelected) {
+      const next = projects.find((p) => p.id !== id);
+      onChange(next ? next.id : null);
+    }
+    await archive(id);
+    push(t('archivedToast', { name: projectName }), {
+      ttlMs: 6000,
+      action: {
+        label: t('undo'),
+        onClick: () => {
+          void unarchive(id);
+          if (wasSelected) onChange(id);
+        },
+      },
+    });
+  }
+
+  // 각 프로젝트 행 = [이름(선택) | 보관(hover) | 체크박스(전체 적용)] + 맨 아래
+  // "+ 새 프로젝트". 현재 선택은 이름을 강조하고, 전체 적용 여부는 체크박스로.
   const items: DropdownItem[] = [
     ...projects.map((p) => ({
       key: p.id,
@@ -108,6 +151,11 @@ export function ProjectPicker({
         </span>
       ),
       onSelect: () => onChange(p.id),
+      action: {
+        icon: ARCHIVE_ICON,
+        onAction: () => void handleArchive(p.id, p.name),
+        ariaLabel: t('archive'),
+      },
       toggle: {
         checked: appliedToAllId === p.id,
         // 라디오처럼: 클릭 시 그 프로젝트를 전체 위젯에 1회 적용(idempotent).

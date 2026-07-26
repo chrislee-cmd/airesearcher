@@ -2,6 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+// Optional inline action button (e.g. 보관 직후 "실행취소"). Clicking it runs
+// onClick then dismisses the toast. Kept additive so existing toasts (message
+// only) are untouched.
+type ToastAction = { label: string; onClick: () => void };
+
 type Toast = {
   id: string;
   message: string;
@@ -10,13 +15,17 @@ type Toast = {
   // for failures we want to keep distinct from the paywall modal.
   tone: 'info' | 'amore' | 'warn';
   ttlMs: number;
+  action?: ToastAction;
   // Wave3: 마운트 시 edge slide-in, ttl 만료 시 leaving=true 로 전환해 fade-out
   // 애니메이션(.toast-out)을 재생한 뒤 FADE_MS 후 목록에서 제거.
   leaving: boolean;
 };
 
 type Ctx = {
-  push: (message: string, opts?: { tone?: Toast['tone']; ttlMs?: number }) => void;
+  push: (
+    message: string,
+    opts?: { tone?: Toast['tone']; ttlMs?: number; action?: ToastAction },
+  ) => void;
 };
 
 const ToastCtx = createContext<Ctx | null>(null);
@@ -43,7 +52,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const tone = opts?.tone ?? 'info';
     const ttlMs = opts?.ttlMs ?? 3500;
-    setItems((prev) => [...prev, { id, message, tone, ttlMs, leaving: false }]);
+    setItems((prev) => [
+      ...prev,
+      { id, message, tone, ttlMs, action: opts?.action, leaving: false },
+    ]);
 
     // ttl 만료 → leaving 표시(fade-out 재생) → FADE_MS 후 제거. 두 타이머를
     // id 로 묶어 unmount / 중복 push 시 정리.
@@ -76,7 +88,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             className={
-              'pointer-events-auto min-w-[260px] max-w-[360px] border bg-paper px-4 py-2.5 text-md leading-[1.6] rounded-sm ' +
+              'pointer-events-auto flex min-w-[260px] max-w-[360px] items-center gap-3 border bg-paper px-4 py-2.5 text-md leading-[1.6] rounded-sm ' +
               (t.leaving ? 'toast-out ' : 'toast-in ') +
               (t.tone === 'amore'
                 ? 'border-amore text-ink-2'
@@ -86,7 +98,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             }
             role="status"
           >
-            {t.message}
+            <span className="min-w-0 flex-1">{t.message}</span>
+            {t.action ? (
+              // eslint-disable-next-line react/forbid-elements -- 토스트 인라인 "실행취소" 텍스트 링크. Button primitive 의 chrome(border/pad/radius)은 토스트 안 인라인 링크와 불일치 — 밑줄 텍스트 어포던스가 맞다.
+              <button
+                type="button"
+                onClick={() => {
+                  t.action?.onClick();
+                  remove(t.id);
+                }}
+                className="shrink-0 font-semibold text-amore underline-offset-2 hover:underline focus:underline focus:outline-none"
+              >
+                {t.action.label}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>

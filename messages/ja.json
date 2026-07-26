@@ -955,6 +955,9 @@
     "creating": "作成中…",
     "createCancel": "キャンセル",
     "createFailed": "プロジェクトの作成に失敗しました",
+    "archive": "アーカイブ",
+    "archivedToast": "「{name}」をアーカイブしました",
+    "undo": "元に戻す",
     "menu": "プロジェクトメニュー"
   },
   "ComingSoon": {

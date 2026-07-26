@@ -15,8 +15,13 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ui/icon-button';
+import { isComposingEnter } from '@/components/ui/chip-input';
+import { useToast } from '@/components/toast-provider';
 
 // 타이틀은 카드(29px) 와 구분되는 풀뷰 전용 타입 — Outfit 800 / --fv-title-size
 // / ls -0.5. font-family 는 widget-shell 카드 타이틀과 동일한 런타임 var 소비.
@@ -109,16 +114,41 @@ export function FullviewHeader({
 // ── 재사용 프레젠테이션 조각 (§F3 클래스맵) ─────────────────────────────
 // 위젯이 header 슬롯으로 주입한다. 셸은 기본 렌더 안 함 — 위젯 종속.
 
+// 보관 액션 아이콘 — 행 hover 시 노출되는 archive 글리프(뚜껑 달린 상자). 오조작
+// 방지를 위해 hover/focus 에서만 보인다(DropdownMenu action 이 opacity 로 제어).
+const ARCHIVE_ICON = (
+  <svg
+    className="h-[15px] w-[15px]"
+    viewBox="0 0 16 16"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M2 2.5h12v2.5H2zM3.25 5V13h9.5V5M6.25 8h3.5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 // 프로젝트 pill — 📁 + 이름 + ▾. paper · border 1.5 ink · radius-pill ·
 // memphis-sm.
 //
 // 두 모드 (CD closed-state 비주얼은 동일, 동작만 위젯 소유 — BUILD-SPEC §26
 // "project dropdown = worker owns"):
 //   - display-only (`onSelect`/`projects` 미지정): 정적 <span> — 회귀 0 폴백.
-//     아직 피커를 배선 안 한 뷰(recruiting/desk/quotes/moderator)가 그대로 씀.
-//   - interactive (`onSelect` + 비어있지 않은 `projects`): <button> 트리거 +
-//     DropdownMenu. 클릭 시 프로젝트 목록에서 전환. 드롭다운 open-state 는 CD
-//     미제공(worker-owned) → 공용 DropdownMenu(Memphis) 로 그린다.
+//     아직 피커를 배선 안 한 뷰(desk/quotes/moderator)가 그대로 씀.
+//   - interactive (`onSelect` + `projects` 지정): <button> 트리거 + DropdownMenu.
+//     클릭 시 프로젝트 목록에서 전환. `onCreateProject` 를 주면 하단에 "+ 새
+//     프로젝트" 인라인 생성행, `onArchiveProject` 를 주면 각 행 hover 시 보관
+//     액션(undo 토스트 포함)이 붙는다 — 위젯뷰 ProjectPicker 와 동일 UX.
+//     드롭다운 open-state 는 CD 미제공(worker-owned) → 공용 DropdownMenu(Memphis).
+//
+// 생성/보관 뮤테이션은 부모(useInterviewV2Projects 인스턴스 소유)가 콜백으로
+// 주입한다 — 부모가 뮤테이션 직후 목록을 refetch 해 `projects` prop 이 갱신되게
+// SSOT 를 부모에 유지(별도 훅 인스턴스로 인한 desync 방지).
 export function FullviewProjectPill({
   name,
   trailing,
@@ -126,20 +156,43 @@ export function FullviewProjectPill({
   onSelect,
   selectedId,
   menuLabel,
+  onCreateProject,
+  onArchiveProject,
+  onUnarchiveProject,
 }: {
   name: ReactNode;
   // 옵션: 이름 뒤 글리프 (기본 ▾ 드롭다운 힌트).
   trailing?: ReactNode;
-  // 인터랙티브 모드 — 전환 가능한 프로젝트 목록. 비었으면 display-only 로 폴백
-  // (열어봐야 고를 게 없으므로). 새 프로젝트 생성은 카드의 ProjectPicker 소유.
+  // 인터랙티브 모드 — 전환 가능한 프로젝트 목록. `onCreateProject` 가 없으면
+  // 목록이 비었을 때 display-only 로 폴백(열어봐야 고를 게 없으므로). 생성 콜백이
+  // 있으면 목록이 비어도 "+ 새 프로젝트" 만 담은 드롭다운을 연다(첫 프로젝트 생성).
   projects?: { id: string; name: string }[];
-  // 프로젝트 선택 콜백. `projects` 와 함께 지정돼야 인터랙티브해진다.
-  onSelect?: (projectId: string) => void;
+  // 프로젝트 선택 콜백. `projects` 와 함께 지정돼야 인터랙티브해진다. 선택 중
+  // 프로젝트를 보관하면 다른 활성 프로젝트로 이동(없으면 null → 미선택)하므로
+  // null 을 받는다.
+  onSelect?: (projectId: string | null) => void;
   // 현재 선택된 프로젝트 id — 메뉴에서 강조 표시.
   selectedId?: string | null;
   // 인터랙티브 트리거의 접근성 라벨 (예: "프로젝트 메뉴").
   menuLabel?: string;
+  // 새 프로젝트 생성 — 이름을 받아 생성된 프로젝트({id})나 null(실패) 반환.
+  // 부모의 useInterviewV2Projects().create 배선. 지정 시 "+ 새 프로젝트" 노출.
+  onCreateProject?: (name: string) => Promise<{ id: string } | null>;
+  // 프로젝트 보관(soft). 지정 시 각 행 hover 에 보관 액션 노출.
+  onArchiveProject?: (id: string) => Promise<void> | void;
+  // 보관 취소(undo 토스트에서 호출). 지정 시 보관 토스트에 "실행취소" 버튼 노출.
+  onUnarchiveProject?: (id: string) => Promise<void> | void;
 }) {
+  const tPicker = useTranslations('ProjectPicker');
+  const { push } = useToast();
+
+  // 인라인 생성행 상태 — ProjectPicker(위젯뷰)와 동일. "+ 새 프로젝트" 클릭 시
+  // pill 아래에 floating 입력행이 펼쳐진다(헤더 지오메트리 불변 = pill 외형 유지).
+  const [creating, setCreating] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState(false);
+
   const content = (
     <>
       <span aria-hidden className="text-lg">
@@ -152,7 +205,8 @@ export function FullviewProjectPill({
     </>
   );
 
-  const interactive = !!onSelect && !!projects && projects.length > 0;
+  const interactive =
+    !!onSelect && !!projects && (projects.length > 0 || !!onCreateProject);
   if (!interactive) {
     return (
       <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm">
@@ -161,33 +215,156 @@ export function FullviewProjectPill({
     );
   }
 
-  const items: DropdownItem[] = projects.map((p) => ({
+  function resetCreate() {
+    setCreating(false);
+    setDraftName('');
+    setSubmitting(false);
+    setCreateError(false);
+  }
+
+  async function submitCreate() {
+    const trimmed = draftName.trim();
+    if (!trimmed || submitting || !onCreateProject) return;
+    setSubmitting(true);
+    setCreateError(false);
+    try {
+      const created = await onCreateProject(trimmed);
+      if (created) {
+        // 생성 직후 이 위젯의 선택을 새 프로젝트로 이동 — 방금 만든 걸 바로 쓰게.
+        onSelect?.(created.id);
+        resetCreate();
+        return;
+      }
+      setCreateError(true);
+      setSubmitting(false);
+    } catch {
+      setCreateError(true);
+      setSubmitting(false);
+    }
+  }
+
+  async function handleArchive(id: string, projectName: string) {
+    if (!onArchiveProject) return;
+    // 선택 중이던 프로젝트를 보관하면 다른 활성 프로젝트로 선택을 옮긴다(없으면
+    // null → 미선택). 존재하지 않는 프로젝트를 가리키는 선택 상태 금지.
+    const wasSelected = id === selectedId;
+    if (wasSelected) {
+      const next = (projects ?? []).find((p) => p.id !== id);
+      onSelect?.(next ? next.id : null);
+    }
+    await onArchiveProject(id);
+    push(tPicker('archivedToast', { name: projectName }), {
+      ttlMs: 6000,
+      action: onUnarchiveProject
+        ? {
+            label: tPicker('undo'),
+            onClick: () => {
+              void onUnarchiveProject(id);
+              // 보관 전 선택 상태였으면 복원.
+              if (wasSelected) onSelect?.(id);
+            },
+          }
+        : undefined,
+    });
+  }
+
+  const items: DropdownItem[] = (projects ?? []).map((p) => ({
     key: p.id,
     label: (
       <span className={p.id === selectedId ? 'font-semibold text-ink' : undefined}>
         {p.name}
       </span>
     ),
-    onSelect: () => onSelect(p.id),
+    onSelect: () => onSelect?.(p.id),
+    action: onArchiveProject
+      ? {
+          icon: ARCHIVE_ICON,
+          onAction: () => void handleArchive(p.id, p.name),
+          ariaLabel: tPicker('archive'),
+        }
+      : undefined,
   }));
+  if (onCreateProject) {
+    items.push({
+      key: '__create__',
+      label: tPicker('newProject'),
+      onSelect: () => {
+        setCreateError(false);
+        setDraftName('');
+        setCreating(true);
+      },
+    });
+  }
 
   return (
-    <DropdownMenu
-      items={items}
-      align="start"
-      trigger={({ onClick, ...aria }) => (
-        // eslint-disable-next-line react/forbid-elements -- 프로젝트 pill 은 CD §F3 전용 chrome(📁 + 이름 + ▾ · radius-pill · border 1.5 ink · memphis-sm)으로 Button primitive variant(고정 radius·형태)와 불일치. 셸 close ✕ / End-session pill 과 동일 선례(native chrome).
-        <button
-          type="button"
-          onClick={onClick}
-          aria-label={menuLabel}
-          {...aria}
-          className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm transition-colors hover:bg-paper-soft focus:outline-none focus-visible:bg-paper-soft"
-        >
-          {content}
-        </button>
-      )}
-    />
+    <span className="relative inline-flex shrink-0">
+      <DropdownMenu
+        items={items}
+        align="start"
+        trigger={({ onClick, ...aria }) => (
+          // eslint-disable-next-line react/forbid-elements -- 프로젝트 pill 은 CD §F3 전용 chrome(📁 + 이름 + ▾ · radius-pill · border 1.5 ink · memphis-sm)으로 Button primitive variant(고정 radius·형태)와 불일치. 셸 close ✕ / End-session pill 과 동일 선례(native chrome).
+          <button
+            type="button"
+            onClick={onClick}
+            aria-label={menuLabel}
+            {...aria}
+            className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm transition-colors hover:bg-paper-soft focus:outline-none focus-visible:bg-paper-soft"
+          >
+            {content}
+          </button>
+        )}
+      />
+      {creating ? (
+        // floating 인라인 생성행 — pill 아래 anchor. 헤더 레이아웃(pill 외형)을
+        // 건드리지 않도록 absolute + z-overlay(드롭다운과 동일 레이어).
+        <div className="absolute left-0 top-full z-overlay mt-1 flex min-w-[240px] flex-col gap-1.5 rounded-sm border-2 border-ink bg-paper p-2 shadow-memphis-md">
+          <div className="flex items-center gap-2">
+            <Input
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value.slice(0, 200))}
+              onKeyDown={(e) => {
+                // IME 조합 중 Enter 는 음절 확정 — 조기 submit 방지.
+                if (e.key === 'Enter' && !isComposingEnter(e)) {
+                  e.preventDefault();
+                  void submitCreate();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  resetCreate();
+                }
+              }}
+              placeholder={tPicker('createPlaceholder')}
+              aria-label={tPicker('newProject')}
+              maxLength={200}
+              size="sm"
+              disabled={submitting}
+              autoFocus
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={submitCreate}
+              disabled={!draftName.trim() || submitting}
+              className="shrink-0 whitespace-nowrap"
+            >
+              {submitting ? tPicker('creating') : tPicker('createConfirm')}
+            </Button>
+            <IconButton
+              aria-label={tPicker('createCancel')}
+              size="sm"
+              variant="ghost"
+              onClick={resetCreate}
+              disabled={submitting}
+              className="shrink-0"
+            >
+              <span aria-hidden>✕</span>
+            </IconButton>
+          </div>
+          {createError ? (
+            <p className="text-xs text-warning">{tPicker('createFailed')}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </span>
   );
 }
 

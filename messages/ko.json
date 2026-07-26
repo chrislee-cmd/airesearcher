@@ -865,6 +865,9 @@
     "creating": "생성 중…",
     "createCancel": "취소",
     "createFailed": "프로젝트 생성에 실패했어요",
+    "archive": "보관",
+    "archivedToast": "'{name}' 프로젝트를 보관했어요",
+    "undo": "실행취소",
     "menu": "프로젝트 메뉴"
   },
   "ComingSoon": {

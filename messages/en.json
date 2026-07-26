@@ -865,6 +865,9 @@
     "creating": "Creating…",
     "createCancel": "Cancel",
     "createFailed": "Couldn't create the project",
+    "archive": "Archive",
+    "archivedToast": "Archived '{name}'",
+    "undo": "Undo",
     "menu": "Project menu"
   },
   "ComingSoon": {
