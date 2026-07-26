@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:7px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}
+a{color:#c2334f;}a:hover{color:#9e2740;}</style>
+</helmet>
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:44px;display:flex;flex-direction:column;align-items:flex-start;gap:16px;">
+
+  <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:4px;max-width:1000px;">
+    <div style="font-family:'Outfit',sans-serif;font-size:26px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">Live Interpreter · Observer (share link)</div>
+    <div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#8a8693;line-height:1.7;">Read-only listener page at <b style="color:#1d1b20;">/live/&lt;token&gt;</b>. Legacy flat layout → Memphis. Interpreter tone = mint <span style="color:#1d1b20;font-weight:700;">#cdebd9</span>. Legacy parity kept: <b style="color:#1d1b20;">audio-unlock gate</b> (mobile tap-to-play) + <b style="color:#1d1b20;">3-way channel</b> (Original / Translation / Mute).</div>
+  </div>
+
+  <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+
+    <!-- ============ 01 AUDIO LOCKED (entry) ============ -->
+    <div style="width:560px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">01</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Entry · audio locked</div></div>
+      <div style="width:560px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#cdebd9;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-top:11px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇰🇷 한국어</span>
+            <span style="font-size:14px;color:#1d1b20;">→</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇺🇸 English</span>
+          </div>
+        </div>
+        <!-- unlock gate -->
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:40px;text-align:center;">
+          <div style="width:74px;height:74px;border:3px solid #1d1b20;border-radius:20px;background:#cdebd9;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:4px 4px 0 #1d1b20;">🔈</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:21px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Tap to start listening</div>
+          <div style="font-size:13.5px;color:#5b5965;line-height:1.6;max-width:330px;">Your browser needs one tap before it can play live audio. Captions start at the same time.</div>
+          <div style="display:inline-flex;align-items:center;gap:9px;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:999px;padding:14px 30px;font-size:15px;font-weight:800;box-shadow:4px 4px 0 rgba(29,27,32,0.3);margin-top:6px;">▶ Enable audio</div>
+          <div style="font-size:11.5px;color:#8a8693;margin-top:2px;">Prefer to read only? You can mute after enabling.</div>
+        </div>
+        <!-- disabled channel bar -->
+        <div style="border-top:2px solid #1d1b20;background:#f7f7f5;padding:13px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">AUDIO CHANNEL</div><div style="font-size:11px;color:#8a8693;margin-left:auto;">Available after you enable audio.</div></div>
+          <div style="display:inline-flex;border:2px solid rgba(29,27,32,0.32);border-radius:999px;overflow:hidden;"><sc-for list="{{ chanLocked }}" as="c" hint-placeholder-count="3"><div style="padding:8px 16px;font-size:12.5px;font-weight:{{ c.weight }};background:{{ c.bg }};color:{{ c.color }};">{{ c.label }}</div></sc-for></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 02 LISTENING · TRANSLATION ============ -->
+    <div style="width:560px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">02</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Listening · Translation channel</div></div>
+      <div style="width:560px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#cdebd9;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE 24:18</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-top:11px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇰🇷 한국어</span>
+            <span style="font-size:14px;color:#1d1b20;">→</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇺🇸 English</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:18px;">
+          <div style="flex:1;min-height:0;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:2px 2px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#f7f7f5;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#8a8693;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">ORIGINAL</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">한국어</div></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;"><div style="font-family:'Outfit',sans-serif;font-size:17px;line-height:1.6;color:#a3a7ad;">가격을 미리 보여줬으면 좋았을 것 같아요.</div><div style="font-family:'Outfit',sans-serif;font-size:20px;line-height:1.6;color:#1d1b20;">그 시점에 그냥 나가고 싶었어요.<span style="color:#a3a7ad;">…</span></div></div>
+          </div>
+          <div style="flex:1;min-height:0;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:3px 3px 0 #16a34a;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eafaf0;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#2f6b4f;">TRANSLATION</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">English</div><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:999px;padding:2px 9px;">🔊 PLAYING</span></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;"><div style="font-family:'Outfit',sans-serif;font-size:17px;line-height:1.6;color:#a3a7ad;">It would've been better to show the price upfront.</div><div style="font-family:'Outfit',sans-serif;font-size:21px;line-height:1.6;color:#1d1b20;font-weight:600;">I just wanted to leave at that point.<span style="color:#a3a7ad;">…</span></div></div>
+          </div>
+        </div>
+        <div style="border-top:2px solid #1d1b20;background:#fff;padding:13px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">AUDIO CHANNEL</div><div style="font-size:11px;color:#8a8693;margin-left:auto;">Captions keep running on any channel.</div></div>
+          <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><sc-for list="{{ chanTranslation }}" as="c" hint-placeholder-count="3"><div style="padding:8px 16px;font-size:12.5px;font-weight:{{ c.weight }};background:{{ c.bg }};color:{{ c.color }};">{{ c.label }}</div></sc-for></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 03 ORIGINAL CHANNEL ============ -->
+    <div style="width:560px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">03</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Original channel · floor audio</div></div>
+      <div style="width:560px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#cdebd9;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE 24:31</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-top:11px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇰🇷 한국어</span>
+            <span style="font-size:14px;color:#1d1b20;">→</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇺🇸 English</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:18px;">
+          <div style="flex:1;min-height:0;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:3px 3px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#f7f7f5;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#1d1b20;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#5b5965;">ORIGINAL</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">한국어</div><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;color:#1d1b20;background:#fff;border:1.4px solid #1d1b20;border-radius:999px;padding:2px 9px;">🔊 PLAYING</span></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;"><div style="font-family:'Outfit',sans-serif;font-size:17px;line-height:1.6;color:#a3a7ad;">가격을 미리 보여줬으면 좋았을 것 같아요.</div><div style="font-family:'Outfit',sans-serif;font-size:20px;line-height:1.6;color:#1d1b20;">그 시점에 그냥 나가고 싶었어요.<span style="color:#a3a7ad;">…</span></div></div>
+          </div>
+          <div style="flex:1;min-height:0;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:2px 2px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eafaf0;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#2f6b4f;">TRANSLATION</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">English</div><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;color:#a3a7ad;">CAPTIONS ONLY</span></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;"><div style="font-family:'Outfit',sans-serif;font-size:17px;line-height:1.6;color:#a3a7ad;">It would've been better to show the price upfront.</div><div style="font-family:'Outfit',sans-serif;font-size:20px;line-height:1.6;color:#1d1b20;font-weight:600;">I just wanted to leave at that point.<span style="color:#a3a7ad;">…</span></div></div>
+          </div>
+        </div>
+        <div style="border-top:2px solid #1d1b20;background:#fff;padding:13px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">AUDIO CHANNEL</div><div style="font-size:11px;color:#8a8693;margin-left:auto;">Captions keep running on any channel.</div></div>
+          <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><sc-for list="{{ chanOriginal }}" as="c" hint-placeholder-count="3"><div style="padding:8px 16px;font-size:12.5px;font-weight:{{ c.weight }};background:{{ c.bg }};color:{{ c.color }};">{{ c.label }}</div></sc-for></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 04 MUTED ============ -->
+    <div style="width:560px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">04</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Muted · captions only</div></div>
+      <div style="width:560px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#cdebd9;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE 25:02</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-top:11px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇰🇷 한국어</span>
+            <span style="font-size:14px;color:#1d1b20;">→</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇺🇸 English</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:18px;">
+          <div style="flex:1;min-height:0;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:2px 2px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#f7f7f5;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#8a8693;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">ORIGINAL</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">한국어</div></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;"><div style="font-family:'Outfit',sans-serif;font-size:17px;line-height:1.6;color:#a3a7ad;">가격을 미리 보여줬으면 좋았을 것 같아요.</div><div style="font-family:'Outfit',sans-serif;font-size:20px;line-height:1.6;color:#1d1b20;">그 시점에 그냥 나가고 싶었어요.<span style="color:#a3a7ad;">…</span></div></div>
+          </div>
+          <div style="flex:1;min-height:0;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:3px 3px 0 #16a34a;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eafaf0;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#2f6b4f;">TRANSLATION</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">English</div></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:16px;"><div style="font-family:'Outfit',sans-serif;font-size:17px;line-height:1.6;color:#a3a7ad;">It would've been better to show the price upfront.</div><div style="font-family:'Outfit',sans-serif;font-size:21px;line-height:1.6;color:#1d1b20;font-weight:600;">I just wanted to leave at that point.<span style="color:#a3a7ad;">…</span></div></div>
+          </div>
+        </div>
+        <div style="border-top:2px solid #1d1b20;background:#fff7f0;padding:13px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a5a10;">AUDIO CHANNEL · MUTED</div><div style="font-size:11px;color:#8a5a10;margin-left:auto;">Following by captions only.</div></div>
+          <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><sc-for list="{{ chanMuted }}" as="c" hint-placeholder-count="3"><div style="padding:8px 16px;font-size:12.5px;font-weight:{{ c.weight }};background:{{ c.bg }};color:{{ c.color }};">{{ c.label }}</div></sc-for></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 05 WAITING ============ -->
+    <div style="width:560px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">05</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Waiting · no speech yet</div></div>
+      <div style="width:560px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#cdebd9;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE 00:04</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-top:11px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇰🇷 한국어</span>
+            <span style="font-size:14px;color:#1d1b20;">→</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇺🇸 English</span>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:18px;">
+          <div style="flex:1;min-height:0;border:1.8px dashed #c9ccd2;border-radius:14px;background:#fafafa;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1.5px dashed #c9ccd2;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#c9ccd2;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#a3a7ad;">ORIGINAL</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#a3a7ad;">한국어</div></div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:20px;letter-spacing:0.3em;color:#c9ccd2;">● ● ●</div></div>
+          </div>
+          <div style="flex:1;min-height:0;border:1.8px dashed #c9ccd2;border-radius:14px;background:#fafafa;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1.5px dashed #c9ccd2;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#c9ccd2;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#a3a7ad;">TRANSLATION</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#a3a7ad;">English</div></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:20px;text-align:center;"><div style="font-size:13.5px;font-weight:700;color:#5b5965;">Waiting for the first words…</div><div style="font-size:12px;color:#8a8693;line-height:1.5;max-width:280px;">Captions appear here the moment someone speaks. Audio is already connected.</div></div>
+          </div>
+        </div>
+        <div style="border-top:2px solid #1d1b20;background:#fff;padding:13px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">AUDIO CHANNEL</div><div style="font-size:11px;color:#8a8693;margin-left:auto;">Captions keep running on any channel.</div></div>
+          <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><sc-for list="{{ chanTranslation }}" as="c" hint-placeholder-count="3"><div style="padding:8px 16px;font-size:12.5px;font-weight:{{ c.weight }};background:{{ c.bg }};color:{{ c.color }};">{{ c.label }}</div></sc-for></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 06 ENDED ============ -->
+    <div style="width:560px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">06</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Session ended</div></div>
+      <div style="width:560px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#eceef1;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8a8693;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#8a8693;"></span>ENDED</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px;text-align:center;">
+          <div style="width:72px;height:72px;border:3px solid #1d1b20;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:4px 4px 0 #1d1b20;">✓</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">The session has ended</div>
+          <div style="font-size:14px;color:#5b5965;line-height:1.6;max-width:360px;">Thanks for listening. Live interpretation for this session is no longer broadcasting.</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#a3a7ad;margin-top:4px;">24:47 · 한국어 → English</div>
+        </div>
+      </div>
+    </div>
+    <!-- ============ 07 SHARED SCREEN ============ -->
+    <div style="width:900px;flex-shrink:0;display:flex;flex-direction:column;gap:11px;">
+      <div style="display:flex;align-items:baseline;gap:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">07</div><div style="font-size:14px;font-weight:700;color:#1d1b20;">Shared screen · observer</div><div style="font-size:12px;color:#8a8693;">host is sharing → screen on top, captions in 2 columns below</div></div>
+      <div style="width:900px;height:800px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#cdebd9;padding:16px 22px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:11px;">
+            <span style="font-size:20px;">🎧</span>
+            <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">Live Interpreter</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇰🇷 한국어</span>
+            <span style="font-size:14px;color:#1d1b20;">→</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;color:#1d1b20;">🇺🇸 English</span>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;"><span style="width:7px;height:7px;border-radius:50%;background:#ff5c8a;"></span>LIVE 24:18</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:18px;">
+          <!-- shared screen -->
+          <div style="flex:1.2;min-height:0;border:3px solid #1d1b20;border-radius:16px;box-shadow:3px 3px 0 #1d1b20;overflow:hidden;background:#1d1b20;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;background:#2a262f;border-bottom:1.5px solid #000;flex-shrink:0;"><span style="width:11px;height:11px;border-radius:50%;background:#ff5f57;"></span><span style="width:11px;height:11px;border-radius:50%;background:#febc2e;"></span><span style="width:11px;height:11px;border-radius:50%;background:#28c840;"></span><div style="flex:1;margin-left:8px;background:#1d1b20;border-radius:6px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a3a7ad;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">🖥️ Host is sharing a screen</div><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#cdebd9;">● SHARING</span></div>
+            <div style="flex:1;min-height:0;position:relative;background:#f7f7f5;display:flex;align-items:center;justify-content:center;padding:20px;">
+              <div style="width:100%;max-width:520px;display:flex;gap:12px;">
+                <div style="flex:1;aspect-ratio:16/10;border:2px solid rgba(29,27,32,0.14);border-radius:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(29,27,32,0.08);"><div style="width:44px;height:44px;border-radius:50%;background:#cfe6ff;border:2px solid #1d1b20;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;">M</div><div style="font-size:11.5px;font-weight:700;color:#1d1b20;">Moderator</div></div>
+                <div style="flex:1;aspect-ratio:16/10;border:2px solid #16a34a;border-radius:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(29,27,32,0.08);"><div style="width:44px;height:44px;border-radius:50%;background:#ffe0ec;border:2px solid #1d1b20;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;">P</div><div style="font-size:11.5px;font-weight:700;color:#1d1b20;">Participant</div><div style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#16a34a;font-weight:700;">🎙️ speaking</div></div>
+              </div>
+              <div style="position:absolute;bottom:12px;left:16px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;">View only · you can't control the shared screen</div>
+            </div>
+          </div>
+          <!-- captions 2-col -->
+          <div style="flex:1;min-height:0;display:flex;gap:14px;">
+            <div style="flex:1;min-width:0;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:2px 2px 0 #1d1b20;display:flex;flex-direction:column;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#f7f7f5;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#8a8693;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">ORIGINAL</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">한국어</div></div>
+              <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;"><div style="font-family:'Outfit',sans-serif;font-size:16px;line-height:1.6;color:#a3a7ad;">가격을 미리 보여줬으면 좋았을 것 같아요.</div><div style="font-family:'Outfit',sans-serif;font-size:19px;line-height:1.6;color:#1d1b20;">그 시점에 그냥 나가고 싶었어요.<span style="color:#a3a7ad;">…</span></div></div>
+            </div>
+            <div style="flex:1;min-width:0;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:3px 3px 0 #16a34a;display:flex;flex-direction:column;overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eafaf0;border-bottom:2px solid #1d1b20;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;"></span><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#2f6b4f;">TRANSLATION</div><div style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#1d1b20;">English</div><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:999px;padding:2px 9px;">🔊 PLAYING</span></div>
+              <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;"><div style="font-family:'Outfit',sans-serif;font-size:16px;line-height:1.6;color:#a3a7ad;">It would've been better to show the price upfront.</div><div style="font-family:'Outfit',sans-serif;font-size:19px;line-height:1.6;color:#1d1b20;font-weight:600;">I just wanted to leave at that point.<span style="color:#a3a7ad;">…</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="border-top:2px solid #1d1b20;background:#fff;padding:13px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#8a8693;">AUDIO CHANNEL</div><div style="font-size:11px;color:#8a8693;margin-left:auto;">Captions keep running on any channel.</div></div>
+          <div style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><sc-for list="{{ chanTranslation }}" as="c" hint-placeholder-count="3"><div style="padding:8px 16px;font-size:12.5px;font-weight:{{ c.weight }};background:{{ c.bg }};color:{{ c.color }};">{{ c.label }}</div></sc-for></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const seg = (active, disabled) => ({
+      bg: active ? '#1d1b20' : (disabled ? '#eceef1' : '#fff'),
+      color: active ? '#fff' : (disabled ? '#5b5965' : '#5b5965'),
+      weight: active ? 800 : 600,
+    });
+    const bar = (sel, disabled) => [
+      { label: '🇰🇷 Original', ...seg(sel === 'orig', disabled) },
+      { label: '🇺🇸 Translation', ...seg(sel === 'trans', disabled) },
+      { label: '🔇 Mute', ...seg(sel === 'mute', disabled) },
+    ];
+    return {
+      chanLocked: bar(null, true),
+      chanOriginal: bar('orig'),
+      chanTranslation: bar('trans'),
+      chanMuted: bar('mute'),
+    };
+  }
+}
+</script>
+</body>
+</html>
