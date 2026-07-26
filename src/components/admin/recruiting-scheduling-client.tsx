@@ -73,6 +73,8 @@ export type SchedCandidate = {
   participant_token: string;
   // Coarse per-candidate flag set by the "개인 확정" bulk action (PR-A).
   status: string;
+  // 합류 확인 시각(폰게이트 최초 통과). null = 미합류 → 문자 알림 자격 없음.
+  joined_at?: string | null;
 };
 
 type Props = {
@@ -280,9 +282,26 @@ export function RecruitingSchedulingClient({
     () =>
       candidates
         .filter((c) => c.status === 'confirmed')
-        .map((c) => ({ id: c.id, label: candidateLabel(c) })),
+        .map((c) => ({
+          id: c.id,
+          label: candidateLabel(c),
+          smsEligible: !!c.phone && !!c.joined_at,
+        })),
     // candidateLabel closes over t; candidates is the real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    [candidates],
+  );
+
+  // 문자 알림 대상 힌트(전체 reach = 확정자 기준). N = 확정자, M = 확정∩합류∩전화.
+  const confirmedCount = useMemo(
+    () => candidates.filter((c) => c.status === 'confirmed').length,
+    [candidates],
+  );
+  const confirmedSmsCount = useMemo(
+    () =>
+      candidates.filter(
+        (c) => c.status === 'confirmed' && !!c.phone && !!c.joined_at,
+      ).length,
     [candidates],
   );
 
@@ -1610,9 +1629,18 @@ export function RecruitingSchedulingClient({
                           groups={namedGroups.map((g) => ({
                             id: g.id,
                             title: g.title,
-                            // SMS 대상 수 힌트용 그룹 인원.
+                            // 그룹 공지 수신자 집합 = 그룹 내 확정자(N), 문자 자격
+                            // = 그중 합류∩전화(M).
                             count: candidates.filter(
-                              (c) => c.batch_id === g.id,
+                              (c) =>
+                                c.batch_id === g.id && c.status === 'confirmed',
+                            ).length,
+                            smsCount: candidates.filter(
+                              (c) =>
+                                c.batch_id === g.id &&
+                                c.status === 'confirmed' &&
+                                !!c.phone &&
+                                !!c.joined_at,
                             ).length,
                           }))}
                           layout="sidebar"
@@ -1623,7 +1651,9 @@ export function RecruitingSchedulingClient({
                           // tiles come from the roster rows + broadcast CTA.
                           onSelectThread={(id) => switchTile(tileId, id)}
                           onClose={() => closeTile(tileId)}
-                          totalCount={candidates.length}
+                          // 전체 공지 수신자 집합 = 확정자(N), 문자 자격 = 확정∩합류∩전화(M).
+                          confirmedCount={confirmedCount}
+                          confirmedSmsCount={confirmedSmsCount}
                           // 일정 패널 소스 — the full slot set so the panel's own
                           // scope filter (전체/그룹/개인) resolves any target, not
                           // just the calendar's filtered group. Click → openEdit.

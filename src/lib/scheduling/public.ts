@@ -23,6 +23,13 @@ export type SchedPublicCandidate = {
   // It MUST never be returned to the client — every public route projects only
   // `candidate.name` outward.
   phone: string | null;
+  // Coarse per-candidate status — only the broadcast read gate needs it (공지는
+  // 확정자에게만 보인다). Optional: the entry-gate helpers (tail/full-phone match)
+  // don't select it, so it stays undefined there.
+  status?: string | null;
+  // Last-seen throttle source for the public read route. Present only where the
+  // select includes it (resolveCandidateInProject).
+  last_seen_at?: string | null;
 };
 
 export type SchedProjectResolve =
@@ -125,20 +132,37 @@ export async function resolveCandidateInProject(
   candidateId: string,
 ): Promise<SchedPublicCandidate | null> {
   if (!candidateId || candidateId.length > 64) return null;
-  const { data: cand, error: cErr } = await admin
+  // Wide select carries status (broadcast gate) + last_seen_at (touch throttle).
+  // Preview DBs predating the joined_at/last_seen_at migration lack last_seen_at,
+  // so fall back to the pre-columns select — otherwise the participant read would
+  // 401 for everyone until the migration lands (regression guard).
+  let cand: Record<string, unknown> | null = null;
+  const wide = await admin
     .from('sched_candidates')
-    .select('id, batch_id, name, phone')
+    .select('id, batch_id, name, phone, status, last_seen_at')
     .eq('id', candidateId)
     .maybeSingle();
-  if (cErr || !cand) return null;
+  if (wide.error) {
+    const narrow = await admin
+      .from('sched_candidates')
+      .select('id, batch_id, name, phone, status')
+      .eq('id', candidateId)
+      .maybeSingle();
+    if (narrow.error || !narrow.data) return null;
+    cand = narrow.data as Record<string, unknown>;
+  } else if (!wide.data) {
+    return null;
+  } else {
+    cand = wide.data as Record<string, unknown>;
+  }
 
   const { data: batch, error: bErr } = await admin
     .from('sched_batches')
     .select('project_id')
-    .eq('id', (cand as SchedPublicCandidate).batch_id)
+    .eq('id', (cand as unknown as SchedPublicCandidate).batch_id)
     .maybeSingle();
   if (bErr || !batch || (batch.project_id as string | null) !== projectId) {
     return null;
   }
-  return cand as SchedPublicCandidate;
+  return cand as unknown as SchedPublicCandidate;
 }

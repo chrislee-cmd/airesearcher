@@ -16,6 +16,7 @@
 //   * 발급 쿠키는 httpOnly + Secure + shareToken/candidate 바인딩(재사용 불가).
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import type { createAdminClient } from '@/lib/supabase/admin';
 import {
   resolveShareToken,
   listProjectCandidates,
@@ -23,6 +24,8 @@ import {
   matchCandidatesByFullPhone,
   type SchedPublicCandidate,
 } from '@/lib/scheduling/public';
+
+type Admin = ReturnType<typeof createAdminClient>;
 import {
   signParticipantGate,
   participantGateCookieName,
@@ -56,6 +59,38 @@ async function setGateCookie(shareToken: string, candidateId: string) {
       maxAge: PARTICIPANT_GATE_TTL_MIN * 60,
     },
   );
+}
+
+// 합류 확인 스탬프 — 폰게이트를 통과(= 이 링크가 이 사람의 것임이 상호 확인)한
+// 순간에만 찍는다. joined_at 은 최초 1회(불변), last_seen_at 은 매번. 이 값이
+// 문자 알림 자격의 SSOT(sms-notify.ts). best-effort: 어떤 실패도 게이트 통과를
+// 막지 않는다(참가자 화면 우선). 컬럼 미적용(42703) 환경은 조용히 무시.
+async function stampJoin(admin: Admin, candidateId: string) {
+  try {
+    const { data, error } = await admin
+      .from('sched_candidates')
+      .select('joined_at')
+      .eq('id', candidateId)
+      .maybeSingle();
+    if (error) return; // 컬럼 미적용 등 — best-effort skip
+    const now = new Date().toISOString();
+    const patch: Record<string, string> = { last_seen_at: now };
+    // 최초 통과일 때만 joined_at 세팅(이후 재접속에도 불변).
+    if (data && !(data as { joined_at: string | null }).joined_at) {
+      patch.joined_at = now;
+    }
+    await admin.from('sched_candidates').update(patch).eq('id', candidateId);
+  } catch {
+    // best-effort — 로그만 남기고 삼킨다.
+    console.warn('[sched-gate] stampJoin failed', { candidateId });
+  }
+}
+
+// 게이트 통과 = 쿠키 발급 + 합류 스탬프. 두 성공 경로(고유 매칭·이름/전화 확정)가
+// 공유한다 — 스탬프 지점을 한 곳으로 모아 누락을 막는다.
+async function letIn(admin: Admin, shareToken: string, candidateId: string) {
+  await stampJoin(admin, candidateId);
+  await setGateCookie(shareToken, candidateId);
 }
 
 export async function POST(
@@ -116,7 +151,7 @@ export async function POST(
   if (fullPhone !== undefined) {
     const matches = matchCandidatesByFullPhone(candidates, fullPhone);
     if (matches.length === 1) {
-      await setGateCookie(token, matches[0].id);
+      await letIn(admin, token, matches[0].id);
       return NextResponse.json({ ok: true });
     }
     // 0 or (truly identical) 2+ → can't identify.
@@ -139,13 +174,13 @@ export async function POST(
     // The chosen id MUST be one that actually matches the tail (re-checked
     // server-side) — a visitor can't inject an arbitrary candidate id.
     if (!chosen) return invalid();
-    await setGateCookie(token, chosen.id);
+    await letIn(admin, token, chosen.id);
     return NextResponse.json({ ok: true });
   }
 
   // Unique match → straight through.
   if (matches.length === 1) {
-    await setGateCookie(token, matches[0].id);
+    await letIn(admin, token, matches[0].id);
     return NextResponse.json({ ok: true });
   }
 

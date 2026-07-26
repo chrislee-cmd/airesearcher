@@ -59,7 +59,17 @@ export type JourneyScheduleCandidate = {
   fields: Record<string, string>;
   status: string;
   source?: string | null;
+  // 합류 확인 시각(폰게이트 최초 통과). null = 미합류 → 문자 알림 자격 없음.
+  // 서버가 문자 발송의 최종 게이트라 이 값은 컴포저의 대상 수(M명) 힌트 산출용.
+  joined_at?: string | null;
 };
+
+// 문자 알림 자격 = 합류 확인(joined_at) ∩ 전화 보유. 컴포저의 대상 수(M명) 힌트에만
+// 쓰인다 — 실제 발송 게이트는 서버(sms-notify.ts). masking 뷰어는 전화가 '●●●●' 로
+// 채워져 있어 과대 계상될 수 있으나 서버가 최종 필터하므로 힌트로 충분.
+function smsEligibleOf(c: JourneyScheduleCandidate): boolean {
+  return !!c.phone && !!c.joined_at;
+}
 
 export type JourneyScheduleGroup = {
   id: string;
@@ -192,14 +202,32 @@ export function JourneySchedulingSurface({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates]);
 
-  // 개인 채팅 대상 = 확정된 전원(그룹 무관, spec 항목1).
+  // 개인 채팅 대상 = 확정된 전원(그룹 무관, spec 항목1). smsEligible = 합류∩전화 —
+  // 개인 reach 에서 문자 자격 여부(체크박스 비활성/사유)를 판정한다.
   const confirmedChatCandidates = useMemo(
     () =>
       candidates
         .filter((c) => c.status === 'confirmed')
-        .map((c) => ({ id: c.id, label: candidateLabel(c) })),
+        .map((c) => ({
+          id: c.id,
+          label: candidateLabel(c),
+          smsEligible: smsEligibleOf(c),
+        })),
     // candidateLabel closes over t; candidates is the real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    [candidates],
+  );
+
+  // 문자 알림 대상 수(힌트) — 전체 reach(= 확정자) 기준. N = 확정자, M = 확정자 중
+  // 합류∩전화. 서버가 최종 게이트라 어디까지나 근사(masking 뷰어는 전화 미상).
+  const confirmedCount = useMemo(
+    () => candidates.filter((c) => c.status === 'confirmed').length,
+    [candidates],
+  );
+  const confirmedSmsCount = useMemo(
+    () =>
+      candidates.filter((c) => c.status === 'confirmed' && smsEligibleOf(c))
+        .length,
     [candidates],
   );
 
@@ -376,7 +404,11 @@ export function JourneySchedulingSurface({
     const batchId = cand?.batch_id ?? activeCalendarGroupId;
     const candidateOptions = candidates
       .filter((c) => c.batch_id === batchId)
-      .map((c) => ({ id: c.id, label: candidateLabel(c) }));
+      .map((c) => ({
+        id: c.id,
+        label: candidateLabel(c),
+        smsEligible: smsEligibleOf(c),
+      }));
     return { batchId, candidateOptions };
   }
 
@@ -629,9 +661,17 @@ export function JourneySchedulingSurface({
                     groups={namedGroups.map((g) => ({
                       id: g.id,
                       title: g.title,
-                      // SMS 대상 수 힌트용 그룹 인원.
-                      count: candidates.filter((c) => c.batch_id === g.id)
-                        .length,
+                      // 그룹 공지 수신자 집합 = 그룹 내 확정자(N). smsCount = 그중
+                      // 합류∩전화(M). 서버 발송 게이트와 같은 기준.
+                      count: candidates.filter(
+                        (c) => c.batch_id === g.id && c.status === 'confirmed',
+                      ).length,
+                      smsCount: candidates.filter(
+                        (c) =>
+                          c.batch_id === g.id &&
+                          c.status === 'confirmed' &&
+                          smsEligibleOf(c),
+                      ).length,
                     }))}
                     layout="sidebar"
                     selectedThread={thread}
@@ -640,7 +680,9 @@ export function JourneySchedulingSurface({
                     // new tile. New tiles come from roster rows + broadcast CTA.
                     onSelectThread={(id) => switchTile(tileId, id)}
                     onClose={() => closeTile(tileId)}
-                    totalCount={candidates.length}
+                    // 전체 공지 수신자 집합 = 확정자(N), 문자 자격 = 확정∩합류∩전화(M).
+                    confirmedCount={confirmedCount}
+                    confirmedSmsCount={confirmedSmsCount}
                     // 일정 패널 소스 — the full slot set so the panel's own scope
                     // filter (전체/그룹/개인) resolves any target. Click → openEdit.
                     slots={slots}
