@@ -88,15 +88,19 @@ export async function GET(req: Request) {
     fields: Record<string, string> | null;
     status: string;
     source: string | null;
+    // 합류 확인 시각 — 문자 알림 자격(합류∩전화) 카운트 힌트 산출용. raw 값은
+    // PII 아님(전화번호는 masking 대상, joined_at 은 접속 여부 신호일 뿐).
+    joined_at: string | null;
   };
   let candidates: Candidate[] = [];
   const candWide = await admin
     .from('sched_candidates')
-    .select('id, batch_id, email, name, phone, fields, status, source')
+    .select('id, batch_id, email, name, phone, fields, status, source, joined_at')
     .in('batch_id', batchIds)
     .order('created_at', { ascending: true })
     .limit(5000);
   if (candWide.error) {
+    // Preview DB predating source/joined_at — degrade both to null.
     const candNarrow = await admin
       .from('sched_candidates')
       .select('id, batch_id, email, name, phone, fields, status')
@@ -104,8 +108,9 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: true })
       .limit(5000);
     candidates = (candNarrow.data ?? []).map((r) => ({
-      ...(r as Omit<Candidate, 'source'>),
+      ...(r as Omit<Candidate, 'source' | 'joined_at'>),
       source: null,
+      joined_at: null,
     }));
   } else {
     candidates = (candWide.data ?? []) as Candidate[];

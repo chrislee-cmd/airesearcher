@@ -21,10 +21,21 @@ import {
   type SlotStatus,
 } from '@/lib/scheduling/slots';
 
-export type ChatCandidate = { id: string; label: string };
-// count = 그룹 인원(SMS 대상 수 힌트용, 선택). 미제공 시 그룹 reach 의 (N명)
-// 힌트는 생략된다.
-export type ChatGroup = { id: string; title: string; count?: number };
+// smsEligible = 합류 확인(joined_at) ∩ 전화 보유. 개인 reach 에서 문자 자격 여부
+// (체크박스 비활성·사유)를 판정한다. 미제공(구 호출부)이면 undefined → 미자격 취급.
+export type ChatCandidate = {
+  id: string;
+  label: string;
+  smsEligible?: boolean;
+};
+// count  = 그룹 공지 수신자 집합(= 그룹 내 확정자) 수 N.
+// smsCount = 그중 문자 자격(합류∩전화) M. 미제공 시 그룹 reach 힌트는 생략/0.
+export type ChatGroup = {
+  id: string;
+  title: string;
+  count?: number;
+  smsCount?: number;
+};
 
 // The top-level kind toggle: 공지글(announcement banner) vs 채팅 메세지(chat bubble).
 type AnnounceMode = 'announcement' | 'chat';
@@ -58,9 +69,11 @@ type Props = {
   slots?: SchedSlot[];
   // Slot click → open the slot editor modal (parent's `openEdit`).
   onEditSlot?: (slot: SchedSlot) => void;
-  // Total candidate count in the project (for the 전체 reach hint). Falls back
-  // to the visible candidate count.
-  totalCount?: number;
+  // 전체 공지 수신자 집합 = 프로젝트 확정자 수 N (전체 reach 힌트). 미제공 시 보이는
+  // 후보 수로 폴백.
+  confirmedCount?: number;
+  // 확정자 중 문자 자격(합류∩전화) M — 전체 reach 의 "📱 문자 알림 (M명)".
+  confirmedSmsCount?: number;
 };
 
 // Admin chat rail (CD frame 02 · reach sub-picker 02B) — a broadcast
@@ -78,7 +91,8 @@ export function SchedulingChatPanel({
   onClose,
   slots,
   onEditSlot,
-  totalCount,
+  confirmedCount,
+  confirmedSmsCount,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const { messages, loading, refetch, editMessage, deleteMessage } =
@@ -186,21 +200,46 @@ export function SchedulingChatPanel({
   // 채팅=off. 토글하면 override 값 우선.
   const notifySms = notifySmsOverride ?? kind === 'announcement';
 
-  // SMS 대상 수 힌트(N명) — 서버가 phone 보유자만 최종 필터하므로 어디까지나 근사.
-  //   전체=프로젝트 전 후보 · 그룹=그룹 인원(count 제공 시) · 개인=1.
+  // 두 축(사용자 결정 2026-07-26):
+  //   reachRecipientCount(N) = 이 메시지가 도달하는 수신자 집합 크기
+  //     (전체·그룹 공지 = 확정자, 개인 = 1).
+  //   smsEligibleCount(M)    = 그중 문자 자격(합류∩전화) = 실제 문자 대상.
+  // 서버가 최종 게이트라 M 은 근사(masking 뷰어는 전화 미상). N≠M 이면 왜 적게
+  // 가는지 한 줄로 설명하고, M=0 이면 문자 체크박스를 비활성화한다.
   const groupCountById = useMemo(() => {
     const map = new Map<string, number>();
     for (const g of groups)
       if (typeof g.count === 'number') map.set(g.id, g.count);
     return map;
   }, [groups]);
-  const smsTargetCount: number | null =
+  const groupSmsCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const g of groups)
+      if (typeof g.smsCount === 'number') map.set(g.id, g.smsCount);
+    return map;
+  }, [groups]);
+  const selectedPersonal = isPersonal
+    ? personalOptions.find((c) => c.id === selectedThread)
+    : undefined;
+  const reachRecipientCount: number =
     reachScope === 'personal'
       ? 1
       : reachScope === 'group'
         ? (groupCountById.get(groupTarget) ??
-          (groupTarget === batchId ? candidates.length : null))
-        : (totalCount ?? candidates.length);
+          (groupTarget === batchId ? candidates.length : 0))
+        : (confirmedCount ?? candidates.length);
+  const smsEligibleCount: number =
+    reachScope === 'personal'
+      ? selectedPersonal?.smsEligible
+        ? 1
+        : 0
+      : reachScope === 'group'
+        ? (groupSmsCountById.get(groupTarget) ?? 0)
+        : (confirmedSmsCount ?? 0);
+  // 문자 자격 대상이 하나도 없으면 발송해도 아무에게도 안 감 → 체크박스 비활성.
+  const smsCanSend = smsEligibleCount > 0;
+  // 수신자 집합 중 문자에서 제외되는 인원(미합류·무전화).
+  const smsExcludedCount = Math.max(0, reachRecipientCount - smsEligibleCount);
   const threadMessages: SchedMessage[] = isBroadcast
     ? broadcast
     : (byCandidate.get(selectedThread) ?? []);
@@ -291,9 +330,10 @@ export function SchedulingChatPanel({
     setSending(true);
     setError(null);
     const scope: MessageScope = isPersonal ? 'private' : 'broadcast';
-    // 문자 알림은 설정된 배포에서 체크된 경우에만. sms_context_batch_id 는 전체
-    // reach 에서 프로젝트를 특정하기 위한 컨텍스트(타일 batchId).
-    const smsOn = smsConfigured && notifySms;
+    // 문자 알림은 설정된 배포에서 체크됐고 실제 자격 대상이 있을 때만(smsCanSend).
+    // sms_context_batch_id 는 전체 reach 에서 프로젝트를 특정하기 위한 컨텍스트(타일
+    // batchId). 서버가 다시 최종 필터하지만, 여기서 막아 불필요한 호출을 줄인다.
+    const smsOn = smsConfigured && notifySms && smsCanSend;
     try {
       const res = await fetch('/api/scheduling/messages', {
         method: 'POST',
@@ -380,7 +420,8 @@ export function SchedulingChatPanel({
     ? t('chatBroadcast')
     : (candidateLabelById.get(selectedThread) ?? t('unnamedCandidate'));
   const avatarLetter = isBroadcast ? '📢' : threadTitle.trim().charAt(0) || '·';
-  const allCount = totalCount ?? candidates.length;
+  // 전체 reach 힌트 = 공지 수신자 집합(확정자) 수.
+  const allCount = confirmedCount ?? candidates.length;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-paper">
@@ -719,20 +760,41 @@ export function SchedulingChatPanel({
       {/* Composer — border-2 ink field + ➤ ink button. */}
       <div className="shrink-0 border-t-2 border-ink bg-paper p-3">
         {error && <p className="mb-2 text-sm text-warning">{error}</p>}
-        {/* 문자 알림 opt-in — Solapi 설정된 배포에서만 노출. 대상 수(N명)는 근사
-            힌트(서버가 phone 보유자만 최종 필터). */}
+        {/* 문자 알림 opt-in — Solapi 설정된 배포에서만 노출. 대상 수(M명)=문자 자격
+            (합류∩전화). 서버가 최종 필터라 근사. M=0 이면 비활성(보낼 사람 없음 →
+            "보냈다고 착각" 방지), N>M 이면 왜 적게 가는지 한 줄 설명. */}
         {smsConfigured && (
-          <label className="mb-2 flex w-fit cursor-pointer items-center gap-2 text-sm text-mute">
-            <Checkbox
-              checked={notifySms}
-              onChange={(e) => setNotifySmsOverride(e.target.checked)}
-            />
-            <span>
-              {smsTargetCount != null
-                ? t('chatSmsNotify', { count: smsTargetCount })
-                : t('chatSmsNotifyNoCount')}
-            </span>
-          </label>
+          <div className="mb-2 flex flex-col gap-1">
+            <label
+              className={`flex w-fit items-center gap-2 text-sm ${
+                smsCanSend
+                  ? 'cursor-pointer text-mute'
+                  : 'cursor-not-allowed text-mute-soft'
+              }`}
+            >
+              <Checkbox
+                checked={notifySms && smsCanSend}
+                disabled={!smsCanSend}
+                onChange={(e) => setNotifySmsOverride(e.target.checked)}
+              />
+              <span>{t('chatSmsNotify', { count: smsEligibleCount })}</span>
+            </label>
+            {/* 제외 사유 — M=0(대상 없음) 또는 N>M(일부 제외). 개인 reach 는 상대가
+                미합류/무전화라는 개인화 문구. */}
+            {!smsCanSend ? (
+              <p className="text-xs leading-relaxed text-mute-soft">
+                {reachScope === 'personal'
+                  ? t('chatSmsPersonalIneligible')
+                  : t('chatSmsNoneHint')}
+              </p>
+            ) : (
+              smsExcludedCount > 0 && (
+                <p className="text-xs leading-relaxed text-mute-soft">
+                  {t('chatSmsExcludedHint', { excluded: smsExcludedCount })}
+                </p>
+              )
+            )}
+          </div>
         )}
         <div className="flex items-end gap-2.5">
           <Textarea
