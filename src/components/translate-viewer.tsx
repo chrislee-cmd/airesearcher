@@ -1,22 +1,39 @@
 'use client';
 
-// AI 동시통역 — public viewer.
+// AI 동시통역 — public viewer (Memphis observer redesign, CD frames 01–06).
+//
+// SSOT = design-handoff/interpreter-observer/ (BUILD-SPEC §1 class map +
+// `Interpreter Observer View.dc.html`). Legacy flat prompter layout →
+// Memphis system: mint header band + language-pair pills + twin caption
+// panels (ORIGINAL / TRANSLATION) + a bottom segmented channel bar. The
+// presentation is a fresh build; only the LiveKit + Realtime + audio-unlock
+// LOGIC below is preserved from the previous viewer.
 //
 // What runs here per share link:
 //   1. backfill captions via /api/translate/public/:token/transcript-since
-//      so a late-join visitor sees what's already been said
+//      so a late-join visitor sees what's already been said (both original
+//      + translation rows — the twin panels each need their own history)
 //   2. subscribe to the Supabase Realtime broadcast channel
 //      "live:<sessionId>" for live caption deltas (input + output)
 //   3. fetch /api/translate/public/:token/viewer-token to mint a
 //      subscribe-only LiveKit JWT and join the room
 //   4. wire the audio mode radio (input / output / mute) so only one
 //      track is ever audible:
-//        - SFU-level: setSubscribed(false) on the other track so we don't
-//          even download it
-//        - browser-level: <audio>.muted = !want as a belt-and-suspenders
-//          safety net
+//        - both tracks stay SUBSCRIBED (iOS Safari wedges if a track is
+//          unsubscribed/re-subscribed mid-session — the audio-unlock
+//          contract depends on this)
+//        - <audio>.muted = !want is the only per-mode toggle
+//
+// Frame ↔ state mapping (§1):
+//   01 audio locked   → `needsTap` (autoplay blocked) → unlock gate
+//   05 waiting         → live but no captions yet → dashed twin panels
+//   02 translation     → mode 'output'  → TRANSLATION panel emphasized + 🔊
+//   03 original         → mode 'input'   → ORIGINAL panel emphasized + 🔊
+//   04 muted            → mode 'mute'    → TRANSLATION emphasized (no 🔊) +
+//                          peach channel bar
+//   06 ended            → status 'ended' → neutral header + ✓ tile + duration
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Room,
   RoomEvent,
@@ -27,21 +44,15 @@ import {
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
 import { getTranslateAnonId } from '@/lib/translate-anon-id';
-import { Button } from '@/components/ui/button';
-import { ChromeButton } from '@/components/ui/chrome-button';
 
 type AudioMode = 'input' | 'output' | 'mute';
 type SessionStatus = 'idle' | 'live' | 'ended';
-// `ts` is wall-clock ms when the line was last updated. Used by the
-// prompter pane to keep only the last 30 seconds on screen — older
-// lines fade off the top edge but stay in state so PR-B can offer a
-// full transcript download.
+// `ts` is wall-clock ms when the line was last updated. Kept in state
+// (never pruned) so a future transcript-download path has the full history;
+// the panels render the accumulated lines bottom-anchored + scrollable.
 type CaptionLine = { id: string; text: string; final: boolean; ts: number };
 
 type BackfillRow = { kind: 'input' | 'output'; text: string; lang: string | null; ts: string };
-
-// Display window — mirrors the host. 30 seconds of translated lines.
-const PROMPTER_WINDOW_MS = 30_000;
 
 type Props = {
   token: string;
@@ -49,12 +60,19 @@ type Props = {
   sourceLang: string;
   targetLang: string;
   initialStatus: SessionStatus;
-  // The LiveKit room name is derived server-side and tunnelled here for
-  // future use (e.g. a "share to a second viewer" link that pre-shows
-  // the room) — we currently fetch it again from the viewer-token API.
-  livekitRoom?: string;
+  // Session start wall-clock (ISO) — drives the header LIVE elapsed timer
+  // and the ended-screen session length (§4 contract-change #4: duration
+  // comes from session state, no new API).
+  startedAt: string | null;
   recordEnabled: boolean;
 };
+
+// CD renders the header title, headings and caption lines in Outfit
+// (display). Same runtime var as the host fullview (STREAM_FONT) — no
+// hardcoded font. `--font-outfit` is defined by the /live route layout.
+const DISPLAY_FONT = {
+  fontFamily: 'var(--font-outfit), var(--font-sans)',
+} as const;
 
 const LANG_LABEL: Record<string, string> = {
   // i18n-allow-korean -- 언어 라벨 endonym (각 언어를 자국어 표기로 노출, 번역 안 함)
@@ -66,28 +84,66 @@ const LANG_LABEL: Record<string, string> = {
   es: 'Español',
 };
 
+// Language-pair pills mirror the CD comp's flag + endonym. Flag maps the
+// language code to a representative region glyph; unknown codes render
+// without a flag (label still shows via langName). Emoji, not literals.
+const LANG_FLAG: Record<string, string> = {
+  ko: '🇰🇷',
+  en: '🇺🇸',
+  ja: '🇯🇵',
+  th: '🇹🇭',
+  zh: '🇨🇳',
+  es: '🇪🇸',
+};
+
 function langName(code: string) {
   return LANG_LABEL[code] ?? code.toUpperCase();
 }
 
+// This public page deliberately bypasses next-intl (see /live layout): it
+// renders in English chrome, and the *content* (captions) is already in the
+// visitor's target language. Copy lives here as a flat English map — zero
+// Korean literals. (Full 4-locale visitor-language chrome would require
+// wiring next-intl into this bypass route, which is out of scope.)
 const COPY = {
-  audioInput: 'Original',
-  audioOutput: 'Translation',
-  audioMute: 'Mute',
-  status: {
-    idle: 'Waiting to start…',
-    live: 'Live',
-    ended: 'Session ended',
+  headerTitle: 'Live Interpreter',
+  livePill: 'LIVE',
+  endedPill: 'ENDED',
+  audioChannel: 'AUDIO CHANNEL',
+  audioChannelMuted: 'AUDIO CHANNEL · MUTED',
+  channelHelper: 'Captions keep running on any channel.',
+  channelHelperMuted: 'Following by captions only.',
+  channelLockedHelper: 'Available after you enable audio.',
+  seg: { input: 'Original', output: 'Translation', mute: 'Mute' },
+  original: 'ORIGINAL',
+  translation: 'TRANSLATION',
+  playing: '🔊 PLAYING',
+  captionsOnly: 'CAPTIONS ONLY',
+  unlock: {
+    heading: 'Tap to start listening',
+    reason:
+      'Your browser needs one tap before it can play live audio. Captions start at the same time.',
+    cta: '▶ Enable audio',
+    footnote: 'Prefer to read only? You can mute after enabling.',
   },
-  recordedHint: 'You can also follow along by reading the captions.',
-  ephemeralHint: 'Live captions only — this session is not being recorded.',
-  hostLabel: 'Host language',
-  viewerLabel: 'Translated to',
-  // PR-B: downloads (audio + transcript) are gated to the host. The
-  // anon viewer never sees a purchase path — just a notice once the
-  // session ends.
-  hostOnlyDownload: 'Audio and transcript download is host-only.',
+  waiting: {
+    heading: 'Waiting for the first words…',
+    hint: 'Captions appear here the moment someone speaks. Audio is already connected.',
+  },
+  ended: {
+    heading: 'The session has ended',
+    body: 'Thanks for listening. Live interpretation for this session is no longer broadcasting.',
+  },
+  connectError: 'Could not connect to the live session. Please refresh to try again.',
 } as const;
+
+// mm:ss (minutes may exceed 59 → shown as total minutes, matching CD "24:18").
+function formatDuration(totalSec: number): string {
+  const s = Math.max(0, Math.floor(totalSec));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
 
 export function TranslateViewer({
   token,
@@ -95,21 +151,28 @@ export function TranslateViewer({
   sourceLang,
   targetLang,
   initialStatus,
+  startedAt,
   recordEnabled,
 }: Props) {
   const [status, setStatus] = useState<SessionStatus>(initialStatus);
   const [mode, setMode] = useState<AudioMode>('input');
+  const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
-  // Ticks once a second so the 30s prompter window slides forward even
-  // when the host pauses speaking.
+  // Ticks once a second so the header elapsed timer stays live even while
+  // the host is quiet.
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
+  // Frozen wall-clock ms captured when the session transitions to 'ended'
+  // during this page's lifetime, so the ended screen can show an accurate
+  // session length. Null when the page loads already-ended (no reliable end
+  // time without a new API) — the ended screen then shows the language pair
+  // only rather than a fabricated duration.
+  const [endedAt, setEndedAt] = useState<number | null>(null);
   // Mobile browsers (especially iOS Safari) block <audio>.play() that
   // wasn't called from inside a user gesture. LiveKit signals this via
-  // RoomEvent.AudioPlaybackStatusChanged. When blocked we show a
-  // tap-to-enable banner and call room.startAudio() from the click —
-  // that single user-gesture unlocks playback for every track in the
-  // room.
+  // RoomEvent.AudioPlaybackStatusChanged. When blocked we show the unlock
+  // gate (frame 01) and call room.startAudio() from the CTA click — that
+  // single user-gesture unlocks playback for every track in the room.
   const [needsTap, setNeedsTap] = useState(false);
 
   const roomRef = useRef<Room | null>(null);
@@ -120,23 +183,23 @@ export function TranslateViewer({
     input: null,
     output: null,
   });
-  const trackPubByNameRef = useRef<Record<'input' | 'output', RemoteTrackPublication | null>>({
-    input: null,
-    output: null,
-  });
 
-  const pushLine = useCallback((line: CaptionLine) => {
-    setOutputLines((prev) => {
-      const idx = prev.findIndex((l) => l.id === line.id);
-      if (idx === -1) return [...prev, line];
-      const next = prev.slice();
-      next[idx] = line;
-      return next;
-    });
-  }, []);
+  const pushLine = useCallback(
+    (kind: 'input' | 'output', line: CaptionLine) => {
+      const setter = kind === 'input' ? setInputLines : setOutputLines;
+      setter((prev) => {
+        const idx = prev.findIndex((l) => l.id === line.id);
+        if (idx === -1) return [...prev, line];
+        const next = prev.slice();
+        next[idx] = line;
+        return next;
+      });
+    },
+    [],
+  );
 
-  // Heartbeat — slides the prompter window forward when the host is
-  // quiet.
+  // Heartbeat — keeps the header elapsed timer moving while the host is
+  // quiet. Stops once the session ends.
   useEffect(() => {
     if (status === 'ended') return;
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -144,16 +207,10 @@ export function TranslateViewer({
   }, [status]);
 
   // Resolve the audible track / muted state every time the mode flips.
-  // We do this in BOTH places so the host can be confident a viewer
-  // never accidentally hears both streams at once:
-  //   1. setSubscribed on the unwanted track so the SFU stops shipping it
-  //   2. <audio>.muted on the corresponding element so any in-flight
-  //      buffer doesn't slip through during the unsubscribe round-trip
-  // iOS-friendly mode application: BOTH tracks stay subscribed, we only
-  // toggle the <audio>.muted attribute. iOS Safari can wedge if a track
-  // is unsubscribed and re-subscribed mid-session (the first audio
-  // chunk after re-subscription silently fails to decode), so the
-  // subscribe lifecycle is now bound to the room, not the mode.
+  // iOS-friendly: BOTH tracks stay subscribed, we only toggle
+  // <audio>.muted. iOS Safari can wedge if a track is unsubscribed and
+  // re-subscribed mid-session, so the subscribe lifecycle is bound to the
+  // room, not the mode.
   const applyMode = useCallback(() => {
     if (inputAudioRef.current) {
       inputAudioRef.current.muted = mode !== 'input';
@@ -170,7 +227,10 @@ export function TranslateViewer({
   }, [applyMode]);
 
   // Backfill on mount (only useful when the host turned recording on —
-  // otherwise the RPC returns empty by design).
+  // otherwise the RPC returns empty by design). Both original + translation
+  // rows are kept: the redesign's twin panels each render their own
+  // history, so — unlike the legacy translation-only prompter — original
+  // (input) captions now belong in the dedicated ORIGINAL panel.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -182,27 +242,24 @@ export function TranslateViewer({
         if (!res.ok) return;
         const json = (await res.json()) as { messages?: BackfillRow[] };
         if (cancelled) return;
-        // The viewer prompter only renders translated output. Input
-        // captions are persisted server-side (for PR-B's bilingual
-        // download) but never shown here, so we filter them out.
+        const inputs: CaptionLine[] = [];
         const outputs: CaptionLine[] = [];
         for (const m of json.messages ?? []) {
-          if (m.kind !== 'output') continue;
-          outputs.push({
+          const line: CaptionLine = {
             id: `bf-${m.ts}-${m.kind}`,
             text: m.text,
             final: true,
-            // Backfilled lines are all considered "now" so a late
-            // joiner sees the most recent N seconds of context. The
-            // wall-clock the host wrote at isn't useful for the
-            // sliding window — we want the prompter to feel fresh
-            // when the page mounts.
+            // Backfilled lines are all stamped "now" so a late joiner sees
+            // recent context anchored to page mount.
             ts: Date.now(),
-          });
+          };
+          if (m.kind === 'input') inputs.push(line);
+          else outputs.push(line);
         }
+        if (inputs.length) setInputLines(inputs);
         if (outputs.length) setOutputLines(outputs);
       } catch {
-        // best-effort — live deltas will fill the panel anyway
+        // best-effort — live deltas will fill the panels anyway
       }
     })();
     return () => {
@@ -210,7 +267,10 @@ export function TranslateViewer({
     };
   }, [recordEnabled, token]);
 
-  // Subscribe to the broadcast channel for live caption deltas.
+  // Subscribe to the broadcast channel for live caption deltas. Both kinds
+  // are routed to their panel; original captions land in the ORIGINAL panel
+  // (a dedicated surface in the redesign, no longer a leak into the
+  // translation stream).
   useEffect(() => {
     const supa = createBrowserSupabase();
     const ch = supa.channel(`live:${sessionId}`, {
@@ -219,19 +279,13 @@ export function TranslateViewer({
     type Payload = { kind: 'input' | 'output'; id: string; text: string; final: boolean };
     ch.on('broadcast', { event: 'caption' }, ({ payload }) => {
       const p = payload as Payload;
-      // Host stopped broadcasting input captions in PR-A, but we
-      // defensively gate here too so an older host build never leaks
-      // source-language text into the prompter pane.
-      if (p.kind !== 'output') return;
-      pushLine({ id: p.id, text: p.text, final: p.final, ts: Date.now() });
+      if (p.kind !== 'input' && p.kind !== 'output') return;
+      pushLine(p.kind, { id: p.id, text: p.text, final: p.final, ts: Date.now() });
     });
     // Presence: announce this viewer so the host's listener panel can show
-    // who is currently tuned in. We track only once the channel is
-    // SUBSCRIBED; untrack is implicit on unsubscribe (tab close / unmount),
-    // which is what drives the host list to drop us within ~1s. This is
-    // best-effort presence metadata — no extra fetch, no DB write.
-    ch.subscribe((status) => {
-      if (status !== 'SUBSCRIBED') return;
+    // who is currently tuned in. Best-effort — no extra fetch, no DB write.
+    ch.subscribe((subStatus) => {
+      if (subStatus !== 'SUBSCRIBED') return;
       void ch.track({
         anon_id: getTranslateAnonId(),
         joined_at: new Date().toISOString(),
@@ -250,17 +304,9 @@ export function TranslateViewer({
     };
   }, [pushLine, sessionId]);
 
-  // Connect to the LiveKit room as a subscribe-only viewer. We grab a
-  // short-lived token from our public API rather than handing the
-  // viewer the host token.
-  //
-  // IMPORTANT: this effect must only re-run when `token` changes. Earlier
-  // versions had `status` in the dep array — once `onParticipantConnected`
-  // flipped status to 'live', the effect tore the room down and
-  // immediately rebuilt it. That cycle (connect → setStatus('live') →
-  // disconnect → reconnect) is what produced the symptom where the host
-  // tracks "unpublished" right after the viewer joined and no audio
-  // ever started flowing for the Translation track.
+  // Connect to the LiveKit room as a subscribe-only viewer. This effect
+  // must only re-run when `token`/`initialStatus` change — see the long
+  // note at the cleanup return about why `status`/`mode` are excluded.
   useEffect(() => {
     if (initialStatus === 'ended') return;
     let cancelled = false;
@@ -268,21 +314,13 @@ export function TranslateViewer({
     roomRef.current = room;
 
     const onTrackSubscribed = (track: RemoteTrack, pub: RemoteTrackPublication) => {
-      console.info('[viewer] TrackSubscribed', {
-        kind: track.kind,
-        name: pub.trackName,
-        sid: pub.trackSid,
-      });
       if (track.kind !== 'audio') return;
       const name = pub.trackName as 'input' | 'output' | undefined;
       if (name !== 'input' && name !== 'output') return;
       trackByNameRef.current[name] = track as RemoteAudioTrack;
-      trackPubByNameRef.current[name] = pub;
-      // Let LiveKit own the <audio> element. It returns one already
-      // wired up with the right attributes for iOS Safari/Chrome
-      // (playsinline, autoplay, etc.). We bind that managed element to
-      // our ref so mute/play decisions go to the same node LiveKit is
-      // feeding.
+      // Let LiveKit own the <audio> element — it returns one already wired
+      // for iOS Safari/Chrome (playsinline, autoplay). Bind it to our ref
+      // so mute/play decisions go to the same node LiveKit feeds.
       const audioEl = track.attach() as HTMLAudioElement;
       audioEl.style.position = 'fixed';
       audioEl.style.left = '-9999px';
@@ -292,11 +330,9 @@ export function TranslateViewer({
       document.body.appendChild(audioEl);
       if (name === 'input') inputAudioRef.current = audioEl;
       else outputAudioRef.current = audioEl;
-      // Always call play(); iOS lets a muted element start streaming so
-      // that when the user later unmutes, the buffer is already flowing.
-      audioEl.play().catch((err) => {
-        console.warn('[viewer] play blocked, awaiting tap', { name, err });
-      });
+      // Always call play(); iOS lets a muted element start streaming so the
+      // buffer is already flowing when the user later unmutes.
+      audioEl.play().catch(() => {});
     };
 
     const onTrackUnsubscribed = (
@@ -315,12 +351,11 @@ export function TranslateViewer({
 
     const onDisconnected = () => {
       setStatus('ended');
+      // Freeze the end time so the ended screen can report session length.
+      setEndedAt(Date.now());
     };
 
     const onAudioPlaybackChanged = () => {
-      console.info('[viewer] AudioPlaybackStatusChanged', {
-        canPlaybackAudio: room.canPlaybackAudio,
-      });
       setNeedsTap(!room.canPlaybackAudio);
     };
 
@@ -344,13 +379,10 @@ export function TranslateViewer({
         // Default to "input" audio on subscribe so the visitor hears
         // exactly one track when they land.
         applyMode();
-        // canPlaybackAudio is initialized before connect resolves; if
-        // the engine pre-blocked playback we surface the tap-to-enable
-        // banner immediately rather than waiting for the first track.
         if (!room.canPlaybackAudio) setNeedsTap(true);
-      } catch (e) {
+      } catch {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'connect_failed');
+        setError(COPY.connectError);
       }
     })();
 
@@ -361,9 +393,6 @@ export function TranslateViewer({
       room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
       room.off(RoomEvent.Disconnected, onDisconnected);
       room.off(RoomEvent.AudioPlaybackStatusChanged, onAudioPlaybackChanged);
-      // Detach + remove the LiveKit-managed <audio> elements from the
-      // DOM. Skipping this leaves them appended to body across
-      // remounts.
       for (const k of ['input', 'output'] as const) {
         const t = trackByNameRef.current[k];
         try {
@@ -378,23 +407,17 @@ export function TranslateViewer({
       void room.disconnect();
       roomRef.current = null;
     };
-    // We intentionally do NOT include `status`, `mode`, or `applyMode`
-    // in the deps: those change as a result of the room running, and
-    // adding them would tear the room down on every event. The room
-    // lives for as long as the token does.
+    // We intentionally do NOT include `status`, `mode`, or `applyMode` in
+    // the deps: those change as a result of the room running, and adding
+    // them would tear the room down on every event. The room lives for as
+    // long as the token does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, initialStatus]);
 
-  // Display-only 30-second rolling window. Full transcript stays in
-  // `outputLines` for PR-B's download path.
-  const promptedLines = useMemo(
-    () => outputLines.filter((l) => now - l.ts <= PROMPTER_WINDOW_MS),
-    [outputLines, now],
-  );
-
   // Synchronous user-gesture handler. On mobile we MUST call
-  // room.startAudio() and the corresponding <audio>.play() from inside
-  // this click — promises chained off it lose the gesture permission.
+  // room.startAudio() and <audio>.play() from inside this click — promises
+  // chained off it lose the gesture permission. This is the audio-unlock
+  // contract: the CTA click IS the play() trigger.
   const enableAudio = useCallback(() => {
     const room = roomRef.current;
     if (room) {
@@ -405,170 +428,505 @@ export function TranslateViewer({
     setNeedsTap(false);
   }, [mode]);
 
-  // When the visitor taps a different radio, that click is itself a user
-  // gesture so we can opportunistically also unlock audio in case the
-  // initial state wasn't tappable.
-  const selectMode = useCallback(
-    (m: AudioMode) => {
-      const room = roomRef.current;
-      if (room && !room.canPlaybackAudio) {
-        void room.startAudio().catch(() => {});
-      }
-      setMode(m);
-      if (m === 'input') void inputAudioRef.current?.play().catch(() => {});
-      if (m === 'output') void outputAudioRef.current?.play().catch(() => {});
-    },
-    [],
-  );
+  // When the visitor taps a different channel, that click is itself a user
+  // gesture so we opportunistically unlock audio in case the initial state
+  // wasn't tappable.
+  const selectMode = useCallback((m: AudioMode) => {
+    const room = roomRef.current;
+    if (room && !room.canPlaybackAudio) {
+      void room.startAudio().catch(() => {});
+    }
+    setMode(m);
+    if (m === 'input') void inputAudioRef.current?.play().catch(() => {});
+    if (m === 'output') void outputAudioRef.current?.play().catch(() => {});
+  }, []);
+
+  const ended = status === 'ended';
+  const locked = !ended && needsTap;
+  const hasCaptions = inputLines.length > 0 || outputLines.length > 0;
+  // Frame 05: connected + audio available but nothing spoken yet.
+  const waiting = !ended && !locked && !hasCaptions;
+
+  // Header LIVE elapsed timer — seconds since started_at. Frame 01 (locked)
+  // shows a bare "LIVE" (matches CD); once listening, the timer runs.
+  const startedMs = startedAt ? Date.parse(startedAt) : NaN;
+  const elapsedLabel =
+    !Number.isNaN(startedMs) && !locked && status === 'live'
+      ? ` ${formatDuration((now - startedMs) / 1000)}`
+      : '';
+
+  // Ended-screen session length (frame 06). Accurate only when we observed
+  // the live→ended transition this session (endedAt captured).
+  const endedDuration =
+    endedAt != null && !Number.isNaN(startedMs)
+      ? formatDuration((endedAt - startedMs) / 1000)
+      : null;
+
+  const langPair = `${langName(sourceLang)} → ${langName(targetLang)}`;
+
+  // Panel emphasis + badges (§1, frames 02/03/04):
+  //   input  → ORIGINAL emphasized (ink shadow) + 🔊 on ORIGINAL
+  //   output → TRANSLATION emphasized (success shadow) + 🔊 on TRANSLATION
+  //   mute   → TRANSLATION emphasized (success shadow), no 🔊
+  // "CAPTIONS ONLY" marks the translation panel only when original is the
+  // audible channel (mode input).
+  const originalEmphasized = mode === 'input';
+  const translationEmphasized = mode === 'output' || mode === 'mute';
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-[-0.02em] text-ink">
-            Research-Canvas · Live
-          </h1>
-          <p className="mt-1 text-md text-mute">
-            {COPY.hostLabel}: <span className="text-ink">{langName(sourceLang)}</span>
-            {' · '}
-            {COPY.viewerLabel}: <span className="text-ink">{langName(targetLang)}</span>
-          </p>
-        </div>
-        <span
-          className={`rounded-xs border px-2 py-0.5 text-sm ${
-            status === 'live'
-              ? 'border-amore text-amore'
-              : status === 'ended'
-                ? 'border-line text-mute'
-                : 'border-line text-mute-soft'
-          }`}
-        >
-          {COPY.status[status]}
-        </span>
-      </header>
+    <div className="flex min-h-0 w-full max-w-[600px] flex-1 flex-col">
+      {/* Page frame — border 3px ink · radius 16 · fv-frame shadow · canvas bg */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-surface-canvas shadow-[var(--fv-frame-shadow)]">
+        <ViewerHeader
+          ended={ended}
+          liveLabel={ended ? COPY.endedPill : `${COPY.livePill}${elapsedLabel}`}
+          sourceLang={sourceLang}
+          targetLang={targetLang}
+        />
 
-      {needsTap ? (
-        // ChromeButton primary owns the 4px-radius amore-fill chrome
-        // documented for this exact site. Layout overrides (justify-between,
-        // taller px-4/py-3, text-lg) reproduce the original banner shape
-        // — chrome lg defaults to h-8 + px-3 + text-md.
-        <ChromeButton
-          variant="primary"
-          size="lg"
-          fullWidth
-          onClick={enableAudio}
-          className="!flex !h-auto !justify-between !px-4 !py-3 !text-lg"
-        >
-          <span>Tap to enable audio</span>
-          <span className="text-sm opacity-80">
-            Mobile browsers require a tap to start playback
-          </span>
-        </ChromeButton>
-      ) : null}
+        {ended ? (
+          <EndedScreen langPair={langPair} duration={endedDuration} />
+        ) : locked ? (
+          <UnlockGate onEnable={enableAudio} />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-[14px] p-[18px]">
+            {error ? (
+              <div
+                role="alert"
+                className="rounded-sm border-2 border-ink bg-paper px-[15px] py-[11px] text-md font-bold text-mute shadow-memphis-sm"
+              >
+                {error}
+              </div>
+            ) : null}
+            {waiting ? (
+              <>
+                <WaitingPanel
+                  tone="original"
+                  langLabel={langName(sourceLang)}
+                  variant="dots"
+                />
+                <WaitingPanel
+                  tone="translation"
+                  langLabel={langName(targetLang)}
+                  variant="text"
+                />
+              </>
+            ) : (
+              <>
+                <CaptionPanel
+                  tone="original"
+                  label={COPY.original}
+                  langLabel={langName(sourceLang)}
+                  lines={inputLines}
+                  emphasized={originalEmphasized}
+                  playing={mode === 'input'}
+                  captionsOnly={false}
+                />
+                <CaptionPanel
+                  tone="translation"
+                  label={COPY.translation}
+                  langLabel={langName(targetLang)}
+                  lines={outputLines}
+                  emphasized={translationEmphasized}
+                  playing={mode === 'output'}
+                  captionsOnly={mode === 'input'}
+                />
+              </>
+            )}
+          </div>
+        )}
 
-      <fieldset
-        className="flex flex-wrap items-center gap-4 rounded-xs border border-line bg-paper px-3 py-2 text-md text-ink"
-        role="radiogroup"
-        aria-label="Audio"
-      >
-        <legend className="px-1 text-sm uppercase tracking-[0.08em] text-mute-soft">
-          Audio
-        </legend>
-        {(['input', 'output', 'mute'] as const).map((m) => {
-          const selected = mode === m;
-          const label =
-            m === 'input'
-              ? `${COPY.audioInput} (${langName(sourceLang)})`
-              : m === 'output'
-                ? `${COPY.audioOutput} (${langName(targetLang)})`
-                : COPY.audioMute;
-          // Button role=radio matches the existing in-app pattern
-          // (report-generator's REPORT_TYPES picker). variant="link" keeps
-          // the row text-only; selected state reads amore + bold to mirror
-          // the old "filled radio dot + label" affordance without a native
-          // <input>.
-          return (
-            <Button
-              key={m}
-              variant="link"
-              size="sm"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => selectMode(m)}
-              className={
-                selected
-                  ? '!px-1 !text-md !text-amore'
-                  : '!px-1 !font-normal !text-ink hover:!text-amore'
-              }
-            >
-              {label}
-            </Button>
-          );
-        })}
-        <span className="ml-auto text-sm text-mute-soft">
-          {recordEnabled ? COPY.recordedHint : COPY.ephemeralHint}
-        </span>
-      </fieldset>
-
-      {error ? (
-        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
-          {error}
-        </div>
-      ) : null}
-
-      {status === 'ended' ? (
-        <div className="rounded-xs border border-line bg-paper px-3 py-2 text-md text-mute">
-          {COPY.hostOnlyDownload}
-        </div>
-      ) : null}
-
-      <PrompterPane lines={promptedLines} />
-
-      {/* No pre-created <audio> elements: LiveKit's track.attach() now
-          creates them inside onTrackSubscribed (it sets iOS-correct
-          attributes and appends them to the body). */}
+        {!ended ? (
+          <ChannelBar
+            mode={mode}
+            locked={locked}
+            sourceLang={sourceLang}
+            targetLang={targetLang}
+            onSelect={selectMode}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
 
-// Prompter pane — a single centred column, larger typography for
-// at-a-glance readability on the public viewer. The chrome is the
-// surrounding page; this component renders no border. Older lines
-// fade out at the top edge as the 30s window slides forward.
-function PrompterPane({ lines }: { lines: CaptionLine[] }) {
+// ── Header band (mint · ended = surface-disabled) ───────────────────────
+function ViewerHeader({
+  ended,
+  liveLabel,
+  sourceLang,
+  targetLang,
+}: {
+  ended: boolean;
+  liveLabel: string;
+  sourceLang: string;
+  targetLang: string;
+}) {
+  return (
+    <header
+      className={`flex shrink-0 flex-col gap-[11px] border-b-[3px] border-ink px-[22px] py-4 ${
+        ended ? 'bg-surface-disabled' : 'bg-mint'
+      }`}
+    >
+      <div className="flex items-center gap-[11px]">
+        <span aria-hidden className="text-2xl leading-none">
+          🎧
+        </span>
+        <div className="min-w-0 flex-1">
+          <div
+            className="text-3xl font-extrabold tracking-[-0.02em] text-ink"
+            style={DISPLAY_FONT}
+          >
+            {COPY.headerTitle}
+          </div>
+        </div>
+        <span
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1 font-mono-label text-sm font-bold shadow-memphis-sm ${
+            ended ? 'text-mute-soft' : 'text-ink'
+          }`}
+        >
+          <span
+            aria-hidden
+            className={`h-[7px] w-[7px] rounded-full ${
+              ended ? 'bg-mute-soft' : 'bg-amore'
+            }`}
+          />
+          {liveLabel}
+        </span>
+      </div>
+      {!ended ? (
+        <div className="flex items-center gap-[9px]">
+          <LangPill code={sourceLang} />
+          <span aria-hidden className="text-xl text-ink">
+            →
+          </span>
+          <LangPill code={targetLang} />
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function LangPill({ code }: { code: string }) {
+  const flag = LANG_FLAG[code];
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1 text-md font-bold text-ink">
+      {flag ? <span aria-hidden>{flag}</span> : null}
+      {langName(code)}
+    </span>
+  );
+}
+
+// ── Twin caption panel (ORIGINAL / TRANSLATION) ─────────────────────────
+function CaptionPanel({
+  tone,
+  label,
+  langLabel,
+  lines,
+  emphasized,
+  playing,
+  captionsOnly,
+}: {
+  tone: 'original' | 'translation';
+  label: string;
+  langLabel: string;
+  lines: CaptionLine[];
+  emphasized: boolean;
+  playing: boolean;
+  captionsOnly: boolean;
+}) {
+  const isTranslation = tone === 'translation';
   const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [lines]);
+
+  // Emphasized channel → 3px border + colored hard shadow (success for
+  // translation, ink for original). Idle → 2px + soft ink shadow.
+  const frame = emphasized
+    ? `border-[3px] ${isTranslation ? 'shadow-memphis-md-success' : 'shadow-memphis-md'}`
+    : 'border-2 shadow-memphis-sm';
+
   return (
-    <div
-      className="relative min-h-[420px]"
-      style={{
-        WebkitMaskImage:
-          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
-        maskImage:
-          'linear-gradient(180deg, transparent 0%, #000 18%, #000 100%)',
-      }}
+    <section
+      className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-ink bg-paper ${frame}`}
     >
+      <header
+        className={`flex shrink-0 items-center gap-2 border-b-2 border-ink px-4 py-[10px] ${
+          isTranslation ? 'bg-success-bg-soft' : 'bg-paper-soft'
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`h-2 w-2 rounded-full ${
+            isTranslation
+              ? 'bg-success'
+              : emphasized
+                ? 'bg-ink'
+                : 'bg-mute-soft'
+          }`}
+        />
+        <span
+          className={`font-mono-label text-xs font-bold tracking-[0.14em] ${
+            isTranslation
+              ? 'text-success'
+              : emphasized
+                ? 'text-mute'
+                : 'text-mute-soft'
+          }`}
+        >
+          {label}
+        </span>
+        <span className="text-xl font-bold text-ink" style={DISPLAY_FONT}>
+          {langLabel}
+        </span>
+        {playing ? (
+          <span
+            className={`ml-auto inline-flex items-center gap-1.5 rounded-pill border-[1.4px] font-mono-label text-xs font-bold ${
+              isTranslation
+                ? 'border-success-line bg-success-bg text-success-text'
+                : 'border-ink bg-paper text-ink'
+            } px-[9px] py-0.5`}
+          >
+            {COPY.playing}
+          </span>
+        ) : captionsOnly ? (
+          <span className="ml-auto font-mono-label text-xs font-bold text-mute-soft">
+            {COPY.captionsOnly}
+          </span>
+        ) : null}
+      </header>
       <div
         ref={scrollRef}
-        className="mx-auto flex max-h-[68vh] min-h-[420px] w-full max-w-[820px] flex-col gap-4 overflow-y-auto px-4 py-10 text-3xl leading-[1.65] tracking-[-0.005em] text-ink"
+        className="sc flex min-h-0 flex-1 flex-col justify-end gap-4 overflow-y-auto px-5 py-5"
+        style={DISPLAY_FONT}
       >
         {lines.length === 0 ? (
-          <div className="m-auto text-center text-xl text-mute-soft">…</div>
+          <p className="text-3xl leading-[1.6] text-faint">…</p>
         ) : (
-          lines.map((l) => (
-            <p
-              key={l.id}
-              className={l.final ? 'text-center' : 'text-center text-mute'}
-            >
-              {l.text}
-              {l.final ? '' : '…'}
-            </p>
-          ))
+          lines.map((l, i) => {
+            const active = i === lines.length - 1;
+            return (
+              <p
+                key={l.id}
+                className={`text-3xl leading-[1.6] ${
+                  active
+                    ? `text-ink ${isTranslation ? 'font-semibold' : ''}`
+                    : 'text-faint'
+                }`}
+              >
+                {l.text}
+                {active && !l.final ? (
+                  <span className="text-faint">…</span>
+                ) : null}
+              </p>
+            );
+          })
         )}
+      </div>
+    </section>
+  );
+}
+
+// ── Waiting panel (frame 05 — dashed, pre-speech) ───────────────────────
+function WaitingPanel({
+  tone,
+  langLabel,
+  variant,
+}: {
+  tone: 'original' | 'translation';
+  langLabel: string;
+  variant: 'dots' | 'text';
+}) {
+  const label = tone === 'translation' ? COPY.translation : COPY.original;
+  return (
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-[1.8px] border-dashed border-line-empty bg-paper-soft">
+      <header className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-dashed border-line-empty px-4 py-[10px]">
+        <span aria-hidden className="h-2 w-2 rounded-full bg-line-empty" />
+        <span className="font-mono-label text-xs font-bold tracking-[0.14em] text-faint">
+          {label}
+        </span>
+        <span className="text-xl font-bold text-faint" style={DISPLAY_FONT}>
+          {langLabel}
+        </span>
+      </header>
+      {variant === 'dots' ? (
+        <div className="flex flex-1 items-center justify-center">
+          <span
+            aria-hidden
+            className="font-mono-label text-3xl tracking-[0.3em] text-line-empty"
+          >
+            ● ● ●
+          </span>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col items-center justify-center gap-[9px] px-5 text-center">
+          <div className="text-lg font-bold text-mute">{COPY.waiting.heading}</div>
+          <div className="max-w-[280px] text-md leading-[1.5] text-mute-soft">
+            {COPY.waiting.hint}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── Unlock gate (frame 01) ──────────────────────────────────────────────
+function UnlockGate({ onEnable }: { onEnable: () => void }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[15px] p-10 text-center">
+      <div className="flex h-[74px] w-[74px] items-center justify-center rounded-md border-[3px] border-ink bg-mint text-display shadow-memphis-lg">
+        <span aria-hidden>🔈</span>
+      </div>
+      <div
+        className="text-3xl font-extrabold tracking-[-0.02em] text-ink"
+        style={DISPLAY_FONT}
+      >
+        {COPY.unlock.heading}
+      </div>
+      <div className="max-w-[330px] text-lg leading-[1.6] text-mute">
+        {COPY.unlock.reason}
+      </div>
+      {/* Primary CTA — this click IS the audio-unlock user gesture. Native
+          button: CD's ink-solid rounded-pill chrome doesn't map to a Button
+          primitive variant (§7.11 radius/fill), same precedent as the host
+          fullview's ink-solid action buttons. */}
+      {/* eslint-disable-next-line react/forbid-elements -- CD frame 01 primary CTA = ink-solid rounded-pill gesture button; Button primitive variants don't match this chrome (fullview action-button precedent) */}
+      <button
+        type="button"
+        onClick={onEnable}
+        className="mt-1.5 inline-flex items-center gap-2 rounded-pill border-2 border-ink bg-ink px-[30px] py-3.5 text-xl font-extrabold text-paper shadow-memphis-lg"
+      >
+        {COPY.unlock.cta}
+      </button>
+      <div className="text-sm text-mute-soft">{COPY.unlock.footnote}</div>
+    </div>
+  );
+}
+
+// ── Ended screen (frame 06) ─────────────────────────────────────────────
+function EndedScreen({
+  langPair,
+  duration,
+}: {
+  langPair: string;
+  duration: string | null;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
+      <div className="flex h-[72px] w-[72px] items-center justify-center rounded-md border-[3px] border-ink bg-paper text-display shadow-memphis-lg">
+        <span aria-hidden>✓</span>
+      </div>
+      <div
+        className="text-3xl font-extrabold tracking-[-0.02em] text-ink"
+        style={DISPLAY_FONT}
+      >
+        {COPY.ended.heading}
+      </div>
+      <div className="max-w-[360px] text-xl leading-[1.6] text-mute">
+        {COPY.ended.body}
+      </div>
+      <div className="mt-1 font-mono-label text-sm text-faint">
+        {duration ? `${duration} · ${langPair}` : langPair}
+      </div>
+    </div>
+  );
+}
+
+// ── Bottom segmented channel bar ────────────────────────────────────────
+// Frames 01(disabled) · 02/03/05(default) · 04(muted → peach bar).
+function ChannelBar({
+  mode,
+  locked,
+  sourceLang,
+  targetLang,
+  onSelect,
+}: {
+  mode: AudioMode;
+  locked: boolean;
+  sourceLang: string;
+  targetLang: string;
+  onSelect: (m: AudioMode) => void;
+}) {
+  const muted = mode === 'mute';
+  const segs: { key: AudioMode; label: string }[] = [
+    {
+      key: 'input',
+      label: `${LANG_FLAG[sourceLang] ?? ''} ${COPY.seg.input}`.trim(),
+    },
+    {
+      key: 'output',
+      label: `${LANG_FLAG[targetLang] ?? ''} ${COPY.seg.output}`.trim(),
+    },
+    { key: 'mute', label: `🔇 ${COPY.seg.mute}` },
+  ];
+
+  return (
+    <div
+      className={`flex shrink-0 flex-col gap-2 border-t-2 border-ink px-[18px] py-[13px] ${
+        muted ? 'bg-peach-bg' : 'bg-paper'
+      }`}
+    >
+      <div className="flex items-center gap-[9px]">
+        <span
+          className={`font-mono-label text-xs font-bold tracking-[0.14em] ${
+            muted ? 'text-warning-text' : 'text-mute-soft'
+          }`}
+        >
+          {muted ? COPY.audioChannelMuted : COPY.audioChannel}
+        </span>
+        <span
+          className={`ml-auto text-sm ${
+            muted
+              ? 'text-warning-text'
+              : locked
+                ? 'text-mute-soft'
+                : 'text-mute-soft'
+          }`}
+        >
+          {locked
+            ? COPY.channelLockedHelper
+            : muted
+              ? COPY.channelHelperMuted
+              : COPY.channelHelper}
+        </span>
+      </div>
+      {/* Segmented control — joined rounded-pill segments. Disabled (frame
+          01) uses a surface-disabled track + ink/32 border and NO wrapper
+          opacity (a11y: labels stay ≥4.5:1 via text-mute). Native buttons:
+          the joined-segment ink-fill chrome has no Button primitive variant
+          (§7.11), same precedent as the host fullview's custom chrome. */}
+      <div
+        role="radiogroup"
+        aria-label={COPY.audioChannel}
+        className={`inline-flex self-start overflow-hidden rounded-pill border-2 ${
+          locked ? 'border-ink/32' : 'border-ink shadow-memphis-sm'
+        }`}
+      >
+        {segs.map((s) => {
+          const selected = !locked && mode === s.key;
+          return (
+            // eslint-disable-next-line react/forbid-elements -- CD segmented control = joined rounded-pill segments with ink-fill active; no Button primitive variant matches this chrome (fullview custom-chrome precedent)
+            <button
+              key={s.key}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={locked}
+              onClick={() => onSelect(s.key)}
+              className={`px-4 py-2 text-md ${
+                selected
+                  ? 'bg-ink font-extrabold text-paper'
+                  : locked
+                    ? 'bg-surface-disabled font-semibold text-mute'
+                    : 'bg-paper font-semibold text-mute'
+              }`}
+            >
+              {s.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

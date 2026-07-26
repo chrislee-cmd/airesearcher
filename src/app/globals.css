@@ -590,6 +590,7 @@
   --color-disabled: #b3b7bd;            /* estimated-metric / disabled */
   --color-line-empty: #c9ccd2;          /* dashed empty-state 보더 · empty fill dots */
   --color-surface-canvas: #fbfbf9;      /* fullview/neutral 캔버스 bg (노랑 surface-accent 아님) */
+  --color-surface-disabled: #eceef1;    /* disabled 표면 (interpreter-observer BUILD-SPEC §2: ended 헤더 밴드 · 잠긴 세그먼티드 트랙; = --cd-disabled-bg raw 값과 동일, @theme util `bg-surface-disabled` 로 승격) */
   --color-lav-bg: #f6f2ff;              /* lav 틴트 (transcript summary/rows) */
   --color-lav-bg-2: #faf7ff;            /* lav 틴트 (transcript processing row) — 구분값 */
   --color-lav-bg-3: #f3eefe;            /* lav 틴트 (desk RQ head) — 구분값 */

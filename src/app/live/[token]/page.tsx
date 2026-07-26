@@ -42,13 +42,17 @@ export default async function Page({
   if (!meta) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 pb-12 pt-8">
+    // Memphis observer frame is self-contained (CD `.dc.html`): a centered
+    // ~600px column on the dotted canvas ground, filling the viewport height.
+    // The dotted radial ground mirrors the CD comp background.
+    <main className="flex flex-1 justify-center bg-surface-canvas px-4 py-6 [background-image:radial-gradient(var(--color-line-empty)_1.1px,transparent_1.1px)] [background-size:22px_22px]">
       <TranslateViewer
         token={token}
         sessionId={meta.id}
         sourceLang={meta.source_lang}
         targetLang={meta.target_lang}
         initialStatus={meta.status}
+        startedAt={meta.started_at}
         recordEnabled={meta.record_enabled}
       />
     </main>
