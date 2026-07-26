@@ -18,7 +18,7 @@
    렌더한다(세션 스냅샷이 카드 subtree 라 헤더에 직접 닿지 못하는 걸 bridge).
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { CaptionLine } from '@/components/translate-console';
 import { useTranslateSession } from '@/components/translate/translate-session-context';
@@ -66,6 +66,7 @@ export function InterpreterFullview() {
     isLive,
     sourceLangLabel,
     targetLangLabel,
+    shareVideoStream,
     outputAudible,
     toggleOutputAudible,
     copyShareUrl,
@@ -165,22 +166,54 @@ export function InterpreterFullview() {
           </div>
         ) : null}
 
-        <div className="flex min-h-0 flex-1 gap-[14px]">
-          <StreamPanel
-            tone="input"
-            label={t('interpreter.input')}
-            langLabel={sourceLangLabel}
-            lines={inputLines}
-            emptyText={t('prompter.empty')}
-          />
-          <StreamPanel
-            tone="output"
-            label={t('interpreter.output')}
-            langLabel={targetLangLabel}
-            lines={promptedLines}
-            emptyText={t('prompter.empty')}
-          />
-        </div>
+        {/* CD frame 10 (공유 화면 live) vs state 03 (자막만) 전환 — 공유 비디오
+            트랙이 살아 있으면 모니터(flex 1.15)를 자막 행 위에 올리고 자막을
+            2컬럼(flex 1)으로 내린다. 트랙이 없거나 끊기면 state 03(트윈 패널
+            full-height)로 부드럽게 폴백 — StreamPanel 은 두 레이아웃이 공유하므로
+            자막·세션 리마운트 없이 컨테이너만 바뀐다. */}
+        {shareVideoStream ? (
+          <>
+            <ShareMonitor
+              stream={shareVideoStream}
+              sharingLabel={t('interpreter.sharingBadge')}
+              screenLabel={t('interpreter.sharedScreenLabel')}
+            />
+            <div className="flex min-h-0 flex-1 gap-[14px]">
+              <StreamPanel
+                tone="input"
+                label={t('interpreter.input')}
+                langLabel={sourceLangLabel}
+                lines={inputLines}
+                emptyText={t('prompter.empty')}
+              />
+              <StreamPanel
+                tone="output"
+                elevated
+                label={t('interpreter.output')}
+                langLabel={targetLangLabel}
+                lines={promptedLines}
+                emptyText={t('prompter.empty')}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex min-h-0 flex-1 gap-[14px]">
+            <StreamPanel
+              tone="input"
+              label={t('interpreter.input')}
+              langLabel={sourceLangLabel}
+              lines={inputLines}
+              emptyText={t('prompter.empty')}
+            />
+            <StreamPanel
+              tone="output"
+              label={t('interpreter.output')}
+              langLabel={targetLangLabel}
+              lines={promptedLines}
+              emptyText={t('prompter.empty')}
+            />
+          </div>
+        )}
       </div>
 
       {/* 우측 rail 300px — 출력오디오 · 옵저버 링크 · 리스너 */}
@@ -268,22 +301,31 @@ export function InterpreterFullview() {
 }
 
 // ── INPUT / OUTPUT 스트림 패널 ──────────────────────────────────────────
+// `elevated` — frame 10 전용. CD BUILD-SPEC §1: 공유 화면 레이아웃에서 OUTPUT
+// 패널 그림자는 3px3px0 success(초록) 로 승격된다(INPUT 은 ink 유지). state 03
+// (폴백)은 두 패널 모두 ink 그림자 → 기본 false 로 두면 state 03 회귀 0.
 function StreamPanel({
   tone,
   label,
   langLabel,
   lines,
   emptyText,
+  elevated = false,
 }: {
   tone: 'input' | 'output';
   label: string;
   langLabel: string;
   lines: CaptionLine[];
   emptyText: string;
+  elevated?: boolean;
 }) {
   const isOutput = tone === 'output';
+  const shadow =
+    isOutput && elevated ? 'shadow-memphis-md-success' : 'shadow-memphis-md';
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-paper shadow-memphis-md">
+    <section
+      className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-paper ${shadow}`}
+    >
       <header
         className={`flex shrink-0 items-center gap-2 border-b-2 border-ink px-[18px] py-[11px] ${
           isOutput ? 'bg-success-bg-soft' : 'bg-paper-soft'
@@ -333,6 +375,71 @@ function StreamPanel({
         )}
       </div>
     </section>
+  );
+}
+
+// ── 공유 화면 모니터 (CD frame 10) ──────────────────────────────────────
+// CD 의 참가자 타일 스테이지 대신 실제 공유 비디오를 렌더한다 (spec §4: 공유
+// 대상이 브라우저 탭이라 탭 화면 그대로가 렌더됨 — chrome[테두리·타이틀바·
+// SHARING 뱃지·비율]만 CD 대로, 내부는 실제 <video>). 스트림 소유권은 콘솔 —
+// 여기선 srcObject 로 참조만 부착하고 언마운트 시 detach 만(트랙 stop 금지,
+// read-only 미러). active-speaker 링은 오디오 레벨 데이터가 없어 생략
+// (spec §4 / BUILD-SPEC §5-2 허용). AI UT 모니터(aiut-live-monitor)와 동일
+// chrome 선례.
+function ShareMonitor({
+  stream,
+  sharingLabel,
+  screenLabel,
+}: {
+  stream: MediaStream;
+  sharingLabel: string;
+  screenLabel: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.srcObject = stream;
+    // detach only — 콘솔이 트랙 lifecycle 을 소유(여기서 stop 하면 세션 오디오
+    // 캡처와 무관한 비디오라도 고아 처리가 콘솔과 이중화됨).
+    return () => {
+      el.srcObject = null;
+    };
+  }, [stream]);
+  return (
+    <div className="flex min-h-0 flex-[1.15] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-ink shadow-memphis-md">
+      {/* titlebar — macOS traffic lights(장식 예외) + URL pill + SHARING 뱃지.
+          pad 9/13 · border-b 1.5px (#000 = border-strong) · bg ink-2 (§1). */}
+      <div className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]">
+        {/* design-allow-hardcoded -- CD frame 10 traffic lights = literal macOS chrome (장식, 토큰 아님; aiut-live-monitor 선례) */}
+        {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
+          <span
+            key={c}
+            aria-hidden
+            className="h-[11px] w-[11px] rounded-full"
+            style={{ background: c }}
+          />
+        ))}
+        {/* design-allow-hardcoded -- CD frame 10 URL pill radius 6 (승격 fv radius 스케일 8~16 밖, aiut-live-monitor UrlPill 선례) */}
+        <div className="ml-2 min-w-0 flex-1 truncate rounded-[6px] bg-ink px-[11px] py-1 font-mono-label text-sm text-faint">
+          🔒 {screenLabel}
+        </div>
+        <span className="shrink-0 font-mono-label text-xs font-bold tracking-[0.14em] text-mint">
+          ● {sharingLabel}
+        </span>
+      </div>
+      {/* 본문 — 실제 공유 비디오(read-only). 오디오는 콘솔 파이프라인이 처리하므로
+          video 는 muted. object-contain 으로 비율 보존(letterbox on ink). */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center bg-ink">
+        <video
+          ref={videoRef}
+          className="h-full w-full bg-ink object-contain"
+          autoPlay
+          playsInline
+          muted
+        />
+      </div>
+    </div>
   );
 }
 
