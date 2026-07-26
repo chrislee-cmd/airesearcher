@@ -120,17 +120,24 @@ export function SlotEditorModal({
 
   const isEditing = Boolean(draft?.id);
 
-  // Soft double-booking check against the currently-entered times.
+  // Soft double-booking check against the currently-entered times. Recomputed on
+  // target change (card #580): a double-booking is per-person, so when a
+  // candidate is attached only that candidate's other slots count. A
+  // candidate-less titled event has no person to double-book, so it warns against
+  // the whole passed-in set (unchanged create-mode behaviour).
   const overlaps = useMemo(() => {
     const startIso = fromLocalInputValue(startLocal);
     const endIso = fromLocalInputValue(endLocal);
     if (!startIso || !endIso) return [];
+    const scoped = candidateId
+      ? allSlots.filter((s) => s.candidate_id === candidateId)
+      : allSlots;
     return findOverlaps(
       { start_at: startIso, end_at: endIso, status },
-      allSlots,
+      scoped,
       draft?.id,
     );
-  }, [startLocal, endLocal, status, allSlots, draft?.id]);
+  }, [startLocal, endLocal, status, allSlots, draft?.id, candidateId]);
 
   // Group mode is create-only; editing an existing slot is always per-candidate.
   const isGroup = mode === 'group' && !isEditing;
@@ -175,6 +182,12 @@ export function SlotEditorModal({
               status,
               location,
               note,
+              // Target reassignment (card #580) — only send candidate_id when the
+              // admin actually changed it, so a time/status-only edit never clears
+              // the target (무변경 저장 회귀 0). '' → server detaches (대상 없음).
+              ...(candidateId !== (draft?.candidateId ?? '')
+                ? { candidate_id: candidateId }
+                : {}),
             }),
           })
         : await fetch('/api/scheduling/slots', {
@@ -346,7 +359,6 @@ export function SlotEditorModal({
                 { value: '', label: t('slotCandidateNone') },
                 ...candidates.map((c) => ({ value: c.id, label: c.label })),
               ]}
-              disabled={isEditing}
             />
           )}
         </Section>

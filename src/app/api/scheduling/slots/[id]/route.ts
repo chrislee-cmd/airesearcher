@@ -3,14 +3,17 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import {
   getSchedulingAccess,
   ownerOfSlot,
+  ownerOfCandidate,
   ownerAllowed,
 } from '@/lib/scheduling/access';
 import { isSlotStatus } from '@/lib/scheduling/slots';
 
 // Edit an interview slot. Open to super-admin OR org member; non-members get
 // 404. Org members may only edit a slot whose owner shares an org with them
-// (tenancy scoping). Any subset of start_at/end_at/status/location/note may be
-// sent; omitted keys are left untouched.
+// (tenancy scoping). Any subset of
+// title/start_at/end_at/status/location/note/candidate_id may be sent; omitted
+// keys are left untouched. Reassigning candidate_id is constrained to the slot's
+// own batch (blocks cross-group / cross-owner moves — card #580).
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -76,7 +79,17 @@ export async function PATCH(
       typeof b.note === 'string' && b.note.trim() ? b.note.trim() : null;
   }
 
-  if (Object.keys(patch).length === 0) {
+  // Target reassignment (card #580) — a uuid attaches that candidate, '' / null
+  // detaches to a candidate-less titled event. Validated below against the
+  // slot's own batch so a slot can never be moved to another group/owner. The
+  // patch value itself is set only after that check passes.
+  const hasCandidate = 'candidate_id' in b;
+  const candidateIdValue: string | null =
+    typeof b.candidate_id === 'string' && b.candidate_id.trim()
+      ? b.candidate_id.trim()
+      : null;
+
+  if (!hasCandidate && Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'no_fields' }, { status: 400 });
   }
 
@@ -86,6 +99,55 @@ export async function PATCH(
     if (!ownerAllowed(access, owner)) {
       return NextResponse.json({ error: 'slot_not_found' }, { status: 404 });
     }
+  }
+
+  if (hasCandidate) {
+    if (candidateIdValue) {
+      // Fetch the slot's batch to scope the reassignment. A group-created slot
+      // carries a batch_id; the new candidate must sit in that SAME batch —
+      // this single check enforces both same-group and same-owner (batch owner
+      // is fixed), keeping the slot = 1인 계약 intact.
+      const { data: slotRow } = await admin
+        .from('sched_slots')
+        .select('batch_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (!slotRow) {
+        return NextResponse.json({ error: 'slot_not_found' }, { status: 404 });
+      }
+      const { data: cand } = await admin
+        .from('sched_candidates')
+        .select('id, batch_id')
+        .eq('id', candidateIdValue)
+        .maybeSingle();
+      if (!cand) {
+        return NextResponse.json(
+          { error: 'candidate_not_found' },
+          { status: 404 },
+        );
+      }
+      const slotBatch = (slotRow.batch_id as string | null) ?? null;
+      const candBatch = (cand.batch_id as string | null) ?? null;
+      if (slotBatch) {
+        if (candBatch !== slotBatch) {
+          return NextResponse.json(
+            { error: 'candidate_batch_mismatch' },
+            { status: 403 },
+          );
+        }
+      } else if (!access.superadmin) {
+        // Standalone slot (no batch to match) — still guard tenancy so a foreign
+        // candidate can't be attached across orgs.
+        const candOwner = await ownerOfCandidate(admin, candidateIdValue);
+        if (!ownerAllowed(access, candOwner)) {
+          return NextResponse.json(
+            { error: 'candidate_not_found' },
+            { status: 404 },
+          );
+        }
+      }
+    }
+    patch.candidate_id = candidateIdValue;
   }
   let { data, error } = await admin
     .from('sched_slots')
