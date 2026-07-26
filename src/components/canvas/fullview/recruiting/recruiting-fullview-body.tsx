@@ -61,6 +61,7 @@ export function RecruitingFullviewBody({
   judgeRefreshSignal,
   onDownloadCsv,
   hasResponses,
+  intakeBand,
   rawTabContent,
   bridgeSelected,
   onToggleRow,
@@ -92,6 +93,10 @@ export function RecruitingFullviewBody({
   // (round-2 feedback #7). hasResponses=false 면 disabled.
   onDownloadCsv: () => void;
   hasResponses: boolean;
+  // 명단 소스 밴드(#579) — 저니 2탭화로 탭②(명단)의 유입 3종(CSV·시트·응답
+  // 연동)이 이 응답 탭으로 이관됐다. 폼 셀렉터/뷰 토글 툴바 아래, 가로 스크롤
+  // 영역 밖(568 봉쇄)에 shrink-0 으로 배치돼 항상 프레임 안에 남는다.
+  intakeBand: ReactNode;
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
   // ── 브리지(N1·N4) — 요약/raw 두 뷰가 공유하는 선택 집합. 호스트가 SSOT.
@@ -247,6 +252,10 @@ export function RecruitingFullviewBody({
               ↓ CSV
             </button>
           </div>
+
+          {/* 명단 소스 밴드(#579) — 툴바 아래·스크롤 영역 밖(568). 요약/raw
+              어느 뷰든 응답 탭에서 항상 유입 창구가 노출된다. */}
+          {intakeBand}
 
           <div className="relative min-h-0 min-w-0 flex-1">
             {/* raw = 데이터 SSOT(항상 마운트). 요약 탭일 땐 display:none.

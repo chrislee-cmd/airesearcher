@@ -1,11 +1,21 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   RecruitingJourneyShell — recruiting 풀뷰의 3탭 저니 셸 (CD recruiting-
+   RecruitingJourneyShell — recruiting 풀뷰의 2탭 저니 셸 (CD recruiting-
    journey 번들 N1 헤더/탭). 공유 <FullviewShell>(프레임+240px 사이드바)
    안에서 본문 slot 에 portal 되며, 이 컨테이너가:
 
-   1. 탭 상태(응답/명단/일정)를 소유하고 활성 탭 본문을 렌더한다.
+   2탭 IA (사용자 결정 2026-07-26, #579):
+     ① 응답  — 응답 확인 + **명단 유입 창구**(CSV·시트·응답연동 밴드가
+                 탭① 본문에 이관됨). 소유: RecruitingFullviewBody +
+                 JourneyIntakeBand.
+     ② 일정  — 명단 조율(로스터/그룹) + 캘린더/채팅/슬롯. 578 로 명단 관리가
+                 이 탭에 흡수됨. 소유: JourneyScheduleTab.
+   옛 탭②(명단, JourneyCandidatesTab)는 제거됨 — 명단 조율은 ②일정, 유입은
+   ①응답으로 각각 이관. CD 번들은 3탭(N1~N3) 기준이나 사용자 결정으로 2탭
+   재구성이며 CD 프레임과의 어긋남은 의도된 이탈(WRITER-GAP-AUDIT §IA 개정).
+
+   1. 탭 상태(응답/일정)를 소유하고 활성 탭 본문을 렌더한다.
    2. §F3 헤더를 `FullviewHeaderSlot` 로 publish — 데드포털 fix(기존
       recruiting 본문은 renderInHeaderStart/End 로 주입했으나 셸이 그 포털
       타깃을 세팅하지 않아 pill/CSV/refresh 가 렌더되지 않았다 —
@@ -33,13 +43,15 @@ import {
 import { useTranslations } from 'next-intl';
 import { FullviewProjectPill } from '../fullview-header';
 import { useFullviewHeaderSlotPublisher } from '@/components/canvas/shell/fullview-header-slot-context';
-import { JourneyCandidatesTab } from './journey-candidates-tab';
 import { JourneyScheduleTab } from './journey-schedule-tab';
 
-export type JourneyTab = 'responses' | 'candidates' | 'schedule';
+// 2탭(#579): 응답 · 일정. 옛 'candidates' 는 제거. 잘못된(레거시) 탭 키로
+// 진입하면 아래 render 가 어느 탭에도 매치되지 않아 자연히 ①응답으로 폴백한다.
+export type JourneyTab = 'responses' | 'schedule';
 
 // per-tab count(P0 counts API 소비). 값이 있는 탭만 count pill 노출, 로딩/
-// 미머지 시 숨김.
+// 미머지 시 숨김. counts API 스키마는 candidates 를 additive 로 계속 반환하나
+// (다른 소비처 회귀 방지) 2탭 클라는 미사용 — 응답/일정만 소비한다.
 export type JourneyCounts = {
   responses?: number;
   candidates?: number;
@@ -87,15 +99,16 @@ export function RecruitingJourneyShell({
   // 탭①(응답)의 요약/raw 토글 밴드로 이관됨(round-2 feedback #7) — 응답 전용
   // 액션이라 전 탭 공용 헤더엔 부적합.
   onRefresh: () => void;
-  // 탭① 본문 — 기존 RecruitingFullviewBody(re-home). 상시 마운트(R3).
+  // 탭① 본문 — 기존 RecruitingFullviewBody(re-home). 상시 마운트(R3). 유입 3종
+  // (명단 소스 밴드)도 이 본문 안(툴바 아래)에 함께 이관됨(#579).
   responsesTab: ReactNode;
-  // 활성 폼 id — 탭②(명단)·탭③(일정)이 form-anchored 저니 데이터를 조회하는
-  // 앵커: 탭② candidates/batches/source-sheet · 탭③
+  // 활성 폼 id — 탭①(유입 밴드)·탭②(일정)이 form-anchored 저니 데이터를 조회하는
+  // 앵커: 유입 밴드 candidates/batches/source-sheet · 일정
   // /api/scheduling/journey/schedule(form→project lazy resolve). 폼 미선택 시
-  // null → 해당 탭 안내 empty.
+  // null → 해당 영역 안내 empty.
   formId: string | null;
-  // 활성 저니 탭 — host(recruiting-card)가 SSOT 로 쥔다(controlled). 브리지
-  // 전송 성공 시 host 가 탭②(명단)로 전환해 방금 인제스트된 인원을 노출한다.
+  // 활성 저니 탭 — host(recruiting-card)가 SSOT 로 쥔다(controlled). 2탭화(#579)로
+  // 브리지 전송은 탭 전환 없이 선택만 리셋(인제스트분은 ②일정 재진입 시 노출).
   activeTab: JourneyTab;
   onTabChange: (tab: JourneyTab) => void;
 }) {
@@ -109,19 +122,17 @@ export function RecruitingJourneyShell({
       key: JourneyTab;
       icon: string;
       label: string;
+      // 부제/툴팁 — 라벨은 "응답" 유지(사용자 표현)하되, 탭①이 응답 확인 +
+      // 명단 유입 창구를 겸함을 hover 툴팁 수준에서 보완(#579).
+      hint?: string;
       count?: number;
     }[] = [
       {
         key: 'responses',
         icon: '📥',
         label: t('journey.tabResponses'),
+        hint: t('journey.tabResponsesHint'),
         count: counts?.responses,
-      },
-      {
-        key: 'candidates',
-        icon: '📋',
-        label: t('journey.tabCandidates'),
-        count: counts?.candidates,
       },
       {
         key: 'schedule',
@@ -176,6 +187,7 @@ export function RecruitingJourneyShell({
             role="tab"
             aria-selected={active}
             onClick={() => onTabChange(tab.key)}
+            title={tab.hint}
             className={`relative -mb-[2px] flex items-center gap-2 rounded-t-[var(--fv-radius-card)] border-2 border-b-0 border-ink px-[18px] py-[9px] ${
               active ? 'bg-surface-canvas' : 'bg-paper/35'
             }`}
@@ -240,11 +252,7 @@ export function RecruitingJourneyShell({
       >
         {responsesTab}
       </div>
-      {/* 탭②·③ — 각 탭은 자체 내부 스크롤 소유. 탭②(명단)·탭③(일정) 모두
-          form-anchored 데이터를 조회한다. */}
-      {activeTab === 'candidates' ? (
-        <JourneyCandidatesTab formId={formId} />
-      ) : null}
+      {/* 탭②(일정) — 자체 내부 스크롤 소유, form-anchored 데이터 조회. */}
       {activeTab === 'schedule' ? (
         // key on the form so a form switch remounts the tab fresh (loading
         // reset happens via mount, not an in-effect setState).
