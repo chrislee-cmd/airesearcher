@@ -42,12 +42,16 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export function JourneyIntakeBand({
   formId,
   projectId = null,
+  onChanged,
 }: {
   formId: string | null;
   // Pill (interview_projects) id — the form-free intake anchor (card 583). When
   // no form is published the strip still works on the pill project so CSV/Sheets
   // intake works; when both are present the server converges them on one project.
   projectId?: string | null;
+  // Called after a successful upload/import (card 588) so the host can refetch
+  // the ①응답 "업로드 명단" segment — new intake rows appear immediately.
+  onChanged?: () => void;
 }) {
   const t = useTranslations('RecruitingScheduling');
   const tj = useTranslations('Recruiting.journey');
@@ -127,6 +131,7 @@ export function JourneyIntakeBand({
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
       await load();
+      onChanged?.();
     } finally {
       setUploading(false);
     }
@@ -178,6 +183,7 @@ export function JourneyIntakeBand({
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
       setSheetUrl('');
       await load();
+      onChanged?.();
     } finally {
       setImporting(false);
     }

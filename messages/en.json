@@ -2802,6 +2802,12 @@
     },
     "fv": {
       "criteriaTitle": "Participant criteria",
+      "sourceForm": "Form responses",
+      "sourceUpload": "Uploaded list",
+      "uploadListTitle": "Uploaded list",
+      "uploadColName": "Name",
+      "uploadColEmail": "Email",
+      "uploadColPhone": "Contact",
       "criteriaCount": "{count}",
       "criteriaEmpty": "Analyze source material in the card to summarize participant criteria here.",
       "required": "Required",

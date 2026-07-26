@@ -2895,6 +2895,12 @@
     },
     "fv": {
       "criteriaTitle": "เกณฑ์ผู้เข้าร่วม",
+      "sourceForm": "คำตอบแบบฟอร์ม",
+      "sourceUpload": "รายชื่อที่อัปโหลด",
+      "uploadListTitle": "รายชื่อที่อัปโหลด",
+      "uploadColName": "ชื่อ",
+      "uploadColEmail": "อีเมล",
+      "uploadColPhone": "ติดต่อ",
       "criteriaCount": "{count}",
       "criteriaEmpty": "วิเคราะห์เอกสารในการ์ดเพื่อสรุปเกณฑ์ผู้เข้าร่วมที่นี่",
       "required": "จำเป็น",

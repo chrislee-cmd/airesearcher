@@ -2895,6 +2895,12 @@
     },
     "fv": {
       "criteriaTitle": "参加者条件",
+      "sourceForm": "フォーム回答",
+      "sourceUpload": "アップロード名簿",
+      "uploadListTitle": "アップロード名簿",
+      "uploadColName": "氏名",
+      "uploadColEmail": "メール",
+      "uploadColPhone": "連絡先",
       "criteriaCount": "{count}件",
       "criteriaEmpty": "カード本文で資料を分析すると、参加者条件がここに要約されます。",
       "required": "必須",

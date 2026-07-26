@@ -126,11 +126,15 @@ export async function ingestApprovedInvitation(
   }
 
   // 6) Upsert as bridged candidates (server-masked contact downstream).
+  //    stage='roster' explicitly (card 588): the bridge IS the promotion action
+  //    for form responses, so ingested rows go straight to the ②일정 roster —
+  //    they must not sit in intake (the response was already selected).
   const upserted = await upsertCandidatesIntoBatch(
     admin,
     batchId,
     candidates,
     'bridge',
+    'roster',
   );
   if ('error' in upserted) {
     return { ok: false, status: 500, error: upserted.error };

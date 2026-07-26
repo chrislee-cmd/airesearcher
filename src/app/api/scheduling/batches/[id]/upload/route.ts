@@ -69,6 +69,9 @@ export async function POST(
     batchId,
     parsed.candidates,
     'upload',
+    // Card 588: uploads land as intake — they surface in ①응답 (upload-list
+    // segment) and only reach ②일정 once the user selects + promotes them.
+    'intake',
   );
   if ('error' in result) {
     // Surface the raw Postgres code + message (journey R3 #2): an upload that
