@@ -24,10 +24,13 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   SchedulingCalendar,
   type CalendarView,
@@ -39,6 +42,7 @@ import {
 import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
 import { useSchedUnread } from '@/hooks/use-sched-unread';
 import { BROADCAST_THREAD_ID } from '@/lib/scheduling/messages';
+import { CONTACT_MASK } from '@/lib/scheduling/candidate-masking';
 import {
   type SchedSlot,
   type SlotStatus,
@@ -74,14 +78,25 @@ export type JourneyScheduleProject = {
   share_token?: string | null;
 };
 
-// Sticky-3col geometry preserved (CONTEXTRECSCHED A.2.5 / 보존 계약 44·168·184);
-// the read-only roster drops the checkbox column so name pins to the left edge.
-const STICKY_W = { name: 168, contact: 184 };
+// Sticky-3col geometry preserved (CONTEXTRECSCHED A.2.5 / 보존 계약 44·168·184).
+// The roster is now a managed list (전체/확정 토글 + 벌크 액션) so it carries the
+// checkbox column exactly like the 명단 tab — check 44 / name 168 / contact 184.
+const STICKY_W = { check: 44, name: 168, contact: 184 };
+const STICKY_LEFT = {
+  check: 0,
+  name: STICKY_W.check,
+  contact: STICKY_W.check + STICKY_W.name,
+};
 const DATA_CELL_MAX = 240;
 
 function stickyStyle(left: number, w: number): CSSProperties {
   return { left, width: w, minWidth: w, maxWidth: w };
 }
+
+// Roster scope toggle — 전체(all, 미확정 포함 = 구 명단) vs 확정(구 로스터).
+// Default = 전체: this tab is now the coordination surface so the candidate pool
+// shows first (spec §1).
+type RosterScope = 'all' | 'confirmed';
 
 // Chat rail — up to 4 tiled thread panels (수정4); the 5th open is blocked with a
 // hint toast (no eviction — conservative per spec).
@@ -99,6 +114,7 @@ export function JourneySchedulingSurface({
   formId,
   onRefetch,
   notifyErr,
+  notifyOk,
 }: {
   project: JourneyScheduleProject;
   groups: JourneyScheduleGroup[];
@@ -113,10 +129,15 @@ export function JourneySchedulingSurface({
   // group rename) — the client-side analog of the admin surface's
   // router.refresh().
   onRefetch: () => void;
-  // Surface a warning toast (chat-tile cap hit). Owned by the container's toast.
+  // Surface a warning toast (chat-tile cap hit, bulk-action failure). Owned by the
+  // container's toast.
   notifyErr: (msg: string) => void;
+  // Surface a success toast (bulk confirm/communicate/assign). Owned by the
+  // container's toast.
+  notifyOk: (msg: string) => void;
 }) {
   const t = useTranslations('RecruitingScheduling');
+  const tj = useTranslations('Recruiting.journey');
 
   const [calendarView, setCalendarView] = useState<CalendarView>('week');
   const [calendarGroupId, setCalendarGroupId] = useState('');
@@ -125,6 +146,15 @@ export function JourneySchedulingSurface({
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<SlotDraft | null>(null);
   const [editorBatchId, setEditorBatchId] = useState('');
+
+  // --- Roster scope + candidate-pool management (탭② 에서 이식) ----------
+  const [rosterScope, setRosterScope] = useState<RosterScope>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showAssign, setShowAssign] = useState(false);
+  const [assignTitle, setAssignTitle] = useState('');
+  const [assignBatchId, setAssignBatchId] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [renamingKey, setRenamingKey] = useState<string | null>(null);
 
   // "upcoming vs past" boundary for the roster's 다음 슬롯 column. Reading
   // Date.now() in render trips react-hooks/purity; a lazy initializer is the
@@ -309,39 +339,216 @@ export function JourneySchedulingSurface({
   const calendarSlots = effectiveCalendarGroupId
     ? slots.filter((s) => s.batch_id === effectiveCalendarGroupId)
     : slots;
-  const calendarScopedCandidates = effectiveCalendarGroupId
-    ? candidates.filter((c) => c.batch_id === effectiveCalendarGroupId)
-    : candidates;
-  // Confirmed attendees within the calendar's current scope — the roster below.
-  const confirmedCandidates = calendarScopedCandidates.filter(
-    (c) => c.status === 'confirmed',
+  // --- Roster (전체/확정 토글 단일 리스트) --------------------------------
+  // 전체 = 미확정 포함(구 명단) · 확정 = confirmed only(구 로스터). Default 전체.
+  const rosterRows = useMemo(
+    () =>
+      rosterScope === 'confirmed'
+        ? candidates.filter((c) => c.status === 'confirmed')
+        : candidates,
+    [candidates, rosterScope],
   );
-  // Confirmed roster as read-only group sections — the same 그룹뷰 shape as the
-  // list view's by-group cards, scoped to the calendar's current group. Empty
-  // groups are dropped; the 미할당 pool collects confirmed candidates not in any
-  // named group (전체 mode only).
-  const confirmedSections = [
-    ...namedGroups
-      .filter(
-        (g) => !effectiveCalendarGroupId || g.id === effectiveCalendarGroupId,
-      )
-      .map((g) => ({
-        key: g.id,
-        title: g.title,
-        rows: confirmedCandidates.filter((c) => c.batch_id === g.id),
-      })),
-    ...(effectiveCalendarGroupId
-      ? []
-      : [
+
+  // The roster shows the WHOLE project (no calendar-scope filter — you must see
+  // other groups to reassign into them, spec §1). When the calendar is narrowed
+  // to a group, float that group's section to the top rather than hiding the rest.
+  const orderedNamedGroups = useMemo(
+    () =>
+      effectiveCalendarGroupId
+        ? [...namedGroups].sort((a, b) =>
+            a.id === effectiveCalendarGroupId
+              ? -1
+              : b.id === effectiveCalendarGroupId
+                ? 1
+                : 0,
+          )
+        : namedGroups,
+    // namedGroups is derived fresh each render; effectiveCalendarGroupId is the
+    // real ordering input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveCalendarGroupId, candidates, groups, calendarGroupId],
+  );
+
+  // Group sections (그룹뷰): every named group (kept even when empty so assign/
+  // rename targets stay visible, 명단 tab parity) + a 미할당 inbox pool (only when
+  // it has rows). The inbox stays last regardless of calendar scope.
+  const ungroupedRoster = rosterRows.filter(
+    (c) => !namedGroupIds.has(c.batch_id),
+  );
+  const rosterSections: {
+    key: string;
+    title: string;
+    rows: JourneyScheduleCandidate[];
+    isInbox: boolean;
+  }[] = [
+    ...orderedNamedGroups.map((g) => ({
+      key: g.id,
+      title: g.title,
+      rows: rosterRows.filter((c) => c.batch_id === g.id),
+      isInbox: false,
+    })),
+    ...(ungroupedRoster.length
+      ? [
           {
             key: '__ungrouped__',
             title: t('ungrouped'),
-            rows: confirmedCandidates.filter(
-              (c) => !namedGroupIds.has(c.batch_id),
-            ),
+            rows: ungroupedRoster,
+            isInbox: true,
           },
-        ]),
-  ].filter((s) => s.rows.length > 0);
+        ]
+      : []),
+  ];
+
+  // --- Selection + bulk actions (탭② 그대로 이식, refetch + 토스트) --------
+  function rowsAllSelected(rows: JourneyScheduleCandidate[]): boolean {
+    return rows.length > 0 && rows.every((c) => selected.has(c.id));
+  }
+  function toggleRows(rows: JourneyScheduleCandidate[]) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const all = rows.length > 0 && rows.every((c) => next.has(c.id));
+      for (const c of rows) {
+        if (all) next.delete(c.id);
+        else next.add(c.id);
+      }
+      return next;
+    });
+  }
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function clearSelection() {
+    setSelected(new Set());
+    setShowAssign(false);
+    setAssignTitle('');
+    setAssignBatchId('');
+  }
+
+  async function confirmSelected() {
+    if (selected.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/scheduling/candidates/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateIds: [...selected] }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { updated?: number };
+      if (!res.ok) {
+        notifyErr(t('bulkConfirmFailed'));
+        return;
+      }
+      notifyOk(t('bulkConfirmed', { count: json.updated ?? 0 }));
+      clearSelection();
+      onRefetch();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function communicatingSelected() {
+    if (selected.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/scheduling/candidates/set-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateIds: [...selected],
+          status: 'communicating',
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { updated?: number };
+      if (!res.ok) {
+        notifyErr(t('bulkCommunicatingFailed'));
+        return;
+      }
+      notifyOk(t('bulkCommunicated', { count: json.updated ?? 0 }));
+      clearSelection();
+      onRefetch();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function assignSelected() {
+    if (selected.size === 0 || bulkBusy) return;
+    const title = assignTitle.trim();
+    if (!title && !assignBatchId) return;
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/scheduling/candidates/assign-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateIds: [...selected],
+          ...(project.id ? { projectId: project.id } : {}),
+          ...(title ? { newBatchTitle: title } : { batchId: assignBatchId }),
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        notifyErr(
+          json.error === 'duplicate_in_target'
+            ? t('bulkDuplicateInTarget')
+            : t('bulkAssignFailed'),
+        );
+        return;
+      }
+      clearSelection();
+      onRefetch();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  const assignBatchOptions = [
+    { value: '', label: t('bulkChooseGroup') },
+    ...namedGroups.map((g) => ({ value: g.id, label: g.title })),
+  ];
+
+  // Source provenance chip (소스 컬럼) — bridge=🧲 green, upload=📄, sheet=📗.
+  // null (legacy) reads as plaintext → upload style. Copied from the 명단 tab.
+  function sourceMeta(source: string | null | undefined): {
+    icon: string;
+    label: string;
+    cls: string;
+  } {
+    switch (source) {
+      case 'bridge':
+        return { icon: '🧲', label: tj('sourceBridge'), cls: 'text-success-text' };
+      case 'sheet':
+        return { icon: '📗', label: tj('sourceSheet'), cls: 'text-mute-soft' };
+      default:
+        return { icon: '📄', label: tj('sourceUpload'), cls: 'text-mute-soft' };
+    }
+  }
+
+  // Status chip (상태 컬럼) — reuses the existing 확정/소통중 표기 tokens (no new
+  // treatment invented, spec §1); pending is a neutral chip.
+  function statusChip(status: string): { label: string; cls: string } {
+    if (status === 'confirmed') {
+      return {
+        label: t('candStatusConfirmed'),
+        cls: 'border-success/30 bg-success-soft text-success',
+      };
+    }
+    if (status === 'communicating') {
+      return {
+        label: t('candStatusCommunicating'),
+        cls: 'border-amore/30 bg-amore-bg text-amore',
+      };
+    }
+    return {
+      label: t('candStatusPending'),
+      cls: 'border-line bg-paper-soft text-mute',
+    };
+  }
 
   // The editor's candidate list / overlap check follow the batch being created
   // into (a candidate's own group, or the calendar filter); '' spans all.
@@ -391,10 +598,14 @@ export function JourneySchedulingSurface({
     ).length,
   }));
 
-  // Read-only confirmed-roster table (라운드3 그룹뷰) — full user columns, no
-  // select/edit, a chat CTA per row (openTile → multi-window rail). Copied from
-  // the admin renderTable's readOnly branch (sticky-3col geometry preserved).
+  // Managed roster table (전체/확정 토글 단일 리스트) — check·이름·연락처·소스·
+  // 이메일·상태·다음 슬롯·동적 fields (spec §1 컬럼셋). Sticky-3col preserved
+  // (check 44 / name 168 / contact 184); source is the first scrollable column.
+  // Contact/email arrive server-masked (●●●● + 🔒) — the client renders them as-is
+  // (클라 마스킹 금지). 확정자는 상태 칩으로 구분(기존 표기 재사용).
   function renderRosterTable(rows: JourneyScheduleCandidate[]) {
+    // check + name + contact + source + email + status + slot + N fields.
+    const colSpan = 7 + fieldColumns.length;
     return (
       <div className="overflow-x-auto">
         {/* border-separate (not collapse): under border-collapse, z-index on
@@ -404,25 +615,36 @@ export function JourneySchedulingSurface({
           <thead className="[&_th]:border-b-2 [&_th]:border-ink [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
             <tr className="text-left">
               <th
+                className="sticky z-table-cell-sticky px-3 py-2.5"
+                style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+              >
+                <Checkbox
+                  aria-label={t('selectAll')}
+                  checked={rowsAllSelected(rows)}
+                  onChange={() => toggleRows(rows)}
+                />
+              </th>
+              <th
                 className="sticky z-table-cell-sticky px-3.5 py-2.5"
-                style={stickyStyle(0, STICKY_W.name)}
+                style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
               >
                 {t('colName')}
               </th>
               <th
                 className="sticky z-table-cell-sticky border-r-2 border-ink px-3.5 py-2.5"
-                style={stickyStyle(STICKY_W.name, STICKY_W.contact)}
+                style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
               >
                 {t('colContact')}
               </th>
+              <th className="px-4 py-2.5">{tj('colSource')}</th>
               <th className="px-4 py-2.5">{t('colEmail')}</th>
+              <th className="px-4 py-2.5">{t('statusColLabel')}</th>
+              <th className="px-4 py-2.5">{t('colSlot')}</th>
               {fieldColumns.map((col) => (
                 <th key={col} className="px-4 py-2.5">
                   {col}
                 </th>
               ))}
-              <th className="px-4 py-2.5">{t('colSlot')}</th>
-              <th className="px-4 py-2.5">{t('confirmedChatCta')}</th>
             </tr>
           </thead>
           <tbody className="[&_td]:border-b [&_td]:border-line-soft">
@@ -430,7 +652,7 @@ export function JourneySchedulingSurface({
               <tr>
                 <td
                   className="px-3 py-6 text-center text-mute"
-                  colSpan={5 + fieldColumns.length}
+                  colSpan={colSpan}
                 >
                   {t('emptyCandidates')}
                 </td>
@@ -439,11 +661,26 @@ export function JourneySchedulingSurface({
               rows.map((c) => {
                 const next = nextSlotForCandidate(c.id, slots, now);
                 const contact = contactValue(c);
+                const contactMasked = contact === CONTACT_MASK;
+                const emailMasked = c.email === CONTACT_MASK;
+                const src = sourceMeta(c.source);
+                const chip = statusChip(c.status);
+                const checked = selected.has(c.id);
                 return (
                   <tr key={c.id} className="group">
                     <td
+                      className="sticky z-table-cell-sticky bg-paper px-3 py-2.5 transition-colors group-hover:bg-paper-soft"
+                      style={stickyStyle(STICKY_LEFT.check, STICKY_W.check)}
+                    >
+                      <Checkbox
+                        aria-label={t('selectRow')}
+                        checked={checked}
+                        onChange={() => toggleOne(c.id)}
+                      />
+                    </td>
+                    <td
                       className="sticky z-table-cell-sticky bg-paper px-3.5 py-2.5 text-ink transition-colors group-hover:bg-paper-soft"
-                      style={stickyStyle(0, STICKY_W.name)}
+                      style={stickyStyle(STICKY_LEFT.name, STICKY_W.name)}
                     >
                       <div className="flex items-center gap-1.5">
                         <span
@@ -452,39 +689,52 @@ export function JourneySchedulingSurface({
                         >
                           {c.name ?? '—'}
                         </span>
-                        <span className="shrink-0 rounded-xs border border-success/30 bg-success-soft px-1.5 py-px text-xs font-extrabold text-success">
-                          {t('confirmedChip')}
-                        </span>
+                        {c.status === 'confirmed' && (
+                          <span className="shrink-0 rounded-xs border border-success/30 bg-success-soft px-1.5 py-px text-xs font-extrabold text-success">
+                            {t('confirmedChip')}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td
-                      className="sticky z-table-cell-sticky border-r-2 border-ink bg-paper px-3.5 py-2.5 font-mono text-md text-ink-2 transition-colors group-hover:bg-paper-soft"
-                      style={stickyStyle(STICKY_W.name, STICKY_W.contact)}
+                      className={`sticky z-table-cell-sticky border-r-2 border-ink bg-paper px-3.5 py-2.5 font-mono text-md transition-colors group-hover:bg-paper-soft ${
+                        contactMasked ? 'text-faint' : 'text-ink-2'
+                      }`}
+                      style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
                     >
-                      <div className="truncate" title={contact ?? undefined}>
-                        {contact ?? '—'}
+                      <div
+                        className="truncate"
+                        title={contactMasked ? undefined : (contact ?? undefined)}
+                      >
+                        {contactMasked ? `🔒 ${contact}` : (contact ?? '—')}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-mute">
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-xs font-bold ${src.cls}`}
+                      >
+                        <span aria-hidden>{src.icon}</span>
+                        {src.label}
+                      </span>
+                    </td>
+                    <td
+                      className={`px-4 py-2.5 ${emailMasked ? 'text-faint' : 'text-mute'}`}
+                    >
                       <div
                         className="truncate"
                         style={{ maxWidth: DATA_CELL_MAX }}
-                        title={c.email ?? undefined}
+                        title={emailMasked ? undefined : (c.email ?? undefined)}
                       >
                         {c.email ?? '—'}
                       </div>
                     </td>
-                    {fieldColumns.map((col) => (
-                      <td key={col} className="px-4 py-2.5 text-mute">
-                        <div
-                          className="truncate"
-                          style={{ maxWidth: DATA_CELL_MAX }}
-                          title={c.fields[col] || undefined}
-                        >
-                          {c.fields[col] || ''}
-                        </div>
-                      </td>
-                    ))}
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`inline-flex shrink-0 items-center rounded-xs border px-1.5 py-px text-xs font-extrabold ${chip.cls}`}
+                      >
+                        {chip.label}
+                      </span>
+                    </td>
                     <td className="px-4 py-2.5">
                       {next ? (
                         <span className="flex items-center gap-1.5 text-sm">
@@ -504,20 +754,17 @@ export function JourneySchedulingSurface({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Button
-                          variant="link"
-                          size="xs"
-                          onClick={() => openTile(c.id)}
+                    {fieldColumns.map((col) => (
+                      <td key={col} className="px-4 py-2.5 text-mute">
+                        <div
+                          className="truncate"
+                          style={{ maxWidth: DATA_CELL_MAX }}
+                          title={c.fields[col] || undefined}
                         >
-                          {t('confirmedChatCta')}
-                        </Button>
-                        {isThreadUnread(c.id) && (
-                          <UnreadDot label={t('chatUnreadBadge')} />
-                        )}
-                      </span>
-                    </td>
+                          {c.fields[col] || ''}
+                        </div>
+                      </td>
+                    ))}
                   </tr>
                 );
               })
@@ -652,34 +899,51 @@ export function JourneySchedulingSurface({
           </div>
         </div>
 
-        {/* Confirmed roster — final-confirmed attendees within the calendar's
-            current scope. Clicking a row opens that attendee's chat thread in a
-            new tile; the header CTA opens the broadcast thread. */}
+        {/* Roster — 전체/확정 토글 단일 리스트 (후보 풀 관리 흡수). Shows the WHOLE
+            project as 그룹뷰 sections (pastel head + count + rename) + 미할당 inbox;
+            the calendar's current group floats to the top. The header CTA opens the
+            broadcast chat thread; row selection drives the bulk action bar. */}
         <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
-          <div className="flex items-center justify-between gap-2">
-            {/* Roster disclosure toggle (수정1) — the whole heading bar is the
-                fold control; the count stays visible when collapsed. */}
-            {/* eslint-disable-next-line react/forbid-elements -- disclosure toggle (heading + boxed chevron); Button primitive chrome unsuitable for a bare list header (§7.11). 라이브 recsched 와 동일 선례. */}
-            <button
-              type="button"
-              aria-expanded={rosterOpen}
-              aria-label={t('confirmedToggleLabel')}
-              onClick={() => setRosterOpen((v) => !v)}
-              className="-mx-1.5 -my-1 flex min-w-0 flex-1 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
-            >
-              <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
-                aria-hidden
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {/* Roster disclosure toggle (수정1) — chevron + heading fold the
+                  list; the count stays visible when collapsed. */}
+              {/* eslint-disable-next-line react/forbid-elements -- disclosure toggle (heading + boxed chevron); Button primitive chrome unsuitable for a bare list header (§7.11). 라이브 recsched 와 동일 선례. */}
+              <button
+                type="button"
+                aria-expanded={rosterOpen}
+                aria-label={t('confirmedToggleLabel')}
+                onClick={() => setRosterOpen((v) => !v)}
+                className="-mx-1.5 -my-1 flex min-w-0 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
               >
-                ▾
-              </span>
-              <span className="truncate text-sm font-bold text-ink">
-                {t('confirmedHeading', { count: confirmedCandidates.length })}
-              </span>
-              <span className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
-                {rosterOpen ? t('rosterCollapseHint') : t('rosterExpandHint')}
-              </span>
-            </button>
+                <span
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
+                  aria-hidden
+                >
+                  ▾
+                </span>
+                <span className="truncate text-sm font-bold text-ink">
+                  {t('rosterHeading')} ({rosterRows.length})
+                </span>
+                <span className="shrink-0 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+                  {rosterOpen ? t('rosterCollapseHint') : t('rosterExpandHint')}
+                </span>
+              </button>
+              {/* 전체/확정 scope toggle — default 전체 (spec §1). Switching scope
+                  clears any selection so a bulk action never targets hidden rows. */}
+              <RosterScopeToggle
+                ariaLabel={t('rosterScopeLabel')}
+                value={rosterScope}
+                onChange={(v) => {
+                  setRosterScope(v);
+                  clearSelection();
+                }}
+                options={[
+                  { value: 'all', label: t('rosterScopeAll') },
+                  { value: 'confirmed', label: t('rosterScopeConfirmed') },
+                ]}
+              />
+            </div>
             <span className="inline-flex shrink-0 items-center gap-1.5">
               <Button
                 variant="ghost"
@@ -693,30 +957,107 @@ export function JourneySchedulingSurface({
               )}
             </span>
           </div>
+
+          {/* Bulk action bar (탭② parity) — amber surface + amber hard shadow.
+              그룹으로 보내기 인라인 reveal(신규 제목 Input / 기존 그룹 Select). */}
+          {rosterOpen && selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-sm border-2 border-ink bg-warning-bg px-4 py-3 shadow-memphis-md-amber">
+              <span className="text-md font-extrabold text-ink">
+                {t('bulkSelected', { count: selected.size })}
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={confirmSelected}
+                disabled={bulkBusy}
+              >
+                {t('bulkConfirm')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={communicatingSelected}
+                disabled={bulkBusy}
+              >
+                {t('bulkCommunicating')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowAssign((v) => !v)}
+                disabled={bulkBusy}
+              >
+                {t('bulkAssign')}
+              </Button>
+              <Button size="sm" variant="link" onClick={clearSelection}>
+                {t('bulkClear')}
+              </Button>
+              {showAssign && (
+                <div className="flex w-full flex-wrap items-end gap-2 pt-2">
+                  <Input
+                    label={t('bulkNewGroup')}
+                    placeholder={t('newGroupPlaceholder')}
+                    value={assignTitle}
+                    onChange={(e) => setAssignTitle(e.target.value)}
+                  />
+                  <span className="pb-2 text-sm text-mute">{t('bulkOr')}</span>
+                  <div className="min-w-[200px]">
+                    <Select
+                      label={t('bulkExistingGroup')}
+                      value={assignBatchId}
+                      onChange={(e) => setAssignBatchId(e.target.value)}
+                      options={assignBatchOptions}
+                      disabled={!!assignTitle.trim()}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={assignSelected}
+                    disabled={bulkBusy || (!assignTitle.trim() && !assignBatchId)}
+                  >
+                    {t('bulkAssignGo')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {rosterOpen &&
-            (confirmedCandidates.length === 0 ? (
+            (rosterSections.length === 0 ? (
               <p className="text-sm text-mute-soft">{t('confirmedEmpty')}</p>
             ) : (
-              // Read-only 그룹뷰 (라운드3): a Memphis card per group, pastel head +
-              // count pill (no Rename), holding the read-only table.
+              // 그룹뷰: a Memphis card per group (pastel head + count pill + Rename)
+              // holding the managed table. 미할당 inbox stays neutral, no rename.
               <div className="flex flex-col gap-4">
-                {confirmedSections.map(({ key, title, rows }, i) => {
-                  const isInbox = key === '__ungrouped__';
-                  return (
+                {rosterSections.map(({ key, title, rows, isInbox }, i) => (
+                  <div
+                    key={key}
+                    className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                  >
                     <div
-                      key={key}
-                      className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                      className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                        isInbox
+                          ? 'bg-paper-soft'
+                          : HEAD_TINTS[i % HEAD_TINTS.length]
+                      }`}
                     >
-                      <div
-                        className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
-                          isInbox
-                            ? 'bg-paper-soft'
-                            : HEAD_TINTS[i % HEAD_TINTS.length]
-                        }`}
-                      >
-                        <span className="text-base" aria-hidden>
-                          {isInbox ? '📥' : '📁'}
-                        </span>
+                      <span className="text-base" aria-hidden>
+                        {isInbox ? '📥' : '📁'}
+                      </span>
+                      {!isInbox && renamingKey === key ? (
+                        <div className="min-w-[220px] flex-1">
+                          <GroupRenameField
+                            key={key}
+                            batchId={key}
+                            title={title}
+                            onSaved={() => {
+                              setRenamingKey(null);
+                              onRefetch();
+                            }}
+                          />
+                        </div>
+                      ) : (
                         <span
                           className="min-w-0 flex-1 truncate font-extrabold text-ink"
                           style={{
@@ -726,14 +1067,25 @@ export function JourneySchedulingSurface({
                         >
                           {title}
                         </span>
-                        <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
-                          {rows.length}
-                        </span>
-                      </div>
-                      {renderRosterTable(rows)}
+                      )}
+                      <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                        {rows.length}
+                      </span>
+                      {!isInbox && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() =>
+                            setRenamingKey((k) => (k === key ? null : key))
+                          }
+                        >
+                          {t('groupRename')}
+                        </Button>
+                      )}
                     </div>
-                  );
-                })}
+                    {renderRosterTable(rows)}
+                  </div>
+                ))}
               </div>
             ))}
         </div>
@@ -808,6 +1160,106 @@ function BatchTitleField({
       }}
       className="font-semibold"
     />
+  );
+}
+
+// Inline group rename — the section head's Rename reveal (탭② 에서 그대로 이식).
+// PATCHes the batch title; no-op on empty/unchanged. Keyed on the group id so a
+// switch reseeds it.
+function GroupRenameField({
+  batchId,
+  title,
+  onSaved,
+}: {
+  batchId: string;
+  title: string;
+  onSaved: () => void;
+}) {
+  const t = useTranslations('RecruitingScheduling');
+  const [value, setValue] = useState(title);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const next = value.trim();
+    if (saving || !next || next === title) {
+      if (!next) setValue(title);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/scheduling/batches/${batchId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: next }),
+      });
+      if (res.ok) onSaved();
+      else setValue(title);
+    } catch {
+      setValue(title);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Input
+      aria-label={t('groupRename')}
+      placeholder={t('newGroupPlaceholder')}
+      value={value}
+      disabled={saving}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className="font-semibold"
+    />
+  );
+}
+
+// Memphis segmented control (BUILD-SPEC §1) — the 전체/확정 roster scope toggle.
+// Mirrors the 명단 tab's list-control pill (ink-fill active segment); the editorial
+// <Tabs> primitive is a flat underline tab, CD wants the Memphis pill.
+function RosterScopeToggle<T extends string>({
+  ariaLabel,
+  value,
+  onChange,
+  options,
+}: {
+  ariaLabel: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly { value: T; label: ReactNode }[];
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className="inline-flex shrink-0 overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm"
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          // eslint-disable-next-line react/forbid-elements -- CD Memphis segmented pill (ink-fill active seg); the Button primitive's per-button border/shadow/radius can't compose into one unified segmented control (명단 리스트 컨트롤과 동일 선례)
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.value)}
+            className={[
+              'px-4 py-1.5 text-md font-bold transition-colors',
+              active ? 'bg-ink text-paper' : 'bg-paper text-mute hover:text-ink',
+            ].join(' ')}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
