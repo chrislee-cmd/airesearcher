@@ -157,6 +157,13 @@
         "taskEmpty": "No task assigned",
         "endSession": "End session"
       },
+      "idle": {
+        "setupHeading": "Set up your test",
+        "setupSubtext": "Configure the project, method, and task in the panel, then start the session.",
+        "waitingHeading": "Waiting for participant",
+        "micIdle": "Mic idle",
+        "cursorIdle": "Cursor idle"
+      },
       "review": {
         "insightReport": "Insight report",
         "taskHeading": "Task: {task}",

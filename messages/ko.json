@@ -157,6 +157,13 @@
         "taskEmpty": "지정된 과제 없음",
         "endSession": "세션 종료"
       },
+      "idle": {
+        "setupHeading": "테스트를 설정하세요",
+        "setupSubtext": "우측 패널에서 프로젝트·방식·과제를 설정하고 세션을 시작하세요.",
+        "waitingHeading": "참가자 대기 중",
+        "micIdle": "마이크 대기",
+        "cursorIdle": "커서 대기"
+      },
       "review": {
         "insightReport": "인사이트 리포트",
         "taskHeading": "과제: {task}",

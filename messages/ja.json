@@ -157,6 +157,13 @@
         "taskEmpty": "タスク未指定",
         "endSession": "セッション終了"
       },
+      "idle": {
+        "setupHeading": "テストを設定",
+        "setupSubtext": "右のパネルでプロジェクト・方式・課題を設定し、セッションを開始します。",
+        "waitingHeading": "参加者を待機中",
+        "micIdle": "マイク待機",
+        "cursorIdle": "カーソル待機"
+      },
       "review": {
         "insightReport": "インサイトレポート",
         "taskHeading": "タスク: {task}",

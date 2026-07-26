@@ -26,6 +26,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ChromeInput } from '@/components/ui/chrome-input';
+import { ChromeButton } from '@/components/ui/chrome-button';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { ControlBoardPanel } from '@/components/canvas/shell/control-board-panel';
 import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
@@ -87,6 +89,8 @@ export function UtSessionBody() {
   // 예상 참여자 언어 — 미선택('')이면 시작/생성 불가(서버 400 가드의 클라 짝).
   const [inputLanguage, setInputLanguage] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
+  // 풀뷰 empty 프레임 공유링크 복사 표시 — UtRemoteBody 의 copied 와 독립(다른 표면).
+  const [fvCopied, setFvCopied] = useState(false);
 
   const projectId = getSelection('moderator_ai');
 
@@ -225,6 +229,16 @@ export function UtSessionBody() {
       inputLanguage,
     });
   };
+  const copyParticipantLink = async () => {
+    if (!remote.participantUrl) return;
+    try {
+      await navigator.clipboard.writeText(remote.participantUrl);
+      setFvCopied(true);
+      setTimeout(() => setFvCopied(false), 1600);
+    } catch {
+      // clipboard 차단 — readOnly 필드에서 직접 복사 가능.
+    }
+  };
 
   // 현재 보이는 표면 — 프리뷰 <video> 를 여기에만 렌더(단일 스트림 부착).
   const activeSurface: 'card' | 'fullview' = isCurrent ? 'fullview' : 'card';
@@ -355,6 +369,152 @@ export function UtSessionBody() {
     );
   };
 
+  // ── 풀뷰 V2 디폴트 표면 = CD state 06 empty case 프레임 ──────────────────
+  // 사용자 결정(2026-07-26): 풀뷰 비-라이브/비-리뷰 표면은 위젯 본문 폴백이
+  // 아니라 state 06 지오메트리의 empty case. AiutLiveMonitor 의 idle variant 로
+  // 렌더(같은 컴포넌트 = 드리프트 0). **우 레일 상단 = assigned task 카드
+  // (design state 06, 과제 없으면 dashed empty)** — 세팅 뷰가 아니라 태스크 카드.
+  // 세션 시작 경로(세팅 4-스텝·시작 CTA)는 **좌측 모니터 본문**에 얹는다.
+  // 공유대기는 링크 패널만 railCardSlot 로 override. 카드뷰는 불변(풀뷰 한정).
+  const renderFullviewDefault = () => {
+    const normalizedUrl = normalizeTargetUrl(targetUrl);
+
+    // 1) 로컬 라이브 녹화 — 셀프 프리뷰 + 활성 REC + 종료 CTA(위젯 본문 재노출 X).
+    //    우 레일 = assigned task 카드(taskGoal, AiutLiveMonitor 기본 렌더).
+    if (localActive && isLive) {
+      return (
+        <AiutLiveMonitor
+          variant="idle"
+          targetUrl={normalizedUrl}
+          taskGoal={taskGoal}
+          statusTone="rec"
+          recElapsedMs={session.elapsedMs}
+          showThinkAloud={false}
+          monitorSlot={
+            <>
+              {activeSurface === 'fullview' ? (
+                <video
+                  ref={session.attachPreview}
+                  className="h-full w-full bg-ink object-contain"
+                  muted
+                  autoPlay
+                  playsInline
+                />
+              ) : null}
+              <div className="absolute bottom-3 right-3">
+                <Button variant="secondary" size="sm" onClick={session.stop}>
+                  {t('cta.stop')}
+                </Button>
+              </div>
+            </>
+          }
+        />
+      );
+    }
+
+    // 2) 원격 공유 대기 — 참가자 링크 발급/대기(관전 전). live/review 는 상위
+    //    remoteLive/isReviewSurface 가 이미 가로채므로 여기 도달하는 건 waiting.
+    //    우 레일 = 링크 공유 패널(override), 모니터 본문 = 대기 안내 + 복사 CTA.
+    if (remoteShareActive) {
+      return (
+        <AiutLiveMonitor
+          variant="idle"
+          targetUrl={remote.result?.target_url ?? normalizedUrl}
+          showThinkAloud={false}
+          monitorSlot={
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-6 text-center">
+              <p className="font-mono-label text-sm text-faint">
+                {t('fv.idle.waitingHeading')}
+              </p>
+              <p className="max-w-[360px] text-sm text-mute">
+                {t('remote.waiting.status')}
+              </p>
+            </div>
+          }
+          railCardSlot={
+            <div className="flex min-h-0 flex-col gap-3 overflow-y-auto rounded-sm border-2 border-ink bg-peach-bg px-[15px] py-[13px] shadow-memphis-sm">
+              <div className="flex items-center gap-[7px]">
+                <DuotoneIcon
+                  name="link"
+                  size={18}
+                  fill="var(--widget-header-bg-peach)"
+                />
+                <span className="text-md font-extrabold text-ink">
+                  {t('remote.share.label')}
+                </span>
+              </div>
+              <ChromeInput
+                readOnly
+                value={remote.participantUrl ?? ''}
+                onFocus={(e) => e.currentTarget.select()}
+                className="!border-line-soft !text-ink font-mono"
+                aria-label={t('remote.share.label')}
+              />
+              <ChromeButton size="md" onClick={() => void copyParticipantLink()}>
+                {fvCopied ? t('remote.share.copied') : t('remote.share.copy')}
+              </ChromeButton>
+              <p className="text-xs text-mute-soft">
+                {t('remote.share.description')}
+              </p>
+              <div className="mt-auto">
+                <Button variant="ghost" size="sm" onClick={remote.reset}>
+                  {t('remote.waiting.cancel')}
+                </Button>
+              </div>
+            </div>
+          }
+        />
+      );
+    }
+
+    // 3) 세팅(idle) — 좌측 모니터 본문에 4-스텝 아코디언 + 방식별 주 CTA(하단 바).
+    //    우 레일 = assigned task 카드(taskGoal 반영, empty 시 dashed) + think-aloud.
+    return (
+      <AiutLiveMonitor
+        variant="idle"
+        targetUrl={normalizedUrl}
+        taskGoal={taskGoal}
+        monitorSlot={
+          <div className="flex h-full w-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <UtSetupAccordion
+                surface="fullview"
+                projectId={projectId}
+                onProjectChange={(id) => setSelection('moderator_ai', id)}
+                method={method}
+                onMethodChange={setMethod}
+                inputLanguage={inputLanguage}
+                onInputLanguage={setInputLanguage}
+                targetUrl={targetUrl}
+                onTargetUrl={setTargetUrl}
+                taskGoal={taskGoal}
+                onTaskGoal={setTaskGoal}
+                supported={session.isSupported}
+              />
+              {setupBanner && <div className="mt-3">{setupBanner}</div>}
+            </div>
+            {method === 'guest' ? (
+              <WidgetPrimaryCta
+                label={t('remote.cta.create')}
+                busy={isCreating}
+                busyLabel={t('remote.cta.creating')}
+                disabled={guestDisabled}
+                icon={<DuotoneIcon name="link" size={16} mono />}
+                onClick={handleCreate}
+              />
+            ) : (
+              <WidgetPrimaryCta
+                label={t('cta.start')}
+                disabled={method === '' || hostDisabled}
+                onClick={handleStartClick}
+              />
+            )}
+          </div>
+        }
+      />
+    );
+  };
+
   // 리뷰(사후 결과) 표면 — 로컬 결과 또는 원격 review. peach 헤더 + 'AI UT ·
   // Review' 타이틀 + 'Post-session review' pill 로 Canvas 1c 리뷰 fullview 정합.
   const isReviewSurface =
@@ -394,8 +554,9 @@ export function UtSessionBody() {
       <div className="flex h-full min-h-0 flex-col">{renderContent('card')}</div>
 
       {/* ── 풀뷰 V2 (캔버스 모달) ── FullviewShell(§F1~F3)에 배선. 본문은 fresh
-          AiutLiveMonitor(state 06)·AiutReviewReport(state 07); CD 미도시 표면
-          (세팅/공유대기/로컬녹화)은 기존 renderContent 유지(회귀 0). 헤더는
+          AiutLiveMonitor(state 06 live)·AiutReviewReport(state 07); 그 외 디폴트
+          (세팅/공유대기/로컬녹화)는 AiutLiveMonitor idle variant = state 06
+          empty case(2026-07-26 사용자 결정, 위젯 본문 폴백 제거). 헤더는
           pill(좌)+REC chip/End-session·리뷰 pill(우) 슬롯으로 portal. */}
       {fullviewChrome === 'modal' ? (
         <>
@@ -465,10 +626,9 @@ export function UtSessionBody() {
                 }
               />
             ) : (
-              // CD 미도시 표면(세팅/공유대기/로컬 라이브녹화/생성중) — 기존 본문.
-              <div className="flex h-full min-h-0 flex-col">
-                {renderContent('fullview')}
-              </div>
+              // 디폴트(세팅/공유대기/로컬 라이브녹화/생성중) = state 06 empty
+              // case 프레임(사용자 결정 2026-07-26). 위젯 본문 폴백 제거.
+              renderFullviewDefault()
             ),
           )}
         </>
