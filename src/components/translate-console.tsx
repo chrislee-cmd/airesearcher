@@ -1836,11 +1836,13 @@ export function TranslateConsole({
 
   const broadcastCaption = useCallback(
     (kind: 'input' | 'output', line: CaptionLine, lang: string) => {
-      // The viewer prompter only renders translated output, so input
-      // captions don't need to traverse the broadcast channel — saves
-      // bandwidth on long sessions. They're still persisted via
-      // /messages below so PR-B can offer a bilingual download.
-      if (kind === 'input') return;
+      // Broadcast BOTH kinds. The legacy prompter rendered only translated
+      // output, so input was dropped here to save bandwidth — but the Memphis
+      // observer redesign (#1227) gives the viewer a dedicated ORIGINAL panel
+      // that streams input deltas the same way TRANSLATION streams output.
+      // Skipping input left that panel permanently empty (host fullview still
+      // showed it from local state). Input is still persisted via /messages
+      // below for the bilingual download.
       channelRef.current
         ?.send({
           type: 'broadcast',
