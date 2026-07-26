@@ -57,6 +57,8 @@ export function RecruitingJourneyShell({
   onRefresh,
   responsesTab,
   formId,
+  activeTab,
+  onTabChange,
 }: {
   // 헤더 프로젝트 pill — projects.length>1 이면 인터랙티브 스위처, 아니면
   // display-only 폴백(FullviewProjectPill 내부 규칙).
@@ -83,10 +85,13 @@ export function RecruitingJourneyShell({
   // /api/scheduling/journey/schedule(form→project lazy resolve). 폼 미선택 시
   // null → 해당 탭 안내 empty.
   formId: string | null;
+  // 활성 저니 탭 — host(recruiting-card)가 SSOT 로 쥔다(controlled). 브리지
+  // 전송 성공 시 host 가 탭②(명단)로 전환해 방금 인제스트된 인원을 노출한다.
+  activeTab: JourneyTab;
+  onTabChange: (tab: JourneyTab) => void;
 }) {
   const t = useTranslations('Recruiting');
   const publishHeaderSlot = useFullviewHeaderSlotPublisher();
-  const [activeTab, setActiveTab] = useState<JourneyTab>('responses');
 
   // ── 헤더 slot publish (§F3) — pill · actions · row-2 탭. 셸 헤더밴드
   // (sun 톤)·타이틀·닫기✕ 는 셸이 소유, 위젯 종속 조각만 주입.
@@ -158,7 +163,7 @@ export function RecruitingJourneyShell({
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => onTabChange(tab.key)}
             className={`relative -mb-[2px] flex items-center gap-2 rounded-t-[var(--fv-radius-card)] border-2 border-b-0 border-ink px-[18px] py-[9px] ${
               active ? 'bg-surface-canvas' : 'bg-paper/35'
             }`}
@@ -203,6 +208,7 @@ export function RecruitingJourneyShell({
     shareButton,
     onRefresh,
     activeTab,
+    onTabChange,
   ]);
 
   return (

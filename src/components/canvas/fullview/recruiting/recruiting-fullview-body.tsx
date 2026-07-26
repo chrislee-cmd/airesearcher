@@ -115,7 +115,11 @@ export function RecruitingFullviewBody({
     // intrinsic 폭으로 팽창하지 않도록 flex 자식 min-width:auto(min-content)를
     // 0 으로 눌러, 우측 컬럼이 가시 폭에 고정되고 브리지 CTA 가 클립 밖으로
     // 밀려나지 않게 한다. 가로 스크롤은 테이블 wrapper 한 겹에만 남는다.
-    <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas">
+    // w-full flex-1 = 셸의 responses wrapper(flex row)에서 본문이 가용 폭을
+    // *항상 fill*(R3 계약). 없으면 flex 자식 기본 flex-grow:0 이라, 컬럼 적은
+    // 폼 + 좌패널 접힘처럼 콘텐츠가 좁을 때 본문이 content 폭으로 수축해 우측에
+    // dead space 가 남았다(#571 재현). 폭은 100%로 clip 되므로 프레임 팽창 0.
+    <div className="flex h-full w-full min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
       {criteriaPersistMissing && (
         <Banner tone="warning" divider="none">
           {t('criteriaMissingBanner')}

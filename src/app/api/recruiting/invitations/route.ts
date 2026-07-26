@@ -4,13 +4,24 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import { isSuperAdminEmail } from '@/lib/admin/superadmin';
+import { ingestApprovedInvitation } from '@/lib/scheduling/bridge-approval';
 
-export const maxDuration = 30;
+// Direct ingest runs inline here (reads Google Forms + upserts candidates), so
+// this route needs the longer budget the approval PATCH already uses.
+export const maxDuration = 60;
 
 // POST /api/recruiting/invitations
 // A user files a request to invite a set of respondents. Contact info is never
 // exposed to the user — this only records which responses they want invited.
-// No credits are charged: the super admin fulfils the request out-of-band.
+// No credits are charged.
+//
+// D1-A revision (2026-07-25, 사용자 결정): the super-admin approval gate is
+// retired. Pressing "명단으로 보내기" now ingests candidates into the form's
+// project in this SAME request — no waiting for approval. The invitation row is
+// kept as an audit trail and auto-stamped `sent`. The PII contract is UNCHANGED:
+// ingest is server-only (admin-proxy), contact stays masked (●●●●) for the user.
+// The super-admin PATCH path is left intact and idempotent (re-approval re-runs
+// the dedup upsert harmlessly) for legacy/admin re-processing.
 const Body = z.object({
   form_id: z.string().min(1),
   project_id: z.string().uuid().nullable().optional(),
@@ -90,9 +101,36 @@ export async function POST(req: Request) {
     );
   }
 
+  // D1-A direct ingest — run in the SAME request (no approval wait). Uses the
+  // service-role admin client; `ingestApprovedInvitation` internally routes the
+  // form owner's Google token and enforces form access (resolveFormAccess), so a
+  // requester without form access is still rejected here (the audit row stays
+  // pending, actionable via the admin PATCH path). On success we stamp the
+  // invitation `sent` so its status reflects the completed ingest.
+  const admin = createAdminClient();
+  const ingest = await ingestApprovedInvitation(admin, data.id);
+  if (!ingest.ok) {
+    return NextResponse.json(
+      { error: 'ingest_failed', reason: ingest.error, id: data.id },
+      { status: ingest.status },
+    );
+  }
+
+  // Audit stamp — non-fatal. The candidates are already ingested; a failed
+  // status update shouldn't fail the user's action (the PATCH path can still
+  // reconcile). The upsert is idempotent so a stale `pending` row is harmless.
+  const stamp = await admin
+    .from('recruiting_invitations')
+    .update({ status: 'sent', processed_at: new Date().toISOString() })
+    .eq('id', data.id);
+  if (stamp.error) {
+    console.error('[recruiting/invitations] audit stamp failed', stamp.error);
+  }
+
   return NextResponse.json({
     id: data.id,
     count: parsed.data.response_ids.length,
+    ingested: ingest.ingested,
   });
 }
 
