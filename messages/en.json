@@ -1631,6 +1631,8 @@
       "output": "OUTPUT",
       "outputAudio": "Output audio",
       "outputAudioHint": "Spoken interpretation",
+      "sharingBadge": "SHARING",
+      "sharedScreenLabel": "Shared screen",
       "observerLink": "Observer link",
       "observerLinkPending": "A link is created once interpreting starts",
       "observerHint": "Observers hear the interpretation live, read-only."

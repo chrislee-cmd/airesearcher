@@ -55,6 +55,12 @@ export type TranslateSessionSnapshot = {
   // for the INPUT/OUTPUT panel headers + header lang pill. '' until picked.
   sourceLangLabel: string;
   targetLangLabel: string;
+  // 🖥️ Live shared-screen video stream (getDisplayMedia video), owned by the
+  // console. Non-null only while a tab/screen is being shared (tab-only/both
+  // mode, before the user stops sharing). The interpreter fullview shows this
+  // as a read-only <video> (frame-10 layout) and falls back to state 03 when
+  // null. Read-only mirror — the fullview NEVER captures or stops it.
+  shareVideoStream: MediaStream | null;
   // Host-local monitor audio toggle. The gain lives in the console; the
   // fullview rail mirrors + flips it via `toggleOutputAudible` (§F4 toggle).
   outputAudible: boolean;
@@ -94,6 +100,7 @@ const EMPTY: TranslateSessionSnapshot = {
   listeners: [],
   sourceLangLabel: '',
   targetLangLabel: '',
+  shareVideoStream: null,
   outputAudible: false,
   toggleOutputAudible: NOOP,
   copyShareUrl: NOOP,
