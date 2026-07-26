@@ -30,6 +30,7 @@ import {
   type FormSummary,
 } from './recruiting/responses-spreadsheet';
 import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
+import { JourneyIntakeBand } from '../fullview/recruiting/journey-intake-band';
 import {
   RecruitingJourneyShell,
   type JourneyTab,
@@ -182,13 +183,14 @@ function ExpandedBody() {
   }, []);
   const clearBridge = useCallback(() => setBridgeSelected(new Set()), []);
 
-  // ── 저니 탭(응답/명단/일정) SSOT — 셸을 controlled 로 구동. 브리지 전송
-  // 성공 시 탭②(명단)로 전환하면 JourneyCandidatesTab 이 (조건부 마운트라)
-  // fresh fetch 를 돌려 방금 인제스트된 인원이 바로 노출된다(D1-A 직접 인제스트).
+  // ── 저니 탭(응답/일정) SSOT — 셸을 controlled 로 구동. 저니 2탭화(#579)로
+  // 명단 탭이 제거돼, 브리지 전송 성공 시엔 선택만 리셋한다(브리지 컴포넌트가
+  // 자체 성공 토스트를 띄운다). 인제스트된 인원은 탭③(일정)이 조건부 마운트라
+  // 다음 진입 시 fresh fetch 로 노출된다 — 탭 이동 강제 없음(spec §1 유입 규칙을
+  // 브리지에도 동일 적용; 보수적 해석, PR 본문 명시).
   const [journeyTab, setJourneyTab] = useState<JourneyTab>('responses');
   const handleBridgeSent = useCallback(() => {
     clearBridge();
-    setJourneyTab('candidates');
   }, [clearBridge]);
 
   // 선택 응답자 서술자 — judgments 에서 selected 를 필터해 #번호·demographic·fit
@@ -394,6 +396,10 @@ function ExpandedBody() {
               // CSV(응답 전용)엔 부적합.
               onDownloadCsv={handleDownloadCsv}
               hasResponses={hasResponses}
+              // 명단 소스 밴드(#579) — 저니 2탭화로 유입 3종(CSV·시트·응답연동)이
+              // 이 응답 탭으로 이관됐다. activeFormId 앵커로 project/inbox 를 자체
+              // 페치(옛 candidates 탭 로직 이식). 툴바 아래·프레임 안에 배치.
+              intakeBand={<JourneyIntakeBand formId={activeFormId} />}
               // 브리지(N1·N4) — 선택 SSOT + judgments lift + 서술자.
               bridgeSelected={bridgeSelected}
               onToggleRow={toggleBridgeRow}
