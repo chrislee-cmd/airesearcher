@@ -1724,6 +1724,8 @@
       "output": "OUTPUT",
       "outputAudio": "出力オーディオ",
       "outputAudioHint": "音声通訳の再生",
+      "sharingBadge": "共有中",
+      "sharedScreenLabel": "共有画面",
       "observerLink": "オブザーバーリンク",
       "observerLinkPending": "通訳を開始するとリンクが作成されます",
       "observerHint": "オブザーバーは通訳をリアルタイムで聴くだけです（閲覧のみ）。"

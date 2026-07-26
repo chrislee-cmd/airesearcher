@@ -1724,6 +1724,8 @@
       "output": "OUTPUT",
       "outputAudio": "เสียงเอาต์พุต",
       "outputAudioHint": "การล่ามด้วยเสียง",
+      "sharingBadge": "กำลังแชร์",
+      "sharedScreenLabel": "หน้าจอที่แชร์",
       "observerLink": "ลิงก์ผู้สังเกตการณ์",
       "observerLinkPending": "ระบบจะสร้างลิงก์เมื่อเริ่มการล่าม",
       "observerHint": "ผู้สังเกตการณ์จะได้ยินการล่ามแบบเรียลไทม์เท่านั้น (อ่านอย่างเดียว)"

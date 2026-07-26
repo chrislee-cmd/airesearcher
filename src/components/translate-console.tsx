@@ -919,6 +919,13 @@ export function TranslateConsole({
 
   const [inputLines, setInputLines] = useState<CaptionLine[]>([]);
   const [outputLines, setOutputLines] = useState<CaptionLine[]>([]);
+  // Reactive mirror of `shareVideoStreamRef` — published in the session
+  // snapshot so the interpreter fullview can swap to the frame-10 layout while
+  // a screen is live and fall back to state 03 when it ends. Null = no share
+  // video (mic-only, or share stopped).
+  const [shareVideoStream, setShareVideoStream] = useState<MediaStream | null>(
+    null,
+  );
   const [elapsed, setElapsed] = useState(0);
   // Host can mute the local translation playback without dropping the
   // LiveKit publish — viewers still hear the translated TTS, the host
@@ -1076,6 +1083,15 @@ export function TranslateConsole({
   const publishStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
     emptySlotRecord<MediaStream | null>(null),
   );
+  // 🖥️ Shared-screen VIDEO track (getDisplayMedia video) — historically stopped
+  // the instant it arrived (only tab AUDIO was ever used). The interpreter
+  // fullview (frame 10) mirrors this screen read-only, so we now KEEP the video
+  // track here. The console OWNS it (creates on acquire, stops on cleanup /
+  // track `ended`); the fullview only sets it as a <video> srcObject — it never
+  // captures or re-acquires (past incident: a second capture killed the whole
+  // session). `srcStreamRef.tab` stays audio-only (pipeline unchanged, 회귀 0);
+  // this is a separate video-only stream. `null` outside tab-only/both.
+  const shareVideoStreamRef = useRef<MediaStream | null>(null);
   // Per-slot TTS stream emitted by OpenAI.
   const ttsStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
     emptySlotRecord<MediaStream | null>(null),
@@ -1578,6 +1594,11 @@ export function TranslateConsole({
     }
     // 🎙️ Drop the source lane's per-utterance accumulators (fix A).
     sourceItemTextRef.current.clear();
+    // 🖥️ Stop the shared-screen video track (orphan streams 0) + clear the
+    // fullview mirror. Audio-only `srcStreamRef.tab` was already stopped above.
+    shareVideoStreamRef.current?.getTracks().forEach((tr) => tr.stop());
+    shareVideoStreamRef.current = null;
+    setShareVideoStream(null);
     if (tabSilenceTimerRef.current) {
       clearInterval(tabSilenceTimerRef.current);
       tabSilenceTimerRef.current = null;
@@ -2795,15 +2816,37 @@ export function TranslateConsole({
           },
           video: { displaySurface: 'browser' },
         });
-        display.getVideoTracks().forEach((tr) => tr.stop());
         const audioTracks = display.getAudioTracks();
+        const videoTracks = display.getVideoTracks();
         console.info('[translate] getDisplayMedia ok', {
           audioTracks: audioTracks.length,
+          videoTracks: videoTracks.length,
           settings: audioTracks.map((tr) => tr.getSettings()),
         });
         if (audioTracks.length === 0) {
+          // Audio is the whole point of the tab slot — bail (and drop the
+          // video too, since we never entered the live path).
           display.getTracks().forEach((tr) => tr.stop());
           throw new DOMException('tab_audio_unavailable', 'NoAudioError');
+        }
+        // 🖥️ Preserve the shared-screen video for the interpreter fullview
+        // mirror (frame 10). Previously stopped immediately; now held in its own
+        // video-only stream (the audio pipeline below stays audio-only → 회귀 0).
+        // If the user hits the browser "Stop sharing" control the track fires
+        // `ended` → we drop it and the fullview smoothly falls back to state 03.
+        if (videoTracks.length > 0) {
+          const videoStream = new MediaStream(videoTracks);
+          shareVideoStreamRef.current = videoStream;
+          setShareVideoStream(videoStream);
+          videoTracks[0].addEventListener('ended', () => {
+            // Only clear if this is still the current share stream (a later
+            // session may have replaced it).
+            if (shareVideoStreamRef.current === videoStream) {
+              videoStream.getTracks().forEach((tr) => tr.stop());
+              shareVideoStreamRef.current = null;
+              setShareVideoStream(null);
+            }
+          });
         }
         const tabStream = new MediaStream(audioTracks);
         srcStreamRef.current.tab = tabStream;
@@ -4822,6 +4865,7 @@ export function TranslateConsole({
       listeners,
       sourceLangLabel: sourceLang ? labelOf(sourceLang) : '',
       targetLangLabel: targetLang ? labelOf(targetLang) : '',
+      shareVideoStream,
       outputAudible,
       toggleOutputAudible,
       copyShareUrl: () => void copyShareUrl(),
@@ -4843,6 +4887,7 @@ export function TranslateConsole({
     listeners,
     sourceLang,
     targetLang,
+    shareVideoStream,
     outputAudible,
     toggleOutputAudible,
     copyShareUrl,
