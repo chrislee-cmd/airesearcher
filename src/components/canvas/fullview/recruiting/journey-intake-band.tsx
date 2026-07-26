@@ -1,31 +1,33 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   JourneyIntakeBand — 저니 2탭화(#579)로 탭②(명단)이 제거되면서, 그 탭이
-   소유하던 **유입 3종**(응답연동 카운트🔒 · CSV/Excel 업로드 · Google Sheets
-   연동)을 탭①(응답)으로 이관한 접이식 "명단 소스" 밴드.
+   JourneyIntakeBand — 명단 소스(LIST SOURCES) 컴팩트 유틸리티 스트립.
 
-   이식(재구현 금지): 업로드/시트 인제스트·재동기화/재연결·연동됨 카드·에러
-   노출 계약은 옛 journey-candidates-tab.tsx 의 소스 3-up 로직을 그대로 옮겼다
-   (POST /batches/[inbox]/upload 10MB 가드·POST /import-sheet·OAuth bounce
-   share=1). 명단 조율(로스터/그룹/슬롯)은 578 로 탭③(일정)이 흡수했으므로
-   여기엔 표/벌크/그룹 없음 — 순수 유입 창구만.
+   위치(#587, CD LEFT-PANEL-SPEC): ①응답 탭 좌패널(400px 컬럼) **최상단 카드**
+   — 순서 LIST SOURCES → 참여자 조건 → 분포. (579 가 뒀던 툴바 아래 full-width
+   접이식 밴드에서 이관. 접힘/펼침·자동펼침·응답연동(bridge) 행은 CD 컴팩트
+   설계에 따라 제거 — bridge 는 판단테이블 CTA 로 존재하므로 소스 목록에서만
+   제외, 기능 삭제 아님.)
 
-   배치(writer 결정): 탭① 폼 셀렉터/뷰 토글 툴바 **아래**, 가로 스크롤 영역
-   **밖**(568 폭 봉쇄 — 테이블 폭과 무관하게 항상 프레임 안). 기본 접힘. 단
-   ⓐ 시트 연동 시 접혀도 연동됨 요약 1줄(시트명·동기화·재동기화) 노출,
-   ⓑ 명단 0명이면 첫 유입 유도로 기본 펼침.
+   형태(CD §①): 카드가 아니라 유틸리티 스트립(높이 ≈110px). 헤드 = LIST SOURCES
+   라벨 + 우측 `N명 등록됨` 상태. 바디 2행 = 업로드(1.5px dashed ink · 찾아보기)
+   · Google Sheets(1.5px solid line · Import ink-fill · 서브라인 = 연동 시트명
+   mono truncate, 미연동 시 URL 입력). 카드 셸은 좌패널 3카드 공통 규격
+   (border-2 ink · rounded-[var(--fv-radius-panel)](12) · paper ·
+   shadow-memphis-sm-faint) — 형제 recruiting-criteria-panel 과 동일.
 
-   유입 성공 시: 토스트 + 로컬 refetch(밴드 자신의 연동됨 요약/카운트 갱신).
-   탭③(일정)은 조건부 마운트라 다음 진입 시 fresh fetch 로 최신 명단을 노출
-   — 탭 이동 강제 없음(spec §1).
+   이식(재구현 금지): 업로드/시트 인제스트·재동기화·에러 노출 계약을 그대로
+   옮겼다 (POST /batches/[inbox]/upload 10MB 가드 · POST /import-sheet ·
+   412/reconsent 시 OAuth bounce share=1). 명단 조율(로스터/그룹/슬롯)은 578 로
+   탭③(일정)이 흡수 — 여기엔 표/벌크 없음, 순수 유입 창구만.
+
+   앵커: 폼(formId) 우선, 없으면 pill 프로젝트(projectId, form-free intake 583).
+   폼 미발행이어도 스트립은 정상 동작 — "폼 발행하세요" 류 차단/배너 없음.
+   유입 성공 시 토스트 + 로컬 refetch(연동 시트명/카운트 갱신).
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { FileDropZone } from '@/components/ui/file-drop-zone';
 import { useToast } from '@/components/toast-provider';
 
 type IntakeProject = {
@@ -43,7 +45,7 @@ export function JourneyIntakeBand({
 }: {
   formId: string | null;
   // Pill (interview_projects) id — the form-free intake anchor (card 583). When
-  // no form is published the band still opens on the pill project so CSV/Sheets
+  // no form is published the strip still works on the pill project so CSV/Sheets
   // intake works; when both are present the server converges them on one project.
   projectId?: string | null;
 }) {
@@ -52,23 +54,14 @@ export function JourneyIntakeBand({
   const toast = useToast();
   const notifyOk = (msg: string) => toast.push(msg, { tone: 'info' });
   const notifyErr = (msg: string) => toast.push(msg, { tone: 'warn' });
-  // Journey anchor id — form takes priority, else the pill project. Drives the
-  // one-shot auto-expand seed + no-anchor early return.
-  const anchorId = formId ?? projectId;
 
   // --- Journey anchor (form → project + inbox batch + roster count) -------
-  const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<IntakeProject | null>(null);
   const [inboxBatchId, setInboxBatchId] = useState<string | null>(null);
-  const [bridgedCount, setBridgedCount] = useState(0);
   const [rosterCount, setRosterCount] = useState(0);
 
   const load = useCallback(async () => {
-    if (!formId && !projectId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (!formId && !projectId) return;
     try {
       // Pass whichever anchors we have — both when known so the server converges
       // the form + pill axes on one project (card 583).
@@ -89,40 +82,21 @@ export function JourneyIntakeBand({
       setProject(json.project ?? null);
       setInboxBatchId(json.inbox_batch_id ?? null);
       setRosterCount(rows.length);
-      setBridgedCount(rows.filter((c) => c.source === 'bridge').length);
     } catch {
-      // Band degrades to the collapsed toggle; intake retries on next action.
-    } finally {
-      setLoading(false);
+      // Strip degrades to disabled controls; intake retries on next action.
     }
   }, [formId, projectId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- form-anchored fetch-on-mount (load() sets loading/data); re-fetch also runs from handlers
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- anchor-scoped fetch-on-mount (load() sets project/inbox/count); re-fetch also runs from upload/import handlers
     void load();
   }, [load]);
-
-  // --- Collapse (접힘 기본, 명단 0명이면 자동 펼침) -----------------------
-  const [sourceOpen, setSourceOpen] = useState(false);
-  // Re-seed the auto-expand once per anchor (form or pill) after its first load.
-  const [seedForm, setSeedForm] = useState<string | null>(null);
-  const [seededForm, setSeededForm] = useState<string | null>(null);
-  if (anchorId !== seedForm) {
-    // anchor switched → allow a fresh auto-seed for the new anchor's roster.
-    setSeedForm(anchorId);
-    setSeededForm(null);
-  }
-  if (!loading && anchorId && seededForm !== anchorId) {
-    // First settled load for this anchor: default-expand only when 명단 0명.
-    setSeededForm(anchorId);
-    setSourceOpen(rosterCount === 0);
-  }
 
   // --- Intake state (ported) --------------------------------------------
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
-  const [showSheetInput, setShowSheetInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function uploadFile(file: File) {
     if (!inboxBatchId || uploading) return;
@@ -158,6 +132,19 @@ export function JourneyIntakeBand({
     }
   }
 
+  function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset so re-selecting the same file re-fires onChange.
+    e.target.value = '';
+    if (!file) return;
+    // 10MB guard (ported from FileDropZone maxSizeBytes).
+    if (file.size > MAX_UPLOAD_BYTES) {
+      notifyErr(t('fileTooLarge'));
+      return;
+    }
+    void uploadFile(file);
+  }
+
   async function importSheet(url: string) {
     const target = url.trim();
     if (!target || !inboxBatchId || importing) return;
@@ -190,7 +177,6 @@ export function JourneyIntakeBand({
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
       setSheetUrl('');
-      setShowSheetInput(false);
       await load();
     } finally {
       setImporting(false);
@@ -210,201 +196,114 @@ export function JourneyIntakeBand({
     }
   }
 
-  function resyncSheet() {
-    if (project?.source_sheet_url) void importSheet(project.source_sheet_url);
-  }
-  function reconnectSheet() {
-    window.location.href = '/api/recruiting/google/start?share=1';
+  // Import button: linked → re-import the same URL (resync); else import the
+  // pasted URL. Single CD "Import" affordance either way (§① compact strip).
+  function onSheetImport() {
+    if (sheetLinked && project?.source_sheet_url) {
+      void importSheet(project.source_sheet_url);
+    } else {
+      void importSheet(sheetUrl);
+    }
   }
 
-  // 앵커(폼·pill) 둘 다 없으면 밴드 자체를 숨긴다(상위 no-form 안내가 담당).
-  // pill 만 있어도(폼 미발행) 밴드는 뜬다 — form-free intake(583)의 핵심.
+  // 앵커(폼·pill) 둘 다 없으면 스트립 자체를 숨긴다(상위 no-form 안내가 담당).
+  // pill 만 있어도(폼 미발행) 스트립은 뜬다 — form-free intake(583)의 핵심.
   if (!formId && !projectId) return null;
 
   const sheetLinked = !!project?.source_sheet_url;
+  const importDisabled =
+    importing || (!sheetLinked && (!sheetUrl.trim() || !inboxBatchId));
 
   return (
-    <div className="shrink-0 border-b-2 border-line-soft bg-paper px-5 py-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        {/* eslint-disable-next-line react/forbid-elements -- 인라인 접기 토글(mono 라벨 + 셰브론) — Button primitive 의 border/radius chrome 과 불일치(§7.11). 저니 셸 접기 조각과 동일 선례. */}
-        <button
-          type="button"
-          onClick={() => setSourceOpen((v) => !v)}
-          aria-expanded={sourceOpen}
-          className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft transition-colors hover:text-ink"
-        >
-          <span aria-hidden className="text-xs leading-none">
-            {sourceOpen ? '▼' : '▶'}
+    <section className="shrink-0 rounded-[var(--fv-radius-panel)] border-2 border-ink bg-paper shadow-memphis-sm-faint">
+      {/* Head — LIST SOURCES 라벨 + 우측 등록 카운트(0명이어도 노출). */}
+      <header className="flex items-center gap-2 border-b-[1.5px] border-ink/12 px-[13px] py-2">
+        <span className="font-mono-label text-xs font-bold uppercase tracking-[0.12em] text-mute-soft">
+          {tj('listSources')}
+        </span>
+        <span className="ml-auto text-xs-soft text-mute-soft">
+          {tj('registeredCount', { count: rosterCount })}
+        </span>
+      </header>
+
+      {/* Body — 2 sources only (upload · Google Sheets). */}
+      <div className="flex flex-col gap-[7px] px-[11px] py-[9px]">
+        {/* Upload row — 1.5px dashed ink · 찾아보기 → hidden file input. */}
+        <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border-[1.5px] border-dashed border-ink px-2.5 py-[7px]">
+          <span aria-hidden className="shrink-0 text-md">
+            📄
           </span>
-          {tj('intakeBandTitle')}
-        </button>
-
-        {/* 접힌 상태에서도 시트가 연동돼 있으면 요약 1줄 + 재동기화 노출(spec ⓐ). */}
-        {!sourceOpen && sheetLinked && (
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
-            <span className="shrink-0" aria-hidden>
-              📗
-            </span>
-            <span
-              className="min-w-0 max-w-[220px] truncate font-bold text-ink"
-              title={project?.source_sheet_title ?? undefined}
-            >
-              {project?.source_sheet_title || tj('sheetLinkedFallback')}
-            </span>
-            {project?.source_sheet_synced_at && (
-              <span className="shrink-0 font-mono text-mute-soft">
-                {tj('sheetSyncedAt', {
-                  time: new Date(
-                    project.source_sheet_synced_at,
-                  ).toLocaleString(),
-                })}
-              </span>
-            )}
-            <Button
-              variant="link"
-              size="xs"
-              onClick={resyncSheet}
-              disabled={importing}
-            >
-              {importing ? t('sheetsImporting') : tj('sheetResync')}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {sourceOpen && (
-        <div className="mt-3 grid grid-cols-1 gap-3.5 md:grid-cols-3">
-          {/* 1. 응답에서 연동 — read-only 카운트(브리지는 이 응답 탭 판단표에서 선택). */}
-          <div className="flex flex-col gap-2 rounded-sm border-2 border-ink bg-success-bg p-4 shadow-memphis-sm">
-            <div className="flex items-center gap-2">
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-base"
-                aria-hidden
-              >
-                🧲
-              </span>
-              <span
-                className="text-md font-extrabold text-ink"
-                style={{ fontFamily: 'var(--font-outfit), var(--font-sans)' }}
-              >
-                {tj('bridgeCardTitle')}
-              </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-md font-bold text-ink">
+              {t('uploadLabel')}
             </div>
-            <p className="text-sm leading-relaxed text-mute">
-              {tj('bridgeCardHelper')}
-            </p>
-            <span className="inline-flex items-center gap-1.5 self-start rounded-pill border border-success bg-paper px-2.5 py-0.5 text-xs font-bold text-success-text">
-              <span
-                aria-hidden
-                className="inline-block h-1.5 w-1.5 rounded-full bg-success"
-              />
-              {tj('bridgeLinkedCount', { count: bridgedCount })}
-            </span>
+            <div className="truncate text-xs text-mute-soft">
+              {uploading ? t('uploading') : tj('uploadSub')}
+            </div>
           </div>
-
-          {/* 2. CSV·Excel 업로드 — plaintext dropzone(10MB 가드). */}
-          <FileDropZone
+          {/* eslint-disable-next-line react/forbid-elements -- 숨김 file picker; native <input type=file> 는 Input primitive(텍스트 전용)로 대체 불가. 찾아보기 버튼이 트리거. */}
+          <input
+            ref={fileInputRef}
+            type="file"
             accept=".csv,.xlsx"
-            maxSizeBytes={MAX_UPLOAD_BYTES}
-            disabled={uploading || !inboxBatchId}
-            onFiles={(files) => {
-              if (files[0]) void uploadFile(files[0]);
-            }}
-            onError={() => notifyErr(t('fileTooLarge'))}
-            label={uploading ? t('uploading') : t('uploadLabel')}
-            helperText={t('uploadHelper')}
-            className="px-6 py-8"
+            className="hidden"
+            onChange={onFilePicked}
           />
+          {/* eslint-disable-next-line react/forbid-elements -- CD §① 찾아보기 버튼: border-1.4px ink · radius 7 · 10.5px 전용 chrome 으로 Button primitive 의 radius/size 와 불일치(§7.11). 좌패널 CD 조각 선례. */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading || !inboxBatchId}
+            className="shrink-0 rounded-[var(--fv-radius-strip-btn)] border-[1.4px] border-ink bg-paper px-[9px] py-[3px] text-xs-soft font-bold text-ink transition-colors hover:bg-paper-soft disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {tj('browse')}
+          </button>
+        </div>
 
-          {/* 3. Google Sheets — R9 연동됨 카드(linked) vs url input(empty). */}
-          <div className="flex flex-col gap-3 rounded-sm border-2 border-ink bg-paper px-5 py-4 shadow-memphis-sm">
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-mint text-base"
-                aria-hidden
-              >
-                📗
-              </span>
-              <p
-                className="text-md font-extrabold text-ink"
-                style={{ fontFamily: 'var(--font-outfit), var(--font-sans)' }}
-              >
-                {t('sheetsTitle')}
-              </p>
+        {/* Sheets row — 1.5px solid line · 서브라인=연동 시트명(mono truncate)
+            또는 URL 입력 · Import(ink fill). */}
+        <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border-[1.5px] border-line px-2.5 py-[7px]">
+          <span aria-hidden className="shrink-0 text-md">
+            📗
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-md font-bold text-ink">
+              {t('sheetsTitle')}
             </div>
-
-            {sheetLinked && !showSheetInput ? (
-              <>
-                <div className="flex flex-col gap-0.5 rounded-xs border border-success-line bg-success-bg px-3 py-2">
-                  <span
-                    className="truncate text-sm font-bold text-ink"
-                    title={project?.source_sheet_title ?? undefined}
-                  >
-                    {project?.source_sheet_title || tj('sheetLinkedFallback')}
-                  </span>
-                  {project?.source_sheet_synced_at && (
-                    <span className="font-mono text-xs text-mute-soft">
-                      {tj('sheetSyncedAt', {
-                        time: new Date(
-                          project.source_sheet_synced_at,
-                        ).toLocaleString(),
-                      })}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={resyncSheet}
-                    disabled={importing}
-                  >
-                    {importing ? t('sheetsImporting') : tj('sheetResync')}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={reconnectSheet}>
-                    {tj('sheetReconnect')}
-                  </Button>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => setShowSheetInput(true)}
-                  >
-                    {tj('sheetChange')}
-                  </Button>
-                </div>
-              </>
+            {sheetLinked ? (
+              <div
+                className="truncate font-mono text-xs text-faint"
+                title={project?.source_sheet_title ?? undefined}
+              >
+                {project?.source_sheet_title || tj('sheetLinkedFallback')}
+              </div>
             ) : (
-              <>
-                {!sheetLinked && (
-                  <p className="text-sm leading-relaxed text-mute">
-                    {t('sheetsHelper')}
-                  </p>
-                )}
-                <div className="flex items-end gap-2">
-                  <div className="min-w-0 flex-1">
-                    <Input
-                      aria-label={t('sheetsUrlLabel')}
-                      placeholder={t('sheetsUrlPlaceholder')}
-                      value={sheetUrl}
-                      onChange={(e) => setSheetUrl(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void importSheet(sheetUrl);
-                      }}
-                    />
-                  </div>
-                  <Button
-                    variant="secondary"
-                    onClick={() => void importSheet(sheetUrl)}
-                    disabled={importing || !sheetUrl.trim() || !inboxBatchId}
-                  >
-                    {importing ? t('sheetsImporting') : t('sheetsImport')}
-                  </Button>
-                </div>
-              </>
+              // eslint-disable-next-line react/forbid-elements -- CD §① 서브라인 인라인 URL 입력(borderless mono 서브텍스트). Input primitive 의 border/height chrome 은 스트립 서브라인 높이(≈110px 계약)를 깨뜨림.
+              <input
+                type="url"
+                inputMode="url"
+                aria-label={t('sheetsUrlLabel')}
+                placeholder={t('sheetsUrlPlaceholder')}
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void importSheet(sheetUrl);
+                }}
+                className="w-full truncate bg-transparent font-mono text-xs text-ink placeholder:text-faint focus:outline-none"
+              />
             )}
           </div>
+          {/* eslint-disable-next-line react/forbid-elements -- CD §① Import 버튼: bg-ink·white·radius 7·10.5px ink-fill 전용 chrome 으로 Button primitive 의 radius/variant 와 불일치(§7.11). 좌패널 CD 조각 선례. */}
+          <button
+            type="button"
+            onClick={onSheetImport}
+            disabled={importDisabled}
+            className="shrink-0 rounded-[var(--fv-radius-strip-btn)] bg-ink px-2.5 py-[3px] text-xs-soft font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {importing ? t('sheetsImporting') : t('sheetsImport')}
+          </button>
         </div>
-      )}
-    </div>
+      </div>
+    </section>
   );
 }

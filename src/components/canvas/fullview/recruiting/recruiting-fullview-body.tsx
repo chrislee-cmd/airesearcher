@@ -93,9 +93,9 @@ export function RecruitingFullviewBody({
   // (round-2 feedback #7). hasResponses=false 면 disabled.
   onDownloadCsv: () => void;
   hasResponses: boolean;
-  // 명단 소스 밴드(#579) — 저니 2탭화로 탭②(명단)의 유입 3종(CSV·시트·응답
-  // 연동)이 이 응답 탭으로 이관됐다. 폼 셀렉터/뷰 토글 툴바 아래, 가로 스크롤
-  // 영역 밖(568 봉쇄)에 shrink-0 으로 배치돼 항상 프레임 안에 남는다.
+  // 명단 소스 스트립(#587) — 유입 컴팩트 스트립. 좌패널 최상단 카드로 배치
+  // (579 툴바 아래 밴드에서 이관, 순서 LIST SOURCES → 참여자 조건 → 분포).
+  // upload · Google Sheets 2 소스만(응답연동 행은 CD 컴팩트 설계로 제거).
   intakeBand: ReactNode;
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
@@ -140,10 +140,13 @@ export function RecruitingFullviewBody({
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1">
-        {/* 좌측 = 참여자 조건(위) + 분포 통계(아래). border-r-2 ink.
-            가로 collapse 가능 (탭③ 캘린더 레일 패턴) — 접히면 우측 콘텐츠 전폭. */}
+        {/* 좌측 = 명단 소스(최상단) + 참여자 조건 + 분포 통계. border-r-2 ink.
+            가로 collapse 가능 (탭③ 캘린더 레일 패턴) — 접히면 우측 콘텐츠 전폭.
+            명단 소스(#587) = 유입 컴팩트 스트립 — 좌패널 최상단 카드로 이관
+            (579 툴바 아래 밴드에서 이동, 순서 LIST SOURCES → 참여자 조건 → 분포). */}
         {!panelCollapsed && (
           <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r-2 border-ink p-4">
+            {intakeBand}
             <RecruitingCriteriaPanel brief={conditionsForPanel} />
             <RecruitingDistribution
               columns={responseData?.columns ?? []}
@@ -252,10 +255,6 @@ export function RecruitingFullviewBody({
               ↓ CSV
             </button>
           </div>
-
-          {/* 명단 소스 밴드(#579) — 툴바 아래·스크롤 영역 밖(568). 요약/raw
-              어느 뷰든 응답 탭에서 항상 유입 창구가 노출된다. */}
-          {intakeBand}
 
           <div className="relative min-h-0 min-w-0 flex-1">
             {/* raw = 데이터 SSOT(항상 마운트). 요약 탭일 땐 display:none.

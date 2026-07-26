@@ -506,6 +506,8 @@
   --fv-radius-card: 11px;            /* persona / RQ 카드 */
   --fv-radius-panel: 12px;           /* 패널 카드 */
   --fv-radius-panel-lg: 16px;        /* translation 패널 */
+  --fv-radius-strip-row: 10px;       /* 명단 소스 컴팩트 스트립 소스 행 (CD LEFT-PANEL-SPEC §①) */
+  --fv-radius-strip-btn: 7px;        /* 명단 소스 스트립 버튼 찾아보기·Import (CD LEFT-PANEL-SPEC §①) */
   --fv-radius-inject: 22px;          /* probing inject 필드·버튼 (CD Widget Fullview Comps · AddRow 미러) */
 }
 
