@@ -63,6 +63,9 @@ const TITLEBAR =
   'flex shrink-0 items-center gap-2 border-b-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]';
 const MONITOR_BODY =
   'relative flex min-h-0 flex-1 flex-col items-center justify-center bg-paper';
+// idle 본문 — 슬롯(세팅 폼/대기 placeholder/로컬 프리뷰)이 자체 정렬. 강제
+// 중앙정렬 안 함(긴 세팅 폼이 잘리지 않도록).
+const MONITOR_BODY_IDLE = 'relative flex min-h-0 flex-1 flex-col bg-paper';
 const STATUSBAR =
   'flex shrink-0 items-center gap-[14px] border-t-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[14px] py-[10px]';
 const RAIL = 'flex w-[320px] shrink-0 flex-col gap-[14px]';
@@ -95,6 +98,47 @@ function UrlPill({ host }: { host: string | null }) {
         {host ? `🔒 ${host}` : t('fv.live.urlPlaceholder')}
       </div>
     </>
+  );
+}
+
+// 태스크 카드(우 레일 상단) — assigned task. live/idle 공유(드리프트 0).
+// 과제 있으면 peach 솔리드 카드, 없으면(empty case) §F4 dashed empty 토큰.
+function TaskCard({
+  taskGoal,
+  host,
+}: {
+  taskGoal: string;
+  host: string | null;
+}) {
+  const t = useTranslations('AiUt');
+  const hasTask = taskGoal.trim().length > 0;
+  return (
+    <div
+      className={`shrink-0 rounded-sm px-[15px] py-[13px] ${
+        hasTask
+          ? 'border-2 border-ink bg-peach-bg shadow-memphis-sm'
+          : 'border-2 border-dashed border-line-empty bg-paper-soft'
+      }`}
+    >
+      <div className="mb-2 flex items-center gap-[7px]">
+        <span aria-hidden className="text-lg">
+          🎯
+        </span>
+        <span className="text-md font-extrabold text-ink">
+          {t('fv.live.taskLabel')}
+        </span>
+      </div>
+      <p
+        className={`text-md font-bold leading-relaxed ${
+          hasTask ? 'text-ink' : 'text-mute-soft'
+        }`}
+      >
+        {hasTask ? taskGoal : t('fv.live.taskEmpty')}
+      </p>
+      {hasTask && host && (
+        <p className="mt-2 font-mono-label text-xs text-mute-soft">{host}</p>
+      )}
+    </div>
   );
 }
 
@@ -166,10 +210,13 @@ type LiveProps = {
 type IdleProps = {
   variant: 'idle';
   targetUrl: string | null;
-  // 모니터 본문(placeholder+CTA 또는 로컬 프리뷰 <video>). 부모가 로직 배선.
+  // 모니터 본문(세팅 폼+CTA / 대기 placeholder / 로컬 프리뷰). 부모가 로직 배선.
   monitorSlot: ReactNode;
-  // 우 레일 상단 카드 자리(세팅/공유 패널 또는 태스크 카드). flex-1 스크롤.
-  railCardSlot: ReactNode;
+  // 우 레일 상단 assigned task 카드 데이터(design state 06). railCardSlot 미전달
+  // 시 이 값으로 TaskCard 렌더 — 공유대기 등 다른 카드는 railCardSlot 로 override.
+  taskGoal?: string;
+  // 우 레일 상단 카드 override(공유 링크 패널 등). 미전달이면 TaskCard.
+  railCardSlot?: ReactNode;
   // status bar 톤 — 'idle'(비활성, 00:00 muted) / 'rec'(로컬 녹화 중, 경과).
   statusTone?: 'idle' | 'rec';
   recElapsedMs?: number;
@@ -186,6 +233,9 @@ export function AiutLiveMonitor(props: Props) {
   // ── idle variant — 세팅/공유대기/로컬 녹화 empty case 프레임 ──────────
   if (props.variant === 'idle') {
     const { monitorSlot, railCardSlot } = props;
+    const railCard = railCardSlot ?? (
+      <TaskCard taskGoal={props.taskGoal ?? ''} host={host} />
+    );
     const statusTone = props.statusTone ?? 'idle';
     const isRec = statusTone === 'rec';
     const showThinkAloud = props.showThinkAloud ?? true;
@@ -205,8 +255,8 @@ export function AiutLiveMonitor(props: Props) {
             )}
           </div>
 
-          {/* 본문 — placeholder+CTA 또는 로컬 프리뷰(부모 슬롯) */}
-          <div className={MONITOR_BODY}>{monitorSlot}</div>
+          {/* 본문 — 세팅 폼+CTA / 대기 placeholder / 로컬 프리뷰(부모 슬롯) */}
+          <div className={MONITOR_BODY_IDLE}>{monitorSlot}</div>
 
           {/* status bar — idle 은 비활성(muted 00:00), rec 은 경과 활성 */}
           <div className={STATUSBAR}>
@@ -238,15 +288,18 @@ export function AiutLiveMonitor(props: Props) {
           </div>
         </div>
 
-        {/* 우 — 세팅/공유 패널(태스크 카드 자리) + think-aloud 대기 */}
+        {/* 우 — assigned task 카드(design state 06) + think-aloud 대기.
+            공유대기 등은 railCardSlot 로 카드를 override(레일 채움). */}
         <div className={RAIL}>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {railCardSlot}
-          </div>
-          {showThinkAloud && (
-            <div className="flex h-[168px] shrink-0 flex-col">
-              <ThinkAloudStream lines={[]} status="idle" />
+          {railCardSlot ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              {railCardSlot}
             </div>
+          ) : (
+            railCard
+          )}
+          {showThinkAloud && (
+            <ThinkAloudStream lines={[]} status="idle" />
           )}
         </div>
       </div>
@@ -312,23 +365,7 @@ export function AiutLiveMonitor(props: Props) {
 
       {/* 우 — 태스크 카드 + think-aloud */}
       <div className={RAIL}>
-        <div className="shrink-0 rounded-sm border-2 border-ink bg-peach-bg px-[15px] py-[13px] shadow-memphis-sm">
-          <div className="mb-2 flex items-center gap-[7px]">
-            <span aria-hidden className="text-lg">
-              🎯
-            </span>
-            <span className="text-md font-extrabold text-ink">
-              {t('fv.live.taskLabel')}
-            </span>
-          </div>
-          <p className="text-md font-bold leading-relaxed text-ink">
-            {taskGoal.trim() ? taskGoal : t('fv.live.taskEmpty')}
-          </p>
-          {host && (
-            <p className="mt-2 font-mono-label text-xs text-mute-soft">{host}</p>
-          )}
-        </div>
-
+        <TaskCard taskGoal={taskGoal} host={host} />
         <ThinkAloudStream lines={captionLines} status={captionStatus} />
       </div>
     </div>

@@ -372,21 +372,21 @@ export function UtSessionBody() {
   // ── 풀뷰 V2 디폴트 표면 = CD state 06 empty case 프레임 ──────────────────
   // 사용자 결정(2026-07-26): 풀뷰 비-라이브/비-리뷰 표면은 위젯 본문 폴백이
   // 아니라 state 06 지오메트리의 empty case. AiutLiveMonitor 의 idle variant 로
-  // 렌더(같은 컴포넌트 = 드리프트 0). 세션 시작 경로(세팅·공유링크·CTA)는
-  // 이 프레임 안에서 접근 가능 — 우 레일 태스크카드 자리 = 세팅/공유 패널,
-  // 모니터 본문 = 주 CTA(기존 로직 재사용). 카드뷰는 불변(풀뷰 한정).
-  const ctaClassName =
-    'px-5 py-2.5 text-md normal-case tracking-normal disabled:border-line disabled:bg-ink/10 disabled:text-mute-soft disabled:opacity-100';
-
+  // 렌더(같은 컴포넌트 = 드리프트 0). **우 레일 상단 = assigned task 카드
+  // (design state 06, 과제 없으면 dashed empty)** — 세팅 뷰가 아니라 태스크 카드.
+  // 세션 시작 경로(세팅 4-스텝·시작 CTA)는 **좌측 모니터 본문**에 얹는다.
+  // 공유대기는 링크 패널만 railCardSlot 로 override. 카드뷰는 불변(풀뷰 한정).
   const renderFullviewDefault = () => {
     const normalizedUrl = normalizeTargetUrl(targetUrl);
 
     // 1) 로컬 라이브 녹화 — 셀프 프리뷰 + 활성 REC + 종료 CTA(위젯 본문 재노출 X).
+    //    우 레일 = assigned task 카드(taskGoal, AiutLiveMonitor 기본 렌더).
     if (localActive && isLive) {
       return (
         <AiutLiveMonitor
           variant="idle"
           targetUrl={normalizedUrl}
+          taskGoal={taskGoal}
           statusTone="rec"
           recElapsedMs={session.elapsedMs}
           showThinkAloud={false}
@@ -408,50 +408,27 @@ export function UtSessionBody() {
               </div>
             </>
           }
-          railCardSlot={
-            <div className="shrink-0 rounded-sm border-2 border-ink bg-peach-bg px-[15px] py-[13px] shadow-memphis-sm">
-              <div className="mb-2 flex items-center gap-[7px]">
-                <span aria-hidden className="text-lg">
-                  🎯
-                </span>
-                <span className="text-md font-extrabold text-ink">
-                  {t('fv.live.taskLabel')}
-                </span>
-              </div>
-              <p className="text-md font-bold leading-relaxed text-ink">
-                {taskGoal.trim() ? taskGoal : t('fv.live.taskEmpty')}
-              </p>
-            </div>
-          }
         />
       );
     }
 
     // 2) 원격 공유 대기 — 참가자 링크 발급/대기(관전 전). live/review 는 상위
     //    remoteLive/isReviewSurface 가 이미 가로채므로 여기 도달하는 건 waiting.
+    //    우 레일 = 링크 공유 패널(override), 모니터 본문 = 대기 안내 + 복사 CTA.
     if (remoteShareActive) {
       return (
         <AiutLiveMonitor
           variant="idle"
           targetUrl={remote.result?.target_url ?? normalizedUrl}
+          showThinkAloud={false}
           monitorSlot={
-            <div className="flex flex-col items-center gap-4 px-6 text-center">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-6 text-center">
               <p className="font-mono-label text-sm text-faint">
                 {t('fv.idle.waitingHeading')}
               </p>
               <p className="max-w-[360px] text-sm text-mute">
                 {t('remote.waiting.status')}
               </p>
-              <Button
-                variant="primary"
-                size="cta"
-                onClick={() => void copyParticipantLink()}
-                disabled={!remote.participantUrl}
-                leftIcon={<DuotoneIcon name="link" size={16} mono />}
-                className={ctaClassName}
-              >
-                {fvCopied ? t('remote.share.copied') : t('remote.share.copy')}
-              </Button>
             </div>
           }
           railCardSlot={
@@ -490,61 +467,48 @@ export function UtSessionBody() {
       );
     }
 
-    // 3) 세팅(idle) — 우 레일 4-스텝 아코디언 + 모니터 본문 주 CTA(방식별).
+    // 3) 세팅(idle) — 좌측 모니터 본문에 4-스텝 아코디언 + 방식별 주 CTA(하단 바).
+    //    우 레일 = assigned task 카드(taskGoal 반영, empty 시 dashed) + think-aloud.
     return (
       <AiutLiveMonitor
         variant="idle"
         targetUrl={normalizedUrl}
+        taskGoal={taskGoal}
         monitorSlot={
-          <div className="flex flex-col items-center gap-4 px-6 text-center">
-            <p className="text-md font-extrabold text-ink">
-              {t('fv.idle.setupHeading')}
-            </p>
-            <p className="max-w-[360px] text-sm text-mute">
-              {t('fv.idle.setupSubtext')}
-            </p>
-            {setupBanner}
+          <div className="flex h-full w-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <UtSetupAccordion
+                surface="fullview"
+                projectId={projectId}
+                onProjectChange={(id) => setSelection('moderator_ai', id)}
+                method={method}
+                onMethodChange={setMethod}
+                inputLanguage={inputLanguage}
+                onInputLanguage={setInputLanguage}
+                targetUrl={targetUrl}
+                onTargetUrl={setTargetUrl}
+                taskGoal={taskGoal}
+                onTaskGoal={setTaskGoal}
+                supported={session.isSupported}
+              />
+              {setupBanner && <div className="mt-3">{setupBanner}</div>}
+            </div>
             {method === 'guest' ? (
-              <Button
-                variant="primary"
-                size="cta"
+              <WidgetPrimaryCta
+                label={t('remote.cta.create')}
+                busy={isCreating}
+                busyLabel={t('remote.cta.creating')}
+                disabled={guestDisabled}
+                icon={<DuotoneIcon name="link" size={16} mono />}
                 onClick={handleCreate}
-                disabled={guestDisabled || isCreating}
-                leftIcon={<DuotoneIcon name="link" size={16} mono />}
-                className={ctaClassName}
-              >
-                {isCreating ? t('remote.cta.creating') : t('remote.cta.create')}
-              </Button>
+              />
             ) : (
-              <Button
-                variant="primary"
-                size="cta"
-                onClick={handleStartClick}
+              <WidgetPrimaryCta
+                label={t('cta.start')}
                 disabled={method === '' || hostDisabled}
-                leftIcon={<DuotoneIcon name="start" size={16} mono />}
-                className={ctaClassName}
-              >
-                {t('cta.start')}
-              </Button>
+                onClick={handleStartClick}
+              />
             )}
-          </div>
-        }
-        railCardSlot={
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-sm border-2 border-ink bg-paper px-[15px] py-[13px] shadow-memphis-sm">
-            <UtSetupAccordion
-              surface="fullview"
-              projectId={projectId}
-              onProjectChange={(id) => setSelection('moderator_ai', id)}
-              method={method}
-              onMethodChange={setMethod}
-              inputLanguage={inputLanguage}
-              onInputLanguage={setInputLanguage}
-              targetUrl={targetUrl}
-              onTargetUrl={setTargetUrl}
-              taskGoal={taskGoal}
-              onTaskGoal={setTaskGoal}
-              supported={session.isSupported}
-            />
           </div>
         }
       />
