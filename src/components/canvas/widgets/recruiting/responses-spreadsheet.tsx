@@ -118,6 +118,7 @@ export function ResponsesSpreadsheet({
   onToggleRow: onToggleRowProp,
   onToggleAll: onToggleAllProp,
   footerVisible = true,
+  projectId = null,
 }: {
   // Surfaces the currently-selected form (with its stored 조건/요약) to the
   // host card so the fullview 조건 panel mirrors *this* form, not just the
@@ -168,6 +169,11 @@ export function ResponsesSpreadsheet({
   // 새지 않도록 host 가 raw 탭일 때만 true 로 준다(round-2 feedback #4). 단독
   // 사용(기본 true) 호환.
   footerVisible?: boolean;
+  // pill 축(interview_projects) 프로젝트 스코프. 설정되면 forms/list 를
+  // `?project_id=` 로 필터해 이 프로젝트에 stamp 된 폼만 로드한다 → "새 프로젝트
+  // = 빈 상태". pill 이 바뀌면 목록을 즉시 refetch(loadForms deps) 한다. null/
+  // 미지정이면 기존 동작(전체) — 단독 위젯 호출부 회귀 0.
+  projectId?: string | null;
 } = {}) {
   const [forms, setForms] = useState<FormSummary[] | null>(null);
   const [formsError, setFormsError] = useState<string | null>(null);
@@ -204,7 +210,11 @@ export function ResponsesSpreadsheet({
   const loadForms = useCallback(async () => {
     setFormsError(null);
     try {
-      const res = await fetch('/api/recruiting/google/forms/list');
+      // pill 스코프가 있으면 그 프로젝트에 stamp 된 폼만 요청한다.
+      const qs = projectId
+        ? `?project_id=${encodeURIComponent(projectId)}`
+        : '';
+      const res = await fetch(`/api/recruiting/google/forms/list${qs}`);
       const j = (await res.json().catch(() => ({}))) as
         | { forms?: FormSummary[] }
         | { error?: string };
@@ -226,8 +236,10 @@ export function ResponsesSpreadsheet({
       setForms([]);
     }
     // onFormsChange 는 host 가 useCallback 으로 안정화(handleFormsChange) —
-    // deps 에 넣어도 loadForms 가 재생성되지 않아 폼 목록 재로드 안 함.
-  }, [isControlled, onFormsChange]);
+    // deps 에 넣어도 loadForms 가 재생성되지 않아 폼 목록 재로드 안 함. projectId
+    // 는 deps 에 넣어 pill 전환 시 loadForms 가 재생성 → 아래 effect 가 즉시
+    // 재실행되어 목록이 새 프로젝트 기준으로 refetch 된다(스테일 목록 0).
+  }, [isControlled, onFormsChange, projectId]);
 
   useEffect(() => {
     void (async () => {

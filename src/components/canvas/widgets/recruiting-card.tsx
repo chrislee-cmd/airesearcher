@@ -66,16 +66,23 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
-  // 헤더 프로젝트 pill = **위젯 프로젝트 귀속** 축. probing/interpreter 와 동일
-  // 단위로 통일한다 — 프로젝트 엔티티는 공유(useInterviewV2Projects =
-  // interview_projects SSOT), 선택은 위젯별 독립(useProjectSelection('recruiting'),
-  // translate/probing 미러). 예전엔 useActiveProject(워크스페이스 단일 활성
-  // 프로젝트)를 써서 다른 위젯 피커와 단위가 어긋났다(round-2 feedback #3).
+  // ── 리크루팅 세 축 (다음 워커가 헷갈리지 않도록, spec #575 §6) ──────────
+  //   1) pill 축 = interview_projects (SSOT: useInterviewV2Projects). 위젯이
+  //      어느 리서치 프로젝트에 귀속되는지 — 선택은 위젯별 독립
+  //      (useProjectSelection('recruiting'), translate/probing 미러).
+  //   2) 데이터 축 = recruiting_forms.interview_project_id (migration
+  //      20260726070359). 발행 폼이 어느 pill 프로젝트에 stamp 됐는지 —
+  //      forms/create 가 stamp, forms/list 가 `?project_id=` 로 필터. 이게
+  //      "새 프로젝트 = 빈 Responses" 를 만든다(#575 의 핵심 수정). ⚠️ 옛
+  //      recruiting_forms.project_id(마이그 0014)는 **옛 projects 테이블** 참조라
+  //      pill 과 무관 — deprecated, 쓰지 말 것.
+  //   3) sched 축 = form-anchor (formId → resolveOrCreateProjectForForm →
+  //      sched_projects). 그 폼의 응답·명단·일정이 어느 sched row 에 저장되는지
+  //      (탭②·③ 내부 데이터). pill 과 **별개 축** — 이번에도 미접촉(573 계약).
+  // 축 1↔2 만 연결한다(pill ↔ 데이터). 1↔3, 2↔3 은 엮지 않는다.
   //
-  // ⚠️ 이 pill 축은 탭②·③ 의 sched form-anchor 프로젝트(형별 데이터 앵커,
-  // formId → resolveOrCreateProjectForForm)와는 **별개 축**이다. pill = 위젯이
-  // 어느 리서치 프로젝트에 귀속되는지(표시/그룹핑), form-anchor = 그 폼의 응답·
-  // 명단·일정이 어느 sched_projects row 에 저장되는지(내부 데이터). 둘을 엮지 않는다.
+  // 예전엔 useActiveProject(워크스페이스 단일 활성 프로젝트)를 써서 다른 위젯
+  // 피커와 단위가 어긋났다(round-2 feedback #3).
   const { getSelection, setSelection } = useProjectSelection();
   const recruitingProjectId = getSelection('recruiting');
   const {
@@ -203,7 +210,14 @@ function ExpandedBody() {
 
   const handleFormsChange = useCallback((list: FormSummary[]) => {
     setForms(list);
-    setActiveFormId((prev) => prev ?? list[0]?.formId ?? null);
+    // pill 전환 시 목록이 새 프로젝트 기준으로 오면 이전 선택 폼이 목록에 없을
+    // 수 있다 — 그땐 첫 폼(없으면 null=빈 상태)으로 스냅해 스테일 선택을 버린다.
+    // 같은 목록이면 기존 선택 유지(prev in list).
+    setActiveFormId((prev) =>
+      prev && list.some((f) => f.formId === prev)
+        ? prev
+        : (list[0]?.formId ?? null),
+    );
   }, []);
 
   // 선택 폼이 바뀌면 이전 폼 기준 필터는 무의미 → 초기화(전체 응답 복원).
@@ -314,6 +328,7 @@ function ExpandedBody() {
         <RecruitingSetupFlow
           onPublishedChange={setIsPublished}
           onConditionsChange={setConditionsBrief}
+          interviewProjectId={recruitingProjectId}
         />
       </div>
 
@@ -397,6 +412,8 @@ function ExpandedBody() {
                   selectedFormId={activeFormId}
                   onSelectFormId={setActiveFormId}
                   onFormsChange={handleFormsChange}
+                  // pill 축 스코프 — 이 프로젝트에 stamp 된 폼만 로드(빈 상태 보장).
+                  projectId={recruitingProjectId}
                   hideSelector
                   onSelectedFormChange={setSelectedForm}
                   onFormsLoadingChange={setFormsLoading}
@@ -517,9 +534,13 @@ async function coerceSurvey(
 function RecruitingSetupFlow({
   onPublishedChange,
   onConditionsChange,
+  interviewProjectId,
 }: {
   onPublishedChange?: (published: boolean) => void;
   onConditionsChange?: (brief: EditableBrief | null) => void;
+  // 헤더 pill 선택값(interview_projects id). 발행 시 forms/create 에 전달해
+  // 새 폼을 이 프로젝트에 stamp 한다. null 이면 서버가 기본 프로젝트로 폴백.
+  interviewProjectId?: string | null;
 }) {
   const t = useTranslations('Recruiting.setup');
   const requireAuth = useRequireAuth();
@@ -877,6 +898,8 @@ function RecruitingSetupFlow({
           survey,
           criteria: editedBrief?.criteria,
           summary: editedBrief?.summary,
+          // pill 축 프로젝트 귀속 — 서버가 검증 후 stamp(무효면 기본 폴백).
+          interviewProjectId: interviewProjectId ?? null,
         }),
         signal: AbortSignal.timeout(45_000),
       });
