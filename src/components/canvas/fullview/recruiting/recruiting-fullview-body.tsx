@@ -127,6 +127,20 @@ export function RecruitingFullviewBody({
   const [sourceSel, setSourceSel] = useState<'forms' | 'upload'>('forms');
   const formCount = responseData?.rows.length ?? 0;
   const intakeCount = intakeData?.rows.length ?? 0;
+
+  // 업로드 직후(또는 응답 탭 진입 시 intake 행이 이미 있을 때) "업로드 명단"
+  // 소스를 즉시 전면에 띄운다 (사용자 요청 2026-07-27: "업로드하면 응답 탭에서
+  // 바로 업로드 명단이 뜨게"). intake 행이 0→N 으로 늘어나는 순간을 감지해
+  // sourceSel 을 upload 로 스냅한다. 렌더 중 state 조정 = React 권장 "prop 변경
+  // 시 state 리셋" 패턴(recruiting-card prevFormId 선례) — effect 없이 한 커밋
+  // 안에서 반영된다. 사용자가 이후 "폼 응답"을 누르면 그 선택은 다음 업로드
+  // 전까지 유지된다(재스냅은 카운트가 다시 증가할 때만).
+  const [prevIntakeCount, setPrevIntakeCount] = useState(0);
+  if (intakeCount !== prevIntakeCount) {
+    setPrevIntakeCount(intakeCount);
+    if (intakeCount > prevIntakeCount) setSourceSel('upload');
+  }
+
   const hasFormSource = forms.length > 0;
   const hasUploadSource = intakeCount > 0;
   const showSegment = hasFormSource && hasUploadSource;
