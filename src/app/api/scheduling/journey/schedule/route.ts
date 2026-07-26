@@ -1,37 +1,73 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getFormAnchoredAccess } from '@/lib/scheduling/access';
+import {
+  getFormAnchoredAccess,
+  getProjectAnchoredAccess,
+} from '@/lib/scheduling/access';
 import { resolveOrCreateProjectForForm } from '@/lib/scheduling/journey-project';
 import { maskCandidatesBySource } from '@/lib/scheduling/candidate-masking';
 
 export const maxDuration = 30;
 
-// GET /api/scheduling/journey/schedule?form_id=...
+// GET /api/scheduling/journey/schedule?form_id=...[&project_id=...]
 // The 일정(schedule) tab's read path — the full scheduling surface bundle for
-// the form's project: groups (batches), candidates (source-masked, same policy
-// as the 명단 tab), and slots. Mirrors journey/candidates but adds groups + slots
-// so the re-homed calendar + chat + confirmed-roster surface can render from one
-// round-trip. Resolve-or-creates the project (opening 일정 = provisioning
-// trigger, D5), gate = form-anchored access (owner OR org member OR super-admin).
+// the journey's project: groups (batches), candidates (source-masked, same policy
+// as the intake band), and slots. Mirrors journey/candidates but adds groups +
+// slots so the re-homed calendar + chat + confirmed-roster surface can render from
+// one round-trip. Resolve-or-creates the project (opening 일정 = provisioning
+// trigger, D5).
+//
+// TWO ANCHORS (card 583): form_id → form-anchored; else project_id (pill) →
+// project-anchored; both present → converge (stamp). Same gate/priority as
+// journey/candidates. At least one required.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const formId = searchParams.get('form_id') ?? '';
-  if (!formId) {
-    return NextResponse.json({ error: 'form_id_required' }, { status: 400 });
-  }
+  const projectIdParam = searchParams.get('project_id') ?? '';
 
-  const access = await getFormAnchoredAccess(formId);
-  if (!access) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  let superadmin: boolean;
+  let provision: {
+    formId: string | null;
+    interviewProjectId: string | null;
+    ownerUserId: string;
+    title: string;
+    orgId: string | null;
+  };
+  if (formId) {
+    const access = await getFormAnchoredAccess(formId);
+    if (!access) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    superadmin = access.superadmin;
+    provision = {
+      formId: access.form.form_id,
+      interviewProjectId: projectIdParam || null,
+      ownerUserId: access.form.user_id,
+      title: access.form.title,
+      orgId: access.form.org_id,
+    };
+  } else if (projectIdParam) {
+    const access = await getProjectAnchoredAccess(projectIdParam);
+    if (!access) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    superadmin = access.superadmin;
+    provision = {
+      formId: null,
+      interviewProjectId: access.project.interview_project_id,
+      ownerUserId: access.project.user_id,
+      title: access.project.title,
+      orgId: access.project.org_id,
+    };
+  } else {
+    return NextResponse.json(
+      { error: 'form_id_or_project_id_required' },
+      { status: 400 },
+    );
   }
 
   const admin = createAdminClient();
-  const projRes = await resolveOrCreateProjectForForm(admin, {
-    formId: access.form.form_id,
-    ownerUserId: access.form.user_id,
-    title: access.form.title,
-    orgId: access.form.org_id,
-  });
+  const projRes = await resolveOrCreateProjectForForm(admin, provision);
   if ('error' in projRes) {
     return NextResponse.json({ error: projRes.error }, { status: 500 });
   }
@@ -115,7 +151,7 @@ export async function GET(req: Request) {
   } else {
     candidates = (candWide.data ?? []) as Candidate[];
   }
-  const maskedCandidates = maskCandidatesBySource(candidates, access.superadmin);
+  const maskedCandidates = maskCandidatesBySource(candidates, superadmin);
 
   // Slots under this project. Non-cancelled and cancelled alike — the calendar
   // renders cancelled blocks (no strikethrough, comp 승).

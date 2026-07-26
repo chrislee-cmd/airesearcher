@@ -72,6 +72,7 @@ export function RecruitingJourneyShell({
   onRefresh,
   responsesTab,
   formId,
+  recruitingProjectId,
   activeTab,
   onTabChange,
 }: {
@@ -107,6 +108,10 @@ export function RecruitingJourneyShell({
   // /api/scheduling/journey/schedule(form→project lazy resolve). 폼 미선택 시
   // null → 해당 영역 안내 empty.
   formId: string | null;
+  // 활성 리크루팅 pill 프로젝트 id(interview_projects). form-free intake(583)의
+  // 앵커 — 폼 미발행이라도 이 pill 로 유입 밴드·일정 탭이 sched 프로젝트를 resolve.
+  // 폼이 있으면 서버가 두 축을 한 sched 프로젝트로 수렴(stamp)한다.
+  recruitingProjectId: string | null;
   // 활성 저니 탭 — host(recruiting-card)가 SSOT 로 쥔다(controlled). 2탭화(#579)로
   // 브리지 전송은 탭 전환 없이 선택만 리셋(인제스트분은 ②일정 재진입 시 노출).
   activeTab: JourneyTab;
@@ -252,11 +257,16 @@ export function RecruitingJourneyShell({
       >
         {responsesTab}
       </div>
-      {/* 탭②(일정) — 자체 내부 스크롤 소유, form-anchored 데이터 조회. */}
+      {/* 탭②(일정) — 자체 내부 스크롤 소유, 폼/pill 앵커 데이터 조회. */}
       {activeTab === 'schedule' ? (
-        // key on the form so a form switch remounts the tab fresh (loading
-        // reset happens via mount, not an in-effect setState).
-        <JourneyScheduleTab key={formId ?? 'none'} formId={formId} />
+        // key on the anchor (form else pill) so an anchor switch remounts the tab
+        // fresh (loading reset via mount, not an in-effect setState). form-free
+        // (583): pill 만 있어도 일정 탭이 sched 프로젝트를 resolve.
+        <JourneyScheduleTab
+          key={formId ?? recruitingProjectId ?? 'none'}
+          formId={formId}
+          projectId={recruitingProjectId}
+        />
       ) : null}
     </div>
   );

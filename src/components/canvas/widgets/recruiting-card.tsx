@@ -370,9 +370,12 @@ function ExpandedBody() {
           // 저니 탭 SSOT(controlled) — 브리지 전송 성공 시 host 가 탭②로 전환.
           activeTab={journeyTab}
           onTabChange={setJourneyTab}
-          // 탭②(명단)·탭③(일정) form-anchored 데이터 앵커 — host 가 SSOT 로 쥔
-          // 활성 폼(탭③ 은 이 form 으로 scheduling 데이터 페치 = P0 project resolve).
+          // 탭②(명단)·탭③(일정) 데이터 앵커 — host 가 SSOT 로 쥔 활성 폼(탭③ 은 이
+          // form 으로 scheduling 데이터 페치 = P0 project resolve).
           formId={activeFormId}
+          // form-free intake(583) — 폼 미발행이라도 pill 프로젝트로 유입/일정이
+          // sched 프로젝트를 resolve. 폼이 있으면 서버가 두 축을 수렴(stamp)한다.
+          recruitingProjectId={recruitingProjectId}
           responsesTab={
             <RecruitingFullviewBody
               conditionsForPanel={conditionsForPanel}
@@ -399,7 +402,12 @@ function ExpandedBody() {
               // 명단 소스 밴드(#579) — 저니 2탭화로 유입 3종(CSV·시트·응답연동)이
               // 이 응답 탭으로 이관됐다. activeFormId 앵커로 project/inbox 를 자체
               // 페치(옛 candidates 탭 로직 이식). 툴바 아래·프레임 안에 배치.
-              intakeBand={<JourneyIntakeBand formId={activeFormId} />}
+              intakeBand={
+                <JourneyIntakeBand
+                  formId={activeFormId}
+                  projectId={recruitingProjectId}
+                />
+              }
               // 브리지(N1·N4) — 선택 SSOT + judgments lift + 서술자.
               bridgeSelected={bridgeSelected}
               onToggleRow={toggleBridgeRow}

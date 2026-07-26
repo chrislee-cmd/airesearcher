@@ -146,6 +146,69 @@ export async function getFormAnchoredAccess(
   return null;
 }
 
+// Project-anchored access for the form-free intake path (card 583). The fused
+// recruiting journey can also be opened for a recruiting PILL project
+// (interview_projects) that has no Google form yet, so a user who already has a
+// participant list can intake it. Gate = super-admin OR the interview project's
+// owner OR someone who shares an org with that owner — the exact twin of
+// getFormAnchoredAccess but keyed on interview_projects instead of recruiting_forms.
+//
+// Returns null (→ caller 404s, route unobservable) when there's no session, the
+// interview project doesn't exist, or the caller is outside its org scope. The
+// returned `project` carries the owner / org / title used to provision (and
+// converge on) the interview_project-anchored sched_projects row.
+export type ProjectAnchoredAccess = {
+  superadmin: boolean;
+  userId: string;
+  ownerUserIds: string[] | null; // null only for super-admin (unrestricted)
+  project: {
+    interview_project_id: string;
+    user_id: string;
+    org_id: string | null;
+    title: string;
+  };
+};
+
+export async function getProjectAnchoredAccess(
+  interviewProjectId: string,
+): Promise<ProjectAnchoredAccess | null> {
+  const base = await getSchedulingAccess();
+  if (!base) return null;
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('interview_projects')
+    .select('id, user_id, org_id, name')
+    .eq('id', interviewProjectId)
+    .maybeSingle();
+  if (!data) return null;
+  const p = data as {
+    id: string;
+    user_id: string;
+    org_id: string | null;
+    name: string | null;
+  };
+  const project = {
+    interview_project_id: p.id,
+    user_id: p.user_id,
+    org_id: p.org_id ?? null,
+    title: p.name ?? '',
+  };
+
+  if (base.superadmin) {
+    return { superadmin: true, userId: base.userId, ownerUserIds: null, project };
+  }
+  // Org-scoped: the pill project's owner must be within the caller's org scope,
+  // else the route stays unobservable (no cross-tenant provisioning).
+  if (!base.ownerUserIds.includes(p.user_id)) return null;
+  return {
+    superadmin: false,
+    userId: base.userId,
+    ownerUserIds: base.ownerUserIds,
+    project,
+  };
+}
+
 // True when the caller may touch a resource owned by ownerUserId.
 export function ownerAllowed(
   access: SchedulingAccess,

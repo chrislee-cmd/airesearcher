@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getFormAnchoredAccess } from '@/lib/scheduling/access';
+import {
+  getFormAnchoredAccess,
+  getProjectAnchoredAccess,
+} from '@/lib/scheduling/access';
 import {
   resolveOrCreateProjectForForm,
   resolveInboxBatch,
@@ -9,31 +12,66 @@ import { maskCandidatesBySource } from '@/lib/scheduling/candidate-masking';
 
 export const maxDuration = 30;
 
-// GET /api/scheduling/journey/candidates?form_id=...
-// The 명단 tab's candidate read path. Resolve-or-creates the form's project
-// (명단 진입 = provisioning trigger, D5) then returns its candidates with
-// SOURCE-BASED CONTACT MASKING enforced server-side: 'bridge' rows have their
-// phone/email replaced with ●●●● for non-super-admins; upload/sheet/legacy rows
-// stay plaintext (the user's own data). Gate = form-anchored access.
+// GET /api/scheduling/journey/candidates?form_id=...[&project_id=...]
+// The intake band's candidate read path. Resolve-or-creates the journey's project
+// (진입 = provisioning trigger, D5) then returns its candidates with SOURCE-BASED
+// CONTACT MASKING enforced server-side: 'bridge' rows have their phone/email
+// replaced with ●●●● for non-super-admins; upload/sheet/legacy rows stay plaintext
+// (the user's own data).
+//
+// TWO ANCHORS (card 583, form-free intake): form_id → form-anchored access; else
+// project_id (an interview_projects/pill id) → project-anchored access. When BOTH
+// are present the form path also stamps interview_project_id so the two axes
+// converge on ONE sched_projects row (roster never splits). At least one required.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const formId = searchParams.get('form_id') ?? '';
-  if (!formId) {
-    return NextResponse.json({ error: 'form_id_required' }, { status: 400 });
-  }
+  const projectIdParam = searchParams.get('project_id') ?? '';
 
-  const access = await getFormAnchoredAccess(formId);
-  if (!access) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  let superadmin: boolean;
+  let provision: {
+    formId: string | null;
+    interviewProjectId: string | null;
+    ownerUserId: string;
+    title: string;
+    orgId: string | null;
+  };
+  if (formId) {
+    const access = await getFormAnchoredAccess(formId);
+    if (!access) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    superadmin = access.superadmin;
+    provision = {
+      formId: access.form.form_id,
+      // stamp the pill axis onto the form's project when the client knows it.
+      interviewProjectId: projectIdParam || null,
+      ownerUserId: access.form.user_id,
+      title: access.form.title,
+      orgId: access.form.org_id,
+    };
+  } else if (projectIdParam) {
+    const access = await getProjectAnchoredAccess(projectIdParam);
+    if (!access) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    superadmin = access.superadmin;
+    provision = {
+      formId: null,
+      interviewProjectId: access.project.interview_project_id,
+      ownerUserId: access.project.user_id,
+      title: access.project.title,
+      orgId: access.project.org_id,
+    };
+  } else {
+    return NextResponse.json(
+      { error: 'form_id_or_project_id_required' },
+      { status: 400 },
+    );
   }
 
   const admin = createAdminClient();
-  const projRes = await resolveOrCreateProjectForForm(admin, {
-    formId: access.form.form_id,
-    ownerUserId: access.form.user_id,
-    title: access.form.title,
-    orgId: access.form.org_id,
-  });
+  const projRes = await resolveOrCreateProjectForForm(admin, provision);
   if ('error' in projRes) {
     return NextResponse.json({ error: projRes.error }, { status: 500 });
   }
@@ -63,8 +101,8 @@ export async function GET(req: Request) {
   // batch id up front (명단 진입 = provisioning trigger, D5).
   const inbox = await resolveInboxBatch(
     admin,
-    { id: projectId, title: projRes.project.title, org_id: access.form.org_id },
-    access.form.user_id,
+    { id: projectId, title: projRes.project.title, org_id: provision.orgId },
+    provision.ownerUserId,
   );
   const inboxBatchId = 'batchId' in inbox ? inbox.batchId : null;
 
@@ -138,7 +176,7 @@ export async function GET(req: Request) {
     candidates = (wide.data ?? []) as Candidate[];
   }
 
-  const masked = maskCandidatesBySource(candidates, access.superadmin);
+  const masked = maskCandidatesBySource(candidates, superadmin);
 
   return NextResponse.json(
     {
