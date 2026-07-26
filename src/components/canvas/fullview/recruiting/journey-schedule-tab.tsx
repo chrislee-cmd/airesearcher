@@ -190,6 +190,7 @@ export function JourneyScheduleTab({ formId }: { formId: string | null }) {
         formId={formId}
         onRefetch={refetch}
         notifyErr={(msg) => toast.push(msg, { tone: 'warn' })}
+        notifyOk={(msg) => toast.push(msg, { tone: 'info' })}
       />
     </div>
   );
