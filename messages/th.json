@@ -157,6 +157,13 @@
         "taskEmpty": "ไม่มีงานที่มอบหมาย",
         "endSession": "จบเซสชัน"
       },
+      "idle": {
+        "setupHeading": "ตั้งค่าการทดสอบ",
+        "setupSubtext": "กำหนดโปรเจกต์ วิธี และงานในแผงด้านขวา แล้วเริ่มเซสชัน",
+        "waitingHeading": "กำลังรอผู้เข้าร่วม",
+        "micIdle": "ไมค์รออยู่",
+        "cursorIdle": "เคอร์เซอร์รออยู่"
+      },
       "review": {
         "insightReport": "รายงานอินไซต์",
         "taskHeading": "งาน: {task}",
