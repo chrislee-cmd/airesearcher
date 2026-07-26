@@ -948,6 +948,9 @@
     "creating": "กำลังสร้าง…",
     "createCancel": "ยกเลิก",
     "createFailed": "สร้างโปรเจกต์ไม่สำเร็จ",
+    "archive": "จัดเก็บ",
+    "archivedToast": "จัดเก็บ '{name}' แล้ว",
+    "undo": "เลิกทำ",
     "menu": "เมนูโปรเจกต์"
   },
   "ComingSoon": {

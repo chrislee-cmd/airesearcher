@@ -51,6 +51,9 @@ export function RecruitingJourneyShell({
   projects,
   activeProjectId,
   onSelectProject,
+  onCreateProject,
+  onArchiveProject,
+  onUnarchiveProject,
   masterLink,
   counts,
   shareButton,
@@ -65,7 +68,13 @@ export function RecruitingJourneyShell({
   projectName: string | null;
   projects: { id: string; name: string }[];
   activeProjectId: string | null;
-  onSelectProject: (projectId: string) => void;
+  // 선택 중 프로젝트를 보관하면 다른 활성 프로젝트로 이동(없으면 null → 미선택).
+  onSelectProject: (projectId: string | null) => void;
+  // pill 새 프로젝트 생성 — 생성된 {id} 또는 null(실패). interview_projects 축만.
+  onCreateProject: (name: string) => Promise<{ id: string } | null>;
+  // pill 보관(soft) / 보관취소(undo). interview_projects 축만 — sched 앵커 무관.
+  onArchiveProject: (id: string) => Promise<void> | void;
+  onUnarchiveProject: (id: string) => Promise<void> | void;
   // 헤더 마스터링크 chip(sky) — P0 lazy 프로비저닝이 풀뷰 오픈 시 토큰 확보.
   // 미머지 시 null → chip 숨김(graceful).
   masterLink: { url: string } | null;
@@ -129,6 +138,9 @@ export function RecruitingJourneyShell({
           projects={projects}
           onSelect={onSelectProject}
           selectedId={activeProjectId}
+          onCreateProject={onCreateProject}
+          onArchiveProject={onArchiveProject}
+          onUnarchiveProject={onUnarchiveProject}
           menuLabel={t('journey.projectMenuLabel')}
         />
       ),
@@ -203,6 +215,9 @@ export function RecruitingJourneyShell({
     projects,
     activeProjectId,
     onSelectProject,
+    onCreateProject,
+    onArchiveProject,
+    onUnarchiveProject,
     masterLink,
     counts,
     shareButton,

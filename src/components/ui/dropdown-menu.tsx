@@ -41,6 +41,16 @@ export type DropdownItem = {
     onToggle: () => void;
     ariaLabel: string;
   };
+  // Optional trailing action button revealed on row hover/focus (e.g. 보관).
+  // Independent from onSelect — clicking it fires onAction (not the row's
+  // onSelect) and closes the menu. Rendered as a sibling of the row button so
+  // it can carry its own aria-label. Used by the project picker/pill's per-row
+  // archive control. Revealed only on hover/focus to avoid mis-clicks.
+  action?: {
+    icon: ReactNode;
+    onAction: () => void;
+    ariaLabel: string;
+  };
 };
 
 type Props = {
@@ -219,7 +229,7 @@ export function DropdownMenu({
                     onMouseEnter={() => setActiveIndex(i)}
                     onClick={() => onItemClick(item)}
                     className={`flex ${
-                      item.toggle ? 'flex-1' : 'w-full'
+                      item.toggle || item.action ? 'flex-1' : 'w-full'
                     } items-center justify-between gap-4 px-3 py-1.5 text-left text-sm transition-colors duration-[120ms] ${
                       item.disabled
                         ? 'cursor-not-allowed text-mute-soft/60'
@@ -234,29 +244,49 @@ export function DropdownMenu({
                     ) : null}
                   </button>
                 );
-                if (!item.toggle) {
+                if (!item.toggle && !item.action) {
                   return (
                     <div key={item.key} role="none">
                       {rowBtn}
                     </div>
                   );
                 }
-                // Toggle row: menuitem button + trailing checkbox. The checkbox
-                // sits outside the button (siblings), so clicking it does NOT
-                // fire the row's onSelect; and being inside menuRef it doesn't
-                // trip the outside-click close — the menu stays open.
+                // Trailing-control row: menuitem button + optional action
+                // button (보관, hover-revealed) + optional checkbox (전체 적용).
+                // Siblings sit outside the row button so clicking them does NOT
+                // fire the row's onSelect; and being inside menuRef they don't
+                // trip the outside-click close. The action button closes the
+                // menu (the row it acts on typically disappears); the checkbox
+                // keeps the menu open so the user can watch the check move.
                 return (
                   <div
                     key={item.key}
                     role="none"
-                    className="flex items-center pr-3"
+                    className="group flex items-center pr-3"
                   >
                     {rowBtn}
-                    <Checkbox
-                      checked={item.toggle.checked}
-                      onChange={item.toggle.onToggle}
-                      aria-label={item.toggle.ariaLabel}
-                    />
+                    {item.action ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const act = item.action;
+                          if (!act) return;
+                          close();
+                          act.onAction();
+                        }}
+                        aria-label={item.action.ariaLabel}
+                        className="shrink-0 rounded-xs p-1 text-mute opacity-0 transition-opacity duration-[120ms] hover:bg-line-soft/50 hover:text-warning focus:opacity-100 focus:outline-none group-hover:opacity-100"
+                      >
+                        {item.action.icon}
+                      </button>
+                    ) : null}
+                    {item.toggle ? (
+                      <Checkbox
+                        checked={item.toggle.checked}
+                        onChange={item.toggle.onToggle}
+                        aria-label={item.toggle.ariaLabel}
+                      />
+                    ) : null}
                   </div>
                 );
               })}
