@@ -5,6 +5,8 @@ import {
   ownerOfBatch,
   ownerOfCandidate,
   ownerAllowed,
+  resolveBatchScope,
+  resolveProjectScope,
 } from '@/lib/scheduling/access';
 import {
   isMessageScope,
@@ -126,11 +128,26 @@ export async function GET(request: Request) {
         ? `,candidate_id.in.(${candidateIds.join(',')})`
         : '';
 
-    // Wide: global + this-group broadcasts + private threads. Narrow (preview DB
-    // without batch_id): every broadcast + private — group scoping simply can't
-    // apply until the column exists, which is acceptable for the preview.
+    // Resolve the project this batch belongs to so the 전체 broadcast (batch_id
+    // null) can be scoped to it — the fix for the cross-project leak (a global
+    // broadcast previously OR-ed in for EVERY project). A project belongs to one
+    // org, so scoping to project_id transitively isolates orgs too; we therefore
+    // do NOT AND an org_id predicate onto the read (a stored org_id that ever
+    // diverged from the viewing batch's would hide an in-project message —
+    // conservative regression-0 choice; org_id is still recorded on writes for a
+    // future hardened filter). When project_id can't be resolved (preview DB
+    // predating the column), the clause degrades to the legacy unscoped global.
+    const batchScope = await resolveBatchScope(admin, batchId);
+    const globalScope = batchScope?.project_id
+      ? `,project_id.eq.${batchScope.project_id}`
+      : '';
+
+    // Wide: THIS project's global + this-group broadcasts + private threads.
+    // Narrow (preview DB without batch_id): every broadcast + private — group /
+    // project scoping simply can't apply until the columns exist, which is
+    // acceptable for the preview.
     const wideFilter =
-      `and(candidate_id.is.null,batch_id.is.null),` +
+      `and(candidate_id.is.null,batch_id.is.null${globalScope}),` +
       `and(candidate_id.is.null,batch_id.eq.${batchId})` +
       privateClause;
     const narrowFilter = `candidate_id.is.null${privateClause}`;
@@ -233,10 +250,12 @@ export async function POST(request: Request) {
   }
 
   // For private, confirm the candidate exists (clean 404 vs. FK error) + scope.
+  // Capture the candidate's batch so the message can be anchored to its project.
+  let candidateBatchId: string | null = null;
   if (scope === 'private') {
     const { data: candidate } = await admin
       .from('sched_candidates')
-      .select('id')
+      .select('id, batch_id')
       .eq('id', candidateId)
       .maybeSingle();
     if (!candidate) {
@@ -245,6 +264,7 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
+    candidateBatchId = (candidate.batch_id as string | null) ?? null;
     if (!access.superadmin) {
       const owner = await ownerOfCandidate(admin, candidateId!);
       if (!ownerAllowed(access, owner)) {
@@ -285,6 +305,35 @@ export async function POST(request: Request) {
     }
   }
 
+  // Anchor the message to its project (+ org) so reads can scope it — the fix
+  // for the cross-project/-account leak. Derive server-side from the batch or
+  // the candidate's batch; the 전체 broadcast (batch_id null) has no server
+  // anchor, so the client passes the current project_id, which we verify the
+  // caller owns (org member: project owner in scope; super-admin: any). An
+  // unverifiable / absent project_id leaves the anchor null (degrades to the
+  // legacy global, but the read filter then excludes it from other projects).
+  let projectId: string | null = null;
+  let orgId: string | null = null;
+  if (scope === 'private' && candidateBatchId) {
+    const bs = await resolveBatchScope(admin, candidateBatchId);
+    projectId = bs?.project_id ?? null;
+    orgId = bs?.org_id ?? null;
+  } else if (batchId) {
+    const bs = await resolveBatchScope(admin, batchId);
+    projectId = bs?.project_id ?? null;
+    orgId = bs?.org_id ?? null;
+  } else {
+    const claimed =
+      typeof b.project_id === 'string' && b.project_id ? b.project_id : null;
+    if (claimed) {
+      const ps = await resolveProjectScope(admin, claimed);
+      if (ps && (access.superadmin || ownerAllowed(access, ps.owner_user_id))) {
+        projectId = claimed;
+        orgId = ps.org_id;
+      }
+    }
+  }
+
   const baseRow = {
     candidate_id: candidateId,
     scope,
@@ -296,7 +345,13 @@ export async function POST(request: Request) {
 
   const wide = await admin
     .from('sched_messages')
-    .insert({ ...baseRow, is_announcement: isAnnouncement, batch_id: batchId })
+    .insert({
+      ...baseRow,
+      is_announcement: isAnnouncement,
+      batch_id: batchId,
+      project_id: projectId,
+      org_id: orgId,
+    })
     .select(SCHED_MESSAGE_COLUMNS)
     .single();
 

@@ -47,6 +47,11 @@ type ReachScope = 'all' | 'group' | 'personal';
 
 type Props = {
   batchId: string;
+  // The current project id. Anchors a 전체 broadcast (batch_id null) to its
+  // project server-side so it can't leak into other projects (교차 프로젝트
+  // 누출 차단). Group/private sends derive their project from the batch/candidate
+  // on the server, so this is only strictly needed for the 전체 reach.
+  projectId?: string;
   // Group-scoped roster (this tile's batch). Retained for thread-title
   // resolution + the 전체 count fallback.
   candidates: ChatCandidate[];
@@ -89,6 +94,7 @@ type Props = {
 // are loaded + kept live by useSchedMessages (realtime + poll).
 export function SchedulingChatPanel({
   batchId,
+  projectId,
   candidates,
   personalCandidates,
   groups = [],
@@ -365,6 +371,9 @@ export function SchedulingChatPanel({
             ? { candidate_id: selectedThread }
             : {
                 is_announcement: kind === 'announcement',
+                // 전체 broadcast 를 현재 프로젝트에 귀속(교차 프로젝트 누출 차단).
+                // 그룹 send 는 서버가 batch_id 로 프로젝트를 도출하므로 무해한 중복.
+                ...(projectId ? { project_id: projectId } : {}),
                 ...(reachScope === 'group' && groupTarget
                   ? { batch_id: groupTarget }
                   : {}),
