@@ -28,11 +28,20 @@ const phoneDigits = (p: string): string => p.replace(/\D/g, '');
 // null (a re-import of the same identity never flips 'bridge' → 'upload'). The
 // column is additive: on a preview DB that lacks it the upsert transparently
 // retries without `source` (wide/narrow degrade).
+//
+// `stage` (optional, default 'roster', card 588) marks whether a NEW row lands
+// as intake (awaiting selection in ①응답) or roster (visible in ②일정). It is
+// stamped on INSERTs only — an UPDATE never rewrites stage, so a re-upload that
+// matches an already-promoted ('roster') row can't demote it back to 'intake'
+// (promotion is not undone by a re-import). Like `source` it is additive: a
+// preview DB without the column transparently degrades (wide/narrow) so the
+// upsert still succeeds, treating every row as roster (current behaviour).
 export async function upsertCandidatesIntoBatch(
   admin: SupabaseClient,
   batchId: string,
   candidates: ParsedCandidate[],
   source?: 'bridge' | 'upload' | 'sheet',
+  stage: 'intake' | 'roster' = 'roster',
 ): Promise<
   { upserted: number } | { error: string; code?: string | null; detail?: string | null }
 > {
@@ -61,6 +70,15 @@ export async function upsertCandidatesIntoBatch(
   } else {
     existingRows = (wideExisting.data ?? []) as typeof existingRows;
   }
+  // Probe the stage column separately so its absence degrades independently of
+  // `source` (a preview DB could have one but not the other). We only ever WRITE
+  // stage on inserts, so a cheap existence probe (limit 1) is enough.
+  let hasStageColumn = true;
+  const stageProbe = await admin
+    .from('sched_candidates')
+    .select('stage')
+    .limit(1);
+  if (stageProbe.error) hasStageColumn = false;
 
   const byEmail = new Map<string, string>();
   const byPhone = new Map<string, string>();
@@ -106,6 +124,14 @@ export async function upsertCandidatesIntoBatch(
       // Never downgrade masking: an existing 'bridge'/'upload'/'sheet' row keeps
       // its source; only a null (or missing) source takes the new stamp.
       base.source = id ? (sourceById.get(id) ?? source) : source;
+    }
+    // stage: INSERT-only. An UPDATE (matched `id`) omits the key entirely so the
+    // existing row keeps its stage — a re-upload never demotes a promoted row
+    // back to intake. With defaultToNull:false, an omitted key on an insert row
+    // takes the column DEFAULT ('roster'), which is exactly what we want when the
+    // caller asks for roster, so we only need to set it explicitly for intake.
+    if (hasStageColumn && !id) {
+      base.stage = stage;
     }
     return id ? { id, ...base } : base;
   });

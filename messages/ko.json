@@ -2802,6 +2802,12 @@
     },
     "fv": {
       "criteriaTitle": "참여자 조건",
+      "sourceForm": "폼 응답",
+      "sourceUpload": "업로드 명단",
+      "uploadListTitle": "업로드 명단",
+      "uploadColName": "이름",
+      "uploadColEmail": "이메일",
+      "uploadColPhone": "연락처",
       "criteriaCount": "{count}개",
       "criteriaEmpty": "카드 본문에서 자료를 분석하면 참여자 조건이 여기에 요약됩니다.",
       "required": "필수",

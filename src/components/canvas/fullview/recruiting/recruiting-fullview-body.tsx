@@ -19,7 +19,7 @@
    그대로 마운트해 좌측 패널에 응답을 공급 + "전체 데이터" 뷰로 노출.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
@@ -30,6 +30,7 @@ import type { EditableBrief } from '@/components/recruiting-wizard/draft-storage
 import type { FormColumn, FormResponseRow } from '@/lib/google-forms';
 import {
   selectorLabel,
+  ResponseTable,
   type FormSummary,
 } from '../../widgets/recruiting/responses-spreadsheet';
 import type {
@@ -62,6 +63,7 @@ export function RecruitingFullviewBody({
   onDownloadCsv,
   hasResponses,
   intakeBand,
+  intakeData,
   rawTabContent,
   bridgeSelected,
   onToggleRow,
@@ -97,6 +99,11 @@ export function RecruitingFullviewBody({
   // (579 툴바 아래 밴드에서 이관, 순서 LIST SOURCES → 참여자 조건 → 분포).
   // upload · Google Sheets 2 소스만(응답연동 행은 CD 컴팩트 설계로 제거).
   intakeBand: ReactNode;
+  // 업로드 명단(intake) 세그먼트 데이터(card 588) — CSV/시트 유입분(stage=intake)
+  // 을 스프레드시트 shape 으로 어댑트한 것. null 이면 유입분 0(폼 응답 전용 = 현행).
+  // 폼 응답과 업로드 명단이 둘 다 있으면 소스 세그먼트로 토글, 업로드만 있으면
+  // (폼 없이 유입 — 583) 업로드 명단이 기본 노출된다.
+  intakeData: { columns: FormColumn[]; rows: FormResponseRow[] } | null;
   // 데이터 SSOT + "전체 데이터" 탭 = 레거시 ResponsesSpreadsheet(마운트 유지).
   rawTabContent: ReactNode;
   // ── 브리지(N1·N4) — 요약/raw 두 뷰가 공유하는 선택 집합. 호스트가 SSOT.
@@ -114,6 +121,43 @@ export function RecruitingFullviewBody({
   const t = useTranslations('Recruiting.fv');
   // 좌측 패널 가로 collapse — 로컬 state, 기본 펼침 (탭③ 캘린더 레일과 동일 패턴).
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+
+  // ── 소스 세그먼트(card 588) — 폼 응답 vs 업로드 명단. 폼 스키마와 업로드
+  // 명단 컬럼이 달라 한 표로 합치지 않고 소스를 토글한다.
+  const [sourceSel, setSourceSel] = useState<'forms' | 'upload'>('forms');
+  const formCount = responseData?.rows.length ?? 0;
+  const intakeCount = intakeData?.rows.length ?? 0;
+
+  // 업로드 직후(또는 응답 탭 진입 시 intake 행이 이미 있을 때) "업로드 명단"
+  // 소스를 즉시 전면에 띄운다 (사용자 요청 2026-07-27: "업로드하면 응답 탭에서
+  // 바로 업로드 명단이 뜨게"). intake 행이 0→N 으로 늘어나는 순간을 감지해
+  // sourceSel 을 upload 로 스냅한다. 렌더 중 state 조정 = React 권장 "prop 변경
+  // 시 state 리셋" 패턴(recruiting-card prevFormId 선례) — effect 없이 한 커밋
+  // 안에서 반영된다. 사용자가 이후 "폼 응답"을 누르면 그 선택은 다음 업로드
+  // 전까지 유지된다(재스냅은 카운트가 다시 증가할 때만).
+  const [prevIntakeCount, setPrevIntakeCount] = useState(0);
+  if (intakeCount !== prevIntakeCount) {
+    setPrevIntakeCount(intakeCount);
+    if (intakeCount > prevIntakeCount) setSourceSel('upload');
+  }
+
+  const hasFormSource = forms.length > 0;
+  const hasUploadSource = intakeCount > 0;
+  const showSegment = hasFormSource && hasUploadSource;
+  // effective source: 업로드만 있으면 업로드, 폼만 있으면 폼, 둘 다면 사용자 선택.
+  // 상태 리셋 이펙트 없이 파생만으로 스테일 선택을 방어(선택 소스가 사라지면 폴백).
+  const activeSource: 'forms' | 'upload' =
+    !hasFormSource && hasUploadSource
+      ? 'upload'
+      : !hasUploadSource
+        ? 'forms'
+        : sourceSel;
+  // 업로드 명단은 사용자 소유 plaintext → PII 컬럼 숨김 없음(빈 Set).
+  const emptyPii = useMemo(() => new Set<string>(), []);
+  const uploadIds = useMemo(
+    () => intakeData?.rows.map((r) => r.responseId) ?? [],
+    [intakeData],
+  );
 
   return (
     // min-w-0 = 폭 봉쇄 체인(568). 본문 루트가 판단테이블/스프레드시트의
@@ -182,6 +226,47 @@ export function RecruitingFullviewBody({
         {/* 우측 = 폼 셀렉터 + 탭(요약 default / 전체 데이터). min-w-0 = flex 자식
             intrinsic 폭 팽창 차단(가로 스크롤 복원 + 토글 헤더 off-screen 방지). */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {/* 소스 세그먼트(card 588) — 폼 응답 / 업로드 명단 토글. 둘 다 있을
+              때만 노출(하나뿐이면 그 소스가 곧 본문). */}
+          {showSegment && (
+            <div className="flex shrink-0 items-center gap-1.5 border-b border-ink/10 bg-paper px-5 py-2">
+              {(
+                [
+                  { key: 'forms', label: `${t('sourceForm')} (${formCount})` },
+                  { key: 'upload', label: `${t('sourceUpload')} (${intakeCount})` },
+                ] as const
+              ).map((src) => {
+                const active = activeSource === src.key;
+                return (
+                  // eslint-disable-next-line react/forbid-elements -- 소스 세그먼트 pill 은 요약/raw 탭 pill 과 동일한 bg-ink·white·radius-pill 전용 chrome (§7.11). 동일 선례.
+                  <button
+                    key={src.key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSourceSel(src.key)}
+                    className={`rounded-pill px-3.5 py-1.5 text-sm transition-colors ${
+                      active
+                        ? 'bg-ink font-bold text-white'
+                        : 'font-semibold text-mute-soft hover:text-ink'
+                    }`}
+                  >
+                    {src.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 업로드 명단 소스 헤더 — 뷰 토글 없음(전체 데이터만). */}
+          {activeSource === 'upload' && (
+            <div className="flex shrink-0 items-center gap-[10px] border-b border-ink/10 bg-paper px-5 py-[11px]">
+              <span className="text-sm font-bold text-ink">
+                {t('uploadListTitle')} ({intakeCount})
+              </span>
+            </div>
+          )}
+
+          {activeSource === 'forms' && (
           <div className="flex shrink-0 flex-wrap items-center gap-[10px] border-b border-ink/10 bg-paper px-5 py-[11px]">
             {forms.length > 0 ? (
               <div className="min-w-[240px]">
@@ -255,15 +340,22 @@ export function RecruitingFullviewBody({
               ↓ CSV
             </button>
           </div>
+          )}
 
           <div className="relative min-h-0 min-w-0 flex-1">
-            {/* raw = 데이터 SSOT(항상 마운트). 요약 탭일 땐 display:none.
-                min-w-0 = 스프레드시트(min-w-max)의 내부 overflow-auto 가로
-                스크롤이 살아나도록 래퍼 폭을 clip. */}
-            <div className={activeTab === 'raw' ? 'h-full min-w-0' : 'hidden'}>
+            {/* raw = 데이터 SSOT(항상 마운트 — className 만 토글해 위치 고정,
+                소스/탭 전환에도 ResponsesSpreadsheet 이 remount·refetch 되지
+                않게 한다). 폼 응답 소스의 "전체 데이터" 탭일 때만 보인다. */}
+            <div
+              className={
+                activeSource === 'forms' && activeTab === 'raw'
+                  ? 'h-full min-w-0'
+                  : 'hidden'
+              }
+            >
               {rawTabContent}
             </div>
-            {activeTab === 'summary' && (
+            {activeSource === 'forms' && activeTab === 'summary' && (
               <div className="h-full min-w-0">
                 <RecruitingJudgedTable
                   formId={activeFormId}
@@ -273,6 +365,22 @@ export function RecruitingFullviewBody({
                   onToggleRow={onToggleRow}
                   onToggleAll={onToggleAll}
                   onJudgmentsChange={onJudgmentsChange}
+                />
+              </div>
+            )}
+            {/* 업로드 명단 — ResponseTable 재사용(응답 시각 컬럼 없음, PII 숨김
+                없음). 선택은 폼 응답과 동일한 브리지 집합을 공유(cand: 접두어로
+                키 공간 분리). 승격은 하단 공용 브리지 바가 소유(§S5). */}
+            {activeSource === 'upload' && intakeData && (
+              <div className="h-full min-w-0 overflow-auto bg-paper">
+                <ResponseTable
+                  columns={intakeData.columns}
+                  piiQids={emptyPii}
+                  rows={intakeData.rows}
+                  selected={bridgeSelected}
+                  onToggleRow={onToggleRow}
+                  onToggleAll={(checked) => onToggleAll(uploadIds, checked)}
+                  showTime={false}
                 />
               </div>
             )}

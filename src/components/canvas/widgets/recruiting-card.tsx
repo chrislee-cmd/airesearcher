@@ -36,6 +36,11 @@ import {
   type JourneyTab,
 } from '../fullview/recruiting/recruiting-journey-shell';
 import type { BridgeCandidate } from '../fullview/recruiting/recruiting-bridge';
+import {
+  intakeRowsToTable,
+  INTAKE_ID_PREFIX,
+  type IntakeCandidate,
+} from '@/lib/scheduling/intake-rows';
 import type { ResponseJudgment } from '@/lib/recruiting/persona-fit';
 import {
   clearDraft,
@@ -67,6 +72,7 @@ import {
 function ExpandedBody() {
   const { renderInSlot, openFullview, close } = useFullview('recruiting');
   const tWidgets = useTranslations('Widgets');
+  const tFv = useTranslations('Recruiting.fv');
   // ── 리크루팅 세 축 (다음 워커가 헷갈리지 않도록, spec #575 §6) ──────────
   //   1) pill 축 = interview_projects (SSOT: useInterviewV2Projects). 위젯이
   //      어느 리서치 프로젝트에 귀속되는지 — 선택은 위젯별 독립
@@ -183,6 +189,81 @@ function ExpandedBody() {
   }, []);
   const clearBridge = useCallback(() => setBridgeSelected(new Set()), []);
 
+  // ── intake(업로드 명단) SSOT (card 588) — CSV/시트 유입은 이제 stage='intake'
+  // 로 적재돼 ①응답 탭 "업로드 명단" 세그먼트에만 노출된다(②일정 직행 차단).
+  // 데이터는 유입 밴드가 이미 쓰는 /api/scheduling/journey/candidates 를 재사용
+  // 하고 stage==='intake' 만 필터한다(새 엔드포인트 없음, 스펙 §S4). 폼(활성 폼)
+  // 우선, 없으면 pill 프로젝트(폼 없이 유입 — 583) 앵커.
+  const [intakeCandidates, setIntakeCandidates] = useState<IntakeCandidate[]>(
+    [],
+  );
+  const loadIntake = useCallback(async () => {
+    if (!activeFormId && !recruitingProjectId) {
+      setIntakeCandidates([]);
+      return;
+    }
+    try {
+      const params = new URLSearchParams();
+      if (activeFormId) params.set('form_id', activeFormId);
+      if (recruitingProjectId) params.set('project_id', recruitingProjectId);
+      const res = await fetch(
+        `/api/scheduling/journey/candidates?${params.toString()}`,
+        { cache: 'no-store' },
+      );
+      if (!res.ok) {
+        setIntakeCandidates([]);
+        return;
+      }
+      const json = (await res.json()) as {
+        candidates?: {
+          id: string;
+          email: string | null;
+          name: string | null;
+          phone: string | null;
+          fields: Record<string, string> | null;
+          stage?: string;
+        }[];
+      };
+      const rows = (json.candidates ?? []).filter((c) => c.stage === 'intake');
+      setIntakeCandidates(
+        rows.map((c) => ({
+          id: c.id,
+          email: c.email,
+          name: c.name,
+          phone: c.phone,
+          fields: c.fields,
+        })),
+      );
+    } catch {
+      setIntakeCandidates([]);
+    }
+  }, [activeFormId, recruitingProjectId]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- anchor-scoped fetch-on-mount (loadIntake sets intakeCandidates); also re-run from upload/promote/refresh handlers. 유입 밴드 load() 와 동일 패턴.
+    void loadIntake();
+  }, [loadIntake]);
+
+  // 업로드 명단 → 스프레드시트 shape 어댑터. 컬럼 라벨은 i18n 으로 주입(순수
+  // 함수 유지). 0행이면 null → 세그먼트 미노출.
+  const intakeData = useMemo(
+    () =>
+      intakeCandidates.length > 0
+        ? intakeRowsToTable(intakeCandidates, {
+            name: tFv('uploadColName'),
+            email: tFv('uploadColEmail'),
+            phone: tFv('uploadColPhone'),
+          })
+        : null,
+    [intakeCandidates, tFv],
+  );
+  const intakeById = useMemo(
+    () =>
+      new Map(
+        intakeCandidates.map((c) => [`${INTAKE_ID_PREFIX}${c.id}`, c] as const),
+      ),
+    [intakeCandidates],
+  );
+
   // ── 저니 탭(응답/일정) SSOT — 셸을 controlled 로 구동. 저니 2탭화(#579)로
   // 명단 탭이 제거돼, 브리지 전송 성공 시엔 선택만 리셋한다(브리지 컴포넌트가
   // 자체 성공 토스트를 띄운다). 인제스트된 인원은 탭③(일정)이 조건부 마운트라
@@ -191,7 +272,11 @@ function ExpandedBody() {
   const [journeyTab, setJourneyTab] = useState<JourneyTab>('responses');
   const handleBridgeSent = useCallback(() => {
     clearBridge();
-  }, [clearBridge]);
+    // 승격/브리지 성공 → 업로드 명단 재조회(승격분은 intake 목록에서 빠진다).
+    // ②일정 탭은 조건부 마운트라 다음 진입 시 fresh fetch 로 roster(승격분 포함)를
+    // 노출하므로 별도 갱신 불필요.
+    void loadIntake();
+  }, [clearBridge, loadIntake]);
 
   // 선택 응답자 서술자 — judgments 에서 selected 를 필터해 #번호·demographic·fit
   // 를 빌드(응답 name 은 PII 블랭킹으로 클라에 없음 → 마스킹 값만 모달 표시).
@@ -200,6 +285,13 @@ function ExpandedBody() {
       judgments.map((j, i) => [j.response_key, { j, num: i + 1 }]),
     );
     return Array.from(bridgeSelected).map((id) => {
+      // 업로드 명단(cand:) 선택 — plaintext name + 연락처를 서술자로(마스킹 없음).
+      if (id.startsWith(INTAKE_ID_PREFIX)) {
+        const c = intakeById.get(id);
+        const demo =
+          [c?.email, c?.phone].filter(Boolean).join(' · ') || null;
+        return { id, num: null, demo, fit: null, name: c?.name ?? null };
+      }
       const hit = byKey.get(id);
       if (!hit) return { id, num: null, demo: null, fit: null };
       const demo =
@@ -208,7 +300,7 @@ function ExpandedBody() {
           .join(' · ') || null;
       return { id, num: hit.num, demo, fit: hit.j.fit };
     });
-  }, [bridgeSelected, judgments]);
+  }, [bridgeSelected, judgments, intakeById]);
 
   const handleFormsChange = useCallback((list: FormSummary[]) => {
     setForms(list);
@@ -251,9 +343,11 @@ function ExpandedBody() {
     refreshResponsesRef.current?.();
     // 요약 탭의 부합도 판단도 재조회(신규 응답 증분 판단).
     setJudgeRefreshSignal((n) => n + 1);
+    // 업로드 명단(intake)도 재조회(새 유입/승격 반영).
+    void loadIntake();
     // spec C: 새로고침 = 초기 상태 → crossFilter(분포 셀/질문 필터) 초기화.
     setActiveFilter(EMPTY_FILTER);
-  }, []);
+  }, [loadIntake]);
 
   // 전체보기 상단 "CSV 다운로드" — 선택된 폼의 응답 전체를 내보낸다.
   // PII 컬럼(이름/전화)은 responses-csv 가 컬럼째 제외하므로 파일에 개인정보가
@@ -406,8 +500,14 @@ function ExpandedBody() {
                 <JourneyIntakeBand
                   formId={activeFormId}
                   projectId={recruitingProjectId}
+                  // 유입 성공 시 host 의 업로드 명단(intake)도 재조회 → ①응답 탭
+                  // "업로드 명단" 세그먼트가 즉시 갱신된다(card 588).
+                  onChanged={loadIntake}
                 />
               }
+              // 업로드 명단(intake) 세그먼트 데이터(card 588). null 이면 폼 응답
+              // 전용(현행). 선택은 브리지 집합(bridgeSelected)을 그대로 공유한다.
+              intakeData={intakeData}
               // 브리지(N1·N4) — 선택 SSOT + judgments lift + 서술자.
               bridgeSelected={bridgeSelected}
               onToggleRow={toggleBridgeRow}

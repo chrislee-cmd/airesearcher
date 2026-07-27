@@ -127,6 +127,9 @@ export async function POST(
     batchId,
     parsed.candidates,
     'sheet',
+    // Card 588: sheet imports land as intake (same as file upload) — surface in
+    // ①응답 until the user promotes selected rows to the ②일정 roster.
+    'intake',
   );
   if ('error' in result) {
     return NextResponse.json({ error: result.error }, { status: 500 });
