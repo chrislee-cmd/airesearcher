@@ -1810,6 +1810,7 @@
   },
   "Widgets": {
     "fullview": "전체 보기",
+    "guide": "사용법 · 동영상 가이드",
     "viewAll": "전체 보기 →",
     "transcriptRunning": "전사가 진행중입니다",
     "transcriptDone": "전사가 완료되었습니다",

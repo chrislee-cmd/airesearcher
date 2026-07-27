@@ -1903,6 +1903,7 @@
   },
   "Widgets": {
     "fullview": "全画面表示を開く",
+    "guide": "使い方 · 動画ガイド",
     "viewAll": "すべて見る →",
     "transcriptRunning": "文字起こし中",
     "transcriptDone": "文字起こし完了",
