@@ -168,9 +168,10 @@ export function WidgetHeaderColorPicker({
         <button
           ref={triggerRef}
           type="button"
+          title={t('headerColorSelect')}
           aria-label={t('headerColorSelect')}
-          className="inline-flex items-center justify-center"
-          style={{ padding: '6px 10px', color: 'var(--canvas-card-header-text)' }}
+          className="inline-flex cursor-pointer items-center justify-center hover:bg-paper-soft"
+          style={{ width: 44, padding: '6px 0', color: 'var(--canvas-card-header-text)' }}
           onMouseDown={onTriggerMouseDown}
           onClick={onTriggerClick}
         >
