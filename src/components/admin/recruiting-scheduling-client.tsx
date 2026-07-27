@@ -37,6 +37,8 @@ import {
   nextSlotForCandidate,
   toLocalInputValue,
 } from '@/lib/scheduling/slots';
+import { flaggedPhonesToast } from '@/lib/scheduling/flagged-phones';
+import type { FlaggedPhone } from '@/lib/scheduling/candidates-parse';
 
 // Top layer above batches (PR-C). A project bundles several groups (=batches).
 export type SchedProject = {
@@ -542,6 +544,7 @@ export function RecruitingSchedulingClient({
       });
       const json = (await res.json().catch(() => ({}))) as {
         upserted?: number;
+        flagged?: FlaggedPhone[];
         error?: string;
       };
       if (!res.ok) {
@@ -551,6 +554,9 @@ export function RecruitingSchedulingClient({
         return;
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
+      // Un-canonicalizable phones (card 604) → warn with the list to fix at source.
+      const flaggedMsg = flaggedPhonesToast(json.flagged, t);
+      if (flaggedMsg) notifyErr(flaggedMsg);
       router.refresh();
     } finally {
       setUploading(false);
@@ -577,6 +583,7 @@ export function RecruitingSchedulingClient({
       );
       const json = (await res.json().catch(() => ({}))) as {
         upserted?: number;
+        flagged?: FlaggedPhone[];
         error?: string;
       };
       // Not connected / missing Sheets scope → bounce into the existing
@@ -596,6 +603,8 @@ export function RecruitingSchedulingClient({
         return;
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
+      const flaggedMsg = flaggedPhonesToast(json.flagged, t);
+      if (flaggedMsg) notifyErr(flaggedMsg);
       setSheetUrl('');
       router.refresh();
     } finally {

@@ -25,6 +25,7 @@
 import { getTranslations } from 'next-intl/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendSms, type SolapiMessage } from '@/lib/sms/solapi';
+import { toDialablePhone } from './phone';
 
 // SMS 카피 로드 locale. 수신자(후보)의 locale 은 미상 → ko 기본.
 const SMS_LOCALE = 'ko';
@@ -102,8 +103,11 @@ function eligiblePhones(
     // 합류 미확인 → 문자 자격 없음(status 와 무관하게 최우선 게이트).
     if (!r.joined_at) continue;
     if (opts.requireConfirmed && r.status !== 'confirmed') continue;
-    const digits = (r.phone ?? '').replace(/\D/g, '');
-    if (digits.length >= 8) phones.push(digits);
+    // Stored phones are canonical `10########`(10자리) after card 604 — solapi
+    // needs the dialable `010########` form, so prepend the leading 0. Legacy
+    // rows already starting with 0 pass through unchanged (idempotent).
+    const dialable = toDialablePhone(r.phone);
+    if (dialable.length >= 8) phones.push(dialable);
   }
   return phones;
 }

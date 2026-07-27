@@ -84,7 +84,10 @@ export async function POST(
   }
 
   return NextResponse.json(
-    { upserted: result.upserted },
+    // `flagged` (card 604): phones that couldn't be canonicalized to 10########
+    // — surfaced so the uploader fixes them at the source. Stored values are
+    // untouched (never overwritten with a mangled number).
+    { upserted: result.upserted, flagged: parsed.flagged },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }
