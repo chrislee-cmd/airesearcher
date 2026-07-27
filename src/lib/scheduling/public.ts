@@ -13,7 +13,11 @@
 // then scopes ALL follow-up queries to the ONE candidate the cookie proved. The
 // resolve + scope live in one place so a route can never accidentally widen it.
 import { createAdminClient } from '@/lib/supabase/admin';
-import { phoneTail, normalizeTailInput } from '@/lib/scheduling/participant-gate';
+import {
+  phoneTail,
+  normalizeTailInput,
+  phoneIdentityKey,
+} from '@/lib/scheduling/participant-gate';
 
 export type SchedPublicCandidate = {
   id: string;
@@ -23,6 +27,12 @@ export type SchedPublicCandidate = {
   // It MUST never be returned to the client — every public route projects only
   // `candidate.name` outward.
   phone: string | null;
+  // Row creation time + owning-batch inbox flag — only the entry gate's
+  // identity-collapse (duplicate inbox+group rows of one person) reads these to
+  // pick a deterministic primary row. Optional: selects that don't need them
+  // leave them undefined.
+  created_at?: string | null;
+  is_inbox?: boolean | null;
   // Coarse per-candidate status — only the broadcast read gate needs it (공지는
   // 확정자에게만 보인다). Optional: the entry-gate helpers (tail/full-phone match)
   // don't select it, so it stays undefined there.
@@ -70,21 +80,94 @@ export async function listProjectCandidates(
   admin: ReturnType<typeof createAdminClient>,
   projectId: string,
 ): Promise<SchedPublicCandidate[]> {
-  const { data: batches, error: bErr } = await admin
+  // Fetch batches WITH is_inbox so the gate can prefer the active group
+  // (non-inbox) row when collapsing a person's duplicate inbox+group records.
+  // Older preview DBs predating is_inbox → fall back to id-only (is_inbox stays
+  // null → identity collapse falls back to created_at/id ordering).
+  type BatchRow = { id: string; is_inbox?: boolean | null };
+  let batches: BatchRow[];
+  const wide = await admin
     .from('sched_batches')
-    .select('id')
+    .select('id, is_inbox')
     .eq('project_id', projectId)
     .limit(2000);
-  if (bErr || !batches || batches.length === 0) return [];
-  const batchIds = batches.map((b) => b.id as string);
+  if (wide.error) {
+    const narrow = await admin
+      .from('sched_batches')
+      .select('id')
+      .eq('project_id', projectId)
+      .limit(2000);
+    if (narrow.error || !narrow.data || narrow.data.length === 0) return [];
+    batches = narrow.data as BatchRow[];
+  } else if (!wide.data || wide.data.length === 0) {
+    return [];
+  } else {
+    batches = wide.data as BatchRow[];
+  }
+  const inboxByBatch = new Map(batches.map((b) => [b.id, b.is_inbox ?? null]));
+  const batchIds = batches.map((b) => b.id);
 
   const { data: candidates, error: cErr } = await admin
     .from('sched_candidates')
-    .select('id, batch_id, name, phone')
+    .select('id, batch_id, name, phone, created_at')
     .in('batch_id', batchIds)
     .limit(10000);
   if (cErr || !candidates) return [];
-  return candidates as SchedPublicCandidate[];
+  return (candidates as SchedPublicCandidate[]).map((c) => ({
+    ...c,
+    is_inbox: inboxByBatch.get(c.batch_id) ?? null,
+  }));
+}
+
+/**
+ * Group tail/phone matches by identity (full normalized phone digits) so the
+ * gate treats a person's duplicate inbox+group rows as ONE. Rows with no phone
+ * digits are skipped (they can't be a resolvable identity — and never match a
+ * tail anyway). Key = full digits, value = every row for that person.
+ */
+export function groupByPhoneIdentity(
+  candidates: SchedPublicCandidate[],
+): Map<string, SchedPublicCandidate[]> {
+  const groups = new Map<string, SchedPublicCandidate[]>();
+  for (const c of candidates) {
+    const key = phoneIdentityKey(c.phone);
+    if (!key) continue;
+    const arr = groups.get(key);
+    if (arr) arr.push(c);
+    else groups.set(key, [c]);
+  }
+  return groups;
+}
+
+/**
+ * Deterministically pick the primary row among a person's duplicate rows — the
+ * id bound into the gate cookie. Preference:
+ *   1. the active group (non-inbox) row — downstream slots/messages are scoped
+ *      to the cookie's candidate_id, and admins schedule candidates in group
+ *      (non-inbox) batches, so binding there lets the participant actually
+ *      see/book their schedule;
+ *   2. oldest created_at (the original record);
+ *   3. lowest id — total determinism when the above tie (or columns absent).
+ */
+export function pickPrimaryCandidate(
+  rows: SchedPublicCandidate[],
+): SchedPublicCandidate {
+  return [...rows].sort((a, b) => {
+    const r = inboxRank(a) - inboxRank(b);
+    if (r !== 0) return r;
+    const ca = a.created_at ?? '';
+    const cb = b.created_at ?? '';
+    if (ca !== cb) return ca < cb ? -1 : 1; // oldest first
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  })[0];
+}
+
+// Lower rank = preferred. Non-inbox (active group) wins; unknown (column
+// absent) in the middle; inbox (raw intake pool) last.
+function inboxRank(c: SchedPublicCandidate): number {
+  if (c.is_inbox === false) return 0;
+  if (c.is_inbox === true) return 2;
+  return 1;
 }
 
 /**
