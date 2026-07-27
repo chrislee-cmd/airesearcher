@@ -7,6 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { IconButton } from '@/components/ui/icon-button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { DropdownMenu } from '@/components/ui/dropdown-menu';
+import { ControlTrigger } from '@/components/ui/control-trigger';
+import { UnreadBadge } from '@/components/ui/unread-badge';
 import { useSchedMessages } from '@/hooks/use-sched-messages';
 import {
   BROADCAST_THREAD_ID,
@@ -74,6 +77,9 @@ type Props = {
   confirmedCount?: number;
   // 확정자 중 문자 자격(합류∩전화) M — 전체 reach 의 "📱 문자 알림 (M명)".
   confirmedSmsCount?: number;
+  // 스레드별 미확인 참석자 메시지 수(빨간콩 배지). 개인 피커의 후보 옵션 +
+  // 접힌 트리거 집계에 쓰인다. 미제공(구 호출부) → 배지 없음.
+  unreadCount?: (threadId: string) => number;
 };
 
 // Admin chat rail (CD frame 02 · reach sub-picker 02B) — a broadcast
@@ -93,6 +99,7 @@ export function SchedulingChatPanel({
   onEditSlot,
   confirmedCount,
   confirmedSmsCount,
+  unreadCount,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const { messages, loading, refetch, editMessage, deleteMessage } =
@@ -221,6 +228,16 @@ export function SchedulingChatPanel({
   const selectedPersonal = isPersonal
     ? personalOptions.find((c) => c.id === selectedThread)
     : undefined;
+
+  // 접힌 개인 피커 트리거에 얹는 집계 배지 = 모든 개인 스레드의 미확인 합계.
+  // 현재 열려있는 스레드는 부모가 markSeen 유지 → 그 후보 count 0 이라 자연히
+  // "열려있지 않은 스레드 합계"가 된다(별도 open-set 추적 불필요).
+  const personalUnreadTotal = useMemo(() => {
+    if (!unreadCount) return 0;
+    let n = 0;
+    for (const c of personalOptions) n += unreadCount(c.id);
+    return n;
+  }, [unreadCount, personalOptions]);
   const reachRecipientCount: number =
     reachScope === 'personal'
       ? 1
@@ -513,16 +530,48 @@ export function SchedulingChatPanel({
           />
         )}
         {reachScope === 'personal' && personalOptions.length > 0 && (
-          <Select
-            aria-label={t('chatPersonalPickerLabel')}
-            size="sm"
-            className="w-full"
-            value={isBroadcast ? '' : selectedThread}
-            onChange={(e) => selectThread(e.target.value)}
-            options={personalOptions.map((c) => ({
-              value: c.id,
-              label: c.label,
-            }))}
+          // native Select 는 옵션에 스타일 배지를 못 그린다 → DropdownMenu 로
+          // 교체(project-picker 와 동일 패턴). 각 후보 행 우측에 미확인 수 배지,
+          // 접힌 트리거 우측에 집계 배지. (Phase 2/599 후속에서 공용 Picker 로
+          // 흡수 예정 — 지금은 기능 우선.)
+          <DropdownMenu
+            fullWidth
+            label={t('chatPersonalPickerLabel')}
+            items={personalOptions.map((c) => {
+              const n = unreadCount?.(c.id) ?? 0;
+              return {
+                key: c.id,
+                label: (
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{c.label}</span>
+                    {n > 0 && (
+                      <UnreadBadge
+                        count={n}
+                        label={t('chatUnreadCount', { count: n })}
+                      />
+                    )}
+                  </span>
+                ),
+                onSelect: () => selectThread(c.id),
+              };
+            })}
+            trigger={({ onClick, ...aria }) => (
+              <ControlTrigger {...aria} onClick={onClick}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">
+                    {selectedPersonal?.label ?? t('chatPersonalPickerLabel')}
+                  </span>
+                  {personalUnreadTotal > 0 && (
+                    <UnreadBadge
+                      count={personalUnreadTotal}
+                      label={t('chatUnreadCount', {
+                        count: personalUnreadTotal,
+                      })}
+                    />
+                  )}
+                </span>
+              </ControlTrigger>
+            )}
           />
         )}
       </div>

@@ -3342,6 +3342,7 @@
     "confirmedNoSlot": "ไม่มีช่วงเวลา",
     "confirmedChatCta": "แชท",
     "chatUnreadBadge": "ข้อความจากผู้เข้าร่วมที่ยังไม่ได้อ่าน",
+    "chatUnreadCount": "ข้อความที่ยังไม่ได้อ่าน {count} รายการ",
     "confirmedBroadcastCta": "ประกาศทั้งหมด",
     "chatClose": "ปิด",
     "chatMaxPanels": "เปิดแชทได้สูงสุด 4 รายการพร้อมกัน",
