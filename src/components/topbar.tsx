@@ -6,7 +6,8 @@ import { TopbarAccount } from './topbar-account';
 import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
 import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
-import { ViewModeToggle } from './view-mode-toggle';
+// 뷰 모드 토글 (캔버스 ⇄ 리스트) — 2026-07-27 사용자 요청으로 숨김. 복원 시 아래 import 주석 해제.
+// import { ViewModeToggle } from './view-mode-toggle';
 import { CollabShareButton } from './scheduling/collab-share';
 import { getActiveOrg } from '@/lib/org';
 import { getCollabShareData } from '@/lib/collab-share-data';
@@ -81,9 +82,10 @@ export async function Topbar({
       <div className="flex shrink-0 items-center gap-3">
         {isAuthed ? (
           <>
-            {/* 뷰 모드 토글 (캔버스 ⇄ 리스트) — 캔버스 목적지에서만 자체
-                노출(다른 라우트에선 렌더 0). 라이트/다크 스위치 톤. */}
-            <ViewModeToggle />
+            {/* 뷰 모드 토글 (캔버스 ⇄ 리스트) — 2026-07-27 사용자 요청으로 숨김.
+                기능·컴포넌트는 보존(ViewModeToggle / ViewModeProvider / getViewMode).
+                다시 제공하려면 위 import 와 아래 한 줄의 주석을 해제하면 된다. */}
+            {/* <ViewModeToggle /> */}
             {/* QA feedback cluster (voice mic + text note + "피드백 남기기"
                 label) — shown to every signed-in account. */}
             <QaFeedbackCluster />
