@@ -249,5 +249,25 @@ export async function upsertCandidatesIntoBatch(
     }
   }
 
+  // E2 §① 유입 시점 자동 확정: 로스터로 들어오는 순간 status='confirmed'.
+  // roster 소속 = 확정(사용자 결정 2026-07-27)이므로 이 chokepoint(bridge=roster)
+  // 에서 방금 upsert 된 행을 확정 처리한다. stage='intake'(파일/시트 업로드)는
+  // 아직 로스터가 아니므로 대상에서 제외 — intake 는 승격돼야 confirmed 가 된다.
+  //   * pending → confirmed 만 자동화. `.eq('status','pending')` 로 communicating
+  //     세부상태를 덮지 않고(강등 아님), 이미 confirmed 인 행도 no-op.
+  //   * 방금 upsert 된 id(data)만 스코핑 — 배치 내 무관한 행은 건드리지 않는다.
+  // best-effort: 확정 실패해도 upsert(멤버십)는 이미 커밋됐으므로 흐름을 막지 않는다.
+  if (stage === 'roster' && data && data.length > 0) {
+    const upsertedIds = (data as { id: string }[]).map((d) => d.id);
+    const confirm = await admin
+      .from('sched_candidates')
+      .update({ status: 'confirmed' })
+      .in('id', upsertedIds)
+      .eq('status', 'pending');
+    if (confirm.error) {
+      console.error('[scheduling/upsert] auto-confirm failed', confirm.error);
+    }
+  }
+
   return { upserted: data?.length ?? 0 };
 }

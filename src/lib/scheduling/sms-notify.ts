@@ -2,16 +2,17 @@
 // 산출·발송하는 서버 전용 후처리. 메시지 insert 성공 후에만 호출되며, 실패해도
 // 상위 흐름(메시지 저장)을 절대 막지 않는다(하드 제약 — best-effort).
 //
-// 대상 산출(사용자 결정 2026-07-26 — 오발송 차단):
-//   문자 알림 자격 = (그 메시지의 수신자 집합) ∩ (합류 확인 joined_at) ∩ (phone).
-//   * broadcast 전체 → 프로젝트 확정자 ∩ 합류 ∩ phone
-//   * broadcast 그룹 → 해당 batch 확정자 ∩ 합류 ∩ phone
-//   * private        → 해당 후보 1명 ∩ 합류 ∩ phone (status 무관 — 조율 대화 알림
-//                      은 확정 전에도 정상 플로우)
+// 대상 산출(사용자 결정 2026-07-27 — E2 자격 재정의):
+//   문자 알림 자격 = (그 메시지의 수신자 집합=소속) ∩ (합류 확인 joined_at) ∩ (phone).
+//   * broadcast 전체 → 프로젝트 소속 ∩ 합류 ∩ phone
+//   * broadcast 그룹 → 해당 batch 소속 ∩ 합류 ∩ phone
+//   * private        → 해당 후보 1명 ∩ 합류 ∩ phone
+//   소속(=수신자 집합=batch 조회 범위)만으로 대상 자격이 성립한다 — 로스터 유입 시
+//   자동확정(E2 §①)으로 어차피 roster 전원 confirmed 지만, 문자 게이트는 status 를
+//   보지 않고 joined_at 만 본다(수동 confirmed 요구 삭제). status='confirmed' 는
+//   관리자 coarse 플래그일 뿐 합류와 다르므로 문자 자격 조건이 아니다.
 //   합류(joined_at)는 "링크를 받아 합류(상호 동의)가 확인된 사람"의 SSOT — 참가자
-//   폰게이트 최초 통과 시 /verify 가 찍는다. status='confirmed' 는 관리자 coarse
-//   플래그일 뿐 합류와 다르므로 문자 자격 조건이 아니다(broadcast 수신자 집합에서만
-//   확정 여부가 쓰인다).
+//   폰게이트 최초 통과 시 /verify 가 찍는다. 이게 오발송 차단의 진짜 게이트(#581).
 //   컬럼 미적용 환경 대비: joined_at select 실패(42703) 시 문자를 보내지 않고
 //   skip + 로그 — 과다 발송보다 미발송이 안전(이 티켓의 목적 = 오발송 0).
 //
@@ -87,29 +88,29 @@ async function projectOfBatch(
 }
 
 // 문자 알림 자격 필터. 합류 확인(joined_at)이 없으면 제외 — 이게 오발송 차단의
-// 핵심 게이트. broadcast 는 수신자 집합이 확정자라 status='confirmed' 도 요구한다
-// (requireConfirmed). private 은 status 무관. phone 은 8자리 미만이면 잡음으로 제외.
+// 핵심 게이트(#581). E2 부터 status='confirmed' 요구를 제거한다: 자격 = 소속(=이미
+// 조회 범위) ∩ 합류 ∩ phone. 로스터 유입 시 자동확정(§①)으로 어차피 전원 confirmed
+// 지만, 게이트는 joined_at 만 본다 — communicating/미확정 잔여라도 joined 면 대상.
+// phone 은 8자리 미만이면 잡음으로 제외. 정본 전화 dedup(Set) 으로 동일인 이중발송을
+// 방어한다(E3 정리 + 605 신규차단 위에 저비용 방어층).
 type CandidateRow = {
   phone: string | null;
   joined_at?: string | null;
   status?: string | null;
 };
-function eligiblePhones(
-  rows: CandidateRow[],
-  opts: { requireConfirmed: boolean },
-): string[] {
-  const phones: string[] = [];
+function eligiblePhones(rows: CandidateRow[]): string[] {
+  const phones = new Set<string>();
   for (const r of rows) {
     // 합류 미확인 → 문자 자격 없음(status 와 무관하게 최우선 게이트).
     if (!r.joined_at) continue;
-    if (opts.requireConfirmed && r.status !== 'confirmed') continue;
     // Stored phones are canonical `10########`(10자리) after card 604 — solapi
     // needs the dialable `010########` form, so prepend the leading 0. Legacy
-    // rows already starting with 0 pass through unchanged (idempotent).
+    // rows already starting with 0 pass through unchanged (idempotent). 동일 정본
+    // 전화는 Set 으로 접혀 이중발송 0.
     const dialable = toDialablePhone(r.phone);
-    if (dialable.length >= 8) phones.push(dialable);
+    if (dialable.length >= 8) phones.add(dialable);
   }
-  return phones;
+  return [...phones];
 }
 
 // 알림형 본문 + LMS 제목을 i18n(SchedulingSms)에서 로드해 구성. announcement 여부로
@@ -160,10 +161,10 @@ export async function notifyBySms(
       if (!cand) return { status: 'skipped', reason: 'no_recipients', targetCount: 0 };
       const batchId = cand.batch_id as string | null;
       project = batchId ? await projectOfBatch(admin, batchId) : null;
-      // private 은 status 무관 — 합류·phone 만 요구.
-      phones = eligiblePhones([cand as CandidateRow], { requireConfirmed: false });
+      // 합류·phone 만 요구(status 무관).
+      phones = eligiblePhones([cand as CandidateRow]);
     } else if (params.messageBatchId) {
-      // 그룹 broadcast — 해당 batch 의 확정자 ∩ 합류 ∩ phone.
+      // 그룹 broadcast — 해당 batch 소속 ∩ 합류 ∩ phone.
       project = await projectOfBatch(admin, params.messageBatchId);
       const { data: rows, error } = await admin
         .from('sched_candidates')
@@ -174,9 +175,9 @@ export async function notifyBySms(
         console.warn('[sched-sms] joined_at select failed (group) — skipping send', error.code);
         return { status: 'skipped', reason: 'no_recipients', targetCount: 0 };
       }
-      phones = eligiblePhones((rows ?? []) as CandidateRow[], { requireConfirmed: true });
+      phones = eligiblePhones((rows ?? []) as CandidateRow[]);
     } else {
-      // 전체 broadcast — 컨텍스트 batch 로 프로젝트 특정 후 전 확정자 ∩ 합류 ∩ phone.
+      // 전체 broadcast — 컨텍스트 batch 로 프로젝트 특정 후 전 소속 ∩ 합류 ∩ phone.
       if (!params.contextBatchId) return { status: 'skipped', reason: 'no_project', targetCount: 0 };
       project = await projectOfBatch(admin, params.contextBatchId);
       if (project) {
@@ -196,7 +197,7 @@ export async function notifyBySms(
             console.warn('[sched-sms] joined_at select failed (all) — skipping send', error.code);
             return { status: 'skipped', reason: 'no_recipients', targetCount: 0 };
           }
-          phones = eligiblePhones((rows ?? []) as CandidateRow[], { requireConfirmed: true });
+          phones = eligiblePhones((rows ?? []) as CandidateRow[]);
         }
       }
     }
