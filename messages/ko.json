@@ -3243,6 +3243,7 @@
     "confirmedNoSlot": "슬롯 없음",
     "confirmedChatCta": "채팅",
     "chatUnreadBadge": "읽지 않은 참석자 메세지",
+    "chatUnreadCount": "안 읽은 메시지 {count}개",
     "confirmedBroadcastCta": "전체 공지",
     "chatClose": "닫기",
     "chatMaxPanels": "채팅은 최대 4개까지 열 수 있어요.",

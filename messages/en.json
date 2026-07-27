@@ -3243,6 +3243,7 @@
     "confirmedNoSlot": "No slot",
     "confirmedChatCta": "Chat",
     "chatUnreadBadge": "Unread participant message",
+    "chatUnreadCount": "{count} unread messages",
     "confirmedBroadcastCta": "Broadcast",
     "chatClose": "Close",
     "chatMaxPanels": "You can open up to 4 chats at once.",
