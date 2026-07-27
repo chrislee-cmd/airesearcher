@@ -948,8 +948,6 @@
   "ProjectPicker": {
     "placeholder": "เลือกโปรเจกต์",
     "newProject": "+ โปรเจกต์ใหม่",
-    "applyToAll": "ใช้กับวิดเจ็ตทั้งหมด",
-    "applyToAllHint": "☑ ติ๊กเพื่อใช้กับทุกวิดเจ็ต · ไม่ติ๊กใช้เฉพาะวิดเจ็ตนี้",
     "createPlaceholder": "ชื่อโปรเจกต์ใหม่",
     "createConfirm": "สร้าง",
     "creating": "กำลังสร้าง…",

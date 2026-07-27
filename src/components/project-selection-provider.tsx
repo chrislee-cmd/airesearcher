@@ -12,11 +12,10 @@ import {
 // 통합 프로젝트 기반 — 위젯별 프로젝트 선택 Provider.
 //
 // 사용자 재확정(2026-07-10): "프로젝트 연동 강제는 안 맞음. 여러 프로젝트에
-// 다른 위젯을 쓸 수 있으니 개별 피커. 대신 옵션으로 '전체 적용'." 즉:
+// 다른 위젯을 쓸 수 있으니 개별 피커." 즉:
 //   - 프로젝트 엔티티(목록)는 공유(interview_projects SSOT)
 //   - **선택은 위젯별 독립** — 프로빙=프로젝트 A, 통역=프로젝트 B 동시 가능
-//   - 강제 sync 없음. 단 1회성 applyToAll("전체 위젯에 적용") 로 한 번에 맞출 수 있음
-//     (이후엔 다시 각자 독립 — 상시 동기화가 아니다).
+//   - 강제 sync 없음 — 각 위젯이 자기 선택을 독립적으로 관리한다.
 //
 // 선택 상태만 여기서 관리한다(어떤 프로젝트를 골랐는지). 프로젝트 목록 자체는
 // useInterviewV2Projects, 설정값은 useProjectWidgetSettings 가 담당 — 관심사 분리.
@@ -32,9 +31,6 @@ type Ctx = {
   selection: SelectionMap;
   getSelection: (widget: string) => string | null;
   setSelection: (widget: string, projectId: string | null) => void;
-  // 1회성 "전체 적용" — 이미 등장한 모든 위젯 선택을 이 프로젝트로 맞춘다.
-  // 이후 각 위젯은 다시 독립적으로 바꿀 수 있다(상시 sync 아님).
-  applyToAll: (projectId: string | null) => void;
 };
 
 const STORAGE_KEY = 'project_selection:v1';
@@ -100,24 +96,9 @@ export function ProjectSelectionProvider({
     [selection],
   );
 
-  const applyToAll = useCallback((projectId: string | null) => {
-    // 1회성: 지금까지 한 번이라도 선택된 위젯 키 전부를 이 프로젝트로 맞춘다.
-    // 아직 등장 안 한 위젯은 자기가 처음 setSelection 할 때 독립적으로 정해진다.
-    setSelectionState((prev) => {
-      const next: SelectionMap = {};
-      for (const key of Object.keys(prev)) next[key] = projectId;
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
-
   const value = useMemo<Ctx>(
-    () => ({ selection, getSelection, setSelection, applyToAll }),
-    [selection, getSelection, setSelection, applyToAll],
+    () => ({ selection, getSelection, setSelection }),
+    [selection, getSelection, setSelection],
   );
 
   return (
@@ -136,7 +117,6 @@ export function useProjectSelection(): Ctx {
       selection: {},
       getSelection: () => null,
       setSelection: () => {},
-      applyToAll: () => {},
     };
   }
   return ctx;

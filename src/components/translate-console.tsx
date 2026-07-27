@@ -5076,8 +5076,9 @@ export function TranslateConsole({
   const projectName =
     v2Projects.find((p) => p.id === projectId)?.name ??
     t('setup.step1Selected');
-  // 크로스위젯 "일괄 적용" 반영(프로토 A.1) — 등장한 모든 위젯 선택이 이 위젯의
-  // 프로젝트와 동일하면 STEP1 done 요약에 "· 일괄" 태그. applyToAll 로 맞춰진 상태.
+  // 크로스위젯 "일괄" 반영 — 등장한 모든 위젯 선택이 이 위젯의 프로젝트와
+  // 동일하면 STEP1 done 요약에 "· 일괄" 태그(사용자가 모든 위젯을 같은
+  // 프로젝트로 맞춘 상태를 파생 표시 — 선택 비교로만 계산).
   const selectionValues = Object.values(selection);
   const projectAppliedToAll =
     projectId != null &&

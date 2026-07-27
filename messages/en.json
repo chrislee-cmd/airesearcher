@@ -858,8 +858,6 @@
   "ProjectPicker": {
     "placeholder": "Select a project",
     "newProject": "+ New project",
-    "applyToAll": "Apply to all widgets",
-    "applyToAllHint": "☑ Checked applies to all widgets · unchecked, this widget only",
     "createPlaceholder": "New project name",
     "createConfirm": "Create",
     "creating": "Creating…",

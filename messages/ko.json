@@ -858,8 +858,6 @@
   "ProjectPicker": {
     "placeholder": "프로젝트 선택",
     "newProject": "+ 새 프로젝트",
-    "applyToAll": "전체 위젯에 적용",
-    "applyToAllHint": "☑ 체크 시 모든 위젯에 일괄 적용 · 미체크 시 이 위젯에만",
     "createPlaceholder": "새 프로젝트 이름",
     "createConfirm": "생성",
     "creating": "생성 중…",
