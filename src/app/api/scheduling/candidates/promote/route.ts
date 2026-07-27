@@ -156,6 +156,9 @@ export async function POST(request: Request) {
 
   let promoted = 0;
   let merged = 0;
+  // E2 §① 유입 시점 자동 확정: 승격으로 roster 에 안착한 행 id 를 모아 마지막에
+  // 일괄 확정한다(status='confirmed'). intake→roster 전이가 곧 "확정".
+  const rosterIds: string[] = [];
   for (const c of allowed) {
     const moving = targetBatchId != null && targetBatchId !== c.batch_id;
     if (!moving) {
@@ -164,7 +167,10 @@ export async function POST(request: Request) {
         .from('sched_candidates')
         .update({ stage: 'roster' })
         .eq('id', c.id);
-      if (!error) promoted += 1;
+      if (!error) {
+        promoted += 1;
+        rosterIds.push(c.id);
+      }
       continue;
     }
 
@@ -186,13 +192,31 @@ export async function POST(request: Request) {
       if (!upErr) {
         await admin.from('sched_candidates').delete().eq('id', c.id);
         merged += 1;
+        rosterIds.push(existing.id);
       }
     } else {
       const { error } = await admin
         .from('sched_candidates')
         .update({ batch_id: targetBatchId, stage: 'roster' })
         .eq('id', c.id);
-      if (!error) promoted += 1;
+      if (!error) {
+        promoted += 1;
+        rosterIds.push(c.id);
+      }
+    }
+  }
+
+  // 자동 확정: pending → confirmed 만. `.eq('status','pending')` 로 communicating
+  // 세부상태를 덮지 않고(강등 아님), 이미 confirmed 인 행도 no-op. best-effort —
+  // 승격(stage flip)은 이미 커밋됐으므로 확정 실패해도 응답을 막지 않는다.
+  if (rosterIds.length > 0) {
+    const confirm = await admin
+      .from('sched_candidates')
+      .update({ status: 'confirmed' })
+      .in('id', rosterIds)
+      .eq('status', 'pending');
+    if (confirm.error) {
+      console.error('[scheduling/promote] auto-confirm failed', confirm.error);
     }
   }
 
