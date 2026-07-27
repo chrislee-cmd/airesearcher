@@ -269,11 +269,10 @@ export function WidgetGuideModal({
                 onClick={togglePlay}
                 aria-label={playLabel}
                 title={playLabel}
-                className="relative inline-flex items-center justify-center rounded-full"
+                className="relative inline-flex items-center justify-center rounded-full bg-white/95"
                 style={{
                   width: 74,
                   height: 74,
-                  background: 'rgba(255,255,255,0.94)',
                   border: '3px solid var(--canvas-card-border)',
                   boxShadow: 'var(--shadow-memphis-lg)',
                 }}
@@ -284,11 +283,8 @@ export function WidgetGuideModal({
 
             {/* 하단 스크럽바 — 그라디언트 · mono 시간 · amore 진행 채움. */}
             <div
-              className="absolute inset-x-0 bottom-0 flex items-center gap-[11px]"
-              style={{
-                padding: '12px 16px',
-                background: 'linear-gradient(transparent, rgba(0,0,0,0.55))',
-              }}
+              className="absolute inset-x-0 bottom-0 flex items-center gap-[11px] bg-gradient-to-b from-transparent to-black/55"
+              style={{ padding: '12px 16px' }}
             >
               {/* 재생 중이면 스크럽바에 pause 토글(정지 시엔 큰 play 버튼이 담당). */}
               {playing && (
