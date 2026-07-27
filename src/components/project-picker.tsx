@@ -140,9 +140,23 @@ export function ProjectPicker({
     });
   }
 
-  // 각 프로젝트 행 = [이름(선택) | 보관(hover) | 체크박스(전체 적용)] + 맨 아래
-  // "+ 새 프로젝트". 현재 선택은 이름을 강조하고, 전체 적용 여부는 체크박스로.
+  // 맨 위 "+ 새 프로젝트"(구분선으로 프로젝트 목록과 분리) + 각 프로젝트 행
+  // = [이름(선택) | 보관(hover) | 체크박스(전체 적용)]. 생성 액션을 최상단에
+  // 고정해 프로젝트 수와 무관하게 항상 같은 위치 → 근육기억 형성. 현재 선택은
+  // 이름을 강조하고, 전체 적용 여부는 체크박스로.
   const items: DropdownItem[] = [
+    {
+      key: '__create__',
+      label: t('newProject'),
+      onSelect: () => {
+        setCreateError(false);
+        setDraftName('');
+        setCreating(true);
+      },
+      // 생성 액션이 프로젝트 행처럼 안 보이게 아래에 구분선. 프로젝트가 0개면
+      // 마지막 항목이라 primitive 쪽에서 구분선을 자동 생략(dangling 방지).
+      separatorAfter: true,
+    },
     ...projects.map((p) => ({
       key: p.id,
       label: (
@@ -163,15 +177,6 @@ export function ProjectPicker({
         ariaLabel: t('applyToAll'),
       },
     })),
-    {
-      key: '__create__',
-      label: t('newProject'),
-      onSelect: () => {
-        setCreateError(false);
-        setDraftName('');
-        setCreating(true);
-      },
-    },
   ];
 
   return (

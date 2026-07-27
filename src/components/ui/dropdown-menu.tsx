@@ -3,6 +3,7 @@
 import {
   type CSSProperties,
   type ReactNode,
+  Fragment,
   useCallback,
   useEffect,
   useId,
@@ -30,6 +31,11 @@ export type DropdownItem = {
   hint?: ReactNode;
   onSelect: () => void | Promise<void>;
   disabled?: boolean;
+  // Render a thin divider directly below this row. Used to visually detach a
+  // pinned action (e.g. the ProjectPicker "＋ 새 프로젝트" fixed at the top) from
+  // the list beneath it. Suppressed when the row is last so no dangling divider
+  // (e.g. an empty project list where the create action is the only item).
+  separatorAfter?: boolean;
   // Optional trailing checkbox on the right of the row. Independent from
   // onSelect — toggling it neither fires the row's onSelect nor closes the
   // menu, so the user can watch the check move between rows. Used by
@@ -244,11 +250,21 @@ export function DropdownMenu({
                     ) : null}
                   </button>
                 );
+                // Thin divider below a pinned row (separatorAfter). Skipped on
+                // the last item so a create-only (empty) list has no dangling rule.
+                const separator =
+                  item.separatorAfter && i < items.length - 1 ? (
+                    <div
+                      role="separator"
+                      className="my-1 border-t border-line-soft"
+                    />
+                  ) : null;
                 if (!item.toggle && !item.action) {
                   return (
-                    <div key={item.key} role="none">
-                      {rowBtn}
-                    </div>
+                    <Fragment key={item.key}>
+                      <div role="none">{rowBtn}</div>
+                      {separator}
+                    </Fragment>
                   );
                 }
                 // Trailing-control row: menuitem button + optional action
@@ -259,35 +275,34 @@ export function DropdownMenu({
                 // menu (the row it acts on typically disappears); the checkbox
                 // keeps the menu open so the user can watch the check move.
                 return (
-                  <div
-                    key={item.key}
-                    role="none"
-                    className="group flex items-center pr-3"
-                  >
-                    {rowBtn}
-                    {item.action ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const act = item.action;
-                          if (!act) return;
-                          close();
-                          act.onAction();
-                        }}
-                        aria-label={item.action.ariaLabel}
-                        className="shrink-0 rounded-xs p-1 text-mute opacity-0 transition-opacity duration-[120ms] hover:bg-line-soft/50 hover:text-warning focus:opacity-100 focus:outline-none group-hover:opacity-100"
-                      >
-                        {item.action.icon}
-                      </button>
-                    ) : null}
-                    {item.toggle ? (
-                      <Checkbox
-                        checked={item.toggle.checked}
-                        onChange={item.toggle.onToggle}
-                        aria-label={item.toggle.ariaLabel}
-                      />
-                    ) : null}
-                  </div>
+                  <Fragment key={item.key}>
+                    <div role="none" className="group flex items-center pr-3">
+                      {rowBtn}
+                      {item.action ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const act = item.action;
+                            if (!act) return;
+                            close();
+                            act.onAction();
+                          }}
+                          aria-label={item.action.ariaLabel}
+                          className="shrink-0 rounded-xs p-1 text-mute opacity-0 transition-opacity duration-[120ms] hover:bg-line-soft/50 hover:text-warning focus:opacity-100 focus:outline-none group-hover:opacity-100"
+                        >
+                          {item.action.icon}
+                        </button>
+                      ) : null}
+                      {item.toggle ? (
+                        <Checkbox
+                          checked={item.toggle.checked}
+                          onChange={item.toggle.onToggle}
+                          aria-label={item.toggle.ariaLabel}
+                        />
+                      ) : null}
+                    </div>
+                    {separator}
+                  </Fragment>
                 );
               })}
               {footer ? (
