@@ -64,12 +64,18 @@ type LoadedData = {
 export function JourneyScheduleTab({
   formId,
   projectId = null,
+  onShareToken,
 }: {
   formId: string | null;
   // Pill (interview_projects) id — form-free schedule anchor (card 583). Lets the
   // 일정 tab render even before a form is published; when both are present the
   // server converges them on one sched project.
   projectId?: string | null;
+  // Master-link wiring (#600): the schedule bundle already carries the project's
+  // share_token (project-scoped, gen_random_uuid backfilled). Surface it up so the
+  // host can render the master-link chip. Caller MUST pass a stable callback (a
+  // useState setter) — it's in `load`'s deps, so an unstable fn re-triggers fetch.
+  onShareToken?: (token: string | null) => void;
 }) {
   const t = useTranslations('Recruiting.journey');
   const toast = useToast();
@@ -92,6 +98,9 @@ export function JourneyScheduleTab({
           return;
         }
         const bundle = (await res.json()) as ScheduleBundle;
+        // Surface the project-scoped share_token up (#600) — the master-link chip
+        // lives on the host header, gated to the schedule tab.
+        onShareToken?.(bundle.project?.share_token ?? null);
         setState({
           phase: 'ready',
           data: {
@@ -110,7 +119,7 @@ export function JourneyScheduleTab({
         setState({ phase: 'error' });
       }
     },
-    [formId, projectId],
+    [formId, projectId, onShareToken],
   );
 
   // Mount starts at 'loading' (initial state); the parent keys this component on

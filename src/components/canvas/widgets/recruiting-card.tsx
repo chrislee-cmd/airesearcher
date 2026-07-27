@@ -270,6 +270,11 @@ function ExpandedBody() {
   // 다음 진입 시 fresh fetch 로 노출된다 — 탭 이동 강제 없음(spec §1 유입 규칙을
   // 브리지에도 동일 적용; 보수적 해석, PR 본문 명시).
   const [journeyTab, setJourneyTab] = useState<JourneyTab>('responses');
+  // 공유(마스터) 링크 배선(#600) — 일정 탭이 로드한 project.share_token 을 여기로
+  // 올려 masterLink 를 구성한다. share_token 은 프로젝트 귀속(sched_projects) 이라
+  // 프로젝트/폼 전환 시 일정 탭 remount → 새 토큰으로 갱신된다. setter 는 안정
+  // 참조라 그대로 콜백으로 넘긴다(일정 탭 fetch 루프 방지).
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const handleBridgeSent = useCallback(() => {
     clearBridge();
     // 승격/브리지 성공 → 업로드 명단 재조회(승격분은 intake 목록에서 빠진다).
@@ -454,10 +459,12 @@ function ExpandedBody() {
           onCreateProject={handleCreateProject}
           onArchiveProject={archive}
           onUnarchiveProject={unarchive}
-          // P0(백엔드) 미머지 — 마스터링크 lazy 프로비저닝 · counts API ·
-          // 접근통일(Share orgId+members) 은 각 웨이브가 배선. P1 은 셸 구조만
-          // 완성하고 이 슬롯들은 graceful 숨김(스펙 §제약).
-          masterLink={null}
+          // 마스터링크 복구(#600) — 2탭화(#579)에서 null 로 stub 됐던 공유 링크.
+          // share_token(프로젝트 귀속, 이미 API 반환)을 일정 탭이 올려주면 절대
+          // URL `/schedule/<token>` 로 chip 배선(셸이 ②일정 탭에서만 노출). counts
+          // API · 접근통일(Share orgId+members) 은 각 웨이브가 배선 — 아직 graceful 숨김.
+          masterLink={shareToken ? { url: `/schedule/${shareToken}` } : null}
+          onShareToken={setShareToken}
           counts={undefined}
           shareButton={undefined}
           onRefresh={handleRefresh}
