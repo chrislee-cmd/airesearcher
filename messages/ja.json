@@ -3342,6 +3342,7 @@
     "confirmedNoSlot": "スロットなし",
     "confirmedChatCta": "チャット",
     "chatUnreadBadge": "未読の参加者メッセージ",
+    "chatUnreadCount": "未読メッセージ {count}件",
     "confirmedBroadcastCta": "全体連絡",
     "chatClose": "閉じる",
     "chatMaxPanels": "チャットは最大4件まで開けます。",

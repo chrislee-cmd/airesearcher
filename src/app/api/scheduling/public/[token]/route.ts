@@ -109,8 +109,14 @@ export async function GET(
   // Other groups' group broadcasts and other candidates' private messages are
   // never selected — group isolation + IDOR defense are both server-side here.
   // 미확정 참가자는 broadcast 절을 아예 빼고 개인 스레드만 읽는다.
+  // 전체 공지(batch_id null)는 이 토큰의 프로젝트로 한정한다 — project_id 로 묶지
+  // 않으면 다른 프로젝트의 전역 공지가 이 참가자에게 새어 들어온다(교차 프로젝트
+  // 누출). 그룹 공지(batch_id.eq)는 배치가 이미 프로젝트에 귀속돼 자동 격리된다.
+  // project_id 컬럼이 없는 프리뷰 DB 에선 wide 읽기가 에러 → 아래 narrow 폴백이
+  // 프로젝트 스코핑 없이(레거시) 처리한다.
+  const globalBroadcast = `and(candidate_id.is.null,batch_id.is.null,project_id.eq.${project.id})`;
   const broadcastClause = isConfirmed
-    ? `and(candidate_id.is.null,batch_id.is.null),` +
+    ? `${globalBroadcast},` +
       `and(candidate_id.is.null,batch_id.eq.${candidate.batch_id}),`
     : '';
   const wideFilter = `${broadcastClause}candidate_id.eq.${candidate.id}`;

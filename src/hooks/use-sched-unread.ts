@@ -54,6 +54,9 @@ export function useSchedUnread(
   // True when a participant message in this thread is newer than the admin's
   // last-seen mark for it.
   isUnread: (threadId: string) => boolean;
+  // How many participant messages in this thread are newer than the admin's
+  // last-seen mark (0 when none / seen). Drives the chat-picker count badge.
+  unreadCount: (threadId: string) => number;
   // Record the current time as "seen" for this thread → clears its badge.
   markSeen: (threadId: string) => void;
   // Latest participant-message time per thread (epoch ms). Exposed so the parent
@@ -64,7 +67,11 @@ export function useSchedUnread(
   const batchKey = useMemo(() => [...batchIds].sort().join(','), [batchIds]);
   const ids = useMemo(() => (batchKey ? batchKey.split(',') : []), [batchKey]);
 
-  const [latest, setLatest] = useState<Map<string, number>>(new Map());
+  // Every participant-message timestamp per thread (epoch ms). Retaining the
+  // full list (not just the latest) lets us COUNT those newer than last-seen —
+  // the badge number — while still deriving the latest for the boolean/seen
+  // paths below. Batches are small (one project's private threads).
+  const [times, setTimes] = useState<Map<string, number[]>>(new Map());
   const [seen, setSeen] = useState<SeenMap>(() => loadSeen());
   // Guards against a slow response overwriting a newer one.
   const reqIdRef = useRef(0);
@@ -84,16 +91,18 @@ export function useSchedUnread(
         ),
       );
       if (reqId !== reqIdRef.current) return; // a newer request superseded us
-      const map = new Map<string, number>();
+      const map = new Map<string, number[]>();
       for (const json of results) {
         for (const m of json?.messages ?? []) {
           if (m.sender_role !== 'participant') continue;
           const key = threadOf(m);
           const at = new Date(m.created_at).getTime();
-          if (at > (map.get(key) ?? 0)) map.set(key, at);
+          const arr = map.get(key);
+          if (arr) arr.push(at);
+          else map.set(key, [at]);
         }
       }
-      setLatest(map);
+      setTimes(map);
     } catch {
       // ignore — realtime or the next poll will catch up
     }
@@ -104,7 +113,7 @@ export function useSchedUnread(
   useEffect(() => {
     if (ids.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clear on empty scope
-      setLatest(new Map());
+      setTimes(new Map());
       return;
     }
     void refetch();
@@ -158,6 +167,19 @@ export function useSchedUnread(
     [projectId],
   );
 
+  // Latest participant timestamp per thread — derived from the full lists so the
+  // existing boolean/seen paths (and the parent's open-tile mark-seen effect)
+  // keep the same Map<string, number> shape.
+  const latest = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [key, arr] of times) {
+      let max = 0;
+      for (const at of arr) if (at > max) max = at;
+      m.set(key, max);
+    }
+    return m;
+  }, [times]);
+
   const isUnread = useCallback(
     (threadId: string): boolean => {
       if (!projectId) return false;
@@ -168,5 +190,18 @@ export function useSchedUnread(
     [projectId, latest, seen],
   );
 
-  return { isUnread, markSeen, latestParticipantAt: latest };
+  const unreadCount = useCallback(
+    (threadId: string): number => {
+      if (!projectId) return 0;
+      const arr = times.get(threadId);
+      if (!arr) return 0;
+      const lastSeen = seen[seenKey(projectId, threadId)] ?? 0;
+      let n = 0;
+      for (const at of arr) if (at > lastSeen) n++;
+      return n;
+    },
+    [projectId, times, seen],
+  );
+
+  return { isUnread, unreadCount, markSeen, latestParticipantAt: latest };
 }

@@ -40,6 +40,7 @@ import {
   type SlotDraft,
 } from '@/components/admin/slot-editor-modal';
 import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
+import { UnreadBadge } from '@/components/ui/unread-badge';
 import { useSchedUnread } from '@/hooks/use-sched-unread';
 import { BROADCAST_THREAD_ID } from '@/lib/scheduling/messages';
 import { CONTACT_MASK } from '@/lib/scheduling/candidate-masking';
@@ -923,6 +924,7 @@ export function JourneySchedulingSurface({
                 >
                   <SchedulingChatPanel
                     batchId={ctx.batchId}
+                    projectId={project.id}
                     candidates={ctx.candidateOptions}
                     // 개인 피커는 확정 전원(그룹 무관) — spec 항목1.
                     personalCandidates={confirmedChatCandidates}
@@ -948,6 +950,9 @@ export function JourneySchedulingSurface({
                     // new tile. New tiles come from roster rows + broadcast CTA.
                     onSelectThread={(id) => switchTile(tileId, id)}
                     onClose={() => closeTile(tileId)}
+                    // 개인 피커 안읽음 배지 — 후보(threadId=candidate.id)별 미확인
+                    // 참석자 메시지 수. 열린 스레드는 markSeen 유지(위 effect)라 0.
+                    unreadCount={unread.unreadCount}
                     // 전체 공지 수신자 집합 = 확정자(N), 문자 자격 = 확정∩합류∩전화(M).
                     confirmedCount={confirmedCount}
                     confirmedSmsCount={confirmedSmsCount}
@@ -1016,7 +1021,7 @@ export function JourneySchedulingSurface({
                 {t('confirmedBroadcastCta')}
               </Button>
               {isThreadUnread(BROADCAST_THREAD_ID) && (
-                <UnreadDot label={t('chatUnreadBadge')} />
+                <UnreadBadge label={t('chatUnreadBadge')} />
               )}
             </span>
           </div>
@@ -1333,19 +1338,6 @@ function roundToNextHalfHour(d: Date): Date {
   const m = c.getMinutes();
   c.setMinutes(m < 30 ? 30 : 60);
   return c;
-}
-
-// Unread badge (빨간콩) — a Memphis-framed amore dot marking a thread with an
-// unseen participant message.
-function UnreadDot({ label }: { label: string }) {
-  return (
-    <span
-      role="status"
-      aria-label={label}
-      title={label}
-      className="inline-block h-3 w-3 shrink-0 rounded-full border-2 border-ink bg-amore shadow-memphis-2xs"
-    />
-  );
 }
 
 // Next-slot dot color by status — binds the recsched slot-status tokens.
