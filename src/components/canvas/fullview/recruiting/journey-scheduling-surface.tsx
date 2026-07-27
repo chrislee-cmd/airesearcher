@@ -43,6 +43,7 @@ import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
 import { useSchedUnread } from '@/hooks/use-sched-unread';
 import { BROADCAST_THREAD_ID } from '@/lib/scheduling/messages';
 import { CONTACT_MASK } from '@/lib/scheduling/candidate-masking';
+import { relativeJoined } from '@/lib/relative-time';
 import {
   type SchedSlot,
   type SlotStatus,
@@ -636,8 +637,8 @@ export function JourneySchedulingSurface({
   // Contact/email arrive server-masked (●●●● + 🔒) — the client renders them as-is
   // (클라 마스킹 금지). 확정자는 상태 칩으로 구분(기존 표기 재사용).
   function renderRosterTable(rows: JourneyScheduleCandidate[]) {
-    // check + name + contact + source + email + status + slot + N fields.
-    const colSpan = 7 + fieldColumns.length;
+    // check + name + contact + linkAccess + source + email + status + slot + N fields.
+    const colSpan = 8 + fieldColumns.length;
     return (
       <div className="overflow-x-auto">
         {/* border-separate (not collapse): under border-collapse, z-index on
@@ -668,6 +669,7 @@ export function JourneySchedulingSurface({
               >
                 {t('colContact')}
               </th>
+              <th className="px-4 py-2.5">{t('colLinkAccess')}</th>
               <th className="px-4 py-2.5">{tj('colSource')}</th>
               <th className="px-4 py-2.5">{t('colEmail')}</th>
               <th className="px-4 py-2.5">{t('statusColLabel')}</th>
@@ -740,6 +742,25 @@ export function JourneySchedulingSurface({
                       >
                         {contactMasked ? `🔒 ${contact}` : (contact ?? '—')}
                       </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {c.joined_at ? (
+                        // 폰게이트(6자리) 통과 = 접속함. 상대시간은 공용 relativeJoined.
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-success">
+                          <span
+                            className="inline-block h-2 w-2 shrink-0 rounded-full bg-success"
+                            aria-hidden
+                          />
+                          {t('linkAccessJoined')}
+                          <span className="font-mono text-xs font-normal tabular-nums text-mute-soft">
+                            · {relativeJoined(c.joined_at, now, t)}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold text-faint">
+                          {t('linkAccessNone')}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5">
                       <span
