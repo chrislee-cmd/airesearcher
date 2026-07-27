@@ -22,6 +22,8 @@ import {
   listProjectCandidates,
   matchCandidatesByTail,
   matchCandidatesByFullPhone,
+  groupByPhoneIdentity,
+  pickPrimaryCandidate,
   type SchedPublicCandidate,
 } from '@/lib/scheduling/public';
 
@@ -29,6 +31,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 import {
   signParticipantGate,
   participantGateCookieName,
+  phoneIdentityKey,
   PARTICIPANT_GATE_TTL_MIN,
 } from '@/lib/scheduling/participant-gate';
 import {
@@ -86,11 +89,19 @@ async function stampJoin(admin: Admin, candidateId: string) {
   }
 }
 
-// 게이트 통과 = 쿠키 발급 + 합류 스탬프. 두 성공 경로(고유 매칭·이름/전화 확정)가
-// 공유한다 — 스탬프 지점을 한 곳으로 모아 누락을 막는다.
-async function letIn(admin: Admin, shareToken: string, candidateId: string) {
-  await stampJoin(admin, candidateId);
-  await setGateCookie(shareToken, candidateId);
+// 게이트 통과 = 쿠키 발급 + 합류 스탬프. 모든 성공 경로가 공유한다 — 스탬프 지점을
+// 한 곳으로 모아 누락을 막는다. `rows` 는 한 사람의 (중복 포함) 매칭 행 전부:
+//   * 쿠키에는 결정적 primary 행(그룹 행 우선) 하나만 바인딩한다.
+//   * joined 스탬프는 중복 행 **전부**에 찍는다 — 로스터(601 링크접속 컬럼)에
+//     한 행만 "접속함"으로 뜨는 불일치를 막기 위함(신원 collapse 일관성).
+async function letIn(
+  admin: Admin,
+  shareToken: string,
+  rows: SchedPublicCandidate[],
+) {
+  const primary = pickPrimaryCandidate(rows);
+  for (const r of rows) await stampJoin(admin, r.id);
+  await setGateCookie(shareToken, primary.id);
 }
 
 export async function POST(
@@ -150,11 +161,17 @@ export async function POST(
   // ── Full-phone fallback (name collision) ──────────────────────────────────
   if (fullPhone !== undefined) {
     const matches = matchCandidatesByFullPhone(candidates, fullPhone);
-    if (matches.length === 1) {
-      await letIn(admin, token, matches[0].id);
+    // Duplicate inbox+group rows of ONE person all share the same full phone →
+    // one identity. Previously `=== 1` dead-ended them (2+ identical rows → 404
+    // even after typing the whole number). Let them in when every match is the
+    // same identity; only 0 matches, or (defensively) 2+ *distinct* phones,
+    // fail. matchCandidatesByFullPhone requires exact digit equality, so a
+    // single identity is the norm here.
+    const identities = groupByPhoneIdentity(matches);
+    if (identities.size === 1) {
+      await letIn(admin, token, [...identities.values()][0]);
       return NextResponse.json({ ok: true });
     }
-    // 0 or (truly identical) 2+ → can't identify.
     return NextResponse.json({ error: 'no_match' }, { status: 404 });
   }
 
@@ -168,29 +185,43 @@ export async function POST(
     return NextResponse.json({ error: 'no_match' }, { status: 404 });
   }
 
+  // Collapse duplicate rows of the SAME person (identical full phone) into one
+  // identity. inbox+group duplication (legacy source=null) puts one candidate
+  // in 2+ rows; without this, a same-name pair dead-ends — 2 tail matches →
+  // full-phone prompt → still 2 matches → no_match. Distinct identities (truly
+  // different people who happen to share a tail) stay separate for disambig.
+  const identities = groupByPhoneIdentity(matches);
+
   // ── Disambiguation confirm — a name was picked after a collision ──────────
   if (candidateId !== undefined) {
     const chosen = matches.find((c) => c.id === candidateId);
     // The chosen id MUST be one that actually matches the tail (re-checked
     // server-side) — a visitor can't inject an arbitrary candidate id.
     if (!chosen) return invalid();
-    await letIn(admin, token, chosen.id);
+    // Let the whole identity in (stamp all of the picked person's rows).
+    const key = phoneIdentityKey(chosen.phone);
+    const rows = (key && identities.get(key)) || [chosen];
+    await letIn(admin, token, rows);
     return NextResponse.json({ ok: true });
   }
 
-  // Unique match → straight through.
-  if (matches.length === 1) {
-    await letIn(admin, token, matches[0].id);
+  // Single distinct identity (one person, however many duplicate rows) → in.
+  // This subsumes the old unique-match case AND the reported dead-end where a
+  // person's inbox+group rows previously read as a 2-way collision.
+  if (identities.size === 1) {
+    await letIn(admin, token, [...identities.values()][0]);
     return NextResponse.json({ ok: true });
   }
 
-  // ── Tail collision (2+) → disambiguate ────────────────────────────────────
-  // Prefer a name pick. If names can't tell them apart (blank or duplicated),
-  // fall back to asking for the full phone number.
-  if (namesAreDistinct(matches)) {
+  // ── Tail collision (2+ distinct people) → disambiguate ────────────────────
+  // Dedupe the picker to ONE row per identity so the same person never appears
+  // twice. Prefer a name pick; if names can't tell them apart (blank or
+  // duplicated), fall back to asking for the full phone number.
+  const distinct = [...identities.values()].map(pickPrimaryCandidate);
+  if (namesAreDistinct(distinct)) {
     return NextResponse.json({
       collision: true,
-      candidates: matches.map((c) => ({ id: c.id, name: c.name })),
+      candidates: distinct.map((c) => ({ id: c.id, name: c.name })),
     });
   }
   return NextResponse.json({ collision: true, needFullPhone: true });
