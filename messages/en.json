@@ -1808,6 +1808,22 @@
       "embedding": "Indexing"
     }
   },
+  "WidgetGuide": {
+    "title": "How to use · {name}",
+    "readDocs": "📄 Read the docs",
+    "close": "Close",
+    "play": "Play",
+    "pause": "Pause",
+    "seek": "Seek",
+    "blurb": {
+      "probing": "See how to inject follow-up questions and read the live persona as the interview runs.",
+      "translate": "Set the language pair, start interpreting, and share the observer link with your team.",
+      "quotes": "Upload recordings or record live, then get a speaker-separated transcript.",
+      "moderator_ai": "Create a session, share the link, and watch the participant test in real time.",
+      "recruiting": "Turn a brief into screening criteria, publish a form, and schedule the people who fit.",
+      "desk": "Add keywords, pick sources, and get a cited research report."
+    }
+  },
   "Widgets": {
     "fullview": "Open Fullview",
     "guide": "How to use · video guide",
