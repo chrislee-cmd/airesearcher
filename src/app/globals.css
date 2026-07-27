@@ -686,6 +686,35 @@
      고정 128 로 봉인(box-border, flex column, top-align + clamp). 유틸 네임스페이스
      밖이라 h-[var(--mode-card-h)] 로 소비. 값 SSOT — 한 곳 변경 → 전 그리드 반영. */
   --mode-card-h: 128px;
+
+  /* =======================================================================
+     Picker system Phase 0 — 글로벌 픽커 컴포넌트(Phase 1) 토큰 갭 6종 승격.
+     CD 번들 `picker global` BUILD-SPEC §5 값 그대로. 이 PR 은 정의 + lint
+     매핑만 — 사용처 0 (Phase 1 부터). radius 는 DS 스케일(4/14/24) off-scale
+     인 CD 절대값이라 가장 가까운 토큰으로 굽히지 않고(AUTHORITY) 픽커 스코프
+     전용 토큰으로 승격. 컴포넌트명을 이름에 embed 하는 --radius-mode-card /
+     --fv-radius-* 선례를 따른다.
+     ======================================================================= */
+  /* 선택 옵션 행 tint (sun ~4%). theme-agnostic CD 절대값 리터럴 (위 signal 계열
+     선례) — bg-picker-option-selected utility 로 소비. */
+  --color-picker-option-selected: #fffdf6;
+  /* 제품 전체 첫 포커스 토큰 — 지금까지 포커스 링이 표면마다 손코딩됐다. 2px
+     paper 갭 + 4px amore 링. CD §6 #4 writer 확정값. shadow-focus-ring 로 소비. */
+  --shadow-focus-ring: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-amore);
+  /* 플로팅 픽커 패널 lift — memphis-md 와 -lg 사이의 tinted 솔리드 오프셋.
+     shadow-picker-panel 로 소비. */
+  --shadow-picker-panel: 4px 4px 0 rgba(29, 27, 32, 0.22);
+  /* 픽커 스코프 radius 4종 (rounded-picker-{check,option,trigger,panel}).
+     radius-picker-trigger(10) 는 --widget-card-frame-toolbar-radius(10) 과 값이
+     우연히 같으나 병합 금지 — 위젯 셸 토큰은 CD 셸 권위, 픽커 토큰은 픽커 권위. */
+  --radius-picker-check: 5px;
+  --radius-picker-option: 8px;
+  --radius-picker-trigger: 10px;
+  --radius-picker-panel: 13px;
+  /* 첫 컨트롤 높이 토큰 — 지금은 padding 파생이라 표면마다 드리프트. 유틸
+     네임스페이스 밖이라 h-[var(--control-h-md)] 로 소비. */
+  --control-h-md: 34px;
+  --control-h-sm: 28px;
 }
 
 /* =========================================================================
