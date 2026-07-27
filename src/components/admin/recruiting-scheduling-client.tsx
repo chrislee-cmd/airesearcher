@@ -1632,6 +1632,7 @@ export function RecruitingSchedulingClient({
                       >
                         <SchedulingChatPanel
                           batchId={ctx.batchId}
+                          projectId={selectedProjectId ?? undefined}
                           candidates={ctx.candidateOptions}
                           // 개인 피커는 확정 전원(그룹 무관) — spec 항목1.
                           personalCandidates={confirmedChatCandidates}

@@ -245,6 +245,70 @@ export async function ownerOfBatch(
   return (data?.owner_user_id as string | undefined) ?? null;
 }
 
+// A project's anchoring scope — owner + org — used to stamp new messages
+// (project_id/org_id) and to authorize a caller against the project. Returns
+// null when the project id doesn't resolve. org_id may be null on a project
+// that predates / wasn't reached by the org backfill (migration 20260725100200).
+export type ProjectScope = {
+  owner_user_id: string | null;
+  org_id: string | null;
+};
+
+export async function resolveProjectScope(
+  admin: Admin,
+  id: string,
+): Promise<ProjectScope | null> {
+  const { data } = await admin
+    .from('sched_projects')
+    .select('owner_user_id, org_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    owner_user_id: (data.owner_user_id as string | null) ?? null,
+    org_id: (data.org_id as string | null) ?? null,
+  };
+}
+
+// Resolve the project_id (+ org_id) a batch belongs to. Used by reads/writes to
+// anchor a batch-scoped message to its project. Returns null when the batch is
+// missing. project_id / org_id may each be null on preview/legacy rows.
+export type BatchScope = {
+  project_id: string | null;
+  org_id: string | null;
+};
+
+export async function resolveBatchScope(
+  admin: Admin,
+  id: string,
+): Promise<BatchScope | null> {
+  // Wide select carries project_id (the new anchor). A preview DB predating the
+  // project_id column errors → fall back to org_id only so batch-scoped reads
+  // still work (project scoping simply can't apply until the column lands).
+  const wide = await admin
+    .from('sched_batches')
+    .select('project_id, org_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (!wide.error) {
+    if (!wide.data) return null;
+    return {
+      project_id: (wide.data.project_id as string | null) ?? null,
+      org_id: (wide.data.org_id as string | null) ?? null,
+    };
+  }
+  const narrow = await admin
+    .from('sched_batches')
+    .select('org_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (narrow.error || !narrow.data) return null;
+  return {
+    project_id: null,
+    org_id: (narrow.data.org_id as string | null) ?? null,
+  };
+}
+
 export async function ownerOfCandidate(
   admin: Admin,
   id: string,
