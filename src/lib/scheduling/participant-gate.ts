@@ -50,6 +50,19 @@ export function normalizeTailInput(input: string): string {
 }
 
 /**
+ * 신원(identity) 식별키 — 전화번호의 **전체** 정규화 숫자. 같은 키 = 동일인.
+ * inbox+그룹 중복 행처럼 같은 사람이 여러 레코드로 존재할 때, 게이트가 이들을
+ * 한 사람으로 접기(collapse) 위한 기준. 숫자가 하나도 없으면 null(= 대조 불가).
+ * 뒷자리(phoneTail)와 달리 마지막 6자리로 자르지 않는다 — tail 충돌한 서로 다른
+ * 사람을 통과시키면 안 되므로, 신원 판정은 반드시 전체 번호 완전 일치로만 한다.
+ */
+export function phoneIdentityKey(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  return digits || null;
+}
+
+/**
  * candidate.phone 뒷자리와 사용자 입력 뒷자리를 timing-safe 비교.
  * candidate 에 전화가 없으면(tail null) 항상 false — 대조할 시크릿이 없다.
  */
