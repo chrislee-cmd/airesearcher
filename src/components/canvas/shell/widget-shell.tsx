@@ -242,7 +242,17 @@ function WidgetToolbar({
       <span
         key="credit"
         className="inline-flex items-center justify-center font-mono font-bold tabular-nums"
-        style={{ ...TOOLBAR_CELL_STYLE, gap: 5, fontSize: 11 }}
+        // 숫자 크레딧(25/50/75)은 44px 안에 센터(CD 불변식 유지). 단, AI UT 처럼
+        // costLabel 이 단어("PREVIEW")면 44px 고정 시 3줄로 깨진다(CD 미도해 케이스)
+        // → minWidth 44 + nowrap 로 숫자는 44 유지, 단어 라벨만 한 줄로 자라남.
+        style={{
+          minWidth: 44,
+          padding: '6px 6px',
+          color: 'var(--canvas-card-header-text)',
+          gap: 5,
+          fontSize: 11,
+          whiteSpace: 'nowrap',
+        }}
       >
         <DuotoneIcon name="diamond" size={14} />
         <span>{costLabel ?? cost}</span>
