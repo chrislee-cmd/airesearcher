@@ -32,6 +32,14 @@ import { WidgetSubHeader } from '@/components/canvas/shell/widget-subheader';
 import { SectionLabel } from '@/components/canvas/shell/widget-outputs';
 import { WidgetCreditBadge } from '@/components/canvas/shell/widget-credit-badge';
 import { WidgetStatePill } from '@/components/canvas/shell/widget-state-pill';
+import {
+  PickerTrigger,
+  PickerGroup,
+  PickerLoading,
+  PickerEmpty,
+  PickerError,
+  PickerCheckRow,
+} from '@/components/ui/picker';
 import { PrimitivePage, Subsection } from './primitive-page';
 import {
   ModalDemo,
@@ -45,6 +53,7 @@ import {
   ModeButtonDemo,
   DateRangePopoverDemo,
   SelectMenuDemo,
+  PickerDemo,
 } from '../demos';
 
 export type SectionId =
@@ -64,6 +73,7 @@ export type SectionId =
   | 'textarea'
   | 'select'
   | 'select-menu'
+  | 'picker'
   | 'checkbox'
   | 'slider'
   | 'mode-button'
@@ -122,6 +132,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: 'textarea', label: 'Textarea', render: () => <TextareaSection /> },
       { id: 'select', label: 'Select', render: () => <SelectSection /> },
       { id: 'select-menu', label: 'SelectMenu', render: () => <SelectMenuSection /> },
+      { id: 'picker', label: 'Picker', render: () => <PickerSection /> },
       { id: 'checkbox', label: 'Checkbox', render: () => <CheckboxSection /> },
       { id: 'slider', label: 'Slider', render: () => <SliderSection /> },
       { id: 'mode-button', label: 'ModeButton', render: () => <ModeButtonSection /> },
@@ -871,6 +882,174 @@ function SelectMenuSection() {
         <SelectMenuDemo />
       </Subsection>
     </PrimitivePage>
+  );
+}
+
+function PickerSection() {
+  // 정적 트리거 상태 showcase — hover/focus 는 인터랙션이라 아래 Interactive 참고.
+  return (
+    <PrimitivePage
+      title="Picker"
+      hint="src/components/ui/picker/ · 제품 전역 dropdown/select/sort/filter 단일 패밀리 (BUILD-SPEC: design-handoff/picker-system/). 트리거 md/sm · 6상태 · 패널 P1 단일(즉시)·P2 멀티(Apply)·P3 2-pane(Apply) · portal(z-overlay)·flip-up·키보드 a11y(↑↓·Space·Enter·Esc·←→) · edge 4종. Phase 0 픽커 토큰 소비(focus-ring·control-h·radius-picker-*·shadow-picker-panel·picker-option-selected). 첫 소비자=리크루팅 업로드 명단 컨트롤. Phase 2/3 에서 위젯 툴바 등 확장."
+    >
+      <Subsection label="Trigger — sizes (md 34px 툴바/테이블 · sm 28px 위젯 레일)">
+        <div className="flex flex-wrap items-center gap-4">
+          <PickerTrigger size="md" icon={() => <SortGlyph />}>
+            Sort
+          </PickerTrigger>
+          <PickerTrigger size="sm" icon={() => <SortGlyph />}>
+            Sort
+          </PickerTrigger>
+        </div>
+      </Subsection>
+
+      <Subsection label="Trigger — states (default · open · applied · disabled · hover/focus 는 인터랙션)">
+        <div className="flex flex-wrap items-end gap-5">
+          <TriggerSwatch name="default">
+            <PickerTrigger>Sort</PickerTrigger>
+          </TriggerSwatch>
+          <TriggerSwatch name="open (ink fill · ▲)">
+            <PickerTrigger open>Sort</PickerTrigger>
+          </TriggerSwatch>
+          <TriggerSwatch name="applied (amore 배지)">
+            <PickerTrigger appliedCount={2}>Filter</PickerTrigger>
+          </TriggerSwatch>
+          <TriggerSwatch name="disabled">
+            <PickerTrigger disabled>Filter</PickerTrigger>
+          </TriggerSwatch>
+        </div>
+        <p className="mt-3 text-sm text-mute-soft">
+          hover = paper-soft · focus = focus-ring(2px amore offset). 아래 Interactive
+          에서 tab / hover 로 확인.
+        </p>
+      </Subsection>
+
+      <Subsection label="Grouping — 형제 2+ 는 한 세그먼트 컨트롤 (free-floating pill 금지)">
+        <div className="flex flex-wrap items-center gap-8">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-bold text-success">
+              ✓ 2+ sibling → ONE segmented control
+            </span>
+            <PickerGroup>
+              <PickerTrigger icon={() => <SortGlyph />}>Sort</PickerTrigger>
+              <PickerTrigger icon={() => <FilterGlyph />}>Filter</PickerTrigger>
+            </PickerGroup>
+          </div>
+          <div className="flex flex-col gap-2 opacity-45">
+            <span className="text-sm font-bold text-amore-deep">
+              ✕ never free-floating pills
+            </span>
+            <div className="flex gap-6">
+              <span className="rounded-full border-[1.5px] border-ink px-3 py-1.5 text-md">
+                Sort ▼
+              </span>
+              <span className="rounded-full border-[1.5px] border-ink px-3 py-1.5 text-md">
+                선정여부 ▼
+              </span>
+            </div>
+          </div>
+        </div>
+      </Subsection>
+
+      <Subsection label="Panels — P1 단일(즉시) · P2 멀티(Apply) · P3 2-pane(Apply) · 인터랙티브">
+        <PickerDemo />
+      </Subsection>
+
+      <Subsection label="Edge states — Loading · Empty · Error · Long labels">
+        <div className="flex flex-wrap gap-4">
+          <EdgeCard label="Loading">
+            <PickerLoading />
+          </EdgeCard>
+          <EdgeCard label="Empty">
+            <PickerEmpty
+              title="No matching options"
+              hint="Try a different search term."
+            />
+          </EdgeCard>
+          <EdgeCard label="Error">
+            <PickerError
+              message="Couldn't load options."
+              retryLabel="Retry"
+              onRetry={() => {}}
+            />
+          </EdgeCard>
+          <EdgeCard label="Long labels · truncate">
+            <div className="flex flex-col gap-0.5 p-2">
+              <PickerCheckRow
+                label="사용 중인 핸드폰 브랜드 — 애플 (아이폰 14 프로 이상)"
+                selected
+                count={128}
+              />
+              <PickerCheckRow
+                label="사용 중인 핸드폰 브랜드 — 삼성 갤럭시 S 시리즈"
+                selected={false}
+                count={96}
+              />
+              <PickerCheckRow label="기타 / 직접 입력" selected={false} count={12} />
+            </div>
+          </EdgeCard>
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function TriggerSwatch({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      {children}
+      <span className="font-mono text-xs text-mute-soft">{name}</span>
+    </div>
+  );
+}
+
+function EdgeCard({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="w-[290px] overflow-hidden rounded-picker-panel border-2 border-ink bg-paper shadow-memphis-sm-faint">
+      <div className="border-b-[1.5px] border-ink/[0.12] px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-mute-soft">
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SortGlyph() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M7 4v16" />
+      <path d="M4 8l3-4 3 4" />
+      <path d="M17 20V4" />
+      <path d="M14 16l3 4 3-4" />
+    </svg>
+  );
+}
+
+function FilterGlyph() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 5h18l-7 8v6l-4 2v-8z" />
+    </svg>
   );
 }
 

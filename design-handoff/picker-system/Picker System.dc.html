@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:7px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}
+a{color:#c2334f;}a:hover{color:#9e2740;}</style>
+</helmet>
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:44px;display:flex;flex-direction:column;align-items:flex-start;gap:34px;">
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:940px;">
+    <div style="font-family:'Outfit',sans-serif;font-size:29px;font-weight:800;color:#1d1b20;letter-spacing:-0.7px;">Picker System</div>
+    <div style="font-size:13.5px;color:#5b5965;line-height:1.7;">One component family for <b style="color:#1d1b20;">every</b> dropdown, select, sort and filter across the product — widget cards, fullviews, modals, public pages. Generalized from the Recruiting list controls (A/B/C). Anatomy is unchanged; what follows are the decisions that only appear once it goes global.</div>
+  </div>
+
+  <!-- ============ 1 · TRIGGER ============ -->
+  <div style="width:1220px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">01</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Trigger</div><div style="font-size:12.5px;color:#8a8693;">the button that opens a panel</div></div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:380px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">SIZES — md (default) · sm (dense)</div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;align-items:center;gap:13px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;width:34px;">md</span><div style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;padding:7px 12px;font-size:12.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">Sort<span style="font-size:9px;color:#8a8693;">▼</span></div><span style="font-size:11.5px;color:#8a8693;">34px tall · fullview toolbars, tables, modals</span></div>
+          <div style="display:flex;align-items:center;gap:13px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;width:34px;">sm</span><div style="display:inline-flex;align-items:center;gap:6px;border:1.4px solid #1d1b20;border-radius:8px;background:#fff;padding:5px 10px;font-size:11.5px;font-weight:700;color:#1d1b20;box-shadow:1.5px 1.5px 0 #1d1b20;">Sort<span style="font-size:8px;color:#8a8693;">▼</span></div><span style="font-size:11.5px;color:#8a8693;">28px · widget-card rails, side panels</span></div>
+          <div style="display:flex;align-items:center;gap:13px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;width:34px;">field</span><div style="display:inline-flex;align-items:center;justify-content:space-between;gap:7px;border:1.5px solid #1d1b20;border-radius:22px;background:#fff;padding:10px 16px;font-size:13px;font-weight:600;color:#1d1b20;width:230px;">Korean<span style="font-size:9px;color:#8a8693;">▼</span></div><span style="font-size:11.5px;color:#8a8693;">setup <b style="color:#1d1b20;">form fields keep radius 22</b> — unchanged</span></div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:380px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">GROUPING — the rule that fixes drift</div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:15px;">
+          <div><div style="font-size:11.5px;font-weight:700;color:#14713a;margin-bottom:8px;">✓ 2+ sibling pickers → ONE segmented control</div><div style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;box-shadow:2px 2px 0 #1d1b20;overflow:hidden;"><div style="padding:7px 12px;font-size:12.5px;font-weight:700;color:#1d1b20;">Sort ▼</div><div style="width:1.5px;background:#1d1b20;"></div><div style="padding:7px 12px;font-size:12.5px;font-weight:700;color:#1d1b20;">Filter ▼</div></div></div>
+          <div><div style="font-size:11.5px;font-weight:700;color:#c2334f;margin-bottom:8px;">✕ never free-floating pills with ad-hoc gaps</div><div style="display:flex;gap:26px;opacity:0.45;"><div style="border:1.5px solid #1d1b20;border-radius:999px;padding:6px 13px;font-size:12px;">Sort ▼</div><div style="border:1.5px solid #1d1b20;border-radius:999px;padding:6px 13px;font-size:12px;">선정여부 ▼</div><div style="border:1.5px solid #1d1b20;border-radius:999px;padding:6px 13px;font-size:12px;">M1 ▼</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1220px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+      <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">TRIGGER STATES — identical everywhere</div>
+      <div style="padding:18px;display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start;">
+        <sc-for list="{{ trigStates }}" as="t" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;gap:8px;"><div style="display:inline-flex;align-items:center;gap:7px;align-self:flex-start;border:1.5px solid {{ t.border }};border-radius:10px;background:{{ t.bg }};padding:7px 12px;font-size:12.5px;font-weight:{{ t.weight }};color:{{ t.color }};box-shadow:{{ t.shadow }};">{{ t.label }}<sc-if value="{{ t.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#fff;background:#ff5c8a;border-radius:999px;padding:1px 6px;">{{ t.badge }}</span></sc-if><span style="font-size:9px;color:{{ t.caret }};">{{ t.arrow }}</span></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">{{ t.name }}</div><div style="font-size:11px;color:#8a8693;max-width:150px;line-height:1.45;">{{ t.note }}</div></div></sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2 · PANELS ============ -->
+  <div style="width:1220px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">02</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Three panels — pick by selection model</div></div>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+
+      <div style="width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:9px;">
+        <div style="border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.22);overflow:hidden;">
+          <div style="padding:9px 13px;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Sort by</div>
+          <div style="padding:6px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ sortOpts }}" as="s" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px;border-radius:8px;padding:8px 10px;background:{{ s.bg }};"><span style="width:15px;height:15px;border-radius:50%;border:2px solid {{ s.radioBorder }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><sc-if value="{{ s.on }}" hint-placeholder-val="{{ false }}"><span style="width:7px;height:7px;border-radius:50%;background:#1d1b20;"></span></sc-if></span><span style="flex:1;font-size:13px;font-weight:{{ s.weight }};color:#1d1b20;">{{ s.label }}</span></div></sc-for></div>
+          <div style="border-top:1.5px solid rgba(29,27,32,0.12);padding:10px 13px;display:flex;align-items:center;gap:9px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Order</span><div style="margin-left:auto;display:inline-flex;border:1.5px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:5px 13px;font-size:11.5px;font-weight:800;background:#1d1b20;color:#fff;">↑ Asc</div><div style="padding:5px 13px;font-size:11.5px;font-weight:600;color:#5b5965;background:#fff;">↓ Desc</div></div></div>
+        </div>
+        <div style="font-size:11.5px;color:#5b5965;line-height:1.55;"><b style="color:#1d1b20;">P1 · Single-select</b> — radio, <b style="color:#1d1b20;">instant apply</b>, closes on pick. No Apply button. Width <b style="color:#1d1b20;">240–320</b>.</div>
+      </div>
+
+      <div style="width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:9px;">
+        <div style="border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.22);overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1.5px solid rgba(29,27,32,0.12);"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Status</span><span style="margin-left:auto;font-size:11px;font-weight:700;color:#c2334f;">Select all</span></div>
+          <div style="padding:8px 13px;border-bottom:1px solid rgba(29,27,32,0.08);"><div style="display:flex;align-items:center;gap:7px;border:1.5px solid rgba(29,27,32,0.16);border-radius:9px;padding:6px 10px;"><span style="font-size:11px;color:#a3a7ad;">🔍</span><span style="font-size:12px;color:#a3a7ad;">Search…</span></div></div>
+          <div style="padding:6px 8px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ multiOpts }}" as="v" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:8px 10px;background:{{ v.bg }};"><span style="width:17px;height:17px;border:1.8px solid #1d1b20;border-radius:5px;background:{{ v.boxBg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:800;flex-shrink:0;">{{ v.mark }}</span><span style="flex:1;min-width:0;font-size:13px;font-weight:{{ v.weight }};color:#1d1b20;">{{ v.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ v.n }}</span></div></sc-for></div>
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 13px;border-top:2px solid #1d1b20;background:#f7f7f5;"><span style="font-size:11.5px;color:#5b5965;"><b style="color:#1d1b20;">2</b> selected</span><div style="margin-left:auto;display:flex;gap:7px;"><div style="border:1.5px solid #1d1b20;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;background:#fff;color:#1d1b20;">Reset</div><div style="border:2px solid #1d1b20;border-radius:999px;padding:6px 15px;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.3);">Apply</div></div></div>
+        </div>
+        <div style="font-size:11.5px;color:#5b5965;line-height:1.55;"><b style="color:#1d1b20;">P2 · Multi-select</b> — checkbox + counts, <b style="color:#1d1b20;">explicit Apply</b> (no per-click refetch). Search appears at <b style="color:#1d1b20;">&gt;8 options</b>.</div>
+      </div>
+
+      <div style="width:500px;flex-shrink:0;display:flex;flex-direction:column;gap:9px;">
+        <div style="border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.22);overflow:hidden;display:flex;height:274px;">
+          <div style="width:190px;flex-shrink:0;border-right:2px solid #1d1b20;display:flex;flex-direction:column;background:#fbfbf9;">
+            <div style="padding:9px 12px;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Field</div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:3px;"><sc-for list="{{ paneQs }}" as="q" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:8px;border-radius:8px;padding:8px 10px;background:{{ q.bg }};border:{{ q.border }};"><span style="flex:1;min-width:0;font-size:12.5px;font-weight:{{ q.weight }};color:{{ q.color }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ q.label }}</span><sc-if value="{{ q.hasCount }}" hint-placeholder-val="{{ false }}"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#fff;background:#ff5c8a;border-radius:999px;padding:1px 6px;">{{ q.count }}</span></sc-if><span style="font-size:11px;color:{{ q.chevColor }};">›</span></div></sc-for></div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1.5px solid rgba(29,27,32,0.12);"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Values</span><span style="margin-left:auto;font-size:11px;font-weight:700;color:#c2334f;">Select all</span></div>
+            <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:6px 8px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ paneVals }}" as="v" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:8px 10px;background:{{ v.bg }};"><span style="width:17px;height:17px;border:1.8px solid #1d1b20;border-radius:5px;background:{{ v.boxBg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:800;flex-shrink:0;">{{ v.mark }}</span><span style="flex:1;min-width:0;font-size:13px;font-weight:{{ v.weight }};color:#1d1b20;">{{ v.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ v.n }}</span></div></sc-for></div>
+            <div style="display:flex;align-items:center;gap:9px;padding:10px 13px;border-top:2px solid #1d1b20;background:#f7f7f5;"><span style="font-size:11.5px;color:#5b5965;"><b style="color:#1d1b20;">2</b> selected</span><div style="margin-left:auto;display:flex;gap:7px;"><div style="border:1.5px solid #1d1b20;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;background:#fff;color:#1d1b20;">Reset</div><div style="border:2px solid #1d1b20;border-radius:999px;padding:6px 15px;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.3);">Apply</div></div></div>
+          </div>
+        </div>
+        <div style="font-size:11.5px;color:#5b5965;line-height:1.55;"><b style="color:#1d1b20;">P3 · Two-pane</b> — field → values. Use when options are <b style="color:#1d1b20;">grouped under a parent</b> (survey question, column, category, language group). Width <b style="color:#1d1b20;">500–660</b>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3 · GLOBAL DELTAS ============ -->
+  <div style="width:1220px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#c2334f;color:#fff;border-radius:6px;padding:3px 9px;">03</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">What changes when it goes global</div><div style="font-size:12.5px;color:#8a8693;">decisions the recruiting-only version didn't need</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <sc-for list="{{ deltas }}" as="d" hint-placeholder-count="8"><div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,0.14);overflow:hidden;display:flex;flex-direction:column;"><div style="display:flex;align-items:center;gap:9px;background:{{ d.tint }};border-bottom:2px solid #1d1b20;padding:9px 14px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">{{ d.no }}</span><span style="font-size:13.5px;font-weight:800;color:#1d1b20;">{{ d.title }}</span></div><div style="padding:12px 14px;font-size:12.5px;color:#2a262f;line-height:1.6;">{{ d.body }}</div></div></sc-for>
+    </div>
+  </div>
+
+  <!-- ============ 4 · EDGE STATES ============ -->
+  <div style="width:1220px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">04</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Panel edge states</div><div style="font-size:12.5px;color:#8a8693;">required everywhere — a global component can't skip these</div></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <div style="width:290px;border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,0.18);overflow:hidden;"><div style="padding:8px 12px;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Loading</div><div style="padding:12px;display:flex;flex-direction:column;gap:9px;"><sc-for list="{{ skeleton }}" as="w" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px;"><div style="width:17px;height:17px;border-radius:5px;background:#eceef1;"></div><div style="height:11px;border-radius:4px;background:#eceef1;width:{{ w }};"></div></div></sc-for></div></div>
+      <div style="width:290px;border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,0.18);overflow:hidden;"><div style="padding:8px 12px;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Empty</div><div style="padding:26px 16px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;"><div style="width:38px;height:38px;border:2px dashed #c9ccd2;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;">🔍</div><div style="font-size:12.5px;font-weight:700;color:#1d1b20;">No matching options</div><div style="font-size:11px;color:#8a8693;line-height:1.45;">Try a different search term.</div></div></div>
+      <div style="width:290px;border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,0.18);overflow:hidden;"><div style="padding:8px 12px;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Error</div><div style="padding:16px;display:flex;flex-direction:column;gap:10px;"><div style="display:flex;gap:8px;align-items:flex-start;background:#fff1e6;border:1.5px solid #f0d78a;border-radius:10px;padding:10px 12px;"><span style="font-size:13px;">⚠️</span><div style="font-size:11.5px;color:#8a5a10;line-height:1.5;">Couldn't load options.</div></div><div style="align-self:flex-start;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 13px;font-size:11.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">↻ Retry</div></div></div>
+      <div style="width:290px;border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,0.18);overflow:hidden;"><div style="padding:8px 12px;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Long labels · truncate</div><div style="padding:8px;display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ longOpts }}" as="v" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:8px 10px;background:{{ v.bg }};"><span style="width:17px;height:17px;border:1.8px solid #1d1b20;border-radius:5px;background:{{ v.boxBg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:800;flex-shrink:0;">{{ v.mark }}</span><span style="flex:1;min-width:0;font-size:13px;color:#1d1b20;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ v.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;flex-shrink:0;">{{ v.n }}</span></div></sc-for></div></div>
+    </div>
+  </div>
+
+  <!-- ============ 5 · TOKEN MAP ============ -->
+  <div style="width:1220px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">05</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Token map</div><div style="font-size:12.5px;color:#8a8693;">15 mapped · 6 gaps to resolve before this ships globally</div></div>
+
+    <div style="width:1220px;border:2px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,0.16);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:9px;background:#cdebd9;border-bottom:2px solid #1d1b20;padding:9px 15px;"><span style="font-size:13.5px;font-weight:800;color:#1d1b20;">Already mapped</span><span style="font-size:11.5px;color:#2f6b4f;">— existing tokens from tokens.json / FULLVIEW-SHELL §F5–F6, values match exactly</span></div>
+      <sc-for list="{{ mapped }}" as="m" hint-placeholder-count="15"><div style="display:flex;align-items:center;gap:13px;padding:8px 15px;border-bottom:1px solid rgba(29,27,32,0.07);"><span style="width:19px;height:19px;border-radius:5px;border:1.4px solid rgba(29,27,32,0.2);background:{{ m.swatch }};flex-shrink:0;"></span><span style="width:200px;flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#5b5965;">{{ m.val }}</span><span style="width:290px;flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#1d1b20;">{{ m.token }}</span><span style="flex:1;min-width:0;font-size:12px;color:#8a8693;">{{ m.where }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;font-weight:800;letter-spacing:0.06em;background:{{ m.badgeBg }};color:{{ m.badgeColor }};border-radius:5px;padding:2px 7px;flex-shrink:0;">{{ m.badge }}</span></div></sc-for>
+    </div>
+
+    <div style="width:1220px;border:3px solid #1d1b20;border-radius:13px;background:#fff;box-shadow:4px 4px 0 #e0a83a;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:9px;background:#ffe8a8;border-bottom:2px solid #1d1b20;padding:10px 15px;"><span style="font-size:15px;">⚠️</span><span style="font-size:13.5px;font-weight:800;color:#1d1b20;">Gaps — not yet in the token set</span><span style="font-size:11.5px;color:#8a5a10;">these were fine as one-offs in Recruiting; as a global component each one is a drift source</span></div>
+      <sc-for list="{{ gaps }}" as="m" hint-placeholder-count="6"><div style="display:flex;align-items:flex-start;gap:13px;padding:11px 15px;border-bottom:1px solid rgba(29,27,32,0.07);"><span style="width:19px;height:19px;border-radius:5px;border:1.4px solid rgba(29,27,32,0.2);background:{{ m.swatch }};flex-shrink:0;margin-top:1px;"></span><span style="width:200px;flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#5b5965;line-height:1.5;">{{ m.val }}</span><span style="width:290px;flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#c2334f;line-height:1.5;">proposed: {{ m.token }}</span><span style="flex:1;min-width:0;font-size:12px;color:#2a262f;line-height:1.55;">{{ m.where }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;font-weight:800;letter-spacing:0.06em;background:{{ m.badgeBg }};color:{{ m.badgeColor }};border-radius:5px;padding:2px 7px;flex-shrink:0;">{{ m.badge }}</span></div></sc-for>
+      <div style="padding:12px 15px;background:#fffdf6;font-size:12px;color:#5b5965;line-height:1.6;"><b style="color:#1d1b20;">Recommended order:</b> promote <b style="color:#1d1b20;">focus-ring</b> and <b style="color:#1d1b20;">control-h-md/-sm</b> first — they're product-wide gaps this component just surfaced, not picker-specific. Then <b style="color:#1d1b20;">picker-option-selected</b> + <b style="color:#1d1b20;">shadow-picker-panel</b>. Border widths and off-scale radii can stay raw <span style="font-family:ui-monospace,Menlo,monospace;">border-[Npx]</span> if the DS doesn't want a denser scale — but pick one and apply it everywhere.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const T = (name, label, note, o) => ({
+      name, label, note,
+      border: o.border || '#1d1b20',
+      bg: o.bg || '#fff',
+      color: o.color || '#1d1b20',
+      weight: o.weight || 700,
+      shadow: o.shadow === null ? 'none' : (o.shadow || '2px 2px 0 #1d1b20'),
+      caret: o.caret || '#8a8693',
+      arrow: o.arrow || '▼',
+      hasBadge: !!o.badge, badge: o.badge || '',
+    });
+    const trigStates = [
+      T('default', 'Sort', 'Resting.', {}),
+      T('hover', 'Sort', 'Fill shifts to paper-soft; border/shadow unchanged.', { bg: '#f7f7f5' }),
+      T('open', 'Sort', 'Ink fill + caret flips. Panel is anchored below.', { bg: '#1d1b20', color: '#fff', weight: 800, arrow: '▲', caret: '#fff' }),
+      T('applied', 'Filter', 'Count badge in amore. Trigger stays neutral — never adopts the widget pastel.', { badge: '2' }),
+      T('focus', 'Sort', 'Keyboard ring = 2px amore offset 2. Required globally (was never speced).', { border: '#ff5c8a', shadow: '0 0 0 2px #fff, 0 0 0 4px #ff5c8a' }),
+      T('disabled', 'Filter', 'No options / no permission. surface-disabled, no shadow, not focusable.', { bg: '#eceef1', color: '#a3a7ad', border: 'rgba(29,27,32,0.18)', weight: 600, shadow: null, caret: '#c9ccd2' }),
+    ];
+
+    const SO = (label, on) => ({ label, on, bg: on ? '#fffdf6' : 'transparent', radioBorder: on ? '#1d1b20' : 'rgba(29,27,32,0.26)', weight: on ? 800 : 600 });
+    const sortOpts = [SO('Name', true), SO('Added date', false), SO('Status', false), SO('Slot', false)];
+
+    const FV = (label, n, on) => ({ label, n, mark: on ? '✓' : '', boxBg: on ? '#1d1b20' : '#fff', bg: on ? '#fffdf6' : 'transparent', weight: on ? 700 : 500 });
+    const multiOpts = [FV('Confirmed', 214, true), FV('In touch', 96, true), FV('Pending', 71, false), FV('Declined', 22, false)];
+
+    const FQ = (label, active, count) => ({
+      label,
+      bg: active ? '#fff' : 'transparent',
+      border: active ? '1.5px solid #1d1b20' : '1.5px solid transparent',
+      weight: active ? 800 : 600,
+      color: active ? '#1d1b20' : '#5b5965',
+      chevColor: active ? '#1d1b20' : '#c9ccd2',
+      hasCount: count > 0, count: count || '',
+    });
+    const paneQs = [FQ('성별', false, 0), FQ('플랫폼', false, 1), FQ('선정여부', true, 2), FQ('출생년도', false, 0), FQ('기기 브랜드', false, 0)];
+    const paneVals = [FV('M1', 214, true), FV('M2', 96, true), FV('M3', 71, false), FV('보류', 38, false), FV('(빈 값)', 6, false)];
+
+    const D = (no, title, body, tint) => ({ no, title, body, tint });
+    const deltas = [
+      D('G1', 'Portal, not a child', 'Panels must render in a portal at z-index 60 (below modals at 80). Widget cards and fullview panes both use overflow:hidden — an in-flow panel gets clipped. Anchor below-left, flip up when the viewport bottom is within 12px, clamp max-height to the available space with internal scroll.', '#cfe6ff'),
+      D('G2', 'Neutral, never the widget tone', 'The trigger and panel stay ink/paper in all six widgets. Only the count badge uses amore. Adopting the widget pastel would make the same control look like six different components on one canvas.', '#cdebd9'),
+      D('G3', 'Apply model by selection type', 'Single-select applies instantly and closes. Multi-select and two-pane require explicit Apply — otherwise every checkbox click refetches a 447-row table. Reset clears only that picker; "Clear all" lives on the chip row.', '#ffe8a8'),
+      D('G4', 'Chips only when many', 'The active-filter chip row appears when a surface has 2+ filterable fields. A lone picker shows its value in the trigger label instead ("Status: Confirmed") — a chip row for one filter is noise.', '#e7defe'),
+      D('G5', 'Counts are optional', 'Per-option counts assume the dataset is loaded client-side. On server-paged lists, omit them rather than firing a count query per option. Layout must not shift when the count column is absent.', '#ffd9be'),
+      D('G6', 'Keyboard + a11y (new)', 'Global use makes this mandatory: trigger = button[aria-expanded/haspopup]; panel = listbox, single-select options role=option[aria-selected], multi = aria-multiselectable with checkbox roles. ↑↓ move, Space toggles, Enter applies, Esc closes and restores focus. Two-pane: ← → cross panes.', '#bfe9ef'),
+      D('G7', 'Narrow → drill-down', 'Under ~520px the two-pane panel becomes a single column: field list first, tap to slide into values with a "‹ Field" back row. Same tokens, one column. Applies to public pages and any side panel.', '#ffeef4'),
+      D('G8', 'Form fields are not pickers', 'Setup-form selects keep radius 22 and full-width fields (existing spec). This system covers toolbar/table controls. Both open the same P1/P2 panel body — only the trigger differs, so the panel component is shared.', '#f2f2f3'),
+    ];
+
+    const skeleton = ['72%', '58%', '80%', '46%'];
+    const longOpts = [
+      FV('사용 중인 핸드폰 브랜드 — 애플 (아이폰 14 프로 이상)', 128, true),
+      FV('사용 중인 핸드폰 브랜드 — 삼성 갤럭시 S 시리즈', 96, false),
+      FV('기타 / 직접 입력', 12, false),
+    ];
+
+    const M = (val, token, where, status) => ({
+      val, token, where,
+      swatch: val.startsWith('#') ? val : 'transparent',
+      hasSwatch: val.startsWith('#'),
+      badge: status === 'ok' ? 'MAPPED' : (status === 'new' ? 'PROPOSED' : 'RAW'),
+      badgeBg: status === 'ok' ? '#cdebd9' : (status === 'new' ? '#ffe8a8' : '#ffeef4'),
+      badgeColor: status === 'ok' ? '#14713a' : (status === 'new' ? '#8a5a10' : '#c2334f'),
+    });
+    const mapped = [
+      M('#1d1b20', 'ink', 'borders · shadows · active fill · text', 'ok'),
+      M('#ffffff', 'paper', 'trigger / panel surface', 'ok'),
+      M('#f7f7f5', 'paper-soft', 'hover fill · panel footer · left pane head', 'ok'),
+      M('#fbfbf9', 'surface-canvas', 'two-pane left column', 'ok'),
+      M('#5b5965', 'mute', 'footer text · idle option label', 'ok'),
+      M('#8a8693', 'mute-soft', 'mono mini-labels · counts · caret', 'ok'),
+      M('#a3a7ad', 'text-faint', 'placeholder · search hint', 'ok'),
+      M('#c9ccd2', 'line-empty', 'idle chevron · dashed empty icon', 'ok'),
+      M('#eceef1', 'surface-disabled', 'disabled trigger · skeleton bars', 'ok'),
+      M('#ff5c8a', 'amore', 'count badge · focus ring', 'ok'),
+      M('#c2334f', 'amore-deep', '"Select all" · applied count text', 'ok'),
+      M('#fff1e6 / #f0d78a / #8a5a10', 'warning-bg / -line-amber / -text', 'error state', 'ok'),
+      M('rgba(29,27,32,.12–.16)', 'line / line-soft', 'inner rules · idle field border', 'ok'),
+      M('2px2px0 ink', 'shadow-memphis-sm', 'trigger · Apply · Retry', 'ok'),
+      M('3px3px0 ink/.14–.18', 'shadow-memphis-sm-faint', 'demo cards', 'ok'),
+    ];
+    const gaps = [
+      M('#fffdf6', 'picker-option-selected', 'selected option row tint (sun @ ~4%). Currently a one-off — must be a token or every picker drifts.', 'new'),
+      M('0 0 0 2px paper, 0 0 0 4px amore', 'focus-ring', 'keyboard focus. No focus token exists product-wide yet — G6 makes it mandatory.', 'new'),
+      M('4px 4px 0 rgba(29,27,32,.22)', 'shadow-picker-panel', 'floating panel lift. Between memphis-md and -lg, tinted — not an existing value.', 'new'),
+      M('radius 5 · 8 · 10 · 13', 'radius-check 5 / radius-option 8 / radius-trigger 10 / radius-panel 13', 'DS radius scale is 2/4/14/24/999 — all four are off-scale. Promote as a set or accept raw border-[Npx].', 'new'),
+      M('border 1.4 / 1.5 / 1.8 / 2px', 'border-hair / -thin / -check / -strong', 'four widths in one component. Should collapse to 1.5 (chrome) + 2 (emphasis); 1.8 checkbox is arbitrary.', 'raw'),
+      M('34px / 28px trigger height', 'control-h-md / control-h-sm', 'no height token exists — heights are currently emergent from padding, so they drift between surfaces.', 'new'),
+    ];
+    return { trigStates, sortOpts, multiOpts, paneQs, paneVals, deltas, skeleton, longOpts, mapped, gaps };
+  }
+}
+</script>
+</body>
+</html>

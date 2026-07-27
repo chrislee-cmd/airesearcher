@@ -1,6 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { usePopoverBase } from '@/components/ui/use-popover-base';
+import {
+  PickerGroup,
+  PickerTrigger,
+  SingleSelectPanel,
+  MultiSelectPanel,
+  TwoPanePanel,
+  type PickerField,
+  type PickerOption,
+  type TwoPaneFilterState,
+} from '@/components/ui/picker';
 import { Modal } from '@/components/ui/modal';
 import { WidgetFullviewModal } from '@/components/canvas/shell/widget-fullview-modal';
 import { Button } from '@/components/ui/button';
@@ -567,6 +578,198 @@ export function ChipFieldDemo() {
           chipRemoveLabel={(v) => `${v} 제거`}
         />
       </div>
+    </div>
+  );
+}
+
+// Picker system — interactive P1 (single + direction), P2 (multi), P3 (two-pane).
+// Sort/Filter 는 한 세그먼트 그룹(PickerGroup), Multi(P2) 는 standalone 트리거.
+export function PickerDemo() {
+  const [open, setOpen] = useState<'none' | 'sort' | 'filter' | 'multi'>('none');
+  const close = useCallback(() => setOpen('none'), []);
+
+  const {
+    triggerRef: groupTriggerRef,
+    panelRef: groupPanelRef,
+    anchorRect: groupAnchor,
+  } = usePopoverBase<HTMLDivElement, HTMLDivElement>({
+    open: open === 'sort' || open === 'filter',
+    onClose: close,
+  });
+  const {
+    triggerRef: multiTriggerRef,
+    panelRef: multiPanelRef,
+    anchorRect: multiAnchor,
+  } = usePopoverBase<HTMLButtonElement, HTMLDivElement>({
+    open: open === 'multi',
+    onClose: close,
+  });
+
+  const sortTriggerRef = useRef<HTMLButtonElement>(null);
+  const filterTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // P1 sort
+  const [sortKey, setSortKey] = useState('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const sortOptions: PickerOption[] = [
+    { value: 'name', label: 'Name' },
+    { value: 'added', label: 'Added date' },
+    { value: 'status', label: 'Status' },
+    { value: 'slot', label: 'Slot' },
+  ];
+
+  // P2 multi
+  const [statusSel, setStatusSel] = useState<string[]>(['confirmed', 'intouch']);
+  const statusOptions: PickerOption[] = [
+    { value: 'confirmed', label: 'Confirmed', count: 214 },
+    { value: 'intouch', label: 'In touch', count: 96 },
+    { value: 'pending', label: 'Pending', count: 71 },
+    { value: 'declined', label: 'Declined', count: 22 },
+  ];
+
+  // P3 two-pane
+  const [filters, setFilters] = useState<TwoPaneFilterState>({ 선정여부: ['M1', 'M2'] });
+  const fields: PickerField[] = [
+    { id: '성별', label: '성별' },
+    { id: '플랫폼', label: '플랫폼' },
+    { id: '선정여부', label: '선정여부' },
+    { id: '출생년도', label: '출생년도' },
+  ];
+  const answers: Record<string, PickerOption[]> = {
+    성별: [
+      { value: '남', label: '남', count: 120 },
+      { value: '여', label: '여', count: 132 },
+    ],
+    플랫폼: [
+      { value: 'iOS', label: 'iOS', count: 140 },
+      { value: 'Android', label: 'Android', count: 112 },
+    ],
+    선정여부: [
+      { value: 'M1', label: 'M1', count: 214 },
+      { value: 'M2', label: 'M2', count: 96 },
+      { value: 'M3', label: 'M3', count: 71 },
+      { value: '보류', label: '보류', count: 38 },
+      { value: '(빈 값)', label: '(빈 값)', count: 6 },
+    ],
+    출생년도: [
+      { value: '1990s', label: '1990년대', count: 88 },
+      { value: '2000s', label: '2000년대', count: 164 },
+    ],
+  };
+  const filterCount = Object.values(filters).filter((v) => v.length > 0).length;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* P1 + P3 — segmented group */}
+        <PickerGroup ref={groupTriggerRef}>
+          <PickerTrigger
+            ref={sortTriggerRef}
+            open={open === 'sort'}
+            onClick={() => setOpen((p) => (p === 'sort' ? 'none' : 'sort'))}
+          >
+            Sort
+          </PickerTrigger>
+          <PickerTrigger
+            ref={filterTriggerRef}
+            open={open === 'filter'}
+            appliedCount={filterCount}
+            onClick={() => setOpen((p) => (p === 'filter' ? 'none' : 'filter'))}
+          >
+            Filter
+          </PickerTrigger>
+        </PickerGroup>
+
+        {/* P2 — standalone */}
+        <PickerTrigger
+          ref={multiTriggerRef}
+          open={open === 'multi'}
+          appliedCount={statusSel.length}
+          onClick={() => setOpen((p) => (p === 'multi' ? 'none' : 'multi'))}
+        >
+          Status
+        </PickerTrigger>
+
+        <span className="text-sm text-mute-soft">
+          정렬: <code className="font-mono text-ink-2">{sortKey} · {sortDir}</code> · 상태:{' '}
+          <code className="font-mono text-ink-2">{statusSel.join(', ') || '—'}</code>
+        </span>
+      </div>
+
+      {open === 'sort' && groupAnchor && (
+        <SingleSelectPanel
+          panelRef={groupPanelRef}
+          anchorRect={groupAnchor}
+          sectionLabel="Sort by"
+          options={sortOptions}
+          value={sortKey}
+          onSelect={(v) => {
+            setSortKey(v);
+            close();
+          }}
+          direction={sortDir}
+          onDirectionChange={setSortDir}
+          orderLabel="Order"
+          ascLabel="↑ Asc"
+          descLabel="↓ Desc"
+          onClose={close}
+          returnFocusRef={sortTriggerRef}
+        />
+      )}
+
+      {open === 'filter' && groupAnchor && (
+        <TwoPanePanel
+          panelRef={groupPanelRef}
+          anchorRect={groupAnchor}
+          fields={fields}
+          optionsFor={(id) => answers[id] ?? []}
+          applied={filters}
+          onApply={(next) => {
+            setFilters(next);
+            close();
+          }}
+          labels={{
+            fieldSection: 'Field',
+            valuesSection: 'Values',
+            selectAll: 'Select all',
+            reset: 'Reset',
+            apply: 'Apply',
+            selectedSuffix: 'selected',
+            searchPlaceholder: 'Search…',
+            noFields: 'No fields',
+            noAnswersTitle: 'No matching options',
+            noAnswersHint: 'Try a different search term.',
+            backLabel: '‹',
+          }}
+          onClose={close}
+          returnFocusRef={filterTriggerRef}
+        />
+      )}
+
+      {open === 'multi' && multiAnchor && (
+        <MultiSelectPanel
+          panelRef={multiPanelRef}
+          anchorRect={multiAnchor}
+          sectionLabel="Status"
+          options={statusOptions}
+          selected={statusSel}
+          onApply={(next) => {
+            setStatusSel(next);
+            close();
+          }}
+          labels={{
+            selectAll: 'Select all',
+            reset: 'Reset',
+            apply: 'Apply',
+            selectedSuffix: 'selected',
+            searchPlaceholder: 'Search…',
+            noMatchTitle: 'No matching options',
+            noMatchHint: 'Try a different search term.',
+          }}
+          onClose={close}
+          returnFocusRef={multiTriggerRef}
+        />
+      )}
     </div>
   );
 }

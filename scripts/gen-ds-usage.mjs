@@ -29,6 +29,8 @@ const FOUNDATION = new Set(['color', 'radius', 'font-size', 'z-index', 'motion']
 // convention 을 벗어난 섹션의 모듈 경로(확장자 없이, SRC 기준 상대).
 // 나머지는 src/components/ui/<sectionId> 로 자동 매핑된다.
 const MODULE_OVERRIDES = {
+  // picker 는 디렉토리(패밀리) — 배럴 index 로 매핑(components/ui/picker.tsx 없음).
+  picker: ['components/ui/picker/index'],
   'widget-fullview-modal': ['components/canvas/shell/widget-fullview-modal'],
   'canvas-widget-primitives': [
     'components/canvas/shell/field',
