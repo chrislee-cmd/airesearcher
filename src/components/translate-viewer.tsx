@@ -40,6 +40,7 @@ import {
   type RemoteAudioTrack,
   type RemoteTrack,
   type RemoteTrackPublication,
+  type RemoteVideoTrack,
 } from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
@@ -119,6 +120,11 @@ const COPY = {
   translation: 'TRANSLATION',
   playing: '🔊 PLAYING',
   captionsOnly: 'CAPTIONS ONLY',
+  sharedScreen: {
+    sharing: 'SHARING',
+    address: '🖥️ Host is sharing a screen',
+    viewOnly: "View only · you can't control the shared screen",
+  },
   unlock: {
     heading: 'Tap to start listening',
     reason:
@@ -174,6 +180,12 @@ export function TranslateViewer({
   // gate (frame 01) and call room.startAudio() from the CTA click — that
   // single user-gesture unlocks playback for every track in the room.
   const [needsTap, setNeedsTap] = useState(false);
+  // 🖥️ Shared-screen relay (frame 07). Non-null when the host is publishing a
+  // 'screen' video track → the screen renders on top and captions drop to two
+  // columns below. Null (mic-only session or host stopped sharing) → the
+  // captions keep the vertical stack (frames 02–04). Video is progressive
+  // enhancement: audio + captions are unaffected either way.
+  const [screenTrack, setScreenTrack] = useState<RemoteVideoTrack | null>(null);
 
   const roomRef = useRef<Room | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -314,6 +326,12 @@ export function TranslateViewer({
     roomRef.current = room;
 
     const onTrackSubscribed = (track: RemoteTrack, pub: RemoteTrackPublication) => {
+      // 🖥️ Shared-screen video (frame 07). Store the track so React renders the
+      // ScreenStage; the <video> attach happens in that component's effect.
+      if (track.kind === 'video' && pub.trackName === 'screen') {
+        setScreenTrack(track as RemoteVideoTrack);
+        return;
+      }
       if (track.kind !== 'audio') return;
       const name = pub.trackName as 'input' | 'output' | undefined;
       if (name !== 'input' && name !== 'output') return;
@@ -339,6 +357,11 @@ export function TranslateViewer({
       _track: RemoteTrack,
       pub: RemoteTrackPublication,
     ) => {
+      // 🖥️ Host stopped sharing → drop back to the vertical caption stack.
+      if (pub.trackName === 'screen') {
+        setScreenTrack(null);
+        return;
+      }
       const name = pub.trackName as 'input' | 'output' | undefined;
       if (name === 'input' || name === 'output') {
         trackByNameRef.current[name] = null;
@@ -404,6 +427,9 @@ export function TranslateViewer({
         if (k === 'input') inputAudioRef.current = null;
         else outputAudioRef.current = null;
       }
+      // 🖥️ Detach happens in ScreenStage's own effect cleanup; just drop the
+      // reference so a re-connect starts from the vertical stack.
+      setScreenTrack(null);
       void room.disconnect();
       roomRef.current = null;
     };
@@ -473,6 +499,46 @@ export function TranslateViewer({
   const originalEmphasized = mode === 'input';
   const translationEmphasized = mode === 'output' || mode === 'mute';
 
+  // Twin ORIGINAL/TRANSLATION panels — laid out vertically by default (frames
+  // 02–04) or as two columns under the shared screen (frame 07). Same panels
+  // either way; only the parent flex direction changes. Each panel is
+  // `flex-1`, so it fills a column or a row cell identically.
+  const twinPanels = waiting ? (
+    <>
+      <WaitingPanel
+        tone="original"
+        langLabel={langName(sourceLang)}
+        variant="dots"
+      />
+      <WaitingPanel
+        tone="translation"
+        langLabel={langName(targetLang)}
+        variant="text"
+      />
+    </>
+  ) : (
+    <>
+      <CaptionPanel
+        tone="original"
+        label={COPY.original}
+        langLabel={langName(sourceLang)}
+        lines={inputLines}
+        emphasized={originalEmphasized}
+        playing={mode === 'input'}
+        captionsOnly={false}
+      />
+      <CaptionPanel
+        tone="translation"
+        label={COPY.translation}
+        langLabel={langName(targetLang)}
+        lines={outputLines}
+        emphasized={translationEmphasized}
+        playing={mode === 'output'}
+        captionsOnly={mode === 'input'}
+      />
+    </>
+  );
+
   return (
     <div className="flex min-h-0 w-full max-w-[600px] flex-1 flex-col">
       {/* Page frame — border 3px ink · radius 16 · fv-frame shadow · canvas bg */}
@@ -498,40 +564,17 @@ export function TranslateViewer({
                 {error}
               </div>
             ) : null}
-            {waiting ? (
+            {screenTrack ? (
+              // Frame 07 — shared screen on top, captions in two columns below.
               <>
-                <WaitingPanel
-                  tone="original"
-                  langLabel={langName(sourceLang)}
-                  variant="dots"
-                />
-                <WaitingPanel
-                  tone="translation"
-                  langLabel={langName(targetLang)}
-                  variant="text"
-                />
+                <ScreenStage track={screenTrack} />
+                <div className="flex min-h-0 flex-1 gap-[14px]">
+                  {twinPanels}
+                </div>
               </>
             ) : (
-              <>
-                <CaptionPanel
-                  tone="original"
-                  label={COPY.original}
-                  langLabel={langName(sourceLang)}
-                  lines={inputLines}
-                  emphasized={originalEmphasized}
-                  playing={mode === 'input'}
-                  captionsOnly={false}
-                />
-                <CaptionPanel
-                  tone="translation"
-                  label={COPY.translation}
-                  langLabel={langName(targetLang)}
-                  lines={outputLines}
-                  emphasized={translationEmphasized}
-                  playing={mode === 'output'}
-                  captionsOnly={mode === 'input'}
-                />
-              </>
+              // Frames 02–04 — captions vertical stack (no screen being shared).
+              twinPanels
             )}
           </div>
         )}
@@ -614,6 +657,65 @@ function LangPill({ code }: { code: string }) {
       {flag ? <span aria-hidden>{flag}</span> : null}
       {langName(code)}
     </span>
+  );
+}
+
+// ── Shared-screen stage (frame 07) ──────────────────────────────────────
+// Mirrors the interpreter fullview's ShareMonitor (frame 10, merged) — the
+// dark macOS-style monitor chrome is CD, and the interior renders the REAL
+// relayed screen (CD's participant-tile stage is an example only; spec §4).
+// The RemoteVideoTrack lifecycle is owned by LiveKit/the room effect; here we
+// only attach/detach it to the <video>. Video is muted — audio flows through
+// the separate 'input'/'output' tracks and the channel bar (playsInline +
+// muted keeps iOS autoplay independent of the audio-unlock gate).
+function ScreenStage({ track }: { track: RemoteVideoTrack }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    track.attach(el);
+    return () => {
+      track.detach(el);
+    };
+  }, [track]);
+  return (
+    <div className="flex min-h-0 flex-[1.2] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-ink shadow-memphis-md">
+      {/* titlebar — macOS traffic lights (장식 예외) + address chip + SHARING */}
+      <div className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]">
+        {/* design-allow-hardcoded -- CD frame 07 traffic lights = literal macOS chrome (장식, 토큰 아님; interpreter-fullview ShareMonitor 선례) */}
+        {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
+          <span
+            key={c}
+            aria-hidden
+            className="h-[11px] w-[11px] rounded-full"
+            style={{ background: c }}
+          />
+        ))}
+        {/* design-allow-hardcoded -- CD frame 07 address chip radius 6 (승격 fv radius 스케일 8~16 밖, ShareMonitor UrlPill 선례) */}
+        <div className="ml-2 min-w-0 flex-1 truncate rounded-[6px] bg-ink px-[11px] py-1 font-mono-label text-sm text-faint">
+          {COPY.sharedScreen.address}
+        </div>
+        <span className="shrink-0 font-mono-label text-xs font-bold tracking-[0.14em] text-mint">
+          ● {COPY.sharedScreen.sharing}
+        </span>
+      </div>
+      {/* body — the real relayed screen (read-only). object-contain preserves
+          aspect ratio with an ink letterbox; the view-only note sits over it. */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center bg-ink">
+        <video
+          ref={videoRef}
+          className="h-full w-full bg-ink object-contain"
+          autoPlay
+          playsInline
+          muted
+        />
+        {/* CD draws this over a light tile-stage; over the real (dark
+            letterboxed) video we back it with a faint ink pill for legibility. */}
+        <span className="absolute bottom-3 left-4 rounded-sm bg-ink/70 px-2 py-1 font-mono-label text-xs text-faint">
+          {COPY.sharedScreen.viewOnly}
+        </span>
+      </div>
+    </div>
   );
 }
 
