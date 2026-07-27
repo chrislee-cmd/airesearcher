@@ -29,15 +29,23 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/components/toast-provider';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { CONTACT_MASK } from '@/lib/scheduling/candidate-masking';
+import { INTAKE_ID_PREFIX } from '@/lib/scheduling/intake-rows';
 import type { PersonaFit } from '@/lib/recruiting/persona-fit';
 
 // 선택 응답자 서술자 — 호스트가 판단(judgments)에서 selected 필터로 빌드한다.
 // name 은 응답 PII 블랭킹으로 클라에 없어 제외(#번호 + demographic 으로 식별).
+//
+// 카드 588 — intake(업로드 명단) 행도 같은 선택 집합/모달을 공유한다. 업로드
+// 데이터는 사용자 소유 plaintext 라 마스킹 대상이 아니므로, intake 행은
+// `name` 을 실어 보내 모달에 실명을 노출하고 🔒 마스크 칩을 생략한다. 폼 응답
+// 행은 name=null(=undefined) 로 기존 마스킹 표시를 유지한다.
 export type BridgeCandidate = {
-  id: string; // responseId (= judgment.response_key = invitations response_id)
+  id: string; // responseId (bare) 또는 `cand:<sched_candidates.id>` (intake)
   num: number | null;
   demo: string | null;
   fit: PersonaFit | null;
+  // intake 행의 실명(plaintext). 폼 응답 행에는 없음(마스킹 유지).
+  name?: string | null;
 };
 
 // N4 fit pill — judged-table FIT_STYLE 와 동일 시맨틱(high=success · medium=
@@ -75,37 +83,80 @@ export function RecruitingBridge({
   const [target, setTarget] = useState<'inbox'>('inbox');
 
   const send = useCallback(async () => {
-    if (!formId || candidates.length === 0) return;
+    if (candidates.length === 0) return;
+    // Split the shared selection by key space (card 588): `cand:`-prefixed ids
+    // are intake rows → promote endpoint (stage flip); bare ids are Google Forms
+    // responseIds → the existing invitations bridge. A mixed selection runs both
+    // and reports the combined count.
+    const intakeIds = candidates
+      .map((c) => c.id)
+      .filter((id) => id.startsWith(INTAKE_ID_PREFIX))
+      .map((id) => id.slice(INTAKE_ID_PREFIX.length));
+    const formResponseIds = candidates
+      .map((c) => c.id)
+      .filter((id) => !id.startsWith(INTAKE_ID_PREFIX));
+
     setSending(true);
     try {
-      const res = await fetch('/api/recruiting/invitations', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          form_id: formId,
-          project_id: projectId,
-          response_ids: candidates.map((c) => c.id),
-          // target='inbox' → 승인 시 폼 프로젝트의 미할당(inbox) batch 로 인제스트.
-          target,
-        }),
-      });
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          code?: string | null;
-          detail?: string | null;
-        };
-        // Show the real Postgres code + message when the route exposes them so a
-        // failing preview is diagnosable at a glance (round-2 feedback #2a) —
-        // instead of the opaque "insert_failed".
-        const reason = j.code
-          ? `${j.error ?? 'error'} (${j.code}${j.detail ? `: ${j.detail}` : ''})`
-          : j.error ?? String(res.status);
-        pushToast(t('bridgeToastFail', { error: reason }), { tone: 'warn' });
-        return;
+      let count = 0;
+
+      // 1) Form responses → invitations (unchanged path). Only when a form is
+      //    anchored (form responses can't exist without one).
+      if (formResponseIds.length > 0 && formId) {
+        const res = await fetch('/api/recruiting/invitations', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            form_id: formId,
+            project_id: projectId,
+            response_ids: formResponseIds,
+            // target='inbox' → 승인 시 폼 프로젝트의 미할당(inbox) batch 로 인제스트.
+            target,
+          }),
+        });
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            code?: string | null;
+            detail?: string | null;
+          };
+          // Show the real Postgres code + message when the route exposes them so a
+          // failing preview is diagnosable at a glance (round-2 feedback #2a) —
+          // instead of the opaque "insert_failed".
+          const reason = j.code
+            ? `${j.error ?? 'error'} (${j.code}${j.detail ? `: ${j.detail}` : ''})`
+            : j.error ?? String(res.status);
+          pushToast(t('bridgeToastFail', { error: reason }), { tone: 'warn' });
+          return;
+        }
+        const j = (await res.json().catch(() => ({}))) as { count?: number };
+        count += j.count ?? formResponseIds.length;
       }
-      const j = (await res.json().catch(() => ({}))) as { count?: number };
-      const count = j.count ?? candidates.length;
+
+      // 2) Intake rows → promote (stage 'intake' → 'roster'). target='inbox'
+      //    keeps the rows in their current (inbox) batch, so target_batch_id is
+      //    omitted; a future group target would pass its id here.
+      if (intakeIds.length > 0) {
+        const res = await fetch('/api/scheduling/candidates/promote', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ candidate_ids: intakeIds }),
+        });
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          pushToast(
+            t('bridgeToastFail', { error: j.error ?? String(res.status) }),
+            { tone: 'warn' },
+          );
+          return;
+        }
+        const j = (await res.json().catch(() => ({}))) as {
+          promoted?: number;
+          merged?: number;
+        };
+        count += (j.promoted ?? 0) + (j.merged ?? 0);
+      }
+
       trackEvent('widget_action', {
         widget: 'recruiting',
         action: 'bridge_send',
@@ -230,14 +281,18 @@ export function RecruitingBridge({
                     {c.num != null ? `#${c.num}` : '—'}
                   </span>
                   <span className="text-sm font-bold text-ink">
-                    {t('bridgeRespondentLabel')}
+                    {/* intake 행은 실명, 폼 응답 행은 익명 라벨(마스킹 유지). */}
+                    {c.name || t('bridgeRespondentLabel')}
                   </span>
                   {c.demo ? (
                     <span className="text-xs text-mute-soft">{c.demo}</span>
                   ) : null}
-                  <span className="ml-auto font-mono-label text-xs-soft text-faint">
-                    🔒 {CONTACT_MASK}
-                  </span>
+                  {/* 업로드 명단(name 有)은 plaintext 라 마스크 칩 생략. */}
+                  {c.name ? null : (
+                    <span className="ml-auto font-mono-label text-xs-soft text-faint">
+                      🔒 {CONTACT_MASK}
+                    </span>
+                  )}
                   {c.fit ? (
                     <span
                       className={`inline-flex shrink-0 items-center rounded-pill border px-2 py-0.5 text-xs-soft font-bold ${FIT_PILL[c.fit].cls}`}

@@ -648,13 +648,18 @@ function SelectAllCheckbox({
   );
 }
 
-function ResponseTable({
+// Exported (card 588) so the ①응답 "업로드 명단" segment reuses this exact table
+// for intake rows. Intake data carries no submit time and no PII question ids,
+// so that segment passes `showTime={false}` + `piiQids={emptySet}` (uploaded
+// contact is the user's own plaintext data — shown, not hidden).
+export function ResponseTable({
   columns,
   piiQids,
   rows,
   selected,
   onToggleRow,
   onToggleAll,
+  showTime = true,
 }: {
   columns: FormColumn[];
   piiQids: Set<string>;
@@ -662,6 +667,9 @@ function ResponseTable({
   selected: Set<string>;
   onToggleRow: (rowId: string) => void;
   onToggleAll: (checked: boolean) => void;
+  // Whether to render the '응답 시각' column. Google Forms responses have a
+  // submit time; intake (upload) rows don't → false hides the empty column.
+  showTime?: boolean;
 }) {
   // PII 컬럼(이름/전화)은 표에서 완전히 제외 — 컬럼 자체를 DOM 에 렌더하지 않아
   // 다른 컬럼 폭을 확보한다. piiQids 는 서버 목록 + title 기반 판정의 합집합.
@@ -669,7 +677,7 @@ function ResponseTable({
 
   const renderCols: RenderCol[] = [
     { kind: 'select' } as const,
-    { kind: 'time' } as const,
+    ...(showTime ? [{ kind: 'time' } as const] : []),
     ...nonPiiCols.map((col) => ({ kind: 'field', col }) as const),
   ];
 

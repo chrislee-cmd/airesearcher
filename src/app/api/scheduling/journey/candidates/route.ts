@@ -143,7 +143,11 @@ export async function GET(req: Request) {
     );
   }
 
-  // `source` / `status` are additive → wide/narrow degrade (default them).
+  // `source` / `status` / `stage` are additive → wide/narrow degrade (default
+  // them). Card 588: this route carries `stage` on every candidate but does NOT
+  // filter — existing consumers (intake band count) keep seeing every row, and
+  // the ①응답 upload-list segment filters `stage === 'intake'` on the client.
+  // A preview DB without the column degrades to 'roster' (current behaviour).
   type Candidate = {
     id: string;
     batch_id: string | null;
@@ -153,11 +157,12 @@ export async function GET(req: Request) {
     fields: Record<string, string> | null;
     status: string;
     source: string | null;
+    stage: string;
   };
   let candidates: Candidate[] = [];
   const wide = await admin
     .from('sched_candidates')
-    .select('id, batch_id, email, name, phone, fields, status, source')
+    .select('id, batch_id, email, name, phone, fields, status, source, stage')
     .in('batch_id', batchIds)
     .order('created_at', { ascending: true })
     .limit(5000);
@@ -169,8 +174,9 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: true })
       .limit(5000);
     candidates = (narrow.data ?? []).map((r) => ({
-      ...(r as Omit<Candidate, 'source'>),
+      ...(r as Omit<Candidate, 'source' | 'stage'>),
       source: null,
+      stage: 'roster',
     }));
   } else {
     candidates = (wide.data ?? []) as Candidate[];

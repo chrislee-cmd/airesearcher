@@ -129,14 +129,21 @@ export async function GET(req: Request) {
     joined_at: string | null;
   };
   let candidates: Candidate[] = [];
+  // Card 588: ②일정 shows the ROSTER only. Intake rows (uploaded but not yet
+  // promoted) sit in ①응답 and must not leak here — hence `.eq('stage', 'roster')`.
+  // On a preview DB predating the stage column the wide select errors and we
+  // degrade to the narrow set WITHOUT the filter, i.e. every row is treated as
+  // roster (current behaviour) — never dropping data on the old schema.
   const candWide = await admin
     .from('sched_candidates')
-    .select('id, batch_id, email, name, phone, fields, status, source, joined_at')
+    .select('id, batch_id, email, name, phone, fields, status, source, joined_at, stage')
     .in('batch_id', batchIds)
+    .eq('stage', 'roster')
     .order('created_at', { ascending: true })
     .limit(5000);
   if (candWide.error) {
-    // Preview DB predating source/joined_at — degrade both to null.
+    // Preview DB predating source/joined_at/stage — degrade all to null and drop
+    // the stage filter (no intake concept on the old schema → all roster).
     const candNarrow = await admin
       .from('sched_candidates')
       .select('id, batch_id, email, name, phone, fields, status')
