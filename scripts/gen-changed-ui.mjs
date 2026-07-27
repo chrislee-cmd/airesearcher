@@ -34,6 +34,8 @@ const SINCE_DAYS = Number(process.env.SINCE_DAYS || 30);
 // convention 밖(canvas shell 등)만 명시, 나머지는 components/ui/<id>.
 const FOUNDATION = new Set(['color', 'radius', 'font-size', 'z-index', 'motion']);
 const MODULE_OVERRIDES = {
+  // picker 는 디렉토리(패밀리) — 배럴 index 로 매핑(components/ui/picker.tsx 없음).
+  picker: ['components/ui/picker/index'],
   'widget-fullview-modal': ['components/canvas/shell/widget-fullview-modal'],
   'canvas-widget-primitives': [
     'components/canvas/shell/field',
