@@ -42,6 +42,7 @@ import { RecruitingCriteriaPanel } from './recruiting-criteria-panel';
 import { RecruitingDistribution } from './recruiting-distribution';
 import { RecruitingJudgedTable } from './recruiting-judged-table';
 import { RecruitingBridge, type BridgeCandidate } from './recruiting-bridge';
+import { UploadedListToolbar } from './uploaded-list-toolbar';
 
 export function RecruitingFullviewBody({
   conditionsForPanel,
@@ -154,9 +155,60 @@ export function RecruitingFullviewBody({
         : sourceSel;
   // 업로드 명단은 사용자 소유 plaintext → PII 컬럼 숨김 없음(빈 Set).
   const emptyPii = useMemo(() => new Set<string>(), []);
+
+  // ── 업로드 명단 정렬·필터(card 594) — admin recruiting-scheduling 의
+  // filterKey/filterValue + sortKey/sortDir 패턴 이식. state 는 body 로컬이라
+  // 폼/업로드 세그먼트 전환에도 유지된다(spec §D). 컨트롤은 업로드 소스에서만
+  // 렌더되지만 state 는 소스 무관 유지 — RecruitingJudgedTable 의 fitFilter 와 같은 결.
+  const [uploadSortKey, setUploadSortKey] = useState('');
+  const [uploadSortDir, setUploadSortDir] = useState<'asc' | 'desc'>('asc');
+  const [uploadFilterKey, setUploadFilterKey] = useState('');
+  const [uploadFilterValue, setUploadFilterValue] = useState('');
+
+  // 필터 컬럼의 distinct 값(빈 값 제외, 정렬) — 값 피커용. 데이터에서 파생.
+  const uploadFilterValues = useMemo(() => {
+    if (!uploadFilterKey || !intakeData) return [];
+    return Array.from(
+      new Set(
+        intakeData.rows
+          .map((r) => r.answers[uploadFilterKey])
+          .filter((v): v is string => !!v && v.trim() !== ''),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [intakeData, uploadFilterKey]);
+
+  // 표시 rows = 필터 → 정렬(파생만; columns·bridgeSelection 은 불변, spec §C).
+  const displayIntakeData = useMemo(() => {
+    if (!intakeData) return null;
+    let rows = intakeData.rows;
+    if (uploadFilterKey && uploadFilterValue) {
+      rows = rows.filter(
+        (r) => (r.answers[uploadFilterKey] ?? '') === uploadFilterValue,
+      );
+    }
+    if (uploadSortKey) {
+      const num = (v: string) => {
+        const n = Number(v.replace(/[\s,]/g, ''));
+        return v.trim() !== '' && Number.isFinite(n) ? n : null;
+      };
+      rows = [...rows].sort((a, b) => {
+        const av = a.answers[uploadSortKey] ?? '';
+        const bv = b.answers[uploadSortKey] ?? '';
+        const an = num(av);
+        const bn = num(bv);
+        // 양쪽 다 숫자로 파싱되면 숫자 비교(전화/나이 등), 아니면 localeCompare.
+        const cmp =
+          an !== null && bn !== null ? an - bn : av.localeCompare(bv);
+        return uploadSortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return { columns: intakeData.columns, rows };
+  }, [intakeData, uploadFilterKey, uploadFilterValue, uploadSortKey, uploadSortDir]);
+
+  // 전체선택 범위 = 현재 필터·정렬로 "보이는" rows 의 id 만(spec §C 전체선택 주의).
   const uploadIds = useMemo(
-    () => intakeData?.rows.map((r) => r.responseId) ?? [],
-    [intakeData],
+    () => displayIntakeData?.rows.map((r) => r.responseId) ?? [],
+    [displayIntakeData],
   );
 
   return (
@@ -257,12 +309,31 @@ export function RecruitingFullviewBody({
             </div>
           )}
 
-          {/* 업로드 명단 소스 헤더 — 뷰 토글 없음(전체 데이터만). */}
+          {/* 업로드 명단 소스 헤더 — 제목 + 정렬·필터 피커(card 594). 뷰 토글은
+              없음(전체 데이터만). 피커 chrome 은 폼 소스 툴바와 동일. */}
           {activeSource === 'upload' && (
-            <div className="flex shrink-0 items-center gap-[10px] border-b border-ink/10 bg-paper px-5 py-[11px]">
-              <span className="text-sm font-bold text-ink">
+            <div className="flex shrink-0 flex-wrap items-center gap-[10px] border-b border-ink/10 bg-paper px-5 py-[11px]">
+              <span className="shrink-0 text-sm font-bold text-ink">
                 {t('uploadListTitle')} ({intakeCount})
               </span>
+              {intakeData && intakeData.columns.length > 0 && (
+                <UploadedListToolbar
+                  columns={intakeData.columns}
+                  sortKey={uploadSortKey}
+                  sortDir={uploadSortDir}
+                  filterKey={uploadFilterKey}
+                  filterValue={uploadFilterValue}
+                  filterValues={uploadFilterValues}
+                  onSortKeyChange={setUploadSortKey}
+                  onSortDirChange={setUploadSortDir}
+                  onFilterKeyChange={(key) => {
+                    setUploadFilterKey(key);
+                    // 컬럼 변경 시 값 리셋 — 스테일 값 잔존 방지(scheduling 선례).
+                    setUploadFilterValue('');
+                  }}
+                  onFilterValueChange={setUploadFilterValue}
+                />
+              )}
             </div>
           )}
 
@@ -371,12 +442,12 @@ export function RecruitingFullviewBody({
             {/* 업로드 명단 — ResponseTable 재사용(응답 시각 컬럼 없음, PII 숨김
                 없음). 선택은 폼 응답과 동일한 브리지 집합을 공유(cand: 접두어로
                 키 공간 분리). 승격은 하단 공용 브리지 바가 소유(§S5). */}
-            {activeSource === 'upload' && intakeData && (
+            {activeSource === 'upload' && displayIntakeData && (
               <div className="h-full min-w-0 overflow-auto bg-paper">
                 <ResponseTable
-                  columns={intakeData.columns}
+                  columns={displayIntakeData.columns}
                   piiQids={emptyPii}
-                  rows={intakeData.rows}
+                  rows={displayIntakeData.rows}
                   selected={bridgeSelected}
                   onToggleRow={onToggleRow}
                   onToggleAll={(checked) => onToggleAll(uploadIds, checked)}
