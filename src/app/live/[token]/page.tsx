@@ -45,7 +45,12 @@ export default async function Page({
     // Memphis observer frame is self-contained (CD `.dc.html`): a centered
     // ~600px column on the dotted canvas ground, filling the viewport height.
     // The dotted radial ground mirrors the CD comp background.
-    <main className="flex flex-1 justify-center bg-surface-canvas px-4 py-6 [background-image:radial-gradient(var(--color-line-empty)_1.1px,transparent_1.1px)] [background-size:22px_22px]">
+    // `min-h-0`: as a flex child of the `h-full` body column, main must be
+    // allowed to shrink below its content — otherwise flex's default
+    // `min-height:auto` lets accumulating captions/screen grow main past the
+    // viewport (heights creep up over a session). Clamped here, the viewer's
+    // inner `overflow-y-auto` panels absorb the overflow at a fixed frame size.
+    <main className="flex min-h-0 flex-1 justify-center bg-surface-canvas px-4 py-6 [background-image:radial-gradient(var(--color-line-empty)_1.1px,transparent_1.1px)] [background-size:22px_22px]">
       <TranslateViewer
         token={token}
         sessionId={meta.id}

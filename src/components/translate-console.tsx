@@ -25,7 +25,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { useLocale, useTranslations } from 'next-intl';
-import { Room, LocalAudioTrack } from 'livekit-client';
+import {
+  Room,
+  LocalAudioTrack,
+  LocalVideoTrack,
+  ScreenSharePresets,
+  Track,
+} from 'livekit-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { createTtsQueue, type TtsQueue } from '@/lib/translate-tts';
@@ -113,6 +119,12 @@ const TRACE_ENCODING =
 // behaviour) with zero other changes. Module-level so it's a stable
 // reference across renders and closures.
 const CUSTOM_TTS_ENABLED = env.NEXT_PUBLIC_TRANSLATE_CUSTOM_TTS !== 'off';
+
+// 🖥️ Shared-screen video publish cap (frame 07 observer relay). Interpreter
+// sessions share slides/docs, not high-motion video, so 720p/15fps keeps text
+// legible at a fraction of full-motion bandwidth. Single layer (no simulcast) —
+// observers are view-only, so we skip the CPU/bandwidth cost of extra layers.
+const SHARE_VIDEO_PRESET = ScreenSharePresets.h720fps15;
 
 type Status = 'idle' | 'starting' | 'live' | 'ending' | 'ended' | 'error';
 
@@ -1092,6 +1104,13 @@ export function TranslateConsole({
   // session). `srcStreamRef.tab` stays audio-only (pipeline unchanged, 회귀 0);
   // this is a separate video-only stream. `null` outside tab-only/both.
   const shareVideoStreamRef = useRef<MediaStream | null>(null);
+  // 🖥️ LiveKit publication wrapper for the shared-screen video (frame 07
+  // observer relay). Held so the browser "Stop sharing" (`ended`) path can
+  // unpublish it independently of session teardown — session end unpublishes
+  // via `room.disconnect()` in cleanup. `userProvidedTrack` is set so LiveKit
+  // never stops the underlying track: the console is its sole owner (created in
+  // acquireTabSlot, stopped in cleanup / the `ended` handler).
+  const shareVideoLkTrackRef = useRef<LocalVideoTrack | null>(null);
   // Per-slot TTS stream emitted by OpenAI.
   const ttsStreamRef = useRef<Record<SourceSlot, MediaStream | null>>(
     emptySlotRecord<MediaStream | null>(null),
@@ -1596,6 +1615,10 @@ export function TranslateConsole({
     sourceItemTextRef.current.clear();
     // 🖥️ Stop the shared-screen video track (orphan streams 0) + clear the
     // fullview mirror. Audio-only `srcStreamRef.tab` was already stopped above.
+    // The LiveKit publication is torn down by `room.disconnect()` below; we
+    // just drop the ref here (userProvidedTrack → LiveKit won't stop the track,
+    // this stop() is the sole owner cleanup).
+    shareVideoLkTrackRef.current = null;
     shareVideoStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     shareVideoStreamRef.current = null;
     setShareVideoStream(null);
@@ -1813,11 +1836,13 @@ export function TranslateConsole({
 
   const broadcastCaption = useCallback(
     (kind: 'input' | 'output', line: CaptionLine, lang: string) => {
-      // The viewer prompter only renders translated output, so input
-      // captions don't need to traverse the broadcast channel — saves
-      // bandwidth on long sessions. They're still persisted via
-      // /messages below so PR-B can offer a bilingual download.
-      if (kind === 'input') return;
+      // Broadcast BOTH kinds. The legacy prompter rendered only translated
+      // output, so input was dropped here to save bandwidth — but the Memphis
+      // observer redesign (#1227) gives the viewer a dedicated ORIGINAL panel
+      // that streams input deltas the same way TRANSLATION streams output.
+      // Skipping input left that panel permanently empty (host fullview still
+      // showed it from local state). Input is still persisted via /messages
+      // below for the bilingual download.
       channelRef.current
         ?.send({
           type: 'broadcast',
@@ -2842,6 +2867,17 @@ export function TranslateConsole({
             // Only clear if this is still the current share stream (a later
             // session may have replaced it).
             if (shareVideoStreamRef.current === videoStream) {
+              // 🖥️ Unpublish the observer relay first so viewers fall back to
+              // the caption stack (frame 07 → vertical) while audio/captions
+              // keep flowing. `stopOnUnpublish=false`: the console stops the
+              // underlying track itself on the next line (sole owner).
+              const lkVideo = shareVideoLkTrackRef.current;
+              if (lkVideo && roomRef.current) {
+                void roomRef.current.localParticipant
+                  .unpublishTrack(lkVideo, false)
+                  .catch(() => {});
+              }
+              shareVideoLkTrackRef.current = null;
               videoStream.getTracks().forEach((tr) => tr.stop());
               shareVideoStreamRef.current = null;
               setShareVideoStream(null);
@@ -3278,6 +3314,41 @@ export function TranslateConsole({
             console.warn('[translate] custom TTS output publish failed', err);
             outputPublishedRef.current = false;
           }
+        }
+      }
+      // 🖥️ Publish the preserved shared-screen video (frame 07 observer relay).
+      // Additive on top of the audio publishes above — the audio/resample
+      // pipeline is untouched (회귀 0). Present only for tab/both captures where
+      // the picker returned a video track; mic-only sessions skip this and
+      // observers keep the audio+caption layout. Capped at SHARE_VIDEO_PRESET
+      // (720p/15fps), single layer. Video is progressive enhancement: a publish
+      // failure is logged and swallowed so audio/captions never tear down.
+      const shareVideoTrack =
+        shareVideoStreamRef.current?.getVideoTracks()[0] ?? null;
+      if (shareVideoTrack && shareVideoTrack.readyState === 'live') {
+        try {
+          const lkVideo = new LocalVideoTrack(shareVideoTrack, undefined, true);
+          await room.localParticipant.publishTrack(lkVideo, {
+            name: 'screen',
+            source: Track.Source.ScreenShare,
+            videoEncoding: SHARE_VIDEO_PRESET.encoding,
+            screenShareEncoding: SHARE_VIDEO_PRESET.encoding,
+            simulcast: false,
+            degradationPreference: 'maintain-resolution',
+          });
+          shareVideoLkTrackRef.current = lkVideo;
+          console.info('[translate] livekit screen published', {
+            maxWidth: SHARE_VIDEO_PRESET.width,
+            maxHeight: SHARE_VIDEO_PRESET.height,
+            maxFramerate: SHARE_VIDEO_PRESET.encoding.maxFramerate,
+            maxBitrate: SHARE_VIDEO_PRESET.encoding.maxBitrate,
+          });
+        } catch (err) {
+          console.warn(
+            '[translate] screen video publish failed (audio/captions unaffected)',
+            err,
+          );
+          shareVideoLkTrackRef.current = null;
         }
       }
     } catch (e) {
