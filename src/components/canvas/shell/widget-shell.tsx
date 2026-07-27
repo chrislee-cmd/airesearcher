@@ -16,12 +16,14 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from 'react';
 import { useTranslations } from 'next-intl';
 import { resolveWidgetLabel, type WidgetContent } from '../widget-types';
@@ -34,7 +36,7 @@ import {
   WidgetStateProvider,
   useWidgetState,
 } from './widget-state-context';
-import { WidgetStatePill, widgetStatePillLabel } from './widget-state-pill';
+import { WidgetStatePill } from './widget-state-pill';
 import { WidgetCreditBadge } from './widget-credit-badge';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import {
@@ -137,7 +139,8 @@ function ArrowRightIcon({ className }: { className?: string }) {
 // banner-top chrome 에 분리돼 있던 크레딧 배지·상태 pill·풀뷰 진입을 헤더밴드
 // 안 단일 pill 로 병합. probing·interpreter(cardFrame) 세팅 표면 전용.
 
-// 세그 디바이더 — 1.5px ink 세로선.
+// 세그 디바이더 — 1.5px ink 세로선. 셀 사이에만(×N-1) 삽입 — full-bleed
+// 세로 rule (컨테이너 align-items:stretch).
 function ToolbarDivider() {
   return (
     <span
@@ -148,38 +151,63 @@ function ToolbarDivider() {
   );
 }
 
-// 상태 세그 — WidgetStateContext 구독(PopStatePill 과 동일 소스), 툴바용 컴팩트
-// 표현(● 도트 + 라벨). ready = success(초록)/READY · 라이브 = amore(핑크)/LIVE.
-function ToolbarStatusSegment() {
-  const { state } = useWidgetState();
-  const live = state.kind === 'running';
+// 툴바 v2 셀 공유 지오메트리 — 44px 폭 고정 + center + 6px 세로 패딩(CD SPEC §2).
+// credit 값(25/50/75)이 바뀌어도 폭 불변. 아이콘 셀만 cursor/hover(paper-soft).
+const TOOLBAR_CELL_STYLE: CSSProperties = {
+  width: 44,
+  padding: '6px 0',
+  color: 'var(--canvas-card-header-text)',
+};
+
+// 가이드 `?` 글리프 — CD .dc.html SVG path (viewBox 0 0 24 24 · stroke ink 2.2 ·
+// circle r=9 + 물음표 stroke + 1.15r dot). 이모지 금지. decorative + aria-hidden.
+function GuideIcon() {
   return (
-    <span
-      className="inline-flex items-center gap-1.5 font-bold uppercase tabular-nums tracking-wider"
-      style={{ padding: '6px 10px', fontSize: 11, color: 'var(--canvas-card-header-text)' }}
-      aria-live={live ? 'polite' : undefined}
-      title={state.kind === 'error' && state.message ? state.message : undefined}
-    >
-      <span
-        aria-hidden
-        className={live ? 'animate-pulse' : undefined}
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: 'var(--radius-pill)',
-          background: live ? 'var(--color-amore)' : 'var(--color-success)',
-        }}
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      {widgetStatePillLabel(state)}
-    </span>
+      <path
+        d="M9.4 9.3a2.7 2.7 0 1 1 3.7 2.5c-.7.3-1.1 1-1.1 1.8v.5"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="17.4" r="1.15" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// 풀뷰 확장 화살표 글리프 — CD .dc.html SVG path (viewBox 0 0 24 24 · stroke ink
+// 2.6). 기존 DuotoneIcon fullview 대신 CD 글리프를 SSOT 로(픽셀 diff 정합).
+function ExpandIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 4H4v5M4 4l6 6M15 20h5v-5M20 20l-6-6"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
 // 통합 툴바 pill — chrome(1.5px ink border · radius 10 · memphis-sm · bg-paper).
-// 세그 순서(좌→우 고정): 💎 크레딧 │ ● 상태 │ 🎨 색상 변경 │ ⤢ 풀뷰.
-// 🎨 = 기존 WidgetHeaderColorPicker 재배치 (신규 구현 아님) — 645 툴바 재작성
-// 때 cardFrame 에서 빠진 색상 커스텀을 position #3 에 복원. 팔레트 글리프는
-// 듀오톤(fill var(--widget-tone))이라 현재 헤더 톤으로 채워져 상태를 표시.
+// 셀 순서(좌→우 고정, CD SPEC §2): 💎 크레딧 │ ? 가이드 │ 🎨 색상 │ ⤢ 풀뷰.
+// v2 변경: (1) 상태 pill 제거(세션 상태는 컨텍스트/사이드바 배지가 계속 보유 —
+// 회귀 0), (2) 가이드 ? 버튼 신설(hasGuide+onGuide 게이트, 영상 config 없는
+// 위젯은 미노출 → 빈 모달 방지), (3) 4셀 전부 44px 폭 고정. 🎨 = 기존
+// WidgetHeaderColorPicker 재배치, 듀오톤 글리프(fill var(--widget-tone))로 현재
+// 헤더 톤 표시. divider 는 렌더된 셀 사이에만 삽입.
 function WidgetToolbar({
   cost,
   costLabel,
@@ -187,6 +215,9 @@ function WidgetToolbar({
   onHeaderColorChange,
   onFullview,
   fullviewLabel,
+  hasGuide,
+  onGuide,
+  guideLabel,
 }: {
   cost: number | undefined;
   costLabel: string | undefined;
@@ -194,11 +225,93 @@ function WidgetToolbar({
   onHeaderColorChange: (color: string | null) => void;
   onFullview?: () => void;
   fullviewLabel: string;
+  // 가이드 게이트 — hasGuide(596 의 widget-guides config 유무) && onGuide 둘 다
+  // 있어야 버튼 노출. PR-A 단독 머지 시엔 아무도 안 넘겨 미노출(회귀 0).
+  hasGuide?: boolean;
+  onGuide?: () => void;
+  guideLabel: string;
 }) {
   const hasCredit = costLabel != null || typeof cost === 'number';
+  const showGuide = !!hasGuide && !!onGuide;
+
+  // 렌더될 셀만 모아 divider 를 셀 사이에만(×N-1) 삽입 — 조건부 셀에도
+  // 선행/후행/이중 divider 가 안 생긴다.
+  const cells: ReactNode[] = [];
+  if (hasCredit) {
+    cells.push(
+      <span
+        key="credit"
+        className="inline-flex items-center justify-center font-mono font-bold tabular-nums"
+        // 숫자 크레딧(25/50/75)은 44px 안에 센터(CD 불변식 유지). 단, AI UT 처럼
+        // costLabel 이 단어("PREVIEW")면 44px 고정 시 3줄로 깨진다(CD 미도해 케이스)
+        // → minWidth 44 + nowrap 로 숫자는 44 유지, 단어 라벨만 한 줄로 자라남.
+        style={{
+          minWidth: 44,
+          padding: '6px 6px',
+          color: 'var(--canvas-card-header-text)',
+          gap: 5,
+          fontSize: 11,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <DuotoneIcon name="diamond" size={14} />
+        <span>{costLabel ?? cost}</span>
+      </span>,
+    );
+  }
+  if (showGuide) {
+    cells.push(
+      // eslint-disable-next-line react/forbid-elements -- 툴바 세그 아이콘 버튼(?). ui/ IconButton 의 memphis chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — 셸 카드 프레임 정의 지점의 bare 세그 버튼(⤢/🎨 와 동일 사유).
+      <button
+        key="guide"
+        type="button"
+        // 헤더밴드 = drag handle. 툴바 클릭이 카드 drag 를 트리거하지 않게 차단.
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onGuide?.();
+        }}
+        title={guideLabel}
+        aria-label={guideLabel}
+        className="inline-flex cursor-pointer items-center justify-center hover:bg-paper-soft"
+        style={TOOLBAR_CELL_STYLE}
+      >
+        <GuideIcon />
+      </button>,
+    );
+  }
+  cells.push(
+    <WidgetHeaderColorPicker
+      key="palette"
+      value={headerColor}
+      onChange={onHeaderColorChange}
+      variant="segment"
+    />,
+  );
+  if (onFullview) {
+    cells.push(
+      // eslint-disable-next-line react/forbid-elements -- 툴바 세그 아이콘 버튼(⤢). ui/ IconButton 의 memphis chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — 셸 카드 프레임 정의 지점의 bare 세그 버튼.
+      <button
+        key="expand"
+        type="button"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onFullview();
+        }}
+        title={fullviewLabel}
+        aria-label={fullviewLabel}
+        className="inline-flex cursor-pointer items-center justify-center hover:bg-paper-soft"
+        style={TOOLBAR_CELL_STYLE}
+      >
+        <ExpandIcon />
+      </button>,
+    );
+  }
+
   return (
     <span
-      className="inline-flex shrink-0 items-center"
+      className="inline-flex shrink-0 items-stretch"
       style={{
         background: 'var(--canvas-card-bg)',
         border: '1.5px solid var(--canvas-card-border)',
@@ -207,38 +320,12 @@ function WidgetToolbar({
         overflow: 'hidden',
       }}
     >
-      {hasCredit && (
-        <span
-          className="inline-flex items-center gap-1 font-bold tabular-nums"
-          style={{ padding: '6px 10px', fontSize: 11, color: 'var(--canvas-card-header-text)' }}
-        >
-          <DuotoneIcon name="diamond" size={14} />
-          <span>{costLabel ?? cost}</span>
-        </span>
-      )}
-      {hasCredit && <ToolbarDivider />}
-      <ToolbarStatusSegment />
-      <ToolbarDivider />
-      <WidgetHeaderColorPicker
-        value={headerColor}
-        onChange={onHeaderColorChange}
-        variant="segment"
-      />
-      {onFullview && (
-        <>
-          <ToolbarDivider />
-          {/* eslint-disable-next-line react/forbid-elements -- 툴바 세그 아이콘 버튼(⤢). ui/ IconButton 의 memphis chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — 셸 카드 프레임 정의 지점의 bare 세그 버튼. */}
-          <button
-            type="button"
-            onClick={onFullview}
-            aria-label={fullviewLabel}
-            className="inline-flex items-center justify-center"
-            style={{ padding: '6px 10px', color: 'var(--canvas-card-header-text)' }}
-          >
-            <DuotoneIcon name="fullview" size={16} />
-          </button>
-        </>
-      )}
+      {cells.map((cell, i) => (
+        <Fragment key={i}>
+          {i > 0 && <ToolbarDivider />}
+          {cell}
+        </Fragment>
+      ))}
     </span>
   );
 }
@@ -247,6 +334,8 @@ export function WidgetShell({
   content,
   dragHandleProps,
   onFullview,
+  hasGuide,
+  onGuide,
 }: {
   content: WidgetContent;
   // 호출부 의도 표식 (현재는 default 동작).
@@ -256,6 +345,11 @@ export function WidgetShell({
   // state pill 하단 "전체 보기" 진입점. 넘기는 위젯이 있을 때만 버튼 노출 —
   // 미전달이면 버튼 0 → 회귀 0 (PR-C 가 위젯별 wire).
   onFullview?: () => void;
+  // 가이드 ? 버튼 게이트 — 영상 가이드가 있는 위젯(596 의 widget-guides
+  // config)일 때만 hasGuide=true. onGuide 는 클릭 시 모달 오픈 콜백(596 wire).
+  // PR-A 단독 머지 시엔 호출부가 안 넘겨 버튼 미노출(빈 모달 방지 · 회귀 0).
+  hasGuide?: boolean;
+  onGuide?: (widgetKey: string) => void;
 }) {
   // shell 헤더 (PopStatePill) ↔ body (job hook) 가 같은 인스턴스 안에서
   // state 를 주고받게 1-위젯-1-Provider 로 wrap. 초기값은 widget meta 의
@@ -267,6 +361,8 @@ export function WidgetShell({
         content={content}
         dragHandleProps={dragHandleProps}
         onFullview={onFullview}
+        hasGuide={hasGuide}
+        onGuide={onGuide}
       />
     </WidgetStateProvider>
   );
@@ -276,10 +372,14 @@ function WidgetShellInner({
   content,
   dragHandleProps,
   onFullview,
+  hasGuide,
+  onGuide,
 }: {
   content: WidgetContent;
   dragHandleProps?: DragHandleProps;
   onFullview?: () => void;
+  hasGuide?: boolean;
+  onGuide?: (widgetKey: string) => void;
 }) {
   const { ExpandedBody } = content;
   const isDraggable = !!dragHandleProps?.draggable;
@@ -358,6 +458,9 @@ function WidgetShellInner({
             onHeaderColorChange={setHeaderColor}
             onFullview={onFullview}
             fullviewLabel={tWidgets('fullview')}
+            hasGuide={hasGuide}
+            onGuide={onGuide ? () => onGuide(content.key) : undefined}
+            guideLabel={tWidgets('guide')}
           />
           <CostFlyUpOverlay featureKey={content.key} />
         </div>
