@@ -1,5 +1,6 @@
 import { parseCsvString } from '@/lib/csv-parse';
 import { parseXlsxToRows } from '@/lib/xlsx-parse';
+import { applyCanonicalPhone, type PhoneFlagReason } from './phone';
 
 // Parse a candidate upload (CSV or XLSX) into normalized rows. email/name/phone
 // are mapped off a multi-locale header alias table (mirrors scheduler/csv.ts);
@@ -42,9 +43,21 @@ export type ParsedCandidate = {
   fields: Record<string, string>;
 };
 
+// A phone that couldn't be canonicalized to `10########` — surfaced to the
+// uploader (name + original value + reason) so they fix it at the source. The
+// stored phone is left untouched (never overwritten with a mangled value).
+export type FlaggedPhone = {
+  name: string | null;
+  rawPhone: string;
+  reason: PhoneFlagReason;
+};
+
 export type ParseCandidatesResult = {
   candidates: ParsedCandidate[];
   headers: string[];
+  // Rows whose phone couldn't be canonicalized (card 604). Empty when all phones
+  // are canonical or absent.
+  flagged: FlaggedPhone[];
 };
 
 function normalize(s: string): string {
@@ -152,7 +165,7 @@ export function parseCandidateRows(
   headers: string[],
   rows: Record<string, unknown>[],
 ): ParseCandidatesResult {
-  if (rows.length === 0) return { candidates: [], headers: [] };
+  if (rows.length === 0) return { candidates: [], headers: [], flagged: [] };
 
   // Two passes: exact alias match first (well-formed sheets), then a curated
   // substring fallback for the remaining unmatched field. `reserved` grows as
@@ -172,6 +185,7 @@ export function parseCandidateRows(
   if (phoneKey) reserved.add(phoneKey);
 
   const parsed: ParsedCandidate[] = [];
+  const flagged: FlaggedPhone[] = [];
   for (const row of rows) {
     const fields: Record<string, string> = {};
     for (const h of headers) {
@@ -179,11 +193,20 @@ export function parseCandidateRows(
       const s = toStr(row[h]).trim();
       if (s !== '') fields[h] = s;
     }
+    const name = nameKey ? toStr(row[nameKey]).trim() || null : null;
+    const rawPhone = phoneKey ? toStr(row[phoneKey]).trim() || null : null;
+    // Canonicalize the phone to `10########` and preserve the original under
+    // fields.__phone_raw. A phone that can't be canonicalized is left as-is and
+    // surfaced in `flagged` for the uploader to correct (card 604).
+    const applied = applyCanonicalPhone(rawPhone, fields);
+    if (applied.flagged && applied.reason) {
+      flagged.push({ name, rawPhone: rawPhone ?? '', reason: applied.reason });
+    }
     parsed.push({
       email: emailKey ? toStr(row[emailKey]).trim().toLowerCase() || null : null,
-      name: nameKey ? toStr(row[nameKey]).trim() || null : null,
-      phone: phoneKey ? toStr(row[phoneKey]).trim() || null : null,
-      fields,
+      name,
+      phone: applied.phone,
+      fields: applied.fields,
     });
   }
 
@@ -211,5 +234,5 @@ export function parseCandidateRows(
     }
   }
 
-  return { candidates: [...byIdentity.values(), ...anonymous], headers };
+  return { candidates: [...byIdentity.values(), ...anonymous], headers, flagged };
 }

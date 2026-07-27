@@ -29,6 +29,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/toast-provider';
+import { flaggedPhonesToast } from '@/lib/scheduling/flagged-phones';
+import type { FlaggedPhone } from '@/lib/scheduling/candidates-parse';
 
 type IntakeProject = {
   id: string;
@@ -114,6 +116,7 @@ export function JourneyIntakeBand({
       });
       const json = (await res.json().catch(() => ({}))) as {
         upserted?: number;
+        flagged?: FlaggedPhone[];
         error?: string;
         code?: string | null;
         detail?: string | null;
@@ -130,6 +133,10 @@ export function JourneyIntakeBand({
         return;
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
+      // Phones that couldn't be canonicalized (card 604) — warn so the user fixes
+      // them at the source. Canonicalized rows pass silently.
+      const flaggedMsg = flaggedPhonesToast(json.flagged, t);
+      if (flaggedMsg) notifyErr(flaggedMsg);
       await load();
       onChanged?.();
     } finally {
@@ -165,6 +172,7 @@ export function JourneyIntakeBand({
       );
       const json = (await res.json().catch(() => ({}))) as {
         upserted?: number;
+        flagged?: FlaggedPhone[];
         error?: string;
       };
       if (
@@ -181,6 +189,8 @@ export function JourneyIntakeBand({
         return;
       }
       notifyOk(t('uploaded', { count: json.upserted ?? 0 }));
+      const flaggedMsg = flaggedPhonesToast(json.flagged, t);
+      if (flaggedMsg) notifyErr(flaggedMsg);
       setSheetUrl('');
       await load();
       onChanged?.();

@@ -152,7 +152,9 @@ export async function POST(
   }
 
   return NextResponse.json(
-    { upserted: result.upserted },
+    // `flagged` (card 604): un-canonicalizable phones surfaced to the importer;
+    // stored values are left untouched.
+    { upserted: result.upserted, flagged: parsed.flagged },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

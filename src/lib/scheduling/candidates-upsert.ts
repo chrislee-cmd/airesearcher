@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ParsedCandidate } from './candidates-parse';
+import { applyCanonicalPhone } from './phone';
 
 const phoneDigits = (p: string): string => p.replace(/\D/g, '');
 
@@ -45,6 +46,16 @@ export async function upsertCandidatesIntoBatch(
 ): Promise<
   { upserted: number } | { error: string; code?: string | null; detail?: string | null }
 > {
+  // Canonicalize phones to `10########` at the single write chokepoint so EVERY
+  // ingest path (file upload, sheet import, bridge form-response) stores the same
+  // canonical form — keeping dedup (phoneDigits below) and the participant gate
+  // consistent (card 604). The file/sheet parser already canonicalizes, so this
+  // is idempotent for those; it's the only canonicalization the bridge path gets.
+  // Flagged (un-canonicalizable) phones are left untouched — never mangled.
+  const canonicalCandidates = candidates.map((c) => {
+    const applied = applyCanonicalPhone(c.phone, c.fields);
+    return { ...c, phone: applied.phone, fields: applied.fields };
+  });
   // Wide select (with source) so an UPDATE can preserve a stronger existing
   // source; fall back to the pre-source column set on a preview DB.
   let existingRows: {
@@ -109,7 +120,7 @@ export async function upsertCandidatesIntoBatch(
     return undefined;
   }
 
-  const payload = candidates.map((c) => {
+  const payload = canonicalCandidates.map((c) => {
     const id = matchExistingId(c);
     if (id) claimed.add(id);
     const existingFields = id ? (fieldsById.get(id) ?? {}) : {};
