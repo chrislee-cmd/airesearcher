@@ -75,6 +75,7 @@ export function RecruitingJourneyShell({
   recruitingProjectId,
   activeTab,
   onTabChange,
+  onShareToken,
 }: {
   // 헤더 프로젝트 pill — projects.length>1 이면 인터랙티브 스위처, 아니면
   // display-only 폴백(FullviewProjectPill 내부 규칙).
@@ -116,6 +117,9 @@ export function RecruitingJourneyShell({
   // 브리지 전송은 탭 전환 없이 선택만 리셋(인제스트분은 ②일정 재진입 시 노출).
   activeTab: JourneyTab;
   onTabChange: (tab: JourneyTab) => void;
+  // 마스터링크 배선(#600) — 일정 탭이 로드한 project.share_token 을 host 로 올린다.
+  // host 가 이걸로 masterLink 를 구성해 되돌려주면 chip 이 노출된다.
+  onShareToken?: (token: string | null) => void;
 }) {
   const t = useTranslations('Recruiting');
   const publishHeaderSlot = useFullviewHeaderSlotPublisher();
@@ -162,7 +166,10 @@ export function RecruitingJourneyShell({
       ),
       actions: (
         <div className="flex items-center gap-2.5">
-          {masterLink ? (
+          {/* 마스터링크 chip 은 ②일정 탭에서만 노출(#600) — 공유 링크의 목적이
+              참여자 `/schedule/<token>` 예약이라 일정(캘린더) 탭 귀속. ①응답 탭엔
+              불필요. masterLink 는 host 가 일정 탭 로드 후 share_token 으로 구성. */}
+          {activeTab === 'schedule' && masterLink ? (
             <MasterLinkChip
               url={masterLink.url}
               copyLabel={t('journey.masterLinkCopy')}
@@ -266,6 +273,7 @@ export function RecruitingJourneyShell({
           key={formId ?? recruitingProjectId ?? 'none'}
           formId={formId}
           projectId={recruitingProjectId}
+          onShareToken={onShareToken}
         />
       ) : null}
     </div>
@@ -286,8 +294,14 @@ function MasterLinkChip({
 }) {
   const [copied, setCopied] = useState(false);
   const onCopy = () => {
+    // url 은 상대(`/schedule/<token>`) — 참여자가 붙여넣어 쓸 수 있게 origin 을 얹어
+    // 절대 URL 로 복사한다(window.location.origin + 상대 URL). 이미 절대면 그대로.
+    const absolute =
+      typeof window !== 'undefined'
+        ? new URL(url, window.location.origin).href
+        : url;
     void navigator.clipboard
-      ?.writeText(url)
+      ?.writeText(absolute)
       .then(() => {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1600);
