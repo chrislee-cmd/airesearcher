@@ -1901,6 +1901,22 @@
       "embedding": "インデックスを作成中"
     }
   },
+  "WidgetGuide": {
+    "title": "使い方 · {name}",
+    "readDocs": "📄 ドキュメントを見る",
+    "close": "閉じる",
+    "play": "再生",
+    "pause": "一時停止",
+    "seek": "シーク",
+    "blurb": {
+      "probing": "インタビュー中にフォローアップ質問を差し込み、リアルタイムのペルソナを読み取る方法をご覧ください。",
+      "translate": "言語ペアを設定して通訳を開始し、オブザーバーリンクをチームと共有しましょう。",
+      "quotes": "録音をアップロードするか、その場で録音すると、話者分離された文字起こしが得られます。",
+      "moderator_ai": "セッションを作成してリンクを共有し、参加者のテストをリアルタイムで確認しましょう。",
+      "recruiting": "ブリーフをスクリーニング基準に変換し、フォームを公開して、条件に合う人の日程を調整しましょう。",
+      "desk": "キーワードを追加し、ソースを選んで、引用付きのリサーチレポートを取得しましょう。"
+    }
+  },
   "Widgets": {
     "fullview": "全画面表示を開く",
     "guide": "使い方 · 動画ガイド",
@@ -2905,6 +2921,24 @@
       "uploadFilterAll": "すべて",
       "uploadFilterValue": "値を選択",
       "uploadFilterValueAll": "すべての値",
+      "uploadSearchPlaceholder": "氏名 · 連絡先で検索",
+      "uploadCsvTitle": "現在の並べ替え・絞り込みを適用した名簿を CSV でダウンロードします",
+      "uploadFilterActive": "適用中",
+      "uploadFilterEmpty": "(空欄)",
+      "uploadFilterRemove": "フィルターを削除",
+      "uploadFilterClearAll": "すべて解除",
+      "uploadSortSectionLabel": "並べ替え基準",
+      "uploadSortOrderLabel": "順序",
+      "uploadFilterQuestionLabel": "設問",
+      "uploadFilterNoQuestions": "絞り込める設問がありません",
+      "uploadFilterAnswersLabel": "回答",
+      "uploadFilterSelectAll": "すべて選択",
+      "uploadFilterAnswerSearch": "回答を検索…",
+      "uploadFilterNoAnswers": "一致する回答がありません",
+      "uploadFilterSelected": "件 選択",
+      "uploadFilterRows": "行",
+      "uploadFilterReset": "リセット",
+      "uploadFilterApply": "適用",
       "uploadColName": "氏名",
       "uploadColEmail": "メール",
       "uploadColPhone": "連絡先",

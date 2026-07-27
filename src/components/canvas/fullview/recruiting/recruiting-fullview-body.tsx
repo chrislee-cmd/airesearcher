@@ -19,7 +19,7 @@
    그대로 마운트해 좌측 패널에 응답을 공급 + "전체 데이터" 뷰로 노출.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
 import { ControlTrigger } from '@/components/ui/control-trigger';
@@ -42,7 +42,13 @@ import { RecruitingCriteriaPanel } from './recruiting-criteria-panel';
 import { RecruitingDistribution } from './recruiting-distribution';
 import { RecruitingJudgedTable } from './recruiting-judged-table';
 import { RecruitingBridge, type BridgeCandidate } from './recruiting-bridge';
-import { UploadedListToolbar } from './uploaded-list-toolbar';
+import {
+  UploadedListControls,
+  UPLOAD_EMPTY_VALUE,
+  type UploadFilterState,
+} from './uploaded-list-controls';
+import { uploadedListToCsv } from '@/lib/scheduling/intake-rows';
+import { triggerBlobDownload } from '@/lib/export/download';
 
 export function RecruitingFullviewBody({
   conditionsForPanel,
@@ -156,34 +162,100 @@ export function RecruitingFullviewBody({
   // 업로드 명단은 사용자 소유 plaintext → PII 컬럼 숨김 없음(빈 Set).
   const emptyPii = useMemo(() => new Set<string>(), []);
 
-  // ── 업로드 명단 정렬·필터(card 594) — admin recruiting-scheduling 의
-  // filterKey/filterValue + sortKey/sortDir 패턴 이식. state 는 body 로컬이라
-  // 폼/업로드 세그먼트 전환에도 유지된다(spec §D). 컨트롤은 업로드 소스에서만
-  // 렌더되지만 state 는 소스 무관 유지 — RecruitingJudgedTable 의 fitFilter 와 같은 결.
+  // ── 업로드 명단 정렬·필터(card 597, CD frame N6 리디자인) — 594 의 정렬·필터
+  // 파생 로직은 재사용하되 필터 모델을 멀티밸류로 확장(CD 하드룰 §1: 필드 간 AND ·
+  // 필드 내 OR). state 는 body 로컬이라 폼/업로드 세그먼트 전환에도 유지된다(spec §D).
   const [uploadSortKey, setUploadSortKey] = useState('');
   const [uploadSortDir, setUploadSortDir] = useState<'asc' | 'desc'>('asc');
-  const [uploadFilterKey, setUploadFilterKey] = useState('');
-  const [uploadFilterValue, setUploadFilterValue] = useState('');
+  // 멀티밸류 필터: field(questionId) → 선택 값[]. 빈 필드 = 미필터.
+  const [uploadFilters, setUploadFilters] = useState<UploadFilterState>({});
+  // 검색(이름·연락처 즉시 필터, CD State A). 필터와 별개 축.
+  const [uploadSearch, setUploadSearch] = useState('');
 
-  // 필터 컬럼의 distinct 값(빈 값 제외, 정렬) — 값 피커용. 데이터에서 파생.
-  const uploadFilterValues = useMemo(() => {
-    if (!uploadFilterKey || !intakeData) return [];
-    return Array.from(
-      new Set(
-        intakeData.rows
-          .map((r) => r.answers[uploadFilterKey])
-          .filter((v): v is string => !!v && v.trim() !== ''),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
-  }, [intakeData, uploadFilterKey]);
+  const intakeCols = useMemo(() => intakeData?.columns ?? [], [intakeData]);
 
-  // 표시 rows = 필터 → 정렬(파생만; columns·bridgeSelection 은 불변, spec §C).
+  // 정렬 옵션 = 전 컬럼(594 동적 파생 그대로 — CD Name/Contact/… 는 예시일 뿐).
+  const uploadSortOptions = useMemo(
+    () => intakeCols.map((c) => ({ key: c.questionId, label: c.title })),
+    [intakeCols],
+  );
+
+  // 필터 질문 = 설문 문항(f:* 필드)만. 연락 컬럼(__name/__email/__phone)은 값이
+  // 거의 유일해 필터로 무의미 → CD 좌 pane 이 문항만 나열하는 것과 일치(CD-grounded,
+  // 594 는 전 컬럼 허용했으나 CD 를 SSOT 로 채택. PR 본문 명시).
+  const uploadQuestions = useMemo(
+    () =>
+      intakeCols
+        .filter((c) => c.questionId.startsWith('f:'))
+        .map((c) => ({ id: c.questionId, label: c.title })),
+    [intakeCols],
+  );
+
+  // 질문별 답변 옵션(값 + 값별 카운트) — 로드된 전체 rows 에서 클라 계산(CD §값별
+  // 카운트, 447행 OK). `(빈 값)` 은 1급 옵션(CD 하드룰 §4). 카운트는 전체 기준
+  // (필터와 독립) — CD 예시(M1 214 …)가 필터 합보다 큰 총량인 것과 일치.
+  const uploadAnswersFor = useCallback(
+    (qid: string) => {
+      const rows = intakeData?.rows ?? [];
+      const counts = new Map<string, number>();
+      let emptyCount = 0;
+      for (const r of rows) {
+        const v = r.answers[qid];
+        if (v == null || v.trim() === '') emptyCount += 1;
+        else counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+      const opts = Array.from(counts.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([value, count]) => ({ value, label: value, count }));
+      if (emptyCount > 0) {
+        opts.push({
+          value: UPLOAD_EMPTY_VALUE,
+          label: t('uploadFilterEmpty'),
+          count: emptyCount,
+        });
+      }
+      return opts;
+    },
+    [intakeData, t],
+  );
+
+  // 필터 매칭 — 필드 간 AND, 필드 내 OR. 빈 값 sentinel 은 부재/빈문자에 대응.
+  const rowMatchesFilters = useCallback(
+    (row: FormResponseRow, filters: UploadFilterState) => {
+      for (const [qid, vals] of Object.entries(filters)) {
+        if (!vals.length) continue;
+        const raw = row.answers[qid] ?? '';
+        const isEmpty = raw.trim() === '';
+        const ok = vals.some((v) =>
+          v === UPLOAD_EMPTY_VALUE ? isEmpty : v === raw,
+        );
+        if (!ok) return false;
+      }
+      return true;
+    },
+    [],
+  );
+
+  // draft 필터의 행수 미리보기(픽커 푸터 "N rows") — 검색과 독립.
+  const uploadMatchCount = useCallback(
+    (filters: UploadFilterState) =>
+      (intakeData?.rows ?? []).filter((r) => rowMatchesFilters(r, filters))
+        .length,
+    [intakeData, rowMatchesFilters],
+  );
+
+  // 표시 rows = 필터(멀티밸류) → 검색 → 정렬(파생만; columns·선택집합 불변, spec §C).
   const displayIntakeData = useMemo(() => {
     if (!intakeData) return null;
-    let rows = intakeData.rows;
-    if (uploadFilterKey && uploadFilterValue) {
-      rows = rows.filter(
-        (r) => (r.answers[uploadFilterKey] ?? '') === uploadFilterValue,
+    let rows = intakeData.rows.filter((r) =>
+      rowMatchesFilters(r, uploadFilters),
+    );
+    const q = uploadSearch.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((r) =>
+        ['__name', '__phone', '__email'].some((k) =>
+          (r.answers[k] ?? '').toLowerCase().includes(q),
+        ),
       );
     }
     if (uploadSortKey) {
@@ -203,13 +275,35 @@ export function RecruitingFullviewBody({
       });
     }
     return { columns: intakeData.columns, rows };
-  }, [intakeData, uploadFilterKey, uploadFilterValue, uploadSortKey, uploadSortDir]);
+  }, [
+    intakeData,
+    uploadFilters,
+    uploadSearch,
+    uploadSortKey,
+    uploadSortDir,
+    rowMatchesFilters,
+  ]);
 
-  // 전체선택 범위 = 현재 필터·정렬로 "보이는" rows 의 id 만(spec §C 전체선택 주의).
+  // 전체선택 범위 = 현재 필터·검색·정렬로 "보이는" rows 의 id 만(spec §C 전체선택 주의).
   const uploadIds = useMemo(
     () => displayIntakeData?.rows.map((r) => r.responseId) ?? [],
     [displayIntakeData],
   );
+
+  // CSV = 현재 정렬·필터·검색 적용된 rows(= 화면과 일치, spec §6). 업로드 명단은
+  // 사용자 소유 plaintext 라 전 컬럼 포함(응답 CSV 의 PII 제외와 다름).
+  const handleDownloadIntakeCsv = useCallback(() => {
+    if (!displayIntakeData || displayIntakeData.rows.length === 0) return;
+    const csv = uploadedListToCsv(
+      displayIntakeData.columns,
+      displayIntakeData.rows,
+    );
+    const stamp = new Date().toISOString().slice(0, 10);
+    triggerBlobDownload(
+      new Blob([csv], { type: 'text/csv;charset=utf-8' }),
+      `${t('uploadListTitle')}-${stamp}.csv`,
+    );
+  }, [displayIntakeData, t]);
 
   return (
     // min-w-0 = 폭 봉쇄 체인(568). 본문 루트가 판단테이블/스프레드시트의
@@ -309,32 +403,33 @@ export function RecruitingFullviewBody({
             </div>
           )}
 
-          {/* 업로드 명단 소스 헤더 — 제목 + 정렬·필터 피커(card 594). 뷰 토글은
-              없음(전체 데이터만). 피커 chrome 은 폼 소스 툴바와 동일. */}
-          {activeSource === 'upload' && (
-            <div className="flex shrink-0 flex-wrap items-center gap-[10px] border-b border-ink/10 bg-paper px-5 py-[11px]">
-              <span className="shrink-0 text-sm font-bold text-ink">
-                {t('uploadListTitle')} ({intakeCount})
-              </span>
-              {intakeData && intakeData.columns.length > 0 && (
-                <UploadedListToolbar
-                  columns={intakeData.columns}
-                  sortKey={uploadSortKey}
-                  sortDir={uploadSortDir}
-                  filterKey={uploadFilterKey}
-                  filterValue={uploadFilterValue}
-                  filterValues={uploadFilterValues}
-                  onSortKeyChange={setUploadSortKey}
-                  onSortDirChange={setUploadSortDir}
-                  onFilterKeyChange={(key) => {
-                    setUploadFilterKey(key);
-                    // 컬럼 변경 시 값 리셋 — 스테일 값 잔존 방지(scheduling 선례).
-                    setUploadFilterValue('');
-                  }}
-                  onFilterValueChange={setUploadFilterValue}
-                />
-              )}
-            </div>
+          {/* 업로드 명단 컨트롤 — CD frame N6 리디자인(card 597). segmented Sort/
+              Filter 바 + 2-pane 멀티셀렉트 필터(Apply) + 액티브 칩 + 검색 + CSV.
+              프레젠테이션은 fresh, 정렬·필터 파생·선택 보존 로직은 여기(body) 소유. */}
+          {activeSource === 'upload' && intakeData && intakeData.columns.length > 0 && (
+            <UploadedListControls
+              totalCount={intakeCount}
+              filteredCount={displayIntakeData?.rows.length ?? intakeCount}
+              isFiltered={
+                (displayIntakeData?.rows.length ?? intakeCount) < intakeCount
+              }
+              sortOptions={uploadSortOptions}
+              sortKey={uploadSortKey}
+              sortDir={uploadSortDir}
+              onSortKeyChange={setUploadSortKey}
+              onSortDirChange={setUploadSortDir}
+              sortNoneLabel={t('uploadSortNone')}
+              questions={uploadQuestions}
+              answersFor={uploadAnswersFor}
+              matchCount={uploadMatchCount}
+              applied={uploadFilters}
+              onApply={setUploadFilters}
+              onClearAll={() => setUploadFilters({})}
+              search={uploadSearch}
+              onSearchChange={setUploadSearch}
+              onDownloadCsv={handleDownloadIntakeCsv}
+              csvDisabled={(displayIntakeData?.rows.length ?? 0) === 0}
+            />
           )}
 
           {activeSource === 'forms' && (

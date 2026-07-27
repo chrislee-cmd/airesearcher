@@ -1901,6 +1901,22 @@
       "embedding": "จัดทำดัชนี"
     }
   },
+  "WidgetGuide": {
+    "title": "วิธีใช้ · {name}",
+    "readDocs": "📄 อ่านเอกสาร",
+    "close": "ปิด",
+    "play": "เล่น",
+    "pause": "หยุดชั่วคราว",
+    "seek": "เลื่อน",
+    "blurb": {
+      "probing": "ดูวิธีแทรกคำถามติดตามผลและอ่านเพอร์โซนาแบบเรียลไทม์ขณะที่การสัมภาษณ์ดำเนินอยู่",
+      "translate": "ตั้งค่าคู่ภาษา เริ่มการแปล และแชร์ลิงก์ผู้สังเกตการณ์ให้ทีมของคุณ",
+      "quotes": "อัปโหลดไฟล์บันทึกหรือบันทึกสด แล้วรับสคริปต์ถอดเสียงที่แยกผู้พูด",
+      "moderator_ai": "สร้างเซสชัน แชร์ลิงก์ และดูผู้เข้าร่วมทำการทดสอบแบบเรียลไทม์",
+      "recruiting": "เปลี่ยนบรีฟให้เป็นเกณฑ์คัดกรอง เผยแพร่แบบฟอร์ม และนัดหมายผู้ที่เหมาะสม",
+      "desk": "เพิ่มคีย์เวิร์ด เลือกแหล่งข้อมูล และรับรายงานวิจัยพร้อมการอ้างอิง"
+    }
+  },
   "Widgets": {
     "fullview": "เปิดมุมมองเต็มจอ",
     "guide": "วิธีใช้ · วิดีโอแนะนำ",
@@ -2905,6 +2921,24 @@
       "uploadFilterAll": "ทั้งหมด",
       "uploadFilterValue": "เลือกค่า",
       "uploadFilterValueAll": "ค่าทั้งหมด",
+      "uploadSearchPlaceholder": "ค้นหาชื่อ · ผู้ติดต่อ",
+      "uploadCsvTitle": "ดาวน์โหลดรายชื่อที่จัดเรียงและกรองอยู่ในขณะนี้เป็น CSV",
+      "uploadFilterActive": "ใช้งานอยู่",
+      "uploadFilterEmpty": "(ว่าง)",
+      "uploadFilterRemove": "ลบตัวกรอง",
+      "uploadFilterClearAll": "ล้างทั้งหมด",
+      "uploadSortSectionLabel": "จัดเรียงตาม",
+      "uploadSortOrderLabel": "ลำดับ",
+      "uploadFilterQuestionLabel": "คำถาม",
+      "uploadFilterNoQuestions": "ไม่มีคำถามให้กรอง",
+      "uploadFilterAnswersLabel": "คำตอบ",
+      "uploadFilterSelectAll": "เลือกทั้งหมด",
+      "uploadFilterAnswerSearch": "ค้นหาคำตอบ…",
+      "uploadFilterNoAnswers": "ไม่มีคำตอบที่ตรงกัน",
+      "uploadFilterSelected": "รายการที่เลือก",
+      "uploadFilterRows": "แถว",
+      "uploadFilterReset": "รีเซ็ต",
+      "uploadFilterApply": "ใช้",
       "uploadColName": "ชื่อ",
       "uploadColEmail": "อีเมล",
       "uploadColPhone": "ติดต่อ",

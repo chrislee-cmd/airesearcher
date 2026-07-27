@@ -1808,6 +1808,22 @@
       "embedding": "인덱싱 중이에요"
     }
   },
+  "WidgetGuide": {
+    "title": "사용법 · {name}",
+    "readDocs": "📄 문서 보기",
+    "close": "닫기",
+    "play": "재생",
+    "pause": "일시정지",
+    "seek": "탐색",
+    "blurb": {
+      "probing": "인터뷰가 진행되는 동안 후속 질문을 넣고 실시간 페르소나를 읽는 방법을 확인하세요.",
+      "translate": "언어 쌍을 설정하고 통역을 시작한 뒤 관찰자 링크를 팀과 공유하세요.",
+      "quotes": "녹음을 업로드하거나 실시간으로 녹음하면 화자가 분리된 전사록을 받아보세요.",
+      "moderator_ai": "세션을 만들고 링크를 공유한 뒤 참여자 테스트를 실시간으로 지켜보세요.",
+      "recruiting": "브리프를 스크리닝 기준으로 바꾸고 폼을 게시한 뒤 적합한 사람의 일정을 잡으세요.",
+      "desk": "키워드를 추가하고 출처를 골라 인용 기반 리서치 리포트를 받아보세요."
+    }
+  },
   "Widgets": {
     "fullview": "전체 보기",
     "guide": "사용법 · 동영상 가이드",
@@ -2812,6 +2828,24 @@
       "uploadFilterAll": "전체",
       "uploadFilterValue": "값 선택",
       "uploadFilterValueAll": "전체 값",
+      "uploadSearchPlaceholder": "이름 · 연락처 검색",
+      "uploadCsvTitle": "현재 정렬·필터가 적용된 명단을 CSV 로 내려받습니다",
+      "uploadFilterActive": "적용됨",
+      "uploadFilterEmpty": "(빈 값)",
+      "uploadFilterRemove": "필터 제거",
+      "uploadFilterClearAll": "전체 해제",
+      "uploadSortSectionLabel": "정렬 기준",
+      "uploadSortOrderLabel": "방향",
+      "uploadFilterQuestionLabel": "문항",
+      "uploadFilterNoQuestions": "필터할 문항이 없습니다",
+      "uploadFilterAnswersLabel": "답변",
+      "uploadFilterSelectAll": "전체 선택",
+      "uploadFilterAnswerSearch": "답변 검색…",
+      "uploadFilterNoAnswers": "일치하는 답변이 없습니다",
+      "uploadFilterSelected": "개 선택",
+      "uploadFilterRows": "행",
+      "uploadFilterReset": "초기화",
+      "uploadFilterApply": "적용",
       "uploadColName": "이름",
       "uploadColEmail": "이메일",
       "uploadColPhone": "연락처",

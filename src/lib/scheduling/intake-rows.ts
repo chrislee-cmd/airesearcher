@@ -84,3 +84,27 @@ export function intakeRowsToTable(
 
   return { columns, rows };
 }
+
+// CSV export for the uploaded-list controls (card 597, CD frame N6 State A "↓ CSV").
+// Unlike responsesToCsv (which strips PII for Google Forms responses), the uploaded
+// list is the user's OWN plaintext roster — name/phone are intended output, so every
+// column is emitted. The caller passes the *already filtered + sorted* rows so the
+// file matches exactly what is on screen (spec §6 CSV = 현재 보이는 rows). BOM + CRLF
+// for Excel-Korean parity, same convention as responses-csv.ts.
+function csvEscapeCell(v: string): string {
+  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+export function uploadedListToCsv(
+  columns: FormColumn[],
+  rows: FormResponseRow[],
+): string {
+  const headers = columns.map((c) => c.title);
+  const lines = [headers.map(csvEscapeCell).join(',')];
+  for (const r of rows) {
+    const cells = columns.map((c) => r.answers[c.questionId] ?? '');
+    lines.push(cells.map(csvEscapeCell).join(','));
+  }
+  return '﻿' + lines.join('\r\n');
+}

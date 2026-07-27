@@ -40,6 +40,8 @@ import {
 } from '@/components/canvas/shell/fullview-header-slot-context';
 import { FullviewShell } from '@/components/canvas/fullview/fullview-shell';
 import { FullviewHeader } from '@/components/canvas/fullview/fullview-header';
+import { WidgetGuideModal } from '@/components/canvas/widgets/widget-guide-modal';
+import { widgetGuide } from '@/lib/widget-guides';
 import { useViewMode } from '@/components/view-mode-provider';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
@@ -473,6 +475,21 @@ export function CanvasBoard({
   }, []);
   const closeFullview = useCallback(() => {
     setFullviewOpen(false);
+  }, []);
+
+  // ── 위젯 영상 가이드 모달 (CD §4) ─────────────────────────────────────
+  // 카드 헤더 툴바 `?` → onGuide(key) → 공유 <WidgetGuideModal>. fullview 와
+  // 동형: 카드는 열려도 unmount 되지 않으므로 라이브 세션(probing/translate)이
+  // 모달 open/close 후에도 보존된다. close 후에도 guideKey 를 유지해 exit
+  // 애니메이션 동안 내용이 남는다.
+  const [guideKey, setGuideKey] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const openGuide = useCallback((key: string) => {
+    setGuideKey(key);
+    setGuideOpen(true);
+  }, []);
+  const closeGuide = useCallback(() => {
+    setGuideOpen(false);
   }, []);
 
   // 리스트 모드는 항상 한 위젯을 상세로 보여준다 — 아직 선택 이력이 없으면
@@ -1170,6 +1187,8 @@ export function CanvasBoard({
                   content={w}
                   dashboardMode
                   onFullview={() => openFullview(w.key)}
+                  hasGuide={widgetGuide(w.key) != null}
+                  onGuide={openGuide}
                   dragHandleProps={{
                     draggable: true,
                     onDragStart: (e) => {
@@ -1314,6 +1333,24 @@ export function CanvasBoard({
         />
       </FullviewShell>
     )}
+
+    {/* ── 위젯 영상 가이드 모달 (CD §4) ─────────────────────────────────
+        카드 툴바 `?` 가 여는 per-위젯 how-to 영상. portal Modal 이라 항상
+        렌더하고 open 으로 자체 게이트. 헤더 톤 = 위젯 meta.accent(카드와
+        자동 일치), 타이틀·blurb 는 i18n. */}
+    {(() => {
+      const gw = guideKey ? (widgetByKey[guideKey] ?? null) : null;
+      const g = guideKey ? widgetGuide(guideKey) : null;
+      return (
+        <WidgetGuideModal
+          open={guideOpen}
+          onClose={closeGuide}
+          guide={g}
+          widgetName={gw ? resolveWidgetLabel(tRoot, gw.meta) : ''}
+          accent={gw?.meta.accent ?? 'sky'}
+        />
+      );
+    })()}
     </FullviewHeaderSlotProvider>
     </FullviewShellProvider>
     </WidgetGateProvider>
