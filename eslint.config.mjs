@@ -12,15 +12,15 @@ import nextTs from "eslint-config-next/typescript";
 // fragments so `<div className={`z-[80] ${flag}`}>` is caught too.
 const RADIUS_Z_FONT_SELECTORS = [
   {
-    selector: "Literal[value=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
+    selector: "Literal[value=/\\[border-radius:(?:4|5|8|10|13|14|24|999|9999)px\\]/]",
     message:
-      "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
+      "Use rounded-{xs,sm,md,full} (or rounded-picker-{check,option,trigger,panel} for 5/8/10/13) instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
   },
   {
     selector:
-      "TemplateElement[value.raw=/\\[border-radius:(?:4|14|24|999|9999)px\\]/]",
+      "TemplateElement[value.raw=/\\[border-radius:(?:4|5|8|10|13|14|24|999|9999)px\\]/]",
     message:
-      "Use rounded-{xs,sm,md,full} instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
+      "Use rounded-{xs,sm,md,full} (or rounded-picker-{check,option,trigger,panel} for 5/8/10/13) instead of [border-radius:Npx] for tokenized values. See globals.css @theme --radius-*.",
   },
   {
     selector: "Literal[value=/\\bz-\\[\\d+\\]/]",
