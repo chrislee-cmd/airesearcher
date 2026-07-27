@@ -19,6 +19,12 @@ export const runtime = 'nodejs';
 // emailed candidate can collide with an identically-emailed row already in the
 // target; we surface that as `duplicate_in_target` rather than a raw 500. A new
 // batch can never collide.
+//
+// Slots follow the candidate (card 605): each candidate's interview slots are
+// batch-scoped (sched_slots.batch_id) as well as candidate-scoped, so a move
+// that only reassigns the candidate would strand its slots in the old batch and
+// hide them from the target's (group) calendar. After the candidate move we
+// realign the moved candidates' slots to the same target batch.
 export async function POST(request: Request) {
   const access = await getSchedulingAccess();
   if (!access) {
@@ -134,6 +140,22 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json({ error: 'update_failed' }, { status: 500 });
+  }
+
+  // Realign the moved candidates' slots to the target batch so their interviews
+  // travel with them into the group calendar (card 605). The candidate_id FK is
+  // unchanged by the move, so only batch_id needs updating. Best-effort: the
+  // candidate move already committed; a slot realign failure is logged but does
+  // not fail the request (batch_id is additive on a preview DB).
+  const movedIds = (data ?? []).map((r) => (r as { id: string }).id);
+  if (movedIds.length > 0) {
+    const slotMove = await admin
+      .from('sched_slots')
+      .update({ batch_id: targetBatchId })
+      .in('candidate_id', movedIds);
+    if (slotMove.error) {
+      console.error('[scheduling/assign-batch] slot batch realign failed', slotMove.error);
+    }
   }
 
   return NextResponse.json(
