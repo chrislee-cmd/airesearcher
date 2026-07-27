@@ -268,33 +268,43 @@ export function FullviewProjectPill({
     });
   }
 
-  const items: DropdownItem[] = (projects ?? []).map((p) => ({
-    key: p.id,
-    label: (
-      <span className={p.id === selectedId ? 'font-semibold text-ink' : undefined}>
-        {p.name}
-      </span>
-    ),
-    onSelect: () => onSelect?.(p.id),
-    action: onArchiveProject
-      ? {
-          icon: ARCHIVE_ICON,
-          onAction: () => void handleArchive(p.id, p.name),
-          ariaLabel: tPicker('archive'),
-        }
-      : undefined,
-  }));
-  if (onCreateProject) {
-    items.push({
-      key: '__create__',
-      label: tPicker('newProject'),
-      onSelect: () => {
-        setCreateError(false);
-        setDraftName('');
-        setCreating(true);
-      },
-    });
-  }
+  // "+ 새 프로젝트" 를 목록 맨 앞에 고정(구분선으로 프로젝트 목록과 분리) —
+  // 프로젝트 수와 무관하게 항상 같은 위치라 근육기억이 생긴다(위젯뷰 ProjectPicker
+  // 와 동일 규칙). 프로젝트가 0개면 마지막 항목이라 구분선은 자동 생략된다.
+  const items: DropdownItem[] = [
+    ...(onCreateProject
+      ? [
+          {
+            key: '__create__',
+            label: tPicker('newProject'),
+            onSelect: () => {
+              setCreateError(false);
+              setDraftName('');
+              setCreating(true);
+            },
+            separatorAfter: true,
+          } satisfies DropdownItem,
+        ]
+      : []),
+    ...(projects ?? []).map((p) => ({
+      key: p.id,
+      label: (
+        <span
+          className={p.id === selectedId ? 'font-semibold text-ink' : undefined}
+        >
+          {p.name}
+        </span>
+      ),
+      onSelect: () => onSelect?.(p.id),
+      action: onArchiveProject
+        ? {
+            icon: ARCHIVE_ICON,
+            onAction: () => void handleArchive(p.id, p.name),
+            ariaLabel: tPicker('archive'),
+          }
+        : undefined,
+    })),
+  ];
 
   return (
     <span className="relative inline-flex shrink-0">
