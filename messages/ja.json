@@ -948,8 +948,6 @@
   "ProjectPicker": {
     "placeholder": "プロジェクトを選択",
     "newProject": "+ 新規プロジェクト",
-    "applyToAll": "すべてのウィジェットに適用",
-    "applyToAllHint": "☑ チェックすると全ウィジェットに一括適用 · 未チェックはこのウィジェットのみ",
     "createPlaceholder": "新規プロジェクト名",
     "createConfirm": "作成",
     "creating": "作成中…",
