@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import {
-  applySpeakerLabels,
-  type SpeakerRolesMap,
-} from '@/lib/transcripts/speaker-roles';
-import {
-  applyInferredSpeakerLabels,
-  type InferredSpeakersPayload,
-} from '@/lib/transcripts/diarization';
 import { selectWithInferredFallback } from '@/lib/transcripts/jobs-select';
-import { parseTranscriptTurns } from '@/lib/transcripts/turns';
+import {
+  labelTranscriptMarkdown,
+  parseTranscriptTurns,
+  type TranscriptTurnsSource,
+} from '@/lib/transcripts/turns';
 
 // Structured transcript turns for the result fullview (좌 전사록 turn 스트림).
 // Mirrors the preview route's select + label pipeline, but returns ordered
@@ -78,17 +74,10 @@ export async function GET(
     return NextResponse.json({ error: 'not_ready' }, { status: 409 });
   }
 
-  const sourceMarkdown =
-    source === 'raw'
-      ? (job.markdown as string)
-      : ((job.clean_markdown as string | null) ?? (job.markdown as string));
-  const speakerRoles = (job.speaker_roles as SpeakerRolesMap | null) ?? null;
-  const inferredSpeakers =
-    (job.inferred_speakers as InferredSpeakersPayload | null) ?? null;
-  const labelLang = job.provider === 'deepgram' ? 'en' : 'ko';
-  const labeledMarkdown = inferredSpeakers
-    ? applyInferredSpeakerLabels(sourceMarkdown, inferredSpeakers, labelLang)
-    : applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
+  const labeledMarkdown = labelTranscriptMarkdown(
+    job as unknown as TranscriptTurnsSource,
+    source,
+  );
 
   const rawBase = ((job.filename as string | null) ?? '')
     .replace(/\.[^./]+$/, '')

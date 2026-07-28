@@ -19,6 +19,15 @@
 // 응답자/Interviewee → guest, otherwise a stable per-speaker fallback so a
 // 2-speaker generic transcript still renders two distinct avatar colours.
 
+import {
+  applySpeakerLabels,
+  type SpeakerRolesMap,
+} from '@/lib/transcripts/speaker-roles';
+import {
+  applyInferredSpeakerLabels,
+  type InferredSpeakersPayload,
+} from '@/lib/transcripts/diarization';
+
 export type TranscriptTurnRole = 'host' | 'guest' | 'neutral';
 
 export type TranscriptTurn = {
@@ -96,6 +105,36 @@ export function parseTranscriptTurns(markdown: string): TranscriptTurn[] {
     });
   }
   return turns;
+}
+
+/** transcript_jobs 행 중 라벨링에 필요한 컬럼만. */
+export type TranscriptTurnsSource = {
+  markdown: string;
+  clean_markdown?: string | null;
+  speaker_roles?: SpeakerRolesMap | null;
+  inferred_speakers?: InferredSpeakersPayload | null;
+  provider?: string | null;
+};
+
+/**
+ * transcript_jobs 행의 markdown 을 화자 라벨링해서 반환한다. inferred_speakers
+ * 가 있으면 Q&A 문맥 diarization 라벨, 없으면 speaker_roles 기반 라벨. deepgram
+ * provider 는 영어 라벨('en'), 그 외 한국어('ko'). `/api/transcripts/jobs/[id]/
+ * turns` 라우트와 공개 공유 로더(loaders.ts)가 이 한 함수를 공유한다 — 라벨링
+ * 파이프라인 복제 금지(SSOT).
+ */
+export function labelTranscriptMarkdown(
+  job: TranscriptTurnsSource,
+  source: 'raw' | 'clean',
+): string {
+  const sourceMarkdown =
+    source === 'raw' ? job.markdown : (job.clean_markdown ?? job.markdown);
+  const speakerRoles = job.speaker_roles ?? null;
+  const inferredSpeakers = job.inferred_speakers ?? null;
+  const labelLang = job.provider === 'deepgram' ? 'en' : 'ko';
+  return inferredSpeakers
+    ? applyInferredSpeakerLabels(sourceMarkdown, inferredSpeakers, labelLang)
+    : applySpeakerLabels(sourceMarkdown, speakerRoles, labelLang);
 }
 
 function srtTimecode(seconds: number): string {
