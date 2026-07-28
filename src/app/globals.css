@@ -737,7 +737,7 @@
   --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격) */
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 var(--color-ink);
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
-  /* ADDED 2.0 — 신규 shadow 패밀리 (tokens.json 2.0 shadow.*). 기존 --fv-*/--shadow-*
+  /* ADDED 2.0 — 신규 shadow 패밀리 (tokens.json 2.0 shadow.*). 기존 셸-스코프 --fv-
      로컬 정의와 값 동일한 것은 @theme util 로 승격해 전 앱에서 소비 가능하게. */
   --shadow-frame: 8px 8px 0 rgba(29, 27, 32, 0.28); /* full-surface frame (fullview·library·share) = --fv-frame-shadow 승격 */
   --shadow-modal-amber: 8px 8px 0 var(--color-amber); /* spotlight 모달 = --fv-shadow-modal-amber 승격 */
