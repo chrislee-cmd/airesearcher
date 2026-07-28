@@ -82,7 +82,8 @@ const transcriptAdapter: DeliverableAdapter = {
   idColumn: 'id',
   scopeColumn: 'org_id',
   projectTable: 'interview_projects',
-  shareResourceType: null,
+  // shared_views 편입(pr-shared-views-extend-deliverables) — 발급/로더 배선.
+  shareResourceType: 'transcript',
   label: 'Transcript',
   exportFormats: ['docx', 'md', 'txt', 'srt'],
   selectColumns: [
@@ -152,7 +153,8 @@ const deskAdapter: DeliverableAdapter = {
   idColumn: 'id',
   scopeColumn: 'org_id',
   projectTable: 'interview_projects',
-  shareResourceType: null,
+  // shared_views 편입(pr-shared-views-extend-deliverables) — 발급/로더 배선.
+  shareResourceType: 'desk_report',
   label: 'Desk Research',
   exportFormats: ['docx'],
   selectColumns: [
@@ -236,7 +238,8 @@ const utAdapter: DeliverableAdapter = {
   idColumn: 'id',
   scopeColumn: 'user_id',
   projectTable: 'projects',
-  shareResourceType: null,
+  // shared_views 편입(pr-shared-views-extend-deliverables) — 발급/로더 배선.
+  shareResourceType: 'ut_insight',
   label: 'AI UT',
   // export 신설(pr-artifacts-export-registry): insight 리포트 → docx.
   // CD BUILD-SPEC §3.4 는 .pdf 를 명시하나, jsPDF 는 CJK 폰트 임베드 없이 한국어

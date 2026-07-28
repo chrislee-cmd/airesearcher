@@ -1,8 +1,9 @@
 // POST /api/share — 공유 링크 생성.
 //
 // {resource_type, resource_id, invited_emails[], expires_at?} → unguessable
-// 토큰 발급. 자기 org resource 만(resolveResourceOrg + RLS 이중 검증). 링크를
-// 받아도 invited_emails 에 든 이메일만 열람(게이트는 #475 뷰어 라우트).
+// 토큰 발급. 자기 org resource 만(resolveShareableResource + RLS 이중 검증) +
+// 완료본만(done, 미완성은 409). 링크를 받아도 invited_emails 에 든 이메일만
+// 열람(게이트는 #475 뷰어 라우트).
 //
 // 🔒 outward-facing — 기본 만료(30일) 강제, revoke 는 별도 라우트.
 
@@ -14,7 +15,7 @@ import {
   DEFAULT_SHARE_TTL_DAYS,
   makeShareToken,
   normalizeEmail,
-  resolveResourceOrg,
+  resolveShareableResource,
 } from '@/lib/share/shared-views';
 
 export const runtime = 'nodejs';
@@ -40,10 +41,10 @@ export async function POST(req: Request) {
   }
   const { resource_type, resource_id, invited_emails, expires_at } = parsed.data;
 
-  // 자기 org resource 만 — RLS 로 못 보면 null(타 org 또는 없음) → forbidden.
-  const resource = await resolveResourceOrg(supabase, resource_type, resource_id);
-  if (!resource) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  // 자기 org resource 만(RLS) + 완료본만(done). 못 보면 403, 미완성은 409.
+  const resource = await resolveShareableResource(supabase, resource_type, resource_id);
+  if (!resource.ok) {
+    return NextResponse.json({ error: resource.error }, { status: resource.status });
   }
 
   const expiresAt =

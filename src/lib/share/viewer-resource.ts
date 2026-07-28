@@ -58,6 +58,12 @@ export async function loadShareResource(
     };
   }
 
+  // 산출물 통합으로 편입된 3타입(transcript/ut_insight/desk_report)은 이
+  // 로더가 다루지 않는다 — 공개 본문은 loaders.ts(loadSharedResource)가 반환하고
+  // 뷰어 렌더는 share-shell PR 이 담당. 여기서 probing_sessions 로 오조회하지
+  // 않도록 명시적으로 null(뷰어는 안내 상태). 기존 probing_persona 만 처리.
+  if (resourceType !== 'probing_persona') return null;
+
   const { data, error } = await admin
     .from('probing_sessions')
     // hypotheses 는 은퇴 — 공유 뷰어도 미노출 (probing-hypotheses-retire-ghost-injection).
