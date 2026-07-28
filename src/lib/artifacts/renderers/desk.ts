@@ -27,9 +27,13 @@ registerRenderer('desk', 'docx', async (_row, ctx) => {
     ? (job.keywords as unknown[]).filter((k): k is string => typeof k === 'string')
     : [];
   // 위젯(desk-card-body) 과 동일한 title / filename 규약을 그대로 재현 → diff 0.
+  // 위젯이 로케일 무관하게 이 한글 title 을 보내므로, 바이트 동일을 위해 여기서도
+  // 반드시 같은 한글 리터럴이어야 한다(로컬라이즈 시 diff-0 깨짐).
   const title =
     keywords.length > 0
+      // i18n-allow-korean — 위젯 title 과 바이트 동일 필요(export diff-0)
       ? `데스크 리서치 — ${keywords.join(', ')}`
+      // i18n-allow-korean — 위젯 title 과 바이트 동일 필요(export diff-0)
       : '데스크 리서치';
   const filename = buildArtifactFilename({
     prefix: 'desk',
