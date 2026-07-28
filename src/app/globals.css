@@ -77,12 +77,18 @@
 
   /* pastel palette (bento + widget headers) */
   --raw-pastel-lav: #e7defe;
-  --raw-pastel-peach: #ffd9c9;
+  /* peach/sun — tokens.json 2.0 §A1/§A2 충돌 해소: 출하된 6개 comp(AI UT·Recruiting)
+     가 쓰는 값으로 정정. 1.x 스냅샷(#ffd9c9·#fff1b6)이 stale — CD authority,
+     역방향 스냅백 금지. bg-peach 16파일·bg-sun 10파일에 미세하게 진한 톤으로 반영. */
+  --raw-pastel-peach: #ffd9be;
   --raw-pastel-mint: #cdebd9;
-  --raw-pastel-sun: #fff1b6;
+  --raw-pastel-sun: #ffe8a8;
   --raw-pastel-sky: #cfe6ff;
   --raw-pastel-rose: #ffd0e2;
-  /* desk 위젯 헤더 파스텔 (Canvas 1c) — CD 지정 절대값. sky 와 형제 톤. */
+  /* desk 위젯 헤더 파스텔 (Canvas 1c) — CD 지정 절대값. sky 와 형제 톤.
+     tokens.json 2.0 §A4: 정식 이름은 `aqua`(= 동일값 #bfe9ef). cyan 은 기존
+     사용처(bg-cyan·--widget-header-bg-cyan) 보존용 alias 로 유지. aqua util 은
+     아래 @theme --color-aqua 에서 이 raw 를 참조(테마 swap 동반). */
   --raw-pastel-cyan: #bfe9ef;
 
   /* signal */
@@ -474,6 +480,9 @@
   --widget-header-bg-sun: var(--raw-pastel-sun);
   --widget-header-bg-rose: var(--raw-pastel-rose);
   --widget-header-bg-cyan: var(--raw-pastel-cyan);
+  /* tokens.json 2.0 §A4 — desk 정식 톤 aqua 헤더 별칭(cyan 동일값). 기존
+     --widget-header-bg-cyan 은 현 desk 위젯 참조 보존용으로 유지. */
+  --widget-header-bg-aqua: var(--raw-pastel-cyan);
 
   /* widget 카드 프레임(Canvas 1c) — probing·interpreter 세팅 표면 셸의 구조
      radius. 카드 셸(20)·통합 툴바 pill(10). 파스텔 헤더밴드 색은 위
@@ -603,6 +612,33 @@
   /* --color-widget-header-cyan (#bfe9ef) SKIP — 기존 --color-cyan(=--raw-pastel-cyan
      #bfe9ef, bg-cyan) 및 --widget-header-bg-cyan 이 동일값으로 이미 존재(§F6 지시). */
 
+  /* =======================================================================
+     tokens.json 2.0 reconcile — CD 정식 `class` 이름 승격 (design-handoff/
+     artifacts-unified/from-cd/TOKEN-DECISIONS.md §A4/§B). 순수 additive —
+     대부분은 §F6 에서 이미 다른 이름(violet·rec·warning-text* 등)으로 존재하나,
+     CD 계약(tokens.json)이 지정한 class 로 소비되려면 그 이름의 util 이 필요하다.
+     기존 이름은 보존(호출처 무변경) → 이름 충돌 0, 값 SSOT 는 tokens.json 2.0.
+     ======================================================================= */
+  /* §A4 — Desk Research 정식 톤 aqua (cyan 개명·동일값). 테마 swap 동반 위해
+     --raw-pastel-cyan(전 테마 정의)을 참조. */
+  --color-aqua: var(--raw-pastel-cyan);        /* #bfe9ef — bg-aqua (cyan 정식 후속) */
+  /* §B signal.error — 4-state deliverable status(draft·processing·ready·error)에
+     error 상태색이 필요. #ef4444 는 기존 --color-rec(AI UT recording)와 동일값이나
+     의미가 다른 별개 토큰(error 상태 vs recording 표시). */
+  --color-error: #ef4444;                      /* error dot · recording indicator */
+  --color-error-bg: #fdf0f0;                   /* error 틴트 (error-text #b4443f·error-line #f0c0c0 는 §F6 기존) */
+  /* §B signal.processing — processing dot · progress accent (accent-violet alias). */
+  --color-processing: #8b5cf6;                 /* = --color-violet/--color-signal-progress 와 동일값, CD class 명 */
+  /* §B signal.amber — warning(#fb923c 알림)과 구분되는 상태색 amber. §F6 는
+     warning-* 스템으로 명명했으나 tokens.json class 는 amber-* 스템. */
+  --color-amber-line: #f0d78a;                 /* = --color-warning-line-amber */
+  --color-amber-text: #8a5a10;                 /* = --color-warning-text */
+  --color-amber-text-deep: #b45309;            /* = --color-warning-text-deep */
+  /* §B accent_extra — accent-violet/-blue 정식 class + lav-line(processing pill 보더). */
+  --color-accent-violet: #8b5cf6;              /* = --color-violet, Transcript progress·theme count·RQ */
+  --color-accent-blue: #2563a8;                /* = --color-blue, moderator/host speaker name */
+  --color-lav-line: #d6c7f5;                   /* lav 틴트 보더 (processing pill) */
+
   /* recsched 슬롯 상태색 (BUILD-SPEC §2) — border/bg/dot semantic alias.
      대부분 기존 토큰 재사용(주석 = CD 절대값), 신규 원자는 raw 2개(proposed-bg·
      cancelled-border)뿐. `bg-slot-*`·`border-slot-*`·`text-slot-*-dot` util 로 bind. */
@@ -629,6 +665,20 @@
   --radius-sm: var(--raw-radius-sm);
   --radius-md: var(--raw-radius-md);
   --radius-pill: var(--raw-radius-pill);
+  /* tokens.json 2.0 §C1 — radius 스케일 확장(additive). 1.x(2/4/14/24/999)가 성겨
+     출하 comp 들이 arbitrary rounded-[Npx] 로 표현하던 nesting 리듬(nav8→icon9→
+     control10→card11→panel12→frame14/16→field22)을 토큰으로 승격. 기존 --fv-radius-*
+     로컬 값과 동일 — 여기서 전역 util(rounded-chip/nav/…)로 소비 가능. 주의: 기존
+     comp 를 구 스케일로 스냅 금지(22px 필드를 24 로 바꾸면 인접 pill 짝 깨짐). */
+  --radius-chip: 6px;      /* mono micro-badge · table cell highlight */
+  --radius-nav: 8px;       /* sidebar nav item · filter row · small select */
+  --radius-icon: 9px;      /* 30–34px icon button · icon tile */
+  --radius-control: 10px;  /* input · link field · footnote card */
+  --radius-card: 11px;     /* inner card (persona · RQ · list row) */
+  --radius-panel: 12px;    /* panel · menu · monitor chrome */
+  --radius-panel-lg: 16px; /* large panel · page frame */
+  --radius-modal: 18px;    /* dialog · spotlight */
+  --radius-field: 22px;    /* search · inject · add-row field + paired button */
   /* ModeCard(default) 프레임 radius — Canvas 1c 델타(MODECARD-FIX.md, proposed).
      13px 는 DS radius 스케일(4/14/24) off-scale 인 CD 절대값이라, 가장 가까운
      radius-sm(14)로 굽히지 않고(AUTHORITY) 전용 토큰으로 승격 → rounded-mode-card.
@@ -651,6 +701,13 @@
   --text-2xl: 18px;        /* absorbs 16, 17, 18 — heading */
   --text-3xl: 22px;        /* absorbs 20, 22, 24 — large heading */
   --text-display: 32px;    /* absorbs 26, 28, 42 — hero/display */
+  /* tokens.json 2.0 §C2 — print type 패밀리(additive). export 문서는 종이 거리에서
+     읽혀 12pt(=16px) 하한을 넘겨야 한다(화면 스케일 최소 12.5px≈9.4pt 는 종이에서
+     실패). export 문서 전용이라 화면 표면엔 영향 없음. */
+  --text-print-body: 16px;             /* exported document body (12pt 하한) */
+  --text-print-body--line-height: 1.65;
+  --text-print-h2: 19px;               /* document section head (weight 800 은 사용처 클래스) */
+  --text-print-h1: 30px;               /* document title (report cover 는 34px) */
 
   /* Single shadow token (bento soft elevation) */
   --shadow-bento: var(--raw-shadow-soft);
@@ -658,21 +715,33 @@
   /* Memphis hard offset shadows — ui/ 프리미티브 시그니처 그림자 SSOT.
      offset atom(--raw-memphis-*) + 색 토큰 조합. 실 사용 분포(ui/ 32곳)에서
      확정한 최소 집합 — 미사용 스케일(6px 등)·색은 만들지 않음(과잉 토큰 금지).
-     `shadow-memphis-md` 처럼 Tailwind utility 로 소비. 색 기본은 black(기존
-     하드코드 그대로, diff-0), 변형은 -faint/-warning/-amore/-card 접미. */
-  --shadow-memphis-2xs: var(--raw-memphis-2xs) 0 black;
-  --shadow-memphis-xs: var(--raw-memphis-xs) 0 black;
+     `shadow-memphis-md` 처럼 Tailwind utility 로 소비. 색 기본은 ink(tokens.json
+     2.0 §A3 로 통일; 아래 참조), 변형은 -faint/-warning/-amore/-card 접미. */
+  /* tokens.json 2.0 §A3: memphis 그림자색을 패밀리 전체 ink(#1d1b20)로 통일.
+     1.x 는 2xs/xs/sm/md/lg 가 black·rgba(0,0,0)이고 2xl 만 ink 였던 내부 불일치 —
+     모든 comp 는 ink 를 쓴다. 순수 black 은 ink 텍스트 옆에서 차갑게 튀어(2nd ink)
+     오프셋이 붙어 보인다. CD authority — 코드값으로 스냅백 금지. */
+  --shadow-memphis-2xs: var(--raw-memphis-2xs) 0 var(--color-ink);
+  --shadow-memphis-xs: var(--raw-memphis-xs) 0 var(--color-ink);
   --shadow-memphis-xs-amore: var(--raw-memphis-xs) 0 var(--color-amore);
-  --shadow-memphis-sm: var(--raw-memphis-sm) 0 black;
-  --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(0, 0, 0, 0.15);
-  --shadow-memphis-md: var(--raw-memphis-md) 0 black;
+  --shadow-memphis-sm: var(--raw-memphis-sm) 0 var(--color-ink);
+  --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(29, 27, 32, 0.12); /* tokens.json 2.0 — ink 저알파(패밀리 ink 통일; 기존 rgba(0,0,0,.15)) */
+  --shadow-memphis-md: var(--raw-memphis-md) 0 var(--color-ink);
+  --shadow-memphis-md-faint: var(--raw-memphis-md) 0 rgba(29, 27, 32, 0.14); /* ADDED 2.0 — table wrapper·grouped panel (솔리드 md 보다 약함) */
   --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
   --shadow-memphis-md-amore: var(--raw-memphis-md) 0 var(--color-amore);
   --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
   --shadow-memphis-md-success: var(--raw-memphis-md) 0 var(--color-success); /* done 성공 카드 초록 offset (Canvas 1c transDone) · recsched 토스트(BUILD-SPEC §2)도 재사용 */
   --shadow-memphis-md-amber: var(--raw-memphis-md) 0 var(--color-tag-confusion); /* recsched 공지배너 amber offset (BUILD-SPEC §2) — amber #e0a83a = tag-confusion 과 동일 값 재사용(중복 민팅 회피) */
-  --shadow-memphis-lg: var(--raw-memphis-lg) 0 black;
+  --shadow-memphis-md-error: var(--raw-memphis-md) 0 var(--color-error); /* ADDED 2.0 — error 상태 카드 */
+  --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격) */
+  --shadow-memphis-lg: var(--raw-memphis-lg) 0 var(--color-ink);
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
+  /* ADDED 2.0 — 신규 shadow 패밀리 (tokens.json 2.0 shadow.*). 기존 --fv-*/--shadow-*
+     로컬 정의와 값 동일한 것은 @theme util 로 승격해 전 앱에서 소비 가능하게. */
+  --shadow-frame: 8px 8px 0 rgba(29, 27, 32, 0.28); /* full-surface frame (fullview·library·share) = --fv-frame-shadow 승격 */
+  --shadow-modal-amber: 8px 8px 0 var(--color-amber); /* spotlight 모달 = --fv-shadow-modal-amber 승격 */
+  --shadow-tile-lift: 0 6px 20px rgba(29, 27, 32, 0.08); /* the ONE soft shadow — 참가자 비디오 타일·인모니터 mock UI */
 
   /* Soft selection glow — Canvas 1c 카드 프레임 method 카드 선택(R6, proposed).
      memphis 하드 오프셋(--raw-memphis-*)과 달리 blur 소프트 글로우로, 선택 카드에
