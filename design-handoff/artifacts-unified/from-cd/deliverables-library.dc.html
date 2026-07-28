@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:8px;height:8px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}
+a{color:#c2334f;}a:hover{color:#9e2740;}</style>
+</helmet>
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:46px;display:flex;flex-direction:column;align-items:flex-start;gap:38px;">
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1080px;">
+    <div style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;border:1.5px solid #1d1b20;background:#fff;border-radius:8px;padding:4px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;box-shadow:2px 2px 0 #1d1b20;">SURFACE A</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:31px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">Unified deliverables library</div>
+    <div style="font-size:13.5px;color:#5b5965;line-height:1.7;">One list for all six features' outputs. Every row is a <b style="color:#1d1b20;">DeliverableRow</b> — the shell never branches on <code style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:4px;padding:1px 5px;">feature</code>; identity is carried by the reused pastel tone, and status by the shared 4-state badge.</div>
+  </div>
+
+  <!-- ══════════ A1 · LIST · POPULATED ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A1</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">List view · populated</div><div style="font-size:12.5px;color:#8a8693;">mixed features · all four row statuses · hover + selected · action-disable rules</div></div>
+
+    <div style="width:1560px;height:880px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+      <!-- header -->
+      <div style="display:flex;align-items:center;gap:13px;flex-shrink:0;border-bottom:3px solid #1d1b20;background:#fff;padding:16px 24px;">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-shrink:0;"><div style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">My deliverables</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:#8a8693;">42</div></div>
+        <div style="flex:1;max-width:400px;display:flex;align-items:center;gap:9px;border:1.5px solid #1d1b20;border-radius:22px;background:#fff;padding:9px 15px;"><span style="font-size:13px;color:#8a8693;">🔍</span><span style="font-size:13px;color:#8a8693;">Search by title…</span></div>
+        <div style="flex:1;"></div>
+        <div style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;box-shadow:2px 2px 0 #1d1b20;overflow:hidden;flex-shrink:0;"><div style="display:flex;align-items:center;gap:7px;padding:8px 13px;font-size:12.5px;font-weight:700;color:#1d1b20;">↕ Updated</div><div style="width:1.5px;background:#1d1b20;"></div><div style="display:flex;align-items:center;padding:8px 11px;font-size:9px;color:#1d1b20;">▼</div></div>
+        <div style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;box-shadow:2px 2px 0 #1d1b20;overflow:hidden;flex-shrink:0;"><div style="display:flex;align-items:center;justify-content:center;width:38px;padding:8px 0;background:#1d1b20;color:#fff;">☰</div><div style="width:1.5px;background:#1d1b20;"></div><div style="display:flex;align-items:center;justify-content:center;width:38px;padding:8px 0;color:#5b5965;">▦</div></div>
+      </div>
+
+      <div style="flex:1;min-height:0;display:flex;">
+        <!-- filter rail -->
+        <div class="sc" style="width:240px;flex-shrink:0;border-right:2px solid #1d1b20;background:#f7f7f5;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:18px;">
+          <div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;margin-bottom:9px;">Feature</div>
+            <div style="display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ featureFilters }}" as="f" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px;border:{{ f.border }};border-radius:9px;background:{{ f.bg }};padding:7px 10px;box-shadow:{{ f.shadow }};"><span style="width:14px;height:14px;border:1.6px solid #1d1b20;border-radius:4px;background:{{ f.boxBg }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex-shrink:0;">{{ f.check }}</span><span style="width:9px;height:9px;border-radius:50%;background:{{ f.tone }};border:1.4px solid rgba(29,27,32,0.28);flex-shrink:0;"></span><span style="flex:1;font-size:12.5px;font-weight:{{ f.weight }};color:{{ f.color }};">{{ f.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ f.count }}</span></div></sc-for></div>
+          </div>
+          <div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;margin-bottom:9px;">Status</div>
+            <div style="display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ statusFilters }}" as="s" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px;border:{{ s.border }};border-radius:9px;background:{{ s.bg }};padding:7px 10px;"><span style="width:14px;height:14px;border:1.6px solid #1d1b20;border-radius:4px;background:{{ s.boxBg }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex-shrink:0;">{{ s.check }}</span><span style="width:8px;height:8px;border-radius:50%;background:{{ s.dot }};border:{{ s.dotBorder }};flex-shrink:0;"></span><span style="flex:1;font-size:12.5px;font-weight:{{ s.weight }};color:{{ s.color }};">{{ s.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ s.count }}</span></div></sc-for></div>
+          </div>
+          <div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;margin-bottom:9px;">Project</div>
+            <div style="display:flex;flex-direction:column;gap:2px;"><sc-for list="{{ projectFilters }}" as="p" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:8px;border-radius:9px;padding:7px 10px;background:{{ p.bg }};"><span style="font-size:12px;">{{ p.icon }}</span><span style="flex:1;font-size:12.5px;font-weight:{{ p.weight }};color:{{ p.color }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ p.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ p.count }}</span></div></sc-for></div>
+          </div>
+          <div style="margin-top:auto;border:1.5px solid rgba(29,27,32,0.14);border-radius:10px;background:#fff;padding:10px 12px;"><div style="font-size:11px;color:#8a8693;line-height:1.5;">Filters are <b style="color:#1d1b20;">worker-owned logic</b> — this rail only draws their states.</div></div>
+        </div>
+
+        <!-- list -->
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;padding:10px 20px;border-bottom:1px solid rgba(29,27,32,0.1);background:#fff;">
+            <span style="width:15px;height:15px;border:1.6px solid #1d1b20;border-radius:4px;display:inline-block;"></span>
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Deliverable</span>
+            <div style="flex:1;"></div>
+            <span style="width:120px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Status</span>
+            <span style="width:104px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;">Updated</span>
+            <span style="width:214px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8693;font-weight:700;text-align:right;">Actions</span>
+          </div>
+          <div class="sc" style="flex:1;min-height:0;overflow-y:auto;">
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8"><div style="display:flex;align-items:center;gap:9px;padding:12px 20px;border-bottom:1px solid rgba(29,27,32,0.08);background:{{ r.rowBg }};box-shadow:{{ r.rowInset }};">
+              <span style="width:15px;height:15px;border:1.6px solid {{ r.checkBorder }};border-radius:4px;background:{{ r.checkBg }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;flex-shrink:0;">{{ r.check }}</span>
+              <div style="width:34px;height:34px;border:2px solid #1d1b20;border-radius:9px;background:{{ r.tone }};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;box-shadow:{{ r.tileShadow }};">{{ r.icon }}</div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="font-size:13.5px;font-weight:700;color:{{ r.titleColor }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ r.title }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#8a8693;border:1.3px solid rgba(29,27,32,0.16);border-radius:5px;padding:1px 6px;flex-shrink:0;">{{ r.kind }}</span></div>
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><sc-for list="{{ r.meta }}" as="m" hint-placeholder-count="2"><span style="font-size:11px;color:#8a8693;">{{ m }}</span></sc-for></div>
+              </div>
+              <div style="width:120px;flex-shrink:0;"><span style="display:inline-flex;align-items:center;gap:6px;border:1.3px solid {{ r.stBorder }};background:{{ r.stBg }};border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:{{ r.stColor }};"><span style="width:7px;height:7px;border-radius:50%;background:{{ r.stDot }};border:{{ r.stDotBorder }};"></span>{{ r.status }}</span></div>
+              <div style="width:104px;flex-shrink:0;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">{{ r.updated }}</div>
+              <div style="width:214px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;gap:7px;">
+                <div style="border:{{ r.openBorder }};background:{{ r.openBg }};border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;color:{{ r.openColor }};box-shadow:{{ r.openShadow }};">Open</div>
+                <sc-if value="{{ r.showShare }}" hint-placeholder-val="{{ true }}"><div style="border:{{ r.shareBorder }};background:{{ r.shareBg }};border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:{{ r.shareColor }};box-shadow:{{ r.shareShadow }};">Share</div></sc-if>
+                <div style="width:30px;height:30px;border:{{ r.moreBorder }};border-radius:9px;background:{{ r.moreBg }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:{{ r.moreColor }};box-shadow:{{ r.moreShadow }};">⋯</div>
+              </div>
+            </div></sc-for>
+          </div>
+          <div style="flex-shrink:0;border-top:1px solid rgba(29,27,32,0.1);background:#f7f7f5;padding:9px 20px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">8 of 42 · sorted by updated ↓ &nbsp;·&nbsp; row 3 hovered · row 5 selected</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ A2 · ACTION DISABLE MATRIX ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A2</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Row status × action-enable matrix</div><div style="font-size:12.5px;color:#8a8693;">the disable rules, drawn — not described</div></div>
+    <div style="width:1560px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+      <div style="display:grid;grid-template-columns:150px 1fr 150px 160px 190px;background:#1d1b20;">
+        <sc-for list="{{ matrixCols }}" as="c" hint-placeholder-count="5"><div style="padding:10px 14px;border-left:1px solid rgba(255,255,255,0.14);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;">{{ c }}</div></sc-for>
+      </div>
+      <sc-for list="{{ matrix }}" as="m" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:150px 1fr 150px 160px 190px;border-bottom:1px solid rgba(29,27,32,0.08);align-items:center;">
+        <div style="padding:13px 14px;"><span style="display:inline-flex;align-items:center;gap:6px;border:1.3px solid {{ m.stBorder }};background:{{ m.stBg }};border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:{{ m.stColor }};"><span style="width:7px;height:7px;border-radius:50%;background:{{ m.stDot }};border:{{ m.stDotBorder }};"></span>{{ m.status }}</span></div>
+        <div style="padding:13px 14px;font-size:12px;color:#2a262f;line-height:1.55;border-left:1px solid rgba(29,27,32,0.08);">{{ m.when }}</div>
+        <div style="padding:13px 14px;border-left:1px solid rgba(29,27,32,0.08);"><span style="border:{{ m.openBorder }};background:{{ m.openBg }};border-radius:999px;padding:5px 13px;font-size:11.5px;font-weight:800;color:{{ m.openColor }};box-shadow:{{ m.openShadow }};">Open</span></div>
+        <div style="padding:13px 14px;border-left:1px solid rgba(29,27,32,0.08);"><sc-if value="{{ m.shareShown }}" hint-placeholder-val="{{ true }}"><span style="border:{{ m.shareBorder }};background:{{ m.shareBg }};border-radius:999px;padding:5px 13px;font-size:11.5px;font-weight:700;color:{{ m.shareColor }};box-shadow:{{ m.shareShadow }};">Share</span></sc-if><sc-if value="{{ m.shareHidden }}" hint-placeholder-val="{{ false }}"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#a3a7ad;">— hidden —</span></sc-if></div>
+        <div style="padding:13px 14px;border-left:1px solid rgba(29,27,32,0.08);"><span style="border:{{ m.expBorder }};background:{{ m.expBg }};border-radius:999px;padding:5px 13px;font-size:11.5px;font-weight:700;color:{{ m.expColor }};box-shadow:{{ m.expShadow }};">{{ m.expLabel }}</span></div>
+      </div></sc-for>
+      <div style="padding:11px 16px;background:#f7f7f5;font-size:11.5px;color:#5b5965;line-height:1.55;">Disabled = <b style="color:#1d1b20;">surface-disabled track + mute label, no shadow</b> (never wrapper opacity — it fails contrast). <b style="color:#1d1b20;">Hidden</b> is reserved for <code style="font-family:ui-monospace,Menlo,monospace;">shareable=false</code>: a control that can never apply to this deliverable, versus disabled = not applicable <i>right now</i>.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ A3 · GRID VIEW ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A3</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Grid view</div><div style="font-size:12.5px;color:#8a8693;">same rows, card treatment · tone header strip carries identity</div></div>
+    <div style="width:1560px;height:660px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:13px;flex-shrink:0;border-bottom:3px solid #1d1b20;background:#fff;padding:14px 24px;">
+        <div style="font-family:'Outfit',sans-serif;font-size:21px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">My deliverables</div>
+        <div style="flex:1;"></div>
+        <div style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;box-shadow:2px 2px 0 #1d1b20;overflow:hidden;"><div style="display:flex;align-items:center;justify-content:center;width:38px;padding:7px 0;color:#5b5965;">☰</div><div style="width:1.5px;background:#1d1b20;"></div><div style="display:flex;align-items:center;justify-content:center;width:38px;padding:7px 0;background:#1d1b20;color:#fff;">▦</div></div>
+      </div>
+      <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px 24px;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+          <sc-for list="{{ cards }}" as="c" hint-placeholder-count="8"><div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:{{ c.shadow }};overflow:hidden;display:flex;flex-direction:column;">
+            <div style="background:{{ c.tone }};border-bottom:2px solid #1d1b20;padding:9px 13px;display:flex;align-items:center;gap:8px;"><span style="font-size:14px;">{{ c.icon }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ c.kind }}</span><span style="width:15px;height:15px;border:1.6px solid #1d1b20;border-radius:4px;background:{{ c.checkBg }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">{{ c.check }}</span></div>
+            <div style="padding:13px;display:flex;flex-direction:column;gap:9px;flex:1;">
+              <div style="font-size:13.5px;font-weight:700;color:{{ c.titleColor }};line-height:1.4;">{{ c.title }}</div>
+              <div style="display:flex;flex-direction:column;gap:3px;"><sc-for list="{{ c.meta }}" as="m" hint-placeholder-count="2"><span style="font-size:11px;color:#8a8693;">{{ m }}</span></sc-for></div>
+              <div style="margin-top:auto;display:flex;align-items:center;gap:7px;"><span style="display:inline-flex;align-items:center;gap:5px;border:1.3px solid {{ c.stBorder }};background:{{ c.stBg }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;color:{{ c.stColor }};"><span style="width:6px;height:6px;border-radius:50%;background:{{ c.stDot }};border:{{ c.stDotBorder }};"></span>{{ c.status }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#a3a7ad;margin-left:auto;">{{ c.updated }}</span></div>
+            </div>
+            <div style="border-top:1.5px solid rgba(29,27,32,0.12);padding:9px 13px;display:flex;align-items:center;gap:7px;"><span style="border:{{ c.openBorder }};background:{{ c.openBg }};border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:800;color:{{ c.openColor }};box-shadow:{{ c.openShadow }};">Open</span><sc-if value="{{ c.showShare }}" hint-placeholder-val="{{ true }}"><span style="border:{{ c.shareBorder }};background:{{ c.shareBg }};border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;color:{{ c.shareColor }};">Share</span></sc-if><span style="margin-left:auto;font-size:14px;font-weight:700;color:{{ c.moreColor }};">⋯</span></div>
+          </div></sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ A4 · MENU + BULK ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A4</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">⋯ menu open · multi-select bulk bar</div><div style="font-size:12.5px;color:#8a8693;">export list is driven by export_formats</div></div>
+    <div style="display:flex;gap:18px;align-items:flex-start;">
+      <!-- menu open -->
+      <div style="width:760px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">ROW MENU · OPEN</div>
+        <div style="padding:18px 15px 22px;position:relative;background:#fff;min-height:352px;">
+          <div style="display:flex;align-items:center;gap:9px;padding:12px 14px;border:2px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.12);">
+            <div style="width:34px;height:34px;border:2px solid #1d1b20;border-radius:9px;background:#e7defe;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">📄</div>
+            <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:700;color:#1d1b20;">user-interview-3.m4a</div><div style="font-size:11px;color:#8a8693;">64 min · 2 speakers</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.3px solid #cdeed8;background:#f4fbf6;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#14713a;"><span style="width:7px;height:7px;border-radius:50%;background:#16a34a;"></span>Ready</span>
+            <div style="width:30px;height:30px;border:2px solid #1d1b20;border-radius:9px;background:#1d1b20;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;">⋯</div>
+          </div>
+          <!-- portal menu -->
+          <div style="position:absolute;top:60px;right:15px;width:248px;border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.3);overflow:hidden;z-index:60;">
+            <div style="padding:8px 13px;background:#f7f7f5;border-bottom:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;">Export</div>
+            <sc-for list="{{ exportItems }}" as="e" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid rgba(29,27,32,0.07);background:{{ e.bg }};"><span style="font-size:13px;">{{ e.icon }}</span><span style="flex:1;font-size:12.5px;font-weight:600;color:#1d1b20;">{{ e.label }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#a3a7ad;">{{ e.ext }}</span></div></sc-for>
+            <div style="padding:8px 13px;background:#f7f7f5;border-bottom:1.5px solid rgba(29,27,32,0.12);border-top:1.5px solid rgba(29,27,32,0.12);font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;">Organize</div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid rgba(29,27,32,0.07);"><span style="font-size:13px;">📁</span><span style="flex:1;font-size:12.5px;font-weight:600;color:#1d1b20;">Move to project…</span><span style="font-size:11px;color:#a3a7ad;">›</span></div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 13px;"><span style="font-size:13px;">🗑</span><span style="flex:1;font-size:12.5px;font-weight:700;color:#c2334f;">Delete</span></div>
+          </div>
+          <div style="margin-top:14px;max-width:420px;font-size:11px;color:#8a8693;line-height:1.5;">Menu is a <b style="color:#1d1b20;">portal at z-60</b> (same layer as the picker system). Export rows are generated from <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">export_formats</code> — an empty array hides the whole Export group, it never renders as an empty heading.</div>
+        </div>
+      </div>
+      <!-- bulk -->
+      <div style="width:760px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">MULTI-SELECT · BULK BAR</div>
+        <div style="background:#fff;padding:15px;display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:11px;background:#fff1e6;border:2px solid #1d1b20;border-radius:12px;padding:11px 15px;box-shadow:3px 3px 0 #e0a83a;">
+            <span style="width:17px;height:17px;border:1.6px solid #1d1b20;border-radius:4px;background:#1d1b20;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;">✓</span>
+            <span style="font-size:13px;font-weight:800;color:#1d1b20;">3 selected</span>
+            <div style="width:1px;height:18px;background:rgba(29,27,32,0.18);"></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">📁 Move to project</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,0.2);background:#eceef1;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:#5b5965;">↓ Export</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;color:#c2334f;box-shadow:2px 2px 0 #1d1b20;">🗑 Delete</div>
+            <span style="margin-left:auto;font-size:12px;font-weight:600;color:#8a8693;">Clear</span>
+          </div>
+          <sc-for list="{{ bulkRows }}" as="b" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:9px;padding:10px 13px;border:1.5px solid rgba(29,27,32,0.14);border-radius:11px;background:#fff9fb;"><span style="width:15px;height:15px;border:1.6px solid #1d1b20;border-radius:4px;background:#1d1b20;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;">✓</span><div style="width:28px;height:28px;border:1.6px solid #1d1b20;border-radius:8px;background:{{ b.tone }};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">{{ b.icon }}</div><span style="flex:1;font-size:12.5px;font-weight:700;color:#1d1b20;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ b.title }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;">{{ b.kind }}</span></div></sc-for>
+          <div style="font-size:11px;color:#8a8693;line-height:1.55;">Bulk <b style="color:#1d1b20;">Export is disabled</b> here: the selection mixes features whose <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">export_formats</code> don't intersect. Move / Delete stay enabled — they don't depend on format.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ A5 · NON-IDLE STATES ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A5</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Loading · empty · filtered-empty · error</div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <!-- loading -->
+      <div style="width:760px;height:420px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">LOADING · SKELETON ×6</div>
+        <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+          <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="6"><div style="display:flex;align-items:center;gap:11px;opacity:{{ s.op }};"><div style="width:34px;height:34px;border-radius:9px;background:#eceef1;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:11px;width:{{ s.w1 }};background:#eceef1;border-radius:4px;"></div><div style="height:9px;width:{{ s.w2 }};background:#f2f2f3;border-radius:4px;"></div></div><div style="width:74px;height:20px;border-radius:999px;background:#eceef1;flex-shrink:0;"></div><div style="width:60px;height:9px;border-radius:4px;background:#f2f2f3;flex-shrink:0;"></div><div style="width:64px;height:26px;border-radius:999px;background:#eceef1;flex-shrink:0;"></div></div></sc-for>
+        </div>
+        <div style="border-top:1px solid rgba(29,27,32,0.1);background:#f7f7f5;padding:9px 16px;font-size:11px;color:#8a8693;">Skeleton keeps the row rhythm (34px tile · two text lines · badge · date · action) so nothing jumps on load.</div>
+      </div>
+      <!-- empty -->
+      <div style="width:760px;height:420px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">EMPTY · NO DELIVERABLES YET</div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;text-align:center;">
+          <div style="width:66px;height:66px;border:3px solid #1d1b20;border-radius:18px;background:#f7f7f5;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:4px 4px 0 #1d1b20;">📥</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;">No deliverables yet</div>
+          <div style="font-size:12.5px;color:#5b5965;line-height:1.65;max-width:400px;">Anything your widgets produce — transcripts, reports, insights, screeners — lands here automatically. Run one to get started.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><sc-for list="{{ emptyCtas }}" as="e" hint-placeholder-count="4"><div style="display:inline-flex;align-items:center;gap:6px;border:2px solid #1d1b20;background:{{ e.tone }};border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">{{ e.icon }} {{ e.label }}</div></sc-for></div>
+        </div>
+      </div>
+      <!-- filtered empty -->
+      <div style="width:760px;height:420px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#1d1b20;">FILTERED-EMPTY · 0 MATCHES</div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:30px;text-align:center;">
+          <div style="width:58px;height:58px;border:2.5px dashed #c9ccd2;border-radius:16px;background:#fbfbf9;display:flex;align-items:center;justify-content:center;font-size:24px;">🔍</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:#1d1b20;">Nothing matches these filters</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:center;"><sc-for list="{{ activeFilterChips }}" as="c" hint-placeholder-count="3"><span style="display:inline-flex;align-items:center;gap:5px;border:1.4px solid #ff5c8a;background:rgba(255,92,138,0.1);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#c2334f;">{{ c }} ✕</span></sc-for></div>
+          <div style="font-size:12.5px;color:#5b5965;line-height:1.6;max-width:380px;">42 deliverables exist — none of them are both <b style="color:#1d1b20;">Desk research</b> and <b style="color:#1d1b20;">Error</b>.</div>
+          <div style="display:inline-flex;align-items:center;gap:6px;border:2px solid #1d1b20;background:#fff;border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:800;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">↺ Clear all filters</div>
+        </div>
+      </div>
+      <!-- error -->
+      <div style="width:760px;height:420px;background:#fff;border:3px solid #1d1b20;border-radius:14px;box-shadow:4px 4px 0 #ef4444;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#fdf0f0;border-bottom:2px solid #1d1b20;padding:9px 15px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;letter-spacing:0.08em;color:#b4443f;">ERROR · LOAD FAILED</div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;text-align:center;">
+          <div style="width:62px;height:62px;border:3px solid #1d1b20;border-radius:17px;background:#fdf0f0;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:3px 3px 0 #ef4444;">⚠️</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;">Couldn't load your deliverables</div>
+          <div style="font-size:12.5px;color:#5b5965;line-height:1.65;max-width:400px;">The request failed. Your files are safe — this is only the list.</div>
+          <div style="display:flex;gap:9px;"><div style="display:inline-flex;align-items:center;gap:6px;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:999px;padding:8px 18px;font-size:12.5px;font-weight:800;box-shadow:3px 3px 0 rgba(29,27,32,0.3);">↻ Try again</div><div style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,0.2);background:#fff;border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:600;color:#5b5965;">Contact support</div></div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#a3a7ad;">ref · req_8f21c40</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    /* ── shared vocabulary ─────────────────────────────────── */
+    const TONE = { transcript: '#e7defe', desk: '#bfe9ef', ut: '#ffd9be', recruiting: '#ffe8a8' };
+    const ICON = { transcript: '📄', desk: '🔍', ut: '🧪', recruiting: '🧲' };
+    const LABEL = { transcript: 'Transcript', desk: 'Desk research', ut: 'AI UT', recruiting: 'Recruiting' };
+
+    const ST = {
+      ready:      { label: 'Ready',      dot: '#16a34a', dotBorder: 'none',                      bg: '#f4fbf6', border: '#cdeed8',                  color: '#14713a' },
+      processing: { label: 'Processing', dot: '#8b5cf6', dotBorder: 'none',                      bg: '#f6f2ff', border: '#d6c7f5',                  color: '#6b4aa0' },
+      draft:      { label: 'Draft',      dot: '#fff',    dotBorder: '1.6px solid #8a8693',       bg: '#f7f7f5', border: 'rgba(29,27,32,0.16)',      color: '#5b5965' },
+      error:      { label: 'Error',      dot: '#ef4444', dotBorder: 'none',                      bg: '#fdf0f0', border: '#f0c0c0',                  color: '#b4443f' },
+    };
+    const st = (k) => ({ status: ST[k].label, stDot: ST[k].dot, stDotBorder: ST[k].dotBorder, stBg: ST[k].bg, stBorder: ST[k].border, stColor: ST[k].color });
+
+    /* button treatments — enabled / disabled / hidden */
+    const btnPrimary = { border: '2px solid #1d1b20', bg: '#1d1b20', color: '#fff', shadow: '2px 2px 0 rgba(29,27,32,0.28)' };
+    const btnSecond  = { border: '1.5px solid #1d1b20', bg: '#fff', color: '#1d1b20', shadow: '2px 2px 0 #1d1b20' };
+    const btnGhost   = { border: '1.5px solid #1d1b20', bg: '#fff', color: '#1d1b20', shadow: 'none' };
+    const btnOff     = { border: '1.5px solid rgba(29,27,32,0.2)', bg: '#eceef1', color: '#5b5965', shadow: 'none' };
+
+    /* ── A1 rows ───────────────────────────────────────────── */
+    const R = (feature, title, kind, status, meta, updated, opts = {}) => {
+      const s = st(status);
+      const enabled = status === 'ready' || status === 'draft';
+      const share = opts.shareable !== false && enabled;
+      const exp = enabled && (opts.formats ?? 1) > 0;
+      const openB = status === 'error' ? btnSecond : btnPrimary;
+      const shareB = share ? btnSecond : btnOff;
+      const moreB = exp || enabled ? btnSecond : btnOff;
+      return {
+        ...s, title, kind, updated, meta,
+        tone: TONE[feature], icon: ICON[feature],
+        titleColor: status === 'error' ? '#8a8693' : '#1d1b20',
+        rowBg: opts.selected ? '#fff9fb' : (opts.hover ? '#fbfbf9' : '#fff'),
+        rowInset: opts.selected ? 'inset 3px 0 0 #ff5c8a' : 'none',
+        tileShadow: opts.selected ? '2px 2px 0 rgba(29,27,32,0.16)' : 'none',
+        check: opts.selected ? '✓' : '',
+        checkBg: opts.selected ? '#1d1b20' : '#fff',
+        checkBorder: opts.selected ? '#1d1b20' : 'rgba(29,27,32,0.4)',
+        openBorder: openB.border, openBg: openB.bg, openColor: openB.color, openShadow: openB.shadow,
+        showShare: opts.shareable !== false,
+        shareBorder: shareB.border, shareBg: shareB.bg, shareColor: shareB.color, shareShadow: shareB.shadow,
+        moreBorder: moreB.border, moreBg: moreB.bg, moreColor: moreB.color, moreShadow: moreB.shadow,
+      };
+    };
+    const rows = [
+      R('transcript', 'user-interview-3.m4a', 'transcript', 'ready', ['64 min', '2 speakers', 'Checkout UX study'], 'Jul 27 14:02'),
+      R('desk', '전기차 시장 2026', 'desk_report', 'ready', ['34 sources', 'T1 · 12', 'EV market entry'], 'Jul 27 11:20'),
+      R('ut', 'Checkout flow · P4', 'ut_insight', 'processing', ['Analyzing clips · 62%'], 'Jul 27 10:48', { hover: true, formats: 0 }),
+      R('recruiting', 'Checkout UX screener', 'recruiting_form', 'ready', ['24 responses', 'High fit · 8'], 'Jul 26 18:33'),
+      R('transcript', 'focus_group_A.mp4', 'transcript', 'ready', ['92 min', '5 speakers'], 'Jul 26 16:10', { selected: true }),
+      R('desk', 'Mobile payment trends', 'desk_report', 'draft', ['Keywords set · not run'], 'Jul 26 09:15', { shareable: false, formats: 0 }),
+      R('ut', 'Onboarding · P2', 'ut_insight', 'error', ['Recording upload failed'], 'Jul 25 20:41', { formats: 0 }),
+      R('transcript', 'interview_02.m4a', 'transcript', 'ready', ['48 min', '2 speakers'], 'Jul 25 15:27'),
+    ];
+
+    /* ── filter rail ───────────────────────────────────────── */
+    const FF = (key, count, on) => ({
+      label: LABEL[key], tone: TONE[key], count: String(count),
+      check: on ? '✓' : '', boxBg: on ? '#1d1b20' : '#fff',
+      border: on ? '1.5px solid #1d1b20' : '1.5px solid transparent',
+      bg: on ? '#fff' : 'transparent',
+      shadow: on ? '2px 2px 0 #1d1b20' : 'none',
+      weight: on ? 800 : 600, color: on ? '#1d1b20' : '#5b5965',
+    });
+    const featureFilters = [FF('transcript', 18, true), FF('desk', 9, true), FF('ut', 7, false), FF('recruiting', 8, false)];
+
+    const SF = (key, count, on) => ({
+      label: ST[key].label, dot: ST[key].dot, dotBorder: ST[key].dotBorder, count: String(count),
+      check: on ? '✓' : '', boxBg: on ? '#1d1b20' : '#fff',
+      border: on ? '1.5px solid #1d1b20' : '1.5px solid transparent',
+      bg: on ? '#fff' : 'transparent',
+      weight: on ? 800 : 600, color: on ? '#1d1b20' : '#5b5965',
+    });
+    const statusFilters = [SF('ready', 31, false), SF('processing', 4, false), SF('draft', 5, false), SF('error', 2, false)];
+
+    const PF = (icon, label, count, on) => ({
+      icon, label, count: String(count),
+      bg: on ? '#e7defe' : 'transparent',
+      weight: on ? 800 : 600, color: on ? '#1d1b20' : '#5b5965',
+    });
+    const projectFilters = [
+      PF('🗂', 'All projects', 42, true),
+      PF('📁', 'Checkout UX study', 19, false),
+      PF('📁', 'EV market entry', 11, false),
+      PF('📁', 'Onboarding revamp', 8, false),
+      PF('📂', 'Unfiled', 4, false),
+    ];
+
+    /* ── A2 matrix ─────────────────────────────────────────── */
+    const matrixCols = ['Status', 'When it happens', 'Open', 'Share', 'Export'];
+    const M = (key, when, cfg) => {
+      const s = st(key);
+      const o = cfg.open, sh = cfg.share, e = cfg.exp;
+      return {
+        ...s, when,
+        openBorder: o.border, openBg: o.bg, openColor: o.color, openShadow: o.shadow,
+        shareShown: !cfg.shareHidden, shareHidden: !!cfg.shareHidden,
+        shareBorder: sh.border, shareBg: sh.bg, shareColor: sh.color, shareShadow: sh.shadow,
+        expBorder: e.border, expBg: e.bg, expColor: e.color, expShadow: e.shadow, expLabel: cfg.expLabel,
+      };
+    };
+    const matrix = [
+      M('ready', 'The deliverable is complete. All actions apply.', { open: btnPrimary, share: btnSecond, exp: btnSecond, expLabel: '↓ docx · pdf · srt' }),
+      M('processing', 'Still being generated. Open shows live progress; nothing to share or export yet.', { open: btnPrimary, share: btnOff, exp: btnOff, expLabel: '↓ Export' }),
+      M('draft', 'Created but never run (e.g. keywords set, not crawled). Nothing exists to share.', { open: btnPrimary, share: btnOff, exp: btnOff, expLabel: '↓ Export', shareHidden: false }),
+      M('error', 'Generation failed. Open surfaces the failure and the retry — every other action is off.', { open: btnSecond, share: btnOff, exp: btnOff, expLabel: '↓ Export' }),
+      M('ready', 'shareable=false — this kind can never be shared publicly. The control is removed, not greyed.', { open: btnPrimary, share: btnOff, exp: btnSecond, expLabel: '↓ csv', shareHidden: true }),
+    ];
+
+    /* ── A3 grid cards ─────────────────────────────────────── */
+    const C = (feature, title, status, meta, updated, opts = {}) => {
+      const s = st(status);
+      const enabled = status === 'ready' || status === 'draft';
+      const share = opts.shareable !== false && enabled;
+      return {
+        ...s, title, updated, meta,
+        kind: LABEL[feature], tone: TONE[feature], icon: ICON[feature],
+        titleColor: status === 'error' ? '#8a8693' : '#1d1b20',
+        shadow: opts.selected ? '3px 3px 0 #ff5c8a' : '3px 3px 0 rgba(29,27,32,0.14)',
+        check: opts.selected ? '✓' : '', checkBg: opts.selected ? '#1d1b20' : '#fff',
+        openBorder: (enabled ? btnPrimary : btnSecond).border, openBg: (enabled ? btnPrimary : btnSecond).bg,
+        openColor: (enabled ? btnPrimary : btnSecond).color, openShadow: (enabled ? btnPrimary : btnSecond).shadow,
+        showShare: opts.shareable !== false,
+        shareBorder: (share ? btnGhost : btnOff).border, shareBg: (share ? btnGhost : btnOff).bg, shareColor: (share ? btnGhost : btnOff).color,
+        moreColor: enabled ? '#1d1b20' : '#a3a7ad',
+      };
+    };
+    const cards = [
+      C('transcript', 'user-interview-3.m4a', 'ready', ['64 min · 2 speakers', 'Checkout UX study'], 'Jul 27'),
+      C('desk', '전기차 시장 2026', 'ready', ['34 sources · T1 12', 'EV market entry'], 'Jul 27'),
+      C('ut', 'Checkout flow · P4', 'processing', ['Analyzing clips · 62%'], 'Jul 27'),
+      C('recruiting', 'Checkout UX screener', 'ready', ['24 responses', 'High fit · 8'], 'Jul 26'),
+      C('transcript', 'focus_group_A.mp4', 'ready', ['92 min · 5 speakers'], 'Jul 26', { selected: true }),
+      C('desk', 'Mobile payment trends', 'draft', ['Keywords set · not run'], 'Jul 26', { shareable: false }),
+      C('ut', 'Onboarding · P2', 'error', ['Recording upload failed'], 'Jul 25'),
+      C('recruiting', 'Beta tester screener', 'ready', ['61 responses', 'High fit · 22'], 'Jul 24'),
+    ];
+
+    /* ── A4 ────────────────────────────────────────────────── */
+    const exportItems = [
+      { icon: '📄', label: 'Word document', ext: '.docx', bg: '#fff' },
+      { icon: '📕', label: 'PDF', ext: '.pdf', bg: '#fff' },
+      { icon: '🎬', label: 'Subtitles', ext: '.srt', bg: '#fff' },
+    ];
+    const bulkRows = [
+      { tone: TONE.transcript, icon: ICON.transcript, title: 'user-interview-3.m4a', kind: 'transcript' },
+      { tone: TONE.desk, icon: ICON.desk, title: '전기차 시장 2026', kind: 'desk_report' },
+      { tone: TONE.recruiting, icon: ICON.recruiting, title: 'Checkout UX screener', kind: 'recruiting_form' },
+    ];
+
+    /* ── A5 ────────────────────────────────────────────────── */
+    const skeletons = [
+      { w1: '52%', w2: '30%', op: 1 }, { w1: '44%', w2: '26%', op: 0.92 },
+      { w1: '61%', w2: '34%', op: 0.82 }, { w1: '38%', w2: '22%', op: 0.68 },
+      { w1: '55%', w2: '31%', op: 0.5 }, { w1: '47%', w2: '25%', op: 0.32 },
+    ];
+    const emptyCtas = [
+      { icon: ICON.transcript, label: 'Transcribe a recording', tone: TONE.transcript },
+      { icon: ICON.desk, label: 'Run desk research', tone: TONE.desk },
+      { icon: ICON.ut, label: 'Start a UT session', tone: TONE.ut },
+      { icon: ICON.recruiting, label: 'Recruit participants', tone: TONE.recruiting },
+    ];
+    const activeFilterChips = ['Desk research', 'Error', 'EV market entry'];
+
+    return {
+      rows, featureFilters, statusFilters, projectFilters,
+      matrixCols, matrix, cards, exportItems, bulkRows,
+      skeletons, emptyCtas, activeFilterChips,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+a{color:#c2334f;}a:hover{color:#9e2740;}</style>
+</helmet>
+<div style="min-height:100vh;background:#e8e9e5;background-image:radial-gradient(#cdcfc9 1.1px,transparent 1.1px);background-size:22px 22px;padding:46px;display:flex;flex-direction:column;align-items:flex-start;gap:40px;">
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1060px;">
+    <div style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;border:1.5px solid #1d1b20;background:#fff;border-radius:8px;padding:4px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;box-shadow:2px 2px 0 #1d1b20;">EXPORT · DOCUMENT TEMPLATES</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:31px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">What comes out when you download</div>
+    <div style="font-size:13.5px;color:#3f3b46;line-height:1.7;">No spec arrived for this — the brief defers the export registry, so <code style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:#fff;border:1px solid rgba(29,27,32,.14);border-radius:4px;padding:1px 5px;">export_formats</code> only tells us <i>which</i> formats exist, never what the file looks like. This is my proposal. Pages are Letter (816×1056 @96dpi) and hold at A4; the same layout scales.</div>
+  </div>
+
+  <!-- ══════════ E0 · PRINT TRANSLATION ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">E0</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Print translation — the screen system does not survive paper unchanged</div></div>
+    <div style="width:1500px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;">
+      <div style="display:grid;grid-template-columns:180px 1fr 1fr;background:#1d1b20;">
+        <sc-for list="{{ printCols }}" as="c" hint-placeholder-count="3"><div style="padding:10px 15px;border-left:1px solid rgba(255,255,255,0.14);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;">{{ c }}</div></sc-for>
+      </div>
+      <sc-for list="{{ printRules }}" as="r" hint-placeholder-count="6"><div style="display:grid;grid-template-columns:180px 1fr 1fr;border-bottom:1px solid rgba(29,27,32,0.08);">
+        <div style="padding:12px 15px;font-size:12.5px;font-weight:800;color:#1d1b20;">{{ r.what }}</div>
+        <div style="padding:12px 15px;border-left:1px solid rgba(29,27,32,0.08);font-size:12px;color:#8a8693;line-height:1.55;text-decoration:line-through;text-decoration-color:rgba(194,51,79,0.5);">{{ r.screen }}</div>
+        <div style="padding:12px 15px;border-left:1px solid rgba(29,27,32,0.08);font-size:12px;color:#2a262f;line-height:1.55;"><b style="color:#1d1b20;">{{ r.print }}</b> <span style="color:#8a8693;">— {{ r.why }}</span></div>
+      </div></sc-for>
+      <div style="padding:12px 16px;background:#fff1e6;font-size:12px;color:#8a5a10;line-height:1.6;"><b>One thing survives untouched:</b> the pastel identity tone. It appears once per document as a masthead rule and once per section marker — enough to tell a transcript from a desk report at a glance in a printed stack, cheap enough not to drink toner.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ E1 · SHARED ANATOMY ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">E1</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Shared page anatomy</div><div style="font-size:12.5px;color:#5b5965;">every export, every feature, every format</div></div>
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+      <div style="width:816px;height:1056px;background:#fff;box-shadow:0 3px 16px rgba(29,27,32,0.18);position:relative;flex-shrink:0;">
+        <!-- margin guides -->
+        <div style="position:absolute;left:84px;right:84px;top:72px;bottom:72px;border:1px dashed rgba(194,51,79,0.34);"></div>
+        <!-- masthead -->
+        <div style="position:absolute;left:84px;right:84px;top:72px;">
+          <div style="height:6px;background:#e7defe;border-radius:3px;width:132px;"></div>
+          <div style="display:flex;align-items:baseline;gap:11px;margin-top:15px;"><div style="font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#8a8693;">Transcript</div><div style="flex:1;height:1px;background:rgba(29,27,32,0.16);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">Research Canvas</div></div>
+          <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;letter-spacing:-0.7px;color:#1d1b20;line-height:1.25;margin-top:22px;">Document title sits here</div>
+          <div style="font-size:15px;color:#5b5965;margin-top:9px;line-height:1.6;">Subtitle or project line · one line, never wrapped by design</div>
+        </div>
+        <!-- annotation blocks -->
+        <div style="position:absolute;left:84px;right:84px;top:262px;display:flex;flex-direction:column;gap:15px;">
+          <sc-for list="{{ anatomyBlocks }}" as="b" hint-placeholder-count="4"><div style="border:1.4px dashed #c9ccd2;border-radius:8px;background:#fbfbf9;padding:{{ b.pad }};display:flex;flex-direction:column;gap:5px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;letter-spacing:0.1em;color:#8a8693;">{{ b.label }}</div><div style="font-size:12.5px;color:#5b5965;line-height:1.55;">{{ b.note }}</div></div></sc-for>
+        </div>
+        <!-- footer -->
+        <div style="position:absolute;left:84px;right:84px;bottom:72px;"><div style="height:1px;background:rgba(29,27,32,0.16);margin-bottom:10px;"></div><div style="display:flex;align-items:center;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Generated Jul 28, 2026 · Research Canvas</span><span style="flex:1;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">1 / 6</span></div></div>
+        <!-- rulers -->
+        <div style="position:absolute;left:0;top:72px;width:84px;display:flex;align-items:center;justify-content:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#c2334f;">84</span></div>
+        <div style="position:absolute;left:84px;top:0;height:72px;display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#c2334f;">72</span></div>
+      </div>
+      <div style="width:600px;display:flex;flex-direction:column;gap:11px;">
+        <sc-for list="{{ anatomySpec }}" as="s" hint-placeholder-count="7"><div style="border:2px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.14);overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:9px;padding:8px 13px;border-bottom:1.4px solid rgba(29,27,32,0.12);background:#f7f7f5;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">{{ s.part }}</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#c2334f;">{{ s.spec }}</span></div>
+          <div style="padding:10px 13px;font-size:12.5px;color:#2a262f;line-height:1.6;">{{ s.note }}</div>
+        </div></sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ E2 · TRANSCRIPT ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">E2</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Transcript · .docx / .pdf</div><div style="font-size:12.5px;color:#5b5965;">tone lav · p1 opens, p2 shows the running header</div></div>
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+      <!-- page 1 -->
+      <div style="width:816px;height:1056px;background:#fff;box-shadow:0 3px 16px rgba(29,27,32,0.18);position:relative;flex-shrink:0;overflow:hidden;">
+        <div style="position:absolute;left:84px;right:84px;top:72px;bottom:72px;display:flex;flex-direction:column;">
+          <div style="height:6px;background:#e7defe;border-radius:3px;width:132px;flex-shrink:0;"></div>
+          <div style="display:flex;align-items:baseline;gap:11px;margin-top:15px;flex-shrink:0;"><div style="font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#8a8693;">Transcript</div><div style="flex:1;height:1px;background:rgba(29,27,32,0.16);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">Research Canvas</div></div>
+          <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;letter-spacing:-0.7px;color:#1d1b20;line-height:1.25;margin-top:22px;flex-shrink:0;">user-interview-3.m4a</div>
+          <div style="font-size:15px;color:#5b5965;margin-top:8px;flex-shrink:0;">Checkout UX study · in-depth interview</div>
+          <!-- metadata strip -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(29,27,32,0.14);border:1px solid rgba(29,27,32,0.14);margin-top:24px;flex-shrink:0;">
+            <sc-for list="{{ tMeta }}" as="m" hint-placeholder-count="4"><div style="background:#fff;padding:11px 13px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">{{ m.k }}</div><div style="font-size:15px;font-weight:700;color:#1d1b20;margin-top:4px;">{{ m.v }}</div></div></sc-for>
+          </div>
+          <!-- speakers -->
+          <div style="margin-top:26px;flex-shrink:0;">
+            <div style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">Speakers</div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="display:flex;gap:26px;margin-top:12px;"><sc-for list="{{ tSpeakers }}" as="s" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:9px;"><span style="width:22px;height:22px;border:1.4px solid #1d1b20;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#1d1b20;">{{ s.initial }}</span><span style="font-size:15px;color:#2a262f;"><b>{{ s.name }}</b> · {{ s.role }}</span></div></sc-for></div>
+          </div>
+          <!-- turns -->
+          <div style="margin-top:26px;flex:1;min-height:0;">
+            <div style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">Transcript</div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="display:flex;flex-direction:column;gap:16px;margin-top:15px;">
+              <sc-for list="{{ tTurnsA }}" as="t" hint-placeholder-count="4"><div style="display:flex;gap:14px;"><div style="width:78px;flex-shrink:0;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#8a8693;">{{ t.time }}</div><div style="font-size:13px;font-weight:800;color:#1d1b20;margin-top:2px;">{{ t.speaker }}</div></div><div style="flex:1;min-width:0;font-size:16px;line-height:1.65;color:#1d1b20;">{{ t.text }}</div></div></sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:84px;right:84px;bottom:72px;"><div style="height:1px;background:rgba(29,27,32,0.16);margin-bottom:10px;"></div><div style="display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Generated Jul 28, 2026 · Research Canvas</span><span style="flex:1;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">1 / 6</span></div></div>
+      </div>
+      <!-- page 2 -->
+      <div style="width:816px;height:1056px;background:#fff;box-shadow:0 3px 16px rgba(29,27,32,0.18);position:relative;flex-shrink:0;overflow:hidden;">
+        <div style="position:absolute;left:84px;right:84px;top:56px;display:flex;align-items:center;gap:11px;"><div style="width:20px;height:4px;background:#e7defe;border-radius:2px;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">user-interview-3.m4a</span><span style="flex:1;height:1px;background:rgba(29,27,32,0.12);"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Transcript</span></div>
+        <div style="position:absolute;left:84px;right:84px;top:104px;bottom:72px;">
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <sc-for list="{{ tTurnsB }}" as="t" hint-placeholder-count="7"><div style="display:flex;gap:14px;"><div style="width:78px;flex-shrink:0;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#8a8693;">{{ t.time }}</div><div style="font-size:13px;font-weight:800;color:#1d1b20;margin-top:2px;">{{ t.speaker }}</div></div><div style="flex:1;min-width:0;font-size:16px;line-height:1.65;color:#1d1b20;">{{ t.text }}</div></div></sc-for>
+          </div>
+        </div>
+        <div style="position:absolute;left:84px;right:84px;bottom:72px;"><div style="height:1px;background:rgba(29,27,32,0.16);margin-bottom:10px;"></div><div style="display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Generated Jul 28, 2026 · Research Canvas</span><span style="flex:1;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">2 / 6</span></div></div>
+      </div>
+      <div style="width:520px;display:flex;flex-direction:column;gap:11px;">
+        <sc-for list="{{ tRules }}" as="r" hint-placeholder-count="6"><div style="border:2px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.14);padding:11px 13px;"><div style="font-size:12.5px;font-weight:800;color:#1d1b20;margin-bottom:4px;">{{ r.t }}</div><div style="font-size:12px;color:#2a262f;line-height:1.6;">{{ r.b }}</div></div></sc-for>
+        <div style="border:2px solid #1d1b20;border-radius:11px;background:#f7f7f5;overflow:hidden;">
+          <div style="padding:8px 13px;border-bottom:1.4px solid rgba(29,27,32,0.12);background:#fff;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">.srt · no layout, only rules</div>
+          <div style="padding:11px 13px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.7;color:#2a262f;white-space:pre;">1
+00:00:12,400 --&gt; 00:00:19,120
+[Moderator] Let's talk about your
+online shopping.
+
+2
+00:00:24,000 --&gt; 00:00:31,880
+[Participant] I had everything in my
+cart and quit before paying.</div>
+          <div style="padding:10px 13px;border-top:1.4px solid rgba(29,27,32,0.12);background:#fff;font-size:11.5px;color:#5b5965;line-height:1.6;">Speaker in square brackets, 2 lines max per cue, ~42 chars per line, no styling tags. Same turn data as the .docx — one source, two renderings.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ E3 · DESK REPORT ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">E3</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Desk report · .docx / .pdf</div><div style="font-size:12.5px;color:#5b5965;">tone aqua · the only export that earns a contents block</div></div>
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+      <div style="width:816px;height:1056px;background:#fff;box-shadow:0 3px 16px rgba(29,27,32,0.18);position:relative;flex-shrink:0;overflow:hidden;">
+        <div style="position:absolute;left:84px;right:84px;top:72px;bottom:72px;">
+          <div style="height:6px;background:#bfe9ef;border-radius:3px;width:132px;"></div>
+          <div style="display:flex;align-items:baseline;gap:11px;margin-top:15px;"><div style="font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#8a8693;">Desk research</div><div style="flex:1;height:1px;background:rgba(29,27,32,0.16);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">Research Canvas</div></div>
+          <div style="font-family:'Outfit',sans-serif;font-size:34px;font-weight:800;letter-spacing:-0.9px;color:#1d1b20;line-height:1.2;margin-top:26px;">전기차 시장 2026</div>
+          <div style="font-size:16px;color:#5b5965;margin-top:10px;line-height:1.6;">EV market entry · market mode · Korea · 2024–2026</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(29,27,32,0.14);border:1px solid rgba(29,27,32,0.14);margin-top:26px;">
+            <sc-for list="{{ dMeta }}" as="m" hint-placeholder-count="3"><div style="background:#fff;padding:11px 13px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">{{ m.k }}</div><div style="font-size:15px;font-weight:700;color:#1d1b20;margin-top:4px;">{{ m.v }}</div></div></sc-for>
+          </div>
+          <!-- contents -->
+          <div style="margin-top:28px;">
+            <div style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">Contents</div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+              <sc-for list="{{ dContents }}" as="c" hint-placeholder-count="5"><div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:15px;color:#1d1b20;">{{ c.label }}</span><span style="flex:1;border-bottom:1px dotted rgba(29,27,32,0.28);"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#5b5965;">{{ c.page }}</span></div></sc-for>
+            </div>
+          </div>
+          <!-- exec summary -->
+          <div style="margin-top:28px;">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:#bfe9ef;border:1.4px solid #1d1b20;"></span><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">1 · Executive summary</span></div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="font-size:16px;line-height:1.7;color:#1d1b20;margin-top:13px;">Checkout abandonment across Korean mobile commerce is driven primarily by <b>late-surfaced shipping cost</b> and <b>forced account creation</b>. Guest checkout and upfront total display are the two highest-leverage fixes, converging across 34 sources.</div>
+            <div style="border-left:3px solid #bfe9ef;padding:3px 0 3px 14px;margin-top:14px;font-size:15px;line-height:1.65;color:#2a262f;">Every claim in this report carries a source and a credibility tier. Untiered claims were dropped rather than softened.</div>
+          </div>
+        </div>
+        <div style="position:absolute;left:84px;right:84px;bottom:72px;"><div style="height:1px;background:rgba(29,27,32,0.16);margin-bottom:10px;"></div><div style="display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Generated Jul 28, 2026 · Research Canvas</span><span style="flex:1;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">1 / 14</span></div></div>
+      </div>
+      <div style="width:816px;height:1056px;background:#fff;box-shadow:0 3px 16px rgba(29,27,32,0.18);position:relative;flex-shrink:0;overflow:hidden;">
+        <div style="position:absolute;left:84px;right:84px;top:56px;display:flex;align-items:center;gap:11px;"><div style="width:20px;height:4px;background:#bfe9ef;border-radius:2px;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">전기차 시장 2026</span><span style="flex:1;height:1px;background:rgba(29,27,32,0.12);"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Desk research</span></div>
+        <div style="position:absolute;left:84px;right:84px;top:104px;bottom:72px;">
+          <div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:#bfe9ef;border:1.4px solid #1d1b20;"></span><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">3 · Quantitative snapshot</span></div>
+          <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+          <table style="width:100%;border-collapse:collapse;margin-top:14px;">
+            <thead><tr style="border-bottom:1.6px solid #1d1b20;"><th style="text-align:left;padding:8px 4px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">Subject</th><th style="text-align:right;padding:8px 4px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">Value</th><th style="text-align:left;padding:8px 4px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">Source</th><th style="text-align:center;padding:8px 4px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">Tier</th></tr></thead>
+            <tbody><sc-for list="{{ dQuant }}" as="q" hint-placeholder-count="5"><tr style="border-bottom:1px solid rgba(29,27,32,0.14);"><td style="padding:10px 4px;font-size:15px;color:#1d1b20;">{{ q.subject }}</td><td style="padding:10px 4px;text-align:right;font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:800;color:#1d1b20;">{{ q.value }}</td><td style="padding:10px 4px;font-size:14px;color:#5b5965;">{{ q.source }}</td><td style="padding:10px 4px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;color:#1d1b20;">{{ q.tier }}</td></tr></sc-for></tbody>
+          </table>
+          <div style="font-size:13px;color:#8a8693;line-height:1.6;margin-top:11px;">Tier T1 = primary statistics body or wire · T2 = industry survey · T3 = community or secondary blog. Tier is printed as text, never as colour alone.</div>
+          <!-- RQ -->
+          <div style="margin-top:30px;">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:#bfe9ef;border:1.4px solid #1d1b20;"></span><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">4 · Research questions</span></div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="display:flex;flex-direction:column;gap:17px;margin-top:14px;">
+              <sc-for list="{{ dRQ }}" as="q" hint-placeholder-count="2"><div style="border:1.4px solid rgba(29,27,32,0.2);border-radius:6px;padding:13px 15px;"><div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:7px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:800;color:#1d1b20;">{{ q.id }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">{{ q.cat }} · importance {{ q.importance }} · confidence {{ q.conf }}</span></div><div style="font-size:16px;font-weight:700;color:#1d1b20;line-height:1.5;">{{ q.q }}</div><div style="font-size:15px;line-height:1.65;color:#2a262f;margin-top:7px;">{{ q.a }}</div><div style="font-size:14px;line-height:1.6;color:#5b5965;margin-top:8px;border-top:1px solid rgba(29,27,32,0.12);padding-top:8px;"><b style="color:#1d1b20;">Still to explore —</b> {{ q.missing }}</div></div></sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:84px;right:84px;bottom:72px;"><div style="height:1px;background:rgba(29,27,32,0.16);margin-bottom:10px;"></div><div style="display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Generated Jul 28, 2026 · Research Canvas</span><span style="flex:1;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">6 / 14</span></div></div>
+      </div>
+      <div style="width:520px;display:flex;flex-direction:column;gap:11px;">
+        <sc-for list="{{ dRules }}" as="r" hint-placeholder-count="5"><div style="border:2px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.14);padding:11px 13px;"><div style="font-size:12.5px;font-weight:800;color:#1d1b20;margin-bottom:4px;">{{ r.t }}</div><div style="font-size:12px;color:#2a262f;line-height:1.6;">{{ r.b }}</div></div></sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ E4 · UT INSIGHT ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">E4</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">UT insight · .pdf</div><div style="font-size:12.5px;color:#5b5965;">tone peach · clips become timestamps, estimates stay marked</div></div>
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+      <div style="width:816px;height:1056px;background:#fff;box-shadow:0 3px 16px rgba(29,27,32,0.18);position:relative;flex-shrink:0;overflow:hidden;">
+        <div style="position:absolute;left:84px;right:84px;top:72px;bottom:72px;">
+          <div style="height:6px;background:#ffd9be;border-radius:3px;width:132px;"></div>
+          <div style="display:flex;align-items:baseline;gap:11px;margin-top:15px;"><div style="font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:#8a8693;">Usability test</div><div style="flex:1;height:1px;background:rgba(29,27,32,0.16);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">Research Canvas</div></div>
+          <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;letter-spacing:-0.7px;color:#1d1b20;line-height:1.25;margin-top:22px;">Checkout flow · Participant 4</div>
+          <div style="font-size:15px;color:#5b5965;margin-top:8px;">Onboarding revamp · unmoderated · participant device</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(29,27,32,0.14);border:1px solid rgba(29,27,32,0.14);margin-top:24px;">
+            <sc-for list="{{ uMeta }}" as="m" hint-placeholder-count="4"><div style="background:#fff;padding:11px 13px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;">{{ m.k }}</div><div style="font-size:15px;font-weight:700;color:#1d1b20;margin-top:4px;">{{ m.v }}</div></div></sc-for>
+          </div>
+          <div style="margin-top:26px;">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:#ffd9be;border:1.4px solid #1d1b20;"></span><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">Task &amp; outcome</span></div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="font-size:16px;line-height:1.7;color:#1d1b20;margin-top:12px;">Add an item to the cart and complete checkout. The participant moved smoothly up to adding items, but at checkout the <b>shipping fee only appeared at the final step</b>, prompting two back-navigations and a near-abandonment.</div>
+            <div style="display:flex;flex-direction:column;gap:7px;margin-top:13px;">
+              <sc-for list="{{ uSteps }}" as="s" hint-placeholder-count="3"><div style="display:flex;align-items:baseline;gap:10px;font-size:15px;color:#2a262f;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;color:#1d1b20;width:60px;flex-shrink:0;">{{ s.mark }}</span><span style="flex:1;">{{ s.label }}</span></div></sc-for>
+            </div>
+          </div>
+          <div style="margin-top:26px;">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:#ffd9be;border:1.4px solid #1d1b20;"></span><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">Key moments</span></div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="display:flex;flex-direction:column;gap:13px;margin-top:13px;">
+              <sc-for list="{{ uClips }}" as="c" hint-placeholder-count="3"><div style="display:flex;gap:13px;"><div style="width:66px;flex-shrink:0;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:800;color:#1d1b20;">{{ c.time }}</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8a8693;margin-top:2px;">{{ c.tag }}</div></div><div style="flex:1;min-width:0;border-left:2px solid rgba(29,27,32,0.18);padding-left:13px;"><div style="font-size:16px;line-height:1.6;color:#1d1b20;">“{{ c.quote }}”</div><div style="font-size:13.5px;color:#5b5965;margin-top:4px;">{{ c.note }}</div></div></div></sc-for>
+            </div>
+          </div>
+          <div style="margin-top:26px;">
+            <div style="display:flex;align-items:baseline;gap:9px;"><span style="width:11px;height:11px;border-radius:50%;background:#ffd9be;border:1.4px solid #1d1b20;"></span><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.3px;">Behavioural metrics</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#8a8693;">observed · estimated marked ~</span></div>
+            <div style="height:1.6px;background:#1d1b20;margin-top:7px;"></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(29,27,32,0.14);border:1px solid rgba(29,27,32,0.14);margin-top:12px;">
+              <sc-for list="{{ uMetrics }}" as="m" hint-placeholder-count="6"><div style="background:#fff;padding:10px 12px;"><div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:{{ m.color }};">{{ m.v }}</div><div style="font-size:13px;color:#5b5965;margin-top:1px;">{{ m.k }}</div></div></sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:84px;right:84px;bottom:72px;"><div style="height:1px;background:rgba(29,27,32,0.16);margin-bottom:10px;"></div><div style="display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">Generated Jul 28, 2026 · Research Canvas</span><span style="flex:1;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">1 / 4</span></div></div>
+      </div>
+      <div style="width:520px;display:flex;flex-direction:column;gap:11px;">
+        <sc-for list="{{ uRules }}" as="r" hint-placeholder-count="5"><div style="border:2px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,0.14);padding:11px 13px;"><div style="font-size:12.5px;font-weight:800;color:#1d1b20;margin-bottom:4px;">{{ r.t }}</div><div style="font-size:12px;color:#2a262f;line-height:1.6;">{{ r.b }}</div></div></sc-for>
+        <div style="border:2px solid #1d1b20;border-radius:11px;background:#fff1e6;box-shadow:3px 3px 0 #e0a83a;padding:12px 14px;"><div style="font-size:12.5px;font-weight:800;color:#1d1b20;margin-bottom:5px;">Recruiting exports have no document</div><div style="font-size:12px;color:#8a5a10;line-height:1.65;">A screener's output is a respondent table — that is <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">.csv</code>, and a CSV has no layout to design. Column order, the masked-contact rule, and the header row belong in the export registry spec, not here. If a printed shortlist is ever wanted, it is a new document and I'd design it then.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const printCols = ['Element', 'On screen', 'On paper'];
+    const printRules = [
+      { what: 'Hard shadow', screen: '4px 4px 0 ink', print: 'Dropped entirely', why: 'offset shadows print as smudged grey slabs and eat toner for nothing' },
+      { what: 'Frame border', screen: '3px ink border, radius 14–20', print: '1.6px rule under section titles', why: 'a page is already a frame; boxing content inside it wastes the margin' },
+      { what: 'Pastel band', screen: 'full-width header band', print: '6px tone bar, 132px wide', why: 'identity survives at a fraction of the ink; still sorts a printed stack' },
+      { what: 'Status badge', screen: 'pill · colour + dot', print: 'Text, in a metadata cell', why: 'a printed page has no live status — and colour alone fails mono printing' },
+      { what: 'Body type', screen: '12.5–13.5px UI', print: '16px / 1.65 (12pt)', why: 'reading distance for paper is longer than for a screen' },
+      { what: 'Mono captions', screen: 'ui-monospace labels', print: 'Kept, 10–11px', why: 'timestamps and IDs are scanned, not read — mono still earns its place' },
+    ];
+
+    const anatomyBlocks = [
+      { label: 'METADATA STRIP', note: 'Hairline grid, 3–4 cells. Whatever a reader needs to trust the document: duration, speakers, source count, date.', pad: '18px 15px' },
+      { label: 'CONTENT — ONE COLUMN', note: 'Single column, no sidebars. Everything the screen put in a rail becomes a section in reading order.', pad: '46px 15px' },
+      { label: 'SECTION', note: 'Tone dot + Outfit 800 title + 1.6px rule. Repeats for every section; nothing else competes at this weight.', pad: '18px 15px' },
+    ];
+    const anatomySpec = [
+      { part: 'Page', spec: '816 × 1056', note: 'Letter at 96dpi. Holds on A4 — the layout is margin-driven, so the text block simply shortens; nothing is pinned to page height except the footer.' },
+      { part: 'Margins', spec: '84 × 72', note: '0.875in sides, 0.75in top/bottom. Wide enough to bind or annotate; the tone bar and footer rule both sit on the side margin.' },
+      { part: 'Masthead', spec: 'p1 only', note: 'Tone bar → feature name + rule + product name → title → subtitle. This is the whole cover; there is no separate title page.' },
+      { part: 'Running header', spec: 'p2+', note: '20×4 tone chip · document title · rule · feature name. Half the height of the masthead, no title repeat at display size.' },
+      { part: 'Footer', spec: 'every page', note: '1px rule, then generated-date + product on the left and page N / total on the right. The only place the product name repeats.' },
+      { part: 'Type', spec: 'Outfit + Pretendard', note: 'Outfit 800 for titles and section heads only. Pretendard 16px/1.65 for all body. Mono for timestamps, IDs, tiers, page numbers.' },
+      { part: 'Colour', spec: 'ink + one tone', note: 'Ink text throughout. The feature tone appears as the masthead bar, the running chip, and section dots — nowhere else. Prints fine in mono.' },
+    ];
+
+    const tMeta = [
+      { k: 'Duration', v: '64 min' }, { k: 'Speakers', v: '2' },
+      { k: 'Language', v: 'Korean' }, { k: 'Recorded', v: 'Jul 27, 2026' },
+    ];
+    const tSpeakers = [
+      { initial: 'M', name: 'Moderator', role: '김연구' },
+      { initial: 'P', name: 'Participant', role: 'P3 · 32, Seoul' },
+    ];
+    const tTurnsA = [
+      { time: '00:12', speaker: 'Moderator', text: "Let's talk casually about your online shopping. Have you started buying something recently and then stopped partway?" },
+      { time: '00:24', speaker: 'Participant', text: 'Yeah — the other day I had everything in my cart and quit right before paying.' },
+      { time: '00:38', speaker: 'Moderator', text: 'What made you stop?' },
+    ];
+    const tTurnsB = [
+      { time: '00:45', speaker: 'Participant', text: 'The shipping fee showed up at the very last step. It honestly felt like a betrayal.' },
+      { time: '01:02', speaker: 'Moderator', text: 'You said betrayal — what was the first thing that went through your mind?' },
+      { time: '01:14', speaker: 'Participant', text: 'I thought, why not tell me from the start? It felt like a waste of my time. I had already picked the size, entered the address, everything.' },
+      { time: '01:39', speaker: 'Moderator', text: 'And what did you do instead?' },
+      { time: '01:47', speaker: 'Participant', text: "I left it in the cart. I told myself I'd come back if there was a coupon, but I never did." },
+      { time: '02:06', speaker: 'Moderator', text: 'Did you look for a coupon field at that point?' },
+      { time: '02:13', speaker: 'Participant', text: "I looked, but I couldn't find it. I assumed it appeared after payment, which felt backwards." },
+    ];
+    const tRules = [
+      { t: 'Timestamp column, not inline', b: 'A fixed 78px column carries time and speaker; the utterance keeps a single left edge. Scanning down for a moment stays possible on paper, where there is no search.' },
+      { t: 'Speaker as text, not colour', b: 'The screen tints avatars sky/rose. Print names them. A photocopied transcript must still identify who spoke.' },
+      { t: 'Turns never split mid-sentence', b: 'A page break between turns is fine; inside one is not. The generator keeps a turn whole or moves it — orphan control on the block, not the line.' },
+      { t: 'Speakers block earns page one', b: 'Whoever reads a transcript cold needs the cast before the dialogue. It is short, so it costs nothing.' },
+      { t: 'No AI summary in the transcript', b: 'The summary is an interpretation; the transcript is a record. Mixing them lets a reader quote the machine as the participant.' },
+      { t: 'File name is the title', b: 'Researchers search by recording name. Renaming it to something prettier breaks the only mental link back to the source audio.' },
+    ];
+
+    const dMeta = [
+      { k: 'Sources', v: '34' }, { k: 'Tier 1', v: '12' }, { k: 'Period', v: '2024–2026' },
+    ];
+    const dContents = [
+      { label: '1 · Executive summary', page: '1' },
+      { label: '2 · Findings', page: '3' },
+      { label: '3 · Quantitative snapshot', page: '6' },
+      { label: '4 · Research questions', page: '8' },
+      { label: '5 · Appendix — collected sources', page: '11' },
+    ];
+    const dQuant = [
+      { subject: 'Mobile cart abandonment (KR)', value: '68%', source: 'Statista', tier: 'T1' },
+      { subject: 'Lift from guest checkout', value: '+11%p', source: 'Baymard Institute', tier: 'T1' },
+      { subject: 'Users citing shipping surprise', value: '62%', source: 'Industry survey (n=1,204)', tier: 'T2' },
+      { subject: 'One-tap wallet penetration', value: '41%', source: 'Community thread', tier: 'T3' },
+    ];
+    const dRQ = [
+      { id: 'RQ1', cat: 'user signals', importance: '5/5', conf: 'high', q: 'What most often causes checkout abandonment on mobile?', a: 'Late-surfaced shipping cost at the final step is the dominant driver, cited in 21 of 34 sources — ahead of forced sign-up and payment friction.', missing: 'a segment split between first-time and returning buyers.' },
+      { id: 'RQ2', cat: 'competition', importance: '4/5', conf: 'medium', q: 'Which checkout patterns best reduce drop-off?', a: 'Guest checkout plus upfront total display show the strongest reported lift; one-tap wallets help returning users but require prior enrolment.', missing: 'controlled A/B magnitudes for the Korean mid-market.' },
+    ];
+    const dRules = [
+      { t: 'Contents block, and only here', b: 'A desk report runs 10–20 pages with sections a reader jumps between. A transcript is linear and a UT report is four pages — neither earns one.' },
+      { t: 'Numbered sections', b: 'Numbers survive being quoted in an email ("see §3"), which is what happens to this document. The screen version can rely on scroll-spy; paper cannot.' },
+      { t: 'Every claim keeps its source cell', b: 'The tier column is text (T1/T2/T3), never a colour dot. A monochrome print must still tell a statistics body from a forum post.' },
+      { t: 'Gaps are printed, not hidden', b: 'The "still to explore" line ships in the document. A report that only shows what it found reads as more certain than it is.' },
+      { t: 'Appendix is a list, not screenshots', b: 'Title, publisher, date, tier, URL. Thumbnails of source pages would triple the page count and age badly.' },
+    ];
+
+    const uMeta = [
+      { k: 'Duration', v: '8:32' }, { k: 'Task', v: 'Checkout' },
+      { k: 'Outcome', v: 'Completed' }, { k: 'Tested', v: 'Jul 27, 2026' },
+    ];
+    const uSteps = [
+      { mark: 'Done', label: 'Find a product' },
+      { mark: 'Done', label: 'Proceed to checkout — two back-navigations' },
+      { mark: 'Done', label: 'Complete payment' },
+    ];
+    const uClips = [
+      { time: '0:41', tag: 'Pain point', quote: 'Wait — there is a shipping fee now? It was not showing before…', note: 'First encounter with the total. Cursor idles 4s before any click.' },
+      { time: '2:18', tag: 'Confusion', quote: 'Where do I put a coupon code?', note: 'Scrolls the payment step three times; the field is below the fold.' },
+      { time: '5:03', tag: 'Positive', quote: 'Adding it to the cart was really easy.', note: 'Unprompted. The only spontaneous praise in the session.' },
+    ];
+    const uMetrics = [
+      { k: 'Total time', v: '8:32', color: '#1d1b20' },
+      { k: 'Back navigations', v: '2', color: '#1d1b20' },
+      { k: 'Clicks', v: '14', color: '#1d1b20' },
+      { k: 'Near-abandons', v: '1', color: '#1d1b20' },
+      { k: 'Avg. hesitation', v: '~3.2s', color: '#5b5965' },
+      { k: 'Task success', v: '~62%', color: '#5b5965' },
+    ];
+    const uRules = [
+      { t: 'Clips become timestamps and quotes', b: 'Video cannot print. Each key moment ships as a timestamp, the verbatim quote, and what was observed — enough to find the clip in the app and to stand alone without it.' },
+      { t: 'Estimates keep their tilde', b: 'On screen, inferred metrics dim to 50% opacity. On paper, opacity is meaningless: they carry ~ and a mute ink, and the section header says so outright.' },
+      { t: 'Quotes are verbatim, in quote marks', b: 'These get pasted into decks. Any paraphrase would travel as if the participant had said it.' },
+      { t: 'Task outcome before findings', b: 'The first question anyone asks of a UT report is whether the participant finished. Answer it in the metadata strip, then explain.' },
+      { t: 'One participant per document', b: 'Multi-participant synthesis is a different artefact with different claims. Merging sessions here would imply a sample size this document does not have.' },
+    ];
+
+    return {
+      printCols, printRules, anatomyBlocks, anatomySpec,
+      tMeta, tSpeakers, tTurnsA, tTurnsB, tRules,
+      dMeta, dContents, dQuant, dRQ, dRules,
+      uMeta, uSteps, uClips, uMetrics, uRules,
+    };
+  }
+}
+</script>
+</body>
+</html>

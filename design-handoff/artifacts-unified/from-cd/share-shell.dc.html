@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:7px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}
+a{color:#c2334f;}a:hover{color:#9e2740;}</style>
+</helmet>
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:46px;display:flex;flex-direction:column;align-items:flex-start;gap:38px;">
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1080px;">
+    <div style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;border:1.5px solid #1d1b20;background:#fff;border-radius:8px;padding:4px 12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;letter-spacing:1.5px;box-shadow:2px 2px 0 #1d1b20;">SURFACE B</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:31px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">Share view shell</div>
+    <div style="font-size:13.5px;color:#5b5965;line-height:1.7;">Common chrome for every public read-only share page. The shell <b style="color:#1d1b20;">does not know which feature it is wrapping</b> — title, tone, and body arrive as props. B1 and B2 are the same chrome with different bodies; that's the proof.</div>
+  </div>
+
+  <!-- ══════════ B0 · ANATOMY ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">B0</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Anatomy — what the shell owns vs what the slot owns</div></div>
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,0.2);overflow:hidden;display:flex;">
+      <div style="flex:1;min-width:0;padding:18px;background:#fbfbf9;border-right:2px solid #1d1b20;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;margin-bottom:11px;">Shell (CD owns · one component)</div>
+        <div style="border:2px solid #1d1b20;border-radius:12px;overflow:hidden;background:#fff;">
+          <div style="background:#e7defe;border-bottom:2px solid #1d1b20;padding:10px 13px;display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:#1d1b20;"></span><span style="font-size:11.5px;font-weight:800;color:#1d1b20;">Brand bar · tone · title · read-only badge</span></div>
+          <div style="padding:8px 13px;border-bottom:1px dashed rgba(29,27,32,0.22);background:#f7f7f5;font-size:11px;color:#5b5965;">Notice strip — expiry / gate (only when it applies)</div>
+          <div style="margin:11px 13px;border:1.8px dashed #c9ccd2;border-radius:10px;background:#fbfbf9;padding:26px 13px;text-align:center;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;letter-spacing:0.08em;color:#8a8693;">BODY SLOT</div><div style="font-size:11px;color:#a3a7ad;margin-top:5px;">feature-owned · shell never inspects it</div></div>
+          <div style="border-top:1.5px solid rgba(29,27,32,0.12);background:#f7f7f5;padding:9px 13px;font-size:11px;color:#5b5965;">Footer — branding · watermark · "made with Research Canvas"</div>
+        </div>
+      </div>
+      <div style="width:480px;flex-shrink:0;padding:18px;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8693;font-weight:700;margin-bottom:11px;">Props (typed · §0 contract)</div>
+        <div style="display:flex;flex-direction:column;gap:7px;"><sc-for list="{{ shellProps }}" as="p" hint-placeholder-count="6"><div style="display:flex;gap:10px;align-items:flex-start;border:1.4px solid rgba(29,27,32,0.14)
+;border-radius:10px;padding:9px 12px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:700;color:#c2334f;flex-shrink:0;">{{ p.name }}</span><span style="flex:1;font-size:11.5px;color:#2a262f;line-height:1.5;">{{ p.note }}</span></div></sc-for></div>
+        <div style="margin-top:13px;border:2px solid #1d1b20;border-radius:11px;background:#fff1e6;padding:11px 13px;box-shadow:3px 3px 0 #e0a83a;"><div style="font-size:11.5px;color:#8a5a10;line-height:1.6;"><b>Rule:</b> no <code style="font-family:ui-monospace,Menlo,monospace;">if (feature === …)</code> anywhere in the chrome. A feature name reaching the shell is a bug — pass tone + title + children instead.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ B1 / B2 · SAME SHELL, TWO BODIES ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">B1 · B2</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Valid · loaded — identical chrome, two different feature bodies</div></div>
+    <div style="display:flex;gap:18px;align-items:flex-start;">
+
+      <!-- B1 transcript -->
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8a8693;">B1 · body = transcript (tone lav)</div>
+        <div style="width:760px;height:780px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+          <div style="border-bottom:3px solid #1d1b20;background:#e7defe;padding:15px 22px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:11px;">
+              <div style="display:inline-flex;align-items:center;gap:7px;flex-shrink:0;"><span style="width:24px;height:24px;border:2px solid #1d1b20;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:1.5px 1.5px 0 #1d1b20;">R</span><span style="font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;color:#1d1b20;letter-spacing:-0.2px;">Research Canvas</span></div>
+              <div style="flex:1;"></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">👁 READ-ONLY</div>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:flex-end;gap:12px;">
+              <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;line-height:1.25;">user-interview-3.m4a</div><div style="font-size:11.5px;color:#3a3540;margin-top:4px;">Shared by 김연구 · Jul 27, 2026</div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;color:#1d1b20;flex-shrink:0;">↓ Download</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid rgba(29,27,32,0.1);background:#f7f7f5;padding:8px 22px;"><span style="font-size:12px;">🔗</span><span style="font-size:11.5px;color:#5b5965;">Anyone with this link can view · <b style="color:#1d1b20;">expires Aug 27</b></span></div>
+          <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:20px 22px;background:#fff;display:flex;flex-direction:column;gap:17px;">
+            <sc-for list="{{ turns }}" as="t" hint-placeholder-count="6"><div style="display:flex;gap:12px;"><div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:{{ t.avatarBg }};border:2px solid #1d1b20;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#1d1b20;">{{ t.initial }}</div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:baseline;gap:9px;margin-bottom:4px;"><span style="font-size:12.5px;font-weight:800;color:{{ t.nameColor }};">{{ t.speaker }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#a3a7ad;">{{ t.time }}</span></div><div style="font-size:13.5px;line-height:1.65;color:#2a262f;">{{ t.text }}</div></div></div></sc-for>
+          </div>
+          <div style="flex-shrink:0;border-top:2px solid #1d1b20;background:#f7f7f5;padding:11px 22px;display:flex;align-items:center;gap:10px;"><span style="font-size:11px;color:#8a8693;">Made with <b style="color:#1d1b20;">Research Canvas</b></span><span style="margin-left:auto;font-size:11px;color:#c2334f;font-weight:700;">Create your own →</span></div>
+        </div>
+      </div>
+
+      <!-- B2 desk -->
+      <div style="display:flex;flex-direction:column;gap:9px;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8a8693;">B2 · body = desk report (tone aqua) — chrome unchanged</div>
+        <div style="width:760px;height:780px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,0.28);overflow:hidden;display:flex;flex-direction:column;">
+          <div style="border-bottom:3px solid #1d1b20;background:#bfe9ef;padding:15px 22px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:11px;">
+              <div style="display:inline-flex;align-items:center;gap:7px;flex-shrink:0;"><span style="width:24px;height:24px;border:2px solid #1d1b20;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:1.5px 1.5px 0 #1d1b20;">R</span><span style="font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:800;color:#1d1b20;letter-spacing:-0.2px;">Research Canvas</span></div>
+              <div style="flex:1;"></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 11px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 #1d1b20;">👁 READ-ONLY</div>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:flex-end;gap:12px;">
+              <div style="flex:1;min-width:0;"><div style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;line-height:1.25;">전기차 시장 2026</div><div style="font-size:11.5px;color:#3a3540;margin-top:4px;">Shared by 김연구 · Jul 27, 2026</div></div>
+              <div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;color:#1d1b20;flex-shrink:0;">↓ Download</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;border-bottom:1px solid rgba(29,27,32,0.1);background:#f7f7f5;padding:8px 22px;"><span style="font-size:12px;">🔗</span><span style="font-size:11.5px;color:#5b5965;">Anyone with this link can view · <b style="color:#1d1b20;">no expiry</b></span></div>
+          <div class="sc" style="flex:1;min-height:0;overflow-y:auto;padding:18px 22px;background:#fff;display:flex;flex-direction:column;gap:14px;">
+            <sc-for list="{{ deskSections }}" as="s" hint-placeholder-count="3"><div style="border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:9px;border-bottom:2px solid #1d1b20;background:{{ s.headBg }};padding:10px 14px;"><span style="width:9px;height:9px;border-radius:50%;background:{{ s.accent }};border:1.5px solid #1d1b20;"></span><span style="font-size:14px;">{{ s.icon }}</span><span style="flex:1;font-family:'Outfit',sans-serif;font-size:14.5px;font-weight:800;color:#1d1b20;">{{ s.label }}</span></div>
+              <div style="padding:14px;font-size:13px;line-height:1.65;color:#2a262f;">{{ s.body }}</div>
+            </div></sc-for>
+            <div style="border:1.5px solid rgba(29,27,32,0.14);border-radius:12px;background:#fff;overflow:hidden;flex-shrink:0;">
+              <div style="padding:9px 14px;border-bottom:1px solid rgba(29,27,32,0.1);font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8693;font-weight:700;">Quantitative snapshot</div>
+              <table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody><sc-for list="{{ deskQuant }}" as="q" hint-placeholder-count="3"><tr style="border-bottom:1px solid rgba(29,27,32,0.08);"><td style="padding:9px 14px;color:#2a262f;">{{ q.subject }}</td><td style="padding:9px 14px;text-align:right;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#c2334f;">{{ q.value }}</td><td style="padding:9px 14px;color:#5b5965;">{{ q.source }}</td><td style="padding:9px 14px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:{{ q.tierColor }};">{{ q.tier }}</td></tr></sc-for></tbody></table>
+            </div>
+          </div>
+          <div style="flex-shrink:0;border-top:2px solid #1d1b20;background:#f7f7f5;padding:11px 22px;display:flex;align-items:center;gap:10px;"><span style="font-size:11px;color:#8a8693;">Made with <b style="color:#1d1b20;">Research Canvas</b></span><span style="margin-left:auto;font-size:11px;color:#c2334f;font-weight:700;">Create your own →</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ B3 · NON-VALID STATES ══════════ -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">B3</div><div style="font-size:15px;font-weight:800;color:#1d1b20;">Loading · expired · not-found · email gate</div><div style="font-size:12.5px;color:#8a8693;">dead-end states stay neutral — no feature tone, no branding claim</div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+
+      <!-- loading -->
+      <div style="width:568px;height:560px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:6px 6px 0 rgba(29,27,32,0.24);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#e7defe;padding:14px 18px;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:10px;"><div style="display:inline-flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border:2px solid #1d1b20;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;">R</span><span style="font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;color:#1d1b20;">Research Canvas</span></div><div style="flex:1;"></div><div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 10px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#1d1b20;">👁 READ-ONLY</div></div>
+          <div style="margin-top:11px;display:flex;flex-direction:column;gap:6px;"><div style="height:19px;width:58%;background:rgba(29,27,32,0.14);border-radius:5px;"></div><div style="height:10px;width:34%;background:rgba(29,27,32,0.09);border-radius:4px;"></div></div>
+        </div>
+        <div style="flex:1;padding:20px 18px;background:#fff;display:flex;flex-direction:column;gap:16px;">
+          <sc-for list="{{ bodySkeleton }}" as="b" hint-placeholder-count="5"><div style="display:flex;gap:11px;opacity:{{ b.op }};"><div style="width:32px;height:32px;border-radius:50%;background:#eceef1;flex-shrink:0;"></div><div style="flex:1;display:flex;flex-direction:column;gap:6px;"><div style="height:9px;width:{{ b.w1 }};background:#eceef1;border-radius:4px;"></div><div style="height:11px;width:{{ b.w2 }};background:#f2f2f3;border-radius:4px;"></div><div style="height:11px;width:{{ b.w3 }};background:#f2f2f3;border-radius:4px;"></div></div></div></sc-for>
+        </div>
+        <div style="flex-shrink:0;border-top:2px solid #1d1b20;background:#f7f7f5;padding:10px 18px;font-size:10.5px;color:#8a8693;">Chrome paints immediately — only the slot waits. Title and tone come from the share record, not the body.</div>
+      </div>
+
+      <!-- expired -->
+      <div style="width:568px;height:560px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:6px 6px 0 rgba(29,27,32,0.24);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#eceef1;padding:14px 18px;flex-shrink:0;display:flex;align-items:center;gap:10px;"><div style="display:inline-flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border:2px solid #1d1b20;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;">R</span><span style="font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;color:#1d1b20;">Research Canvas</span></div><div style="flex:1;"></div><div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid rgba(29,27,32,0.24);border-radius:999px;padding:4px 10px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#8a8693;"><span style="width:6px;height:6px;border-radius:50%;background:#8a8693;"></span>EXPIRED</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:34px;text-align:center;background:#fff;">
+          <div style="width:70px;height:70px;border:3px solid #1d1b20;border-radius:19px;background:#f7f7f5;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:4px 4px 0 #1d1b20;">⏳</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:21px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">This share link has expired</div>
+          <div style="font-size:13px;color:#5b5965;line-height:1.65;max-width:360px;">It was set to expire on Jul 20, 2026. Ask whoever shared it for a fresh link.</div>
+          <div style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid rgba(29,27,32,0.2);background:#fff;border-radius:999px;padding:8px 15px;font-size:12px;font-weight:600;color:#5b5965;">✉ Request access</div>
+        </div>
+        <div style="flex-shrink:0;border-top:2px solid #1d1b20;background:#f7f7f5;padding:10px 18px;font-size:10.5px;color:#8a8693;">Revoked uses this same screen with "…has been revoked" — one layout, two strings.</div>
+      </div>
+
+      <!-- not found -->
+      <div style="width:568px;height:560px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:6px 6px 0 rgba(29,27,32,0.24);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#eceef1;padding:14px 18px;flex-shrink:0;display:flex;align-items:center;gap:10px;"><div style="display:inline-flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border:2px solid #1d1b20;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;">R</span><span style="font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;color:#1d1b20;">Research Canvas</span></div><div style="flex:1;"></div><div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid rgba(29,27,32,0.24);border-radius:999px;padding:4px 10px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#8a8693;">NOT FOUND</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:34px;text-align:center;background:#fff;">
+          <div style="width:70px;height:70px;border:2.5px dashed #c9ccd2;border-radius:19px;background:#fbfbf9;display:flex;align-items:center;justify-content:center;font-size:30px;">🔗</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:21px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">We can't find this link</div>
+          <div style="font-size:13px;color:#5b5965;line-height:1.65;max-width:360px;">The link may be mistyped, or the deliverable was deleted. Nothing was shared with you at this address.</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a3a7ad;background:#f7f7f5;border:1px solid rgba(29,27,32,0.1);border-radius:6px;padding:4px 10px;">/share/9fQ2…a71</div>
+        </div>
+        <div style="flex-shrink:0;border-top:2px solid #1d1b20;background:#f7f7f5;padding:10px 18px;font-size:10.5px;color:#8a8693;">Deliberately indistinguishable from "deleted" — we don't confirm that a token ever existed.</div>
+      </div>
+
+      <!-- email gate -->
+      <div style="width:568px;height:560px;background:#fbfbf9;border:3px solid #1d1b20;border-radius:16px;box-shadow:6px 6px 0 rgba(29,27,32,0.24);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="border-bottom:3px solid #1d1b20;background:#e7defe;padding:14px 18px;flex-shrink:0;display:flex;align-items:center;gap:10px;"><div style="display:inline-flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border:2px solid #1d1b20;border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;">R</span><span style="font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;color:#1d1b20;">Research Canvas</span></div><div style="flex:1;"></div><div style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #1d1b20;border-radius:999px;padding:4px 10px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;color:#1d1b20;">🔒 RESTRICTED</div></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;padding:32px;text-align:center;background:#fff;">
+          <div style="width:62px;height:62px;border:3px solid #1d1b20;border-radius:17px;background:#e7defe;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:4px 4px 0 #1d1b20;">✉</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;margin-top:4px;">Confirm your email to continue</div>
+          <div style="font-size:12.5px;color:#5b5965;line-height:1.6;max-width:350px;">This deliverable was shared with specific people. Enter the email it was sent to.</div>
+          <div style="width:100%;max-width:330px;display:flex;flex-direction:column;gap:9px;margin-top:8px;">
+            <div style="border:2px solid #1d1b20;border-radius:22px;background:#fff;padding:11px 16px;font-size:13px;color:#8a8693;text-align:left;box-shadow:2px 2px 0 rgba(29,27,32,0.1);">you@company.com</div>
+            <div style="border:2px solid #1d1b20;border-radius:999px;background:#1d1b20;color:#fff;padding:12px 0;font-size:14px;font-weight:800;box-shadow:3px 3px 0 rgba(29,27,32,0.3);">Continue</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:7px;max-width:340px;margin-top:6px;text-align:left;"><span style="font-size:11px;">🛈</span><span style="font-size:11px;color:#8a8693;line-height:1.5;">We only check it against the invite list — no account is created, nothing is stored on this device.</span></div>
+        </div>
+        <div style="flex-shrink:0;border-top:2px solid #1d1b20;background:#f7f7f5;padding:10px 18px;font-size:10.5px;color:#8a8693;">Wrong address → inline error under the field, never a new screen: "This email isn't on the list."</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const shellProps = [
+      { name: 'title', note: 'Human-readable deliverable title — rendered verbatim, never truncated by the shell.' },
+      { name: 'tone', note: "Reused pastel identity token: 'lav' | 'aqua' | 'peach' | 'sun' | 'sky' | 'mint'. Neutral for dead-end states." },
+      { name: 'sharedBy · sharedAt', note: 'Attribution line under the title.' },
+      { name: 'state', note: "'valid' | 'loading' | 'expired' | 'revoked' | 'not_found' | 'gated' — drives which layout the shell renders." },
+      { name: 'expiresAt', note: 'Optional. Present → notice strip; absent → "no expiry".' },
+      { name: 'downloadable', note: 'Toggles the header download control. Not the same as export formats.' },
+      { name: 'children', note: 'The body slot. Opaque to the shell — it is only given a scrolling container.' },
+    ];
+
+    const T = (initial, speaker, time, text, host) => ({
+      initial, speaker, time, text,
+      avatarBg: host ? '#cfe6ff' : '#ffe1eb',
+      nameColor: host ? '#2563a8' : '#c2334f',
+    });
+    const turns = [
+      T('M', 'Moderator', '00:12', "Let's talk about your online shopping. Have you started buying something recently and stopped partway?", true),
+      T('P', 'Participant', '00:24', 'Yeah — the other day I had everything in my cart and quit right before paying.', false),
+      T('M', 'Moderator', '00:38', 'What made you stop?', true),
+      T('P', 'Participant', '00:45', 'The shipping fee showed up at the very last step. It honestly felt like a betrayal.', false),
+      T('M', 'Moderator', '01:02', 'You said betrayal — what was the first thing that went through your mind?', true),
+      T('P', 'Participant', '01:14', 'I thought, why not tell me from the start? It felt like a waste of my time.', false),
+    ];
+
+    const deskSections = [
+      { icon: '📌', label: 'Executive summary', accent: '#ff5c8a', headBg: '#ffeef4', body: 'Checkout abandonment across KR mobile commerce is driven primarily by late-surfaced shipping cost and forced account creation. Guest checkout and upfront total display are the two highest-leverage fixes across 34 sources.' },
+      { icon: '🔍', label: 'Findings', accent: '#16a34a', headBg: '#edf9f0', body: 'Three themes dominate: price opacity at the final step, coupon-field discoverability, and trust friction on a first purchase. T1 sources converge on shipping-cost timing as the single biggest driver.' },
+      { icon: '❓', label: 'Open questions', accent: '#8b5cf6', headBg: '#f3eefe', body: 'Segment split between first-time and returning buyers is unresolved, and no controlled A/B magnitudes exist for the KR mid-market.' },
+    ];
+    const deskQuant = [
+      { subject: 'Mobile cart abandonment (KR)', value: '68%', source: 'Statista', tier: 'T1' },
+      { subject: 'Lift from guest checkout', value: '+11%p', source: 'Baymard', tier: 'T1' },
+      { subject: 'Cited shipping surprise', value: '62%', source: 'Survey (n=1.2k)', tier: 'T2' },
+    ].map((r) => ({ ...r, tierColor: r.tier === 'T1' ? '#16a34a' : (r.tier === 'T2' ? '#e0a83a' : '#8a8693') }));
+
+    const bodySkeleton = [
+      { w1: '22%', w2: '88%', w3: '54%', op: 1 },
+      { w1: '18%', w2: '76%', w3: '42%', op: 0.86 },
+      { w1: '24%', w2: '92%', w3: '61%', op: 0.68 },
+      { w1: '20%', w2: '70%', w3: '38%', op: 0.46 },
+      { w1: '21%', w2: '84%', w3: '48%', op: 0.26 },
+    ];
+
+    return { shellProps, turns, deskSections, deskQuant, bodySkeleton };
+  }
+}
+</script>
+</body>
+</html>
