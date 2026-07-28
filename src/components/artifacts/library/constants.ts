@@ -8,13 +8,16 @@
 
 import type { DeliverableFeature, DeliverableStatus } from '@/lib/artifacts/types';
 
-// feature → pastel tone bg utility. lav/aqua/peach/sun are the four shipped
-// feature identities (TOKEN-DECISIONS A1/A2/A4); rose is reserved for the next.
+// feature → pastel tone bg utility. lav/aqua/peach/sun are the original four
+// feature identities (TOKEN-DECISIONS A1/A2/A4); probing/translate complete the
+// six-feature set with rose/mint.
 export const FEATURE_TONE_BG: Record<DeliverableFeature, string> = {
   transcript: 'bg-lav',
   desk: 'bg-aqua',
   ut: 'bg-peach',
   recruiting: 'bg-sun',
+  probing: 'bg-rose',
+  translate: 'bg-mint',
 };
 
 // feature → glyph. Emoji per the CD comp (deliverables-library.dc.html ICON map).
@@ -23,6 +26,8 @@ export const FEATURE_ICON: Record<DeliverableFeature, string> = {
   desk: '🔍',
   ut: '🧪',
   recruiting: '🧲',
+  probing: '🎤',
+  translate: '🌐',
 };
 
 // Open → the feature's existing surface. Conservative wiring: no per-id fullview
@@ -35,6 +40,11 @@ export const FEATURE_OPEN_HREF: Record<DeliverableFeature, string> = {
   desk: '/desk',
   ut: '/canvas',
   recruiting: '/recruiting',
+  // probing is a canvas widget (features.ts href '/canvas?focus=probing');
+  // translate has its own /live surface. No per-id fullview deep-link exists, so
+  // Open routes to each feature's base route (same conservative wiring as ut).
+  probing: '/canvas?focus=probing',
+  translate: '/live',
 };
 
 // Assign (Move to project) is supported by /api/artifacts/assign for these
@@ -45,10 +55,21 @@ export const MOVE_SUPPORTED: Record<DeliverableFeature, boolean> = {
   desk: true,
   ut: false,
   recruiting: true,
+  // probing/translate have no project_id column (adapters project → null) and
+  // are not wired into the assign UI — Move unavailable (same as ut).
+  probing: false,
+  translate: false,
 };
 
 export const STATUS_ORDER: DeliverableStatus[] = ['ready', 'processing', 'draft', 'error'];
-export const FEATURE_ORDER: DeliverableFeature[] = ['transcript', 'desk', 'ut', 'recruiting'];
+export const FEATURE_ORDER: DeliverableFeature[] = [
+  'transcript',
+  'desk',
+  'ut',
+  'recruiting',
+  'probing',
+  'translate',
+];
 
 export type SortField = 'updated' | 'created' | 'title';
 export const SORT_FIELDS: SortField[] = ['updated', 'created', 'title'];
