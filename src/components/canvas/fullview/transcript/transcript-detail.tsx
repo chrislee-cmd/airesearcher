@@ -20,6 +20,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { ShareMenu } from '@/components/ui/share-menu';
+import { ShareInviteButton } from '@/components/share/share-invite-button';
 import type { TranscriptJob } from '@/components/transcript-job-provider';
 import type { TranscriptTurn } from '@/lib/transcripts/turns';
 import type { TranscriptAnalysis } from '@/lib/transcripts/analysis';
@@ -520,6 +521,11 @@ export function TranscriptDetail({
             >
               {tView('preview')}
             </Button>
+          </div>
+          {/* 링크로 공유 — 초대 이메일 allow-list 공개 뷰어(Surface B). export
+              (Google Docs) 와 구분되는 quiet chrome 버튼. */}
+          <div className="mt-2.5">
+            <ShareInviteButton resourceType="transcript" resourceId={job.id} />
           </div>
         </div>
 

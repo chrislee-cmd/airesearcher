@@ -60,6 +60,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { FullviewProjectPill } from '../fullview-header';
 import { useFullviewHeaderSlotPublisher } from '@/components/canvas/shell/fullview-header-slot-context';
+import { ShareInviteButton } from '@/components/share/share-invite-button';
 
 // ── kind → CD state 09 비주얼(아이콘 · 헤드 tint · 액센트 dot) ──────────────
 // tint/accent 는 CD 절대값을 승격한 §F6 토큰 유틸리티만(하드코드 hex 0).
@@ -156,21 +157,26 @@ export function DeskFullviewBody({
       statusChip: projectName ? (
         <FullviewProjectPill name={projectName} />
       ) : undefined,
-      actions:
-        jobs.length > 0 ? (
-          <Select
-            size="sm"
-            fullWidth={false}
-            aria-label={t('jobSelectAria')}
-            className="min-w-[220px]"
-            value={job?.id ?? ''}
-            onChange={(e) => onSelectJob(e.target.value || null)}
-            options={jobs.map((j) => ({
-              value: j.id,
-              label: jobSelectorLabel(j),
-            }))}
-          />
-        ) : undefined,
+      // 이전 산출물 Select + 링크로 공유(초대 allow-list 공개 뷰어 Surface B).
+      actions: (
+        <div className="flex items-center gap-2">
+          {jobs.length > 0 ? (
+            <Select
+              size="sm"
+              fullWidth={false}
+              aria-label={t('jobSelectAria')}
+              className="min-w-[220px]"
+              value={job?.id ?? ''}
+              onChange={(e) => onSelectJob(e.target.value || null)}
+              options={jobs.map((j) => ({
+                value: j.id,
+                label: jobSelectorLabel(j),
+              }))}
+            />
+          ) : null}
+          <ShareInviteButton resourceType="desk_report" resourceId={job?.id ?? null} />
+        </div>
+      ),
     });
     return () => publishHeaderSlot({});
   }, [
