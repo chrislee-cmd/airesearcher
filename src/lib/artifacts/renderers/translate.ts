@@ -36,6 +36,7 @@ import type { ExportContext, ExportOutput } from '../export-registry';
 
 // 통역본 zip 파일 stem — 로케일별 파일명(사용자가 받는 파일이 UI 와 일치).
 const OUTPUT_STEM: Record<'ko' | 'en' | 'ja' | 'th', string> = {
+  // i18n-allow-korean -- 로케일 keyed 파일명 stem(ko), 기존 다운로드 라우트 ZIP_STEMS 와 동형
   ko: '통역본',
   en: 'translation',
   ja: '通訳',

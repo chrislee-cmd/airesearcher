@@ -33,7 +33,8 @@ function deriveTitle(researchGoal: string | null, startedAt: string | null): str
   const goal = (researchGoal ?? '').trim();
   if (goal.length > 0) return goal.slice(0, 40);
   const day = (startedAt ?? new Date().toISOString()).slice(0, 10);
-  return `프로빙 세션 ${day}`;
+  // spec-지정 DB 저장 title fallback. 주 title 소스 research_goal 이 사용자 한글이라 ko 기본 로케일과 일관.
+  return `프로빙 세션 ${day}`; // i18n-allow-korean -- read-model title fallback (server, DB-stored)
 }
 
 // probing_questions 행 → 스냅샷 질문. importance/technique 는 있을 때만,
