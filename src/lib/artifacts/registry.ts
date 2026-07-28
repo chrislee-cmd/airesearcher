@@ -119,12 +119,14 @@ const transcriptAdapter: DeliverableAdapter = {
     const dur = minutesBadge(durationSeconds);
     if (dur) badges.push(dur);
     if (speakers && speakers > 0) badges.push(`${speakers} speakers`);
-    if (mode === 'meeting') badges.push('회의록');
+    if (mode === 'meeting') badges.push('Meeting');
     return {
       feature: 'transcript',
       id: String(row.id ?? ''),
       kind: 'transcript',
-      title: str(row.filename) ?? '전사록',
+      // title 폴백은 소스 컬럼이 비었을 때만. 이 계층은 locale 컨텍스트가 없어
+      // (read-model), 영어 기본 뷰와 일관되게 기능명(label)으로 폴백한다.
+      title: str(row.filename) ?? this.label,
       status: this.normalizeStatus(str(row.status)),
       project_id: (str(row.project_id) ?? null) as string | null,
       folder_id: (str(row.folder_id) ?? null) as string | null,
@@ -209,7 +211,7 @@ const deskAdapter: DeliverableAdapter = {
       feature: 'desk',
       id: String(row.id ?? ''),
       kind: 'desk_report',
-      title: keywords.length > 0 ? keywords.join(', ') : '데스크리서치',
+      title: keywords.length > 0 ? keywords.join(', ') : this.label,
       status,
       project_id: (str(row.project_id) ?? null) as string | null,
       folder_id: (str(row.folder_id) ?? null) as string | null,
@@ -280,7 +282,7 @@ const utAdapter: DeliverableAdapter = {
       feature: 'ut',
       id: String(row.id ?? ''),
       kind: 'ut_insight',
-      title: str(row.target_url) ?? 'AI UT 세션',
+      title: str(row.target_url) ?? this.label,
       status,
       project_id: null, // 컬럼 없음
       folder_id: null, // 컬럼 없음
@@ -335,7 +337,7 @@ const recruitingAdapter: DeliverableAdapter = {
       feature: 'recruiting',
       id: String(row.form_id ?? ''),
       kind: 'recruiting_form',
-      title: str(row.title) ?? '리크루팅 폼',
+      title: str(row.title) ?? this.label,
       status: this.normalizeStatus(str(row.status)),
       project_id: (str(row.project_id) ?? null) as string | null,
       folder_id: (str(row.folder_id) ?? null) as string | null,
