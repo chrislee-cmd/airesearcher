@@ -945,7 +945,7 @@
     "affinity_bubble": "Affinity Bubble",
     "video": "เครื่องมือวิเคราะห์วิดีโอ",
     "translate": "ล่ามแปลสด AI",
-    "probing": "Probing Assistant",
+    "probing": "Interview Assistant",
     "slidegen": "Slide Generator",
     "guideline": "Guideline Generator",
     "moderator_ai": "AI UT",
@@ -1351,7 +1351,7 @@
       "cost": "คิดตามเสียงจริง — 75 เครดิตเพื่อเริ่ม (10 นาทีแรก รวมการบันทึก + ดาวน์โหลด) จากนั้น 10 เครดิตต่อ 10 นาทีของเสียงจริง"
     },
     "probing": {
-      "title": "Probing Assistant",
+      "title": "Interview Assistant",
       "description": "ระบุเป้าหมายการวิจัยและ KRQ ของคุณ AI จะแสดงกระบวนการคิดแบบสดและส่งคำถามสำคัญที่ต้องถามในรูปแบบป๊อปอัปลอย (ปิดอัตโนมัติใน 15 วินาที พร้อมสัญลักษณ์สีตามระดับความสำคัญ) โดยมีประวัติแสดงด้านล่าง แผงด้านซ้ายจะซิงค์ภาพรวมเพอร์โซนา 8 หัวข้อแบบเรียลไทม์",
       "cost": "25 เครดิตสำหรับการเริ่มต้น จากนั้น 25 เครดิตต่อชั่วโมงที่เพิ่มขึ้น (สูงสุด 4 ชั่วโมง = 100 เครดิต)"
     },
@@ -2844,7 +2844,7 @@
       "savingRecording": "กำลังบันทึกไฟล์…",
       "recordingNotSavedPrefix": "การบันทึกของเซสชันนี้ไม่ได้ถูกบันทึกไว้ — ",
       "startSession": "เริ่มเซสชัน",
-      "fullviewTitle": "Probing Assistant",
+      "fullviewTitle": "Interview Assistant",
       "fullviewSubtitleLive": "กำลังสัมภาษณ์",
       "fullviewSubtitleIdle": "เพอร์โซนาของผู้ตอบ + คำถามเจาะลึก",
       "exporting": "กำลังส่งออก…",

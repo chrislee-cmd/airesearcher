@@ -382,7 +382,7 @@
       "widgetTranslateGuest": "Guest · KO",
       "widgetTranslateLine": "‘So how do you usually pick a brand?’",
       "widgetTranslateGuestLine": "‘I usually go by the design.’",
-      "widgetProbingTitle": "Probing assistant",
+      "widgetProbingTitle": "Interview assistant",
       "widgetProbingHint": "Follow-up suggested",
       "widgetProbingQuestion": "‘When you say steep—price, or process?’",
       "widgetInsightsTitle": "Insight analysis",
@@ -417,7 +417,7 @@
         ]
       },
       "probing": {
-        "title": "Probing assistant",
+        "title": "Interview assistant",
         "tag": "New",
         "lead": "You know that moment after an interview — \"I should've asked one more about that\"?",
         "bullets": [
@@ -617,7 +617,7 @@
       "title": "Things you might be wondering.",
       "q1": "What exactly is the canvas?",
       "a1": "A single screen where every research tool—transcription, translation, probing, analysis, desk research, interview results—sits as a widget. No tab switching: results flow between widgets naturally.",
-      "q2": "How do live translation and the probing assistant work?",
+      "q2": "How do live translation and the interview assistant work?",
       "a2": "Live translation captures host-mic and guest-tab audio together and labels each speaker. Probing watches the conversation for ambiguity and suggests follow-up questions on the spot.",
       "q3": "Do credits expire?",
       "a3": "No. Credits never expire, and they're freely shared inside your team workspace.",
@@ -855,7 +855,7 @@
     "affinity_bubble": "Affinity Bubble",
     "video": "Video Analyzer",
     "translate": "Live Interpreter",
-    "probing": "Probing Assistant",
+    "probing": "Interview Assistant",
     "slidegen": "Slide Generator",
     "guideline": "Guideline Generator",
     "moderator_ai": "AI UT",
@@ -1261,7 +1261,7 @@
       "cost": "Billed by actual audio — 75 credits to start (first 10 min, recording + download included), then 10 credits per 10 audio minutes"
     },
     "probing": {
-      "title": "Probing Assistant",
+      "title": "Interview Assistant",
       "description": "Enter your research goal and KRQ; the AI streams its live thinking and pushes must-ask questions as floating popups (15s auto-dismiss + importance-tinted visual cue), with a running history below. Left pane keeps the 8-panel persona snapshot in sync.",
       "cost": "25 credits to start, then 25 every additional hour (capped at 4 hours = 100 credits)"
     },
@@ -2751,7 +2751,7 @@
       "savingRecording": "Saving recording…",
       "recordingNotSavedPrefix": "This session's recording wasn't saved — ",
       "startSession": "Start session",
-      "fullviewTitle": "Probing Assistant",
+      "fullviewTitle": "Interview Assistant",
       "fullviewSubtitleLive": "Interview in progress",
       "fullviewSubtitleIdle": "Respondent persona + probing questions",
       "exporting": "Exporting…",
