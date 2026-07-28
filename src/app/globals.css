@@ -541,6 +541,7 @@
   /* Surfaces / lines */
   --color-line: var(--raw-border-medium);
   --color-line-soft: var(--raw-border-subtle);
+  --color-line-strong: rgba(29, 27, 32, 0.14); /* tokens.json 2.0 §line line-strong — card hairline / panel edge / kind chip / draft badge border. #1250 reconcile 누락분 verbatim 보강 (CD SSOT 값, near-miss snap 금지). */
   --color-paper: var(--raw-surface-card);
   --color-paper-soft: var(--raw-surface-elevated);
   /* CD 표준 설문 블록 cream fill (design-handoff/recruiting) — `bg-surface-locked`. */

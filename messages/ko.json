@@ -720,6 +720,7 @@
     "tabs": {
       "canvas": "캔버스",
       "projects": "프로젝트",
+      "library": "산출물",
       "members": "멤버",
       "settings": "설정"
     },
@@ -727,6 +728,100 @@
       "label": "뷰 모드",
       "canvas": "캔버스 뷰",
       "list": "리스트 뷰"
+    }
+  },
+  "Library": {
+    "title": "내 산출물",
+    "searchPlaceholder": "제목으로 검색…",
+    "sort": {
+      "label": "정렬",
+      "updated": "수정순",
+      "created": "생성순",
+      "title": "제목순"
+    },
+    "view": {
+      "list": "리스트 보기",
+      "grid": "그리드 보기"
+    },
+    "rail": {
+      "feature": "기능",
+      "status": "상태",
+      "project": "프로젝트",
+      "allProjects": "전체 프로젝트",
+      "note": "필터로 이 목록을 좁힙니다."
+    },
+    "feature": {
+      "transcript": "전사록",
+      "desk": "데스크 리서치",
+      "ut": "AI UT",
+      "recruiting": "리크루팅"
+    },
+    "status": {
+      "ready": "완료",
+      "processing": "처리 중",
+      "draft": "초안",
+      "error": "오류"
+    },
+    "col": {
+      "deliverable": "산출물",
+      "status": "상태",
+      "updated": "수정",
+      "actions": "작업"
+    },
+    "action": {
+      "open": "열기",
+      "share": "공유",
+      "export": "내보내기",
+      "move": "프로젝트로 이동…",
+      "delete": "삭제",
+      "more": "추가 작업"
+    },
+    "shareUnavailable": "공유는 아직 준비 중입니다",
+    "deleteUnavailable": "삭제는 아직 준비 중입니다",
+    "menu": {
+      "export": "내보내기",
+      "organize": "정리"
+    },
+    "move": {
+      "title": "프로젝트로 이동",
+      "unfiled": "미분류",
+      "cancel": "취소",
+      "failed": "이동 실패 — 다시 시도하세요"
+    },
+    "bulk": {
+      "selected": "{count}개 선택",
+      "move": "프로젝트로 이동",
+      "export": "내보내기",
+      "delete": "삭제",
+      "clear": "선택 해제",
+      "exportDisabled": "선택한 산출물에 공통 내보내기 형식이 없습니다."
+    },
+    "footer": {
+      "summary": "{total}개 중 {shown}개",
+      "sortedBy": "{field} 정렬"
+    },
+    "loading": "산출물 불러오는 중…",
+    "empty": {
+      "title": "아직 산출물이 없습니다",
+      "body": "위젯이 만드는 전사록·리포트·인사이트·스크리너가 여기에 자동으로 모입니다. 하나 실행해 시작하세요.",
+      "cta": {
+        "transcript": "녹음 전사하기",
+        "desk": "데스크 리서치 실행",
+        "ut": "UT 세션 시작",
+        "recruiting": "참가자 모집"
+      }
+    },
+    "filteredEmpty": {
+      "title": "이 필터에 맞는 항목이 없습니다",
+      "body": "산출물 {total}개가 있지만 활성 필터를 모두 만족하는 항목이 없습니다.",
+      "clear": "필터 모두 해제"
+    },
+    "error": {
+      "title": "산출물을 불러오지 못했습니다",
+      "body": "요청이 실패했습니다. 파일은 안전합니다 — 목록만 실패한 것입니다.",
+      "retry": "다시 시도",
+      "support": "지원 문의",
+      "ref": "참조 · {id}"
     }
   },
   "QaFeedback": {

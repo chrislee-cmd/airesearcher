@@ -810,6 +810,7 @@
     "tabs": {
       "canvas": "キャンバス",
       "projects": "プロジェクト",
+      "library": "成果物",
       "members": "メンバー",
       "settings": "設定"
     },
@@ -817,6 +818,100 @@
       "label": "表示モード",
       "canvas": "キャンバス表示",
       "list": "リスト表示"
+    }
+  },
+  "Library": {
+    "title": "成果物一覧",
+    "searchPlaceholder": "タイトルで検索…",
+    "sort": {
+      "label": "並び替え",
+      "updated": "更新順",
+      "created": "作成順",
+      "title": "タイトル順"
+    },
+    "view": {
+      "list": "リスト表示",
+      "grid": "グリッド表示"
+    },
+    "rail": {
+      "feature": "機能",
+      "status": "ステータス",
+      "project": "プロジェクト",
+      "allProjects": "すべてのプロジェクト",
+      "note": "フィルターでこの一覧を絞り込みます。"
+    },
+    "feature": {
+      "transcript": "文字起こし",
+      "desk": "デスクリサーチ",
+      "ut": "AI UT",
+      "recruiting": "リクルーティング"
+    },
+    "status": {
+      "ready": "完了",
+      "processing": "処理中",
+      "draft": "下書き",
+      "error": "エラー"
+    },
+    "col": {
+      "deliverable": "成果物",
+      "status": "ステータス",
+      "updated": "更新",
+      "actions": "操作"
+    },
+    "action": {
+      "open": "開く",
+      "share": "共有",
+      "export": "エクスポート",
+      "move": "プロジェクトへ移動…",
+      "delete": "削除",
+      "more": "その他の操作"
+    },
+    "shareUnavailable": "共有はまだ利用できません",
+    "deleteUnavailable": "削除はまだ利用できません",
+    "menu": {
+      "export": "エクスポート",
+      "organize": "整理"
+    },
+    "move": {
+      "title": "プロジェクトへ移動",
+      "unfiled": "未分類",
+      "cancel": "キャンセル",
+      "failed": "移動できませんでした — もう一度お試しください"
+    },
+    "bulk": {
+      "selected": "{count}件選択",
+      "move": "プロジェクトへ移動",
+      "export": "エクスポート",
+      "delete": "削除",
+      "clear": "選択解除",
+      "exportDisabled": "選択した成果物に共通のエクスポート形式がありません。"
+    },
+    "footer": {
+      "summary": "{total}件中{shown}件",
+      "sortedBy": "{field}で並び替え"
+    },
+    "loading": "成果物を読み込み中…",
+    "empty": {
+      "title": "まだ成果物がありません",
+      "body": "ウィジェットが生成する文字起こし・レポート・インサイト・スクリーナーはすべてここに自動で集まります。まず一つ実行してみましょう。",
+      "cta": {
+        "transcript": "録音を文字起こし",
+        "desk": "デスクリサーチを実行",
+        "ut": "UTセッションを開始",
+        "recruiting": "参加者を募集"
+      }
+    },
+    "filteredEmpty": {
+      "title": "このフィルターに一致する項目がありません",
+      "body": "成果物は{total}件ありますが、すべての有効なフィルターに一致するものはありません。",
+      "clear": "フィルターをすべて解除"
+    },
+    "error": {
+      "title": "成果物を読み込めませんでした",
+      "body": "リクエストが失敗しました。ファイルは安全です — 失敗したのは一覧だけです。",
+      "retry": "再試行",
+      "support": "サポートに問い合わせ",
+      "ref": "参照 · {id}"
     }
   },
   "QaFeedback": {
