@@ -238,7 +238,11 @@ const utAdapter: DeliverableAdapter = {
   projectTable: 'projects',
   shareResourceType: null,
   label: 'AI UT',
-  exportFormats: [], // 현재 view-only — export PR 후 채움
+  // export 신설(pr-artifacts-export-registry): insight 리포트 → docx.
+  // CD BUILD-SPEC §3.4 는 .pdf 를 명시하나, jsPDF 는 CJK 폰트 임베드 없이 한국어
+  // 인용문을 렌더 못 해 §3.4 verbatim-quote 요구를 깬다 → 스펙이 허용한
+  // "pdf(또는 docx)" 중 한글-safe 한 docx 채택(insight-docx.ts 주석 참고).
+  exportFormats: ['docx'],
   selectColumns: [
     'id',
     'target_url',

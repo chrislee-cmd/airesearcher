@@ -11,7 +11,12 @@
  * while still providing a strict-ASCII `filename=` fallback for older clients.
  */
 
-export type ArtifactPrefix = 'desk' | 'transcript' | 'interview' | 'report';
+export type ArtifactPrefix =
+  | 'desk'
+  | 'transcript'
+  | 'interview'
+  | 'report'
+  | 'ut';
 
 export type ArtifactExt =
   | 'md'

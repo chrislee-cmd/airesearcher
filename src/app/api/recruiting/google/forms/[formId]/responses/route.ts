@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getFormResponses } from '@/lib/google-forms';
-import {
-  filterConsentedRows,
-  findConsentColumn,
-} from '@/lib/recruiting/contact-filter';
+import { visibleFormResponses } from '@/lib/recruiting/form-responses';
 import {
   formAccessErrorBody,
   resolveFormAccess,
@@ -13,7 +10,6 @@ import {
   ADMIN_REAUTH_ERROR,
   adminReauthErrorBody,
 } from '@/lib/google-oauth-admin';
-import { maskPiiAnswers, piiQuestionIds } from '@/lib/recruiting-pii';
 
 export const maxDuration = 60;
 
@@ -48,44 +44,23 @@ export async function GET(
 
   try {
     const result = await getFormResponses(access.accessToken, formId);
-    // Compliance gate: drop rows where the respondent did not consent
-    // (or where the form lacks a consent column — legacy forms published
-    // before the consent gate landed will return null here and pass
-    // through unchanged so old data stays visible).
-    const consentColumn = findConsentColumn(result.columns);
-    const consentedRows = filterConsentedRows(result.rows, consentColumn);
+    // 정제(동의 게이트 + consent 컬럼 숨김 + PII 값 blank)는 위젯 CSV 렌더러와
+    // 공유하는 visibleFormResponses 로 단일화 — 뷰와 export 가 divergence 하지
+    // 않는다(legacy 폼은 consent 컬럼이 없어 전체 통과).
+    const visible = visibleFormResponses(result);
     if (countOnly) {
       return NextResponse.json({
-        count: consentedRows.length,
-        total: result.rows.length,
+        count: visible.consented,
+        total: visible.total,
       });
     }
-    // Hide the consent column itself — every visible row is "동의합니다" by
-    // construction so it carries no recruiter-useful signal.
-    const visibleColumns = consentColumn
-      ? result.columns.filter((c) => c.questionId !== consentColumn.questionId)
-      : result.columns;
-    // Privacy: PII columns (name / phone / email / address / birth / age) are
-    // kept in the payload so the client can render a masked, left-aligned,
-    // unlockable cell — but their *values* are blanked here. The real values
-    // only ever leave the server through the credit-gated unlock route. This
-    // replaces the old outright strip: the recruiter now sees that PII exists
-    // (and can pay to reveal it) instead of the column silently vanishing.
-    const piiQids = new Set(piiQuestionIds(visibleColumns));
-    const consentQid = consentColumn?.questionId;
-    const masked = maskPiiAnswers(consentedRows, piiQids).map((r) => {
-      if (!consentQid) return r;
-      const answers = { ...r.answers };
-      delete answers[consentQid];
-      return { ...r, answers };
-    });
     return NextResponse.json({
       ...result,
-      columns: visibleColumns,
-      rows: masked,
-      piiQuestionIds: [...piiQids],
-      total: result.rows.length,
-      consented: consentedRows.length,
+      columns: visible.columns,
+      rows: visible.rows,
+      piiQuestionIds: visible.piiQuestionIds,
+      total: visible.total,
+      consented: visible.consented,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'responses_failed';
