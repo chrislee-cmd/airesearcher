@@ -42,6 +42,8 @@ export async function Topbar({
   const tabs = [
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
     { key: 'projects', href: '/projects', label: tTabs('projects') },
+    // 통합 산출물 라이브러리 — 6기능 횡단 산출물 리스트(CD Surface A).
+    { key: 'library', href: '/library', label: tTabs('library') },
     { key: 'members', href: '/members', label: tTabs('members') },
   ];
 

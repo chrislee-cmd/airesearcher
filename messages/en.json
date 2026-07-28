@@ -720,6 +720,7 @@
     "tabs": {
       "canvas": "Canvas",
       "projects": "Projects",
+      "library": "Deliverables",
       "members": "Members",
       "settings": "Settings"
     },
@@ -727,6 +728,100 @@
       "label": "View mode",
       "canvas": "Canvas view",
       "list": "List view"
+    }
+  },
+  "Library": {
+    "title": "My deliverables",
+    "searchPlaceholder": "Search by title…",
+    "sort": {
+      "label": "Sort",
+      "updated": "Updated",
+      "created": "Created",
+      "title": "Title"
+    },
+    "view": {
+      "list": "List view",
+      "grid": "Grid view"
+    },
+    "rail": {
+      "feature": "Feature",
+      "status": "Status",
+      "project": "Project",
+      "allProjects": "All projects",
+      "note": "Filters narrow this list."
+    },
+    "feature": {
+      "transcript": "Transcript",
+      "desk": "Desk research",
+      "ut": "AI UT",
+      "recruiting": "Recruiting"
+    },
+    "status": {
+      "ready": "Ready",
+      "processing": "Processing",
+      "draft": "Draft",
+      "error": "Error"
+    },
+    "col": {
+      "deliverable": "Deliverable",
+      "status": "Status",
+      "updated": "Updated",
+      "actions": "Actions"
+    },
+    "action": {
+      "open": "Open",
+      "share": "Share",
+      "export": "Export",
+      "move": "Move to project…",
+      "delete": "Delete",
+      "more": "More actions"
+    },
+    "shareUnavailable": "Sharing isn't available yet",
+    "deleteUnavailable": "Delete isn't available yet",
+    "menu": {
+      "export": "Export",
+      "organize": "Organize"
+    },
+    "move": {
+      "title": "Move to project",
+      "unfiled": "Unfiled",
+      "cancel": "Cancel",
+      "failed": "Couldn't move — try again"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "move": "Move to project",
+      "export": "Export",
+      "delete": "Delete",
+      "clear": "Clear",
+      "exportDisabled": "The selection has no shared export format."
+    },
+    "footer": {
+      "summary": "{shown} of {total}",
+      "sortedBy": "sorted by {field}"
+    },
+    "loading": "Loading deliverables…",
+    "empty": {
+      "title": "No deliverables yet",
+      "body": "Anything your widgets produce — transcripts, reports, insights, screeners — lands here automatically. Run one to get started.",
+      "cta": {
+        "transcript": "Transcribe a recording",
+        "desk": "Run desk research",
+        "ut": "Start a UT session",
+        "recruiting": "Recruit participants"
+      }
+    },
+    "filteredEmpty": {
+      "title": "Nothing matches these filters",
+      "body": "{total} deliverables exist — none match every active filter.",
+      "clear": "Clear all filters"
+    },
+    "error": {
+      "title": "Couldn't load your deliverables",
+      "body": "The request failed. Your files are safe — this is only the list.",
+      "retry": "Try again",
+      "support": "Contact support",
+      "ref": "ref · {id}"
     }
   },
   "QaFeedback": {
