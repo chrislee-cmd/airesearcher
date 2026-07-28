@@ -2,34 +2,16 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { ASSIGN_TARGETS } from '@/lib/artifacts/registry';
 
-// recruiting_forms uses `form_id text primary key` — every other table
-// keys on a uuid `id` column. The id-column override below keeps the
-// callers free of that detail.
-type AssignTarget = {
-  table: string;
-  idColumn: string;
-  // recruiting_forms predates org-scoping; older rows have no org_id.
-  // For recruiting we still scope writes by user_id to stay safe.
-  scopeColumn: 'org_id' | 'user_id';
-  // Which table the row's project_id FK points at. Most job tables still FK
-  // public.projects (0014_project_scoping), but transcript_jobs
-  // (20260723150349) and desk_jobs (20260723135946) were re-pointed at
-  // interview_projects — the widget selection SSOT. project_id must be
-  // validated against the correct FK target, otherwise a valid-but-foreign id
-  // (this route's caller feeds public.projects ids from the workspace panel)
-  // would pass validation and mirror-crash the update with a 23503.
-  projectTable: 'projects' | 'interview_projects';
-};
-
-const FEATURES: Record<string, AssignTarget> = {
-  report: { table: 'report_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
-  interview: { table: 'interview_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
-  transcript: { table: 'transcript_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'interview_projects' },
-  desk: { table: 'desk_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'interview_projects' },
-  scheduler: { table: 'scheduler_sessions', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
-  recruiting: { table: 'recruiting_forms', idColumn: 'form_id', scopeColumn: 'user_id', projectTable: 'projects' },
-};
+// Feature → {table, idColumn, scopeColumn, projectTable} mapping now lives in
+// the DeliverableAdapter registry (the narrow-waist SSOT). This route consumes
+// it instead of a local copy — the nuances it used to encode inline
+// (recruiting=form_id+user_id, transcript/desk FK to interview_projects to
+// avoid a 23503 mirror-crash on a foreign public.projects id) are preserved
+// verbatim there. Behaviour of this endpoint is unchanged; only the source of
+// the mapping moved.
+const FEATURES = ASSIGN_TARGETS;
 
 const Body = z.object({
   feature: z.enum([
