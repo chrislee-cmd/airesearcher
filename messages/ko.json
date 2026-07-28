@@ -382,7 +382,7 @@
       "widgetTranslateGuest": "응답자 · KO",
       "widgetTranslateLine": "‘So how do you usually pick a brand?’",
       "widgetTranslateGuestLine": "‘보통 디자인 보고 골라요’",
-      "widgetProbingTitle": "프로빙 어시스턴트",
+      "widgetProbingTitle": "인터뷰 어시스턴트",
       "widgetProbingHint": "후속 질문 추천",
       "widgetProbingQuestion": "‘방금 말씀하신 부담은 가격? 절차?’",
       "widgetInsightsTitle": "인사이트 분석",
@@ -417,7 +417,7 @@
         ]
       },
       "probing": {
-        "title": "프로빙 어시스턴트",
+        "title": "인터뷰 어시스턴트",
         "tag": "신규",
         "lead": "인터뷰가 끝나고 \"아 그거 더 물어볼걸\" 후회해 본 적 있죠.",
         "bullets": [
@@ -617,7 +617,7 @@
       "title": "궁금해 하실 것 같아서요.",
       "q1": "캔버스가 정확히 뭔가요?",
       "a1": "리서치에 필요한 모든 도구(전사·통역·프로빙·분석·데스크·인터뷰)를 한 화면 위에 위젯으로 펼치는 공간입니다. 탭 전환 없이 결과가 위젯 사이로 자연스럽게 흐릅니다.",
-      "q2": "AI 동시통역과 프로빙 어시스턴트는 어떻게 동작하나요?",
+      "q2": "AI 동시통역과 인터뷰 어시스턴트는 어떻게 동작하나요?",
       "a2": "동시통역은 진행자 마이크 + 응답자 탭 오디오를 동시에 캡처해 화자별로 라벨링합니다. 프로빙은 인터뷰 도중 답변의 모호함을 감지해 후속 질문을 실시간으로 제안해요.",
       "q3": "크레딧은 만료가 있나요?",
       "a3": "아니요. 한 번 구매한 크레딧은 만료되지 않고, 팀 워크스페이스 안에서 자유롭게 공유됩니다.",
@@ -855,7 +855,7 @@
     "affinity_bubble": "Affinity Bubble",
     "video": "영상분석기",
     "translate": "AI 동시통역",
-    "probing": "프로빙 어시스턴트",
+    "probing": "인터뷰 어시스턴트",
     "slidegen": "PPT 생성기",
     "guideline": "가이드라인 생성기",
     "moderator_ai": "AI UT",
@@ -1261,7 +1261,7 @@
       "cost": "실 오디오 기준 — 시작 75크레딧 (첫 10분·저장+다운로드 포함), 이후 실 오디오 10분당 10크레딧"
     },
     "probing": {
-      "title": "프로빙 어시스턴트",
+      "title": "인터뷰 어시스턴트",
       "description": "조사 목적·KRQ 를 입력하면 응답자 발화를 듣고 AI 가 사고 흐름을 실시간으로 보여줍니다. 필수 질문은 비주기적으로 popup 으로 띄우고 (15초 자동 dismiss + 중요도 시각 cue), 누적 history 로 다시 볼 수 있습니다. 좌측은 페르소나 8 패널 자동 갱신.",
       "cost": "시작 시 25크레딧, 이후 1시간마다 25크레딧 (최대 4시간 = 100크레딧)"
     },
@@ -2700,7 +2700,7 @@
       "savingRecording": "녹음 저장 중…",
       "recordingNotSavedPrefix": "이번 세션은 녹음이 저장되지 않았어요 — ",
       "startSession": "세션 시작",
-      "fullviewTitle": "프로빙 어시스턴트",
+      "fullviewTitle": "인터뷰 어시스턴트",
       "fullviewSubtitleLive": "인터뷰 진행 중",
       "fullviewSubtitleIdle": "응답자 페르소나 + 프로빙 질문",
       "exporting": "내보내는 중…",
