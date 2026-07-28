@@ -23,6 +23,7 @@
 import { useCallback, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import type { UtPhase, UtSessionResult } from '../../widgets/moderator-ai/use-ut-session';
 import {
@@ -500,8 +501,14 @@ export function AiutReviewReport({
         )}
       </div>
 
-      {/* ⑤ 다운로드 — CD 미도시(§3 open item). 기능 보존 위해 유지. */}
+      {/* ⑤ 다운로드 — CD 미도시(§3 open item). 기능 보존 위해 유지.
+          + 링크로 공유(초대 allow-list 공개 뷰어 Surface B) — 인사이트 완료
+          (phase===done)면 발급 가능, 아니면 disabled(백엔드도 미완성 409). */}
       <div className="flex flex-wrap gap-2">
+        <ShareInviteButton
+          resourceType="ut_insight"
+          resourceId={phase === 'done' && result ? result.id : null}
+        />
         <Button
           variant="secondary"
           size="sm"

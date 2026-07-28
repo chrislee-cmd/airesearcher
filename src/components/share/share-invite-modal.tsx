@@ -22,13 +22,31 @@ import { useToast } from '@/components/toast-provider';
 // 초대된 이메일만 열람하는 allow-list 링크. 정책 카피로 이를 명시한다.
 
 // resource_type — 클라이언트 안전 리터럴(shared-views.ts 는 node:crypto 를
-// 끌어와 client bundle 에 못 넣으므로 여기서 별도 정의).
-export type ShareResourceType = 'interview_topline' | 'probing_persona';
+// 끌어와 client bundle 에 못 넣으므로 여기서 별도 정의). 산출물 통합으로 3타입
+// 편입(transcript/desk_report/ut_insight) — 발급은 동일 POST /api/share, 뷰어
+// 라우트만 신규 Surface B(/share/d/[token]) 로 분기.
+export type ShareResourceType =
+  | 'interview_topline'
+  | 'probing_persona'
+  | 'transcript'
+  | 'desk_report'
+  | 'ut_insight';
 
-// 뷰어 라우트(#475, 머지됨)는 `[locale]/share/[token]` — localePrefix:'always'
-// 라 locale 세그먼트가 필수다. 한 곳에 모아 둔다.
-function viewerUrl(locale: string, token: string): string {
-  const path = `/${locale}/share/${token}`;
+// 산출물 통합 3타입은 신규 공개 셸 라우트(/share/d/[token], Surface B)를,
+// 기존 2타입은 구 뷰어 라우트(/share/[token])를 쓴다. 둘 다 localePrefix:'always'
+// 라 locale 세그먼트 필수. 한 곳에 모아 둔다.
+const UNIFIED_TYPES: ReadonlySet<ShareResourceType> = new Set([
+  'transcript',
+  'desk_report',
+  'ut_insight',
+]);
+function viewerUrl(
+  locale: string,
+  token: string,
+  resourceType: ShareResourceType,
+): string {
+  const seg = UNIFIED_TYPES.has(resourceType) ? 'share/d' : 'share';
+  const path = `/${locale}/${seg}/${token}`;
   if (typeof window === 'undefined') return path;
   return `${window.location.origin}${path}`;
 }
@@ -163,14 +181,14 @@ export function ShareInviteModal({
 
   const copyLink = useCallback(async () => {
     if (!share) return;
-    const url = viewerUrl(locale, share.token);
+    const url = viewerUrl(locale, share.token, resourceType);
     try {
       await navigator.clipboard.writeText(url);
       toast.push(t('copied'), { tone: 'amore' });
     } catch {
       toast.push(t('copyError'), { tone: 'warn' });
     }
-  }, [share, locale, toast, t]);
+  }, [share, locale, resourceType, toast, t]);
 
   // 관리 모드 — 서버에 즉시 반영(낙관 + 롤백).
   const addInvite = useCallback(
@@ -278,7 +296,7 @@ export function ShareInviteModal({
               </span>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-xs border border-line-soft bg-paper px-3 py-2 text-sm text-ink">
-                  {viewerUrl(locale, share.token)}
+                  {viewerUrl(locale, share.token, resourceType)}
                 </code>
                 <ChromeButton size="sm" onClick={() => void copyLink()}>
                   {t('copy')}
