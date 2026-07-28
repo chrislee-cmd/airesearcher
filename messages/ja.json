@@ -382,7 +382,7 @@
       "widgetTranslateGuest": "ゲスト · KO",
       "widgetTranslateLine": "「ブランドを選ぶとき、いつもどうやって決めますか？」",
       "widgetTranslateGuestLine": "「デザインで選ぶことが多いです。」",
-      "widgetProbingTitle": "プロービングアシスタント",
+      "widgetProbingTitle": "インタビューアシスタント",
       "widgetProbingHint": "フォローアップの提案",
       "widgetProbingQuestion": "「",
       "widgetInsightsTitle": "インサイト分析",
@@ -426,7 +426,7 @@
         ]
       },
       "probing": {
-        "title": "プロービングアシスタント",
+        "title": "インタビューアシスタント",
         "tag": "New",
         "lead": "インタビューの後に「あの点、もう少し深く聞いておけばよかった」と思った経験はありませんか？",
         "bullets": [
@@ -945,7 +945,7 @@
     "affinity_bubble": "アフィニティバブル",
     "video": "ビデオアナライザー",
     "translate": "AI同時通訳",
-    "probing": "プロービングアシスタント",
+    "probing": "インタビューアシスタント",
     "slidegen": "スライドジェネレーター",
     "guideline": "ガイドラインジェネレーター",
     "moderator_ai": "AI UT",
@@ -1351,7 +1351,7 @@
       "cost": "実音声ベース — 開始時75クレジット（最初の10分・録音＋ダウンロード込み）、以降実音声10分ごとに10クレジット"
     },
     "probing": {
-      "title": "プロービングアシスタント",
+      "title": "インタビューアシスタント",
       "description": "リサーチゴールとKRQを入力すると、AIがリアルタイムで思考を展開しながら、必須質問をフローティングポップアップ（15秒で自動消去・重要度に応じた色付き視覚キュー）として表示します。下部には履歴が蓄積され、左ペインには8パネルのペルソナスナップショットが常に同期されます。",
       "cost": "開始時25クレジット、以降1時間ごとに25クレジット（上限4時間＝100クレジット）"
     },
@@ -2793,7 +2793,7 @@
       "savingRecording": "録音を保存中…",
       "recordingNotSavedPrefix": "このセッションの録音は保存されませんでした — ",
       "startSession": "セッションを開始",
-      "fullviewTitle": "プロービングアシスタント",
+      "fullviewTitle": "インタビューアシスタント",
       "fullviewSubtitleLive": "インタビュー進行中",
       "fullviewSubtitleIdle": "回答者のペルソナ＋プロービング質問",
       "exporting": "エクスポート中…",

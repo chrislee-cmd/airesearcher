@@ -532,7 +532,7 @@ export async function generatePersonaDocx(input: PersonaDocxInput): Promise<Blob
     new Paragraph({
       spacing: { before: 60 },
       alignment: AlignmentType.RIGHT,
-      children: [eyebrow('AI Researcher · Probing Assistant', AP.muteSoft)],
+      children: [eyebrow('AI Researcher · Interview Assistant', AP.muteSoft)],
     }),
   );
 
