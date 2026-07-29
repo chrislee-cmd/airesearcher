@@ -8,3 +8,4 @@ import './transcript';
 import './desk';
 import './recruiting';
 import './ut';
+import './translate';
