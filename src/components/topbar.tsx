@@ -9,7 +9,7 @@ import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
 // 뷰 모드 토글 (캔버스 ⇄ 리스트) — 2026-07-27 사용자 요청으로 숨김. 복원 시 아래 import 주석 해제.
 // import { ViewModeToggle } from './view-mode-toggle';
 import { CollabShareButton } from './scheduling/collab-share';
-import { getActiveOrg } from '@/lib/org';
+import { getActiveOrg, getCurrentUserOrgs } from '@/lib/org';
 import { getCollabShareData } from '@/lib/collab-share-data';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
@@ -30,7 +30,13 @@ export async function Topbar({
 
   // Org members (invitees) get a scheduling entry in the account menu even
   // without super-admin, so they can find the shared workspace after accepting.
-  const isOrgMember = isAuthed ? !!(await getActiveOrg()) : false;
+  const activeOrg = isAuthed ? await getActiveOrg() : null;
+  const isOrgMember = !!activeOrg;
+
+  // Full membership list + resolved active org feed the profile-menu org
+  // switcher. Both are React-cache()d, so this adds no extra query when the
+  // caller already resolved the active org above.
+  const orgs = isAuthed ? await getCurrentUserOrgs() : [];
 
   // Global collaborator-share entry point (pr-canvas-collab-share-entry) — the
   // same invite modal as the recruiting-scheduling view, surfaced next to the
@@ -99,6 +105,8 @@ export async function Topbar({
               credits={credits}
               isSuperAdmin={isSuperAdmin}
               isOrgMember={isOrgMember}
+              orgs={orgs}
+              activeOrgId={activeOrg?.org_id ?? null}
             />
           </>
         ) : (

@@ -26,7 +26,7 @@ export default async function AcceptInvitePage({
   }
 
   const admin = createAdminClient();
-  const claimed = await claimPendingInvites(admin, user.id, user.email);
+  const claimedOrgIds = await claimPendingInvites(admin, user.id, user.email);
 
   // Re-check membership after the claim (claimed rows + any prior membership).
   const { data: memberships } = await admin
@@ -38,12 +38,24 @@ export default async function AcceptInvitePage({
   // Diagnostic: on the next stuck report this pins the cause immediately —
   // which email logged in vs how many invite rows it matched.
   console.log(
-    `[invite/accept] email=${user.email ?? '(none)'} claimed=${claimed} memberships=${memberCount}`,
+    `[invite/accept] email=${user.email ?? '(none)'} claimed=${claimedOrgIds.length} memberships=${memberCount}`,
   );
 
   if (memberCount > 0) {
-    // Full member now — send them to the shared scheduling workspace.
-    redirect(`/${locale}/admin/recruiting-scheduling`);
+    const workspace = `/${locale}/admin/recruiting-scheduling`;
+    // Switch the invitee's active org to the one they were just added to, so
+    // an existing user (who already owns their own org) actually lands in the
+    // shared workspace instead of their own (spec pr-org-switcher root cause).
+    // Server Components can't set cookies, so we bounce through the active-org
+    // GET route (validates membership, sets the cookie, redirects to `next`).
+    const switchTo = claimedOrgIds[0];
+    if (switchTo) {
+      redirect(
+        `/api/account/active-org?org_id=${switchTo}&next=${encodeURIComponent(workspace)}`,
+      );
+    }
+    // Already a member, nothing newly claimed — keep prior active org.
+    redirect(workspace);
   }
 
   // No invite matched this account. Instead of a silent 404 (undiagnosable),

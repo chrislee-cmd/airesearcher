@@ -9,9 +9,13 @@ import { formatTrialRemaining, usePaywall } from '@/components/paywall-provider'
 import { track } from '@/components/mixpanel-provider';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
+import { Badge } from '@/components/ui/badge';
 import { useCreditDeductionEvent } from '@/components/credit-deduction-provider';
 import { routing } from '@/i18n/routing';
 import { markLocaleSuggestDismissed } from '@/lib/i18n/locale-preference';
+// Type-only import — erased at build, so no server-only code from @/lib/org
+// (next/headers, cache) leaks into this client bundle.
+import type { OrgMembership } from '@/lib/org';
 
 type Props = {
   email: string | null;
@@ -21,6 +25,20 @@ type Props = {
   // recruiting 풀뷰로 re-home 되며 계정메뉴 엔트리 제거(§5-D4). 호출부 계약
   // 보존을 위해 prop 은 남겨둔다.
   isOrgMember?: boolean;
+  // Org switcher data — full membership list + the currently-resolved active
+  // org. When the list has <2 entries the switcher UI stays hidden and this
+  // component behaves exactly as before (spec §제약 1, single-org 무변화).
+  orgs?: OrgMembership[];
+  activeOrgId?: string | null;
+};
+
+// role → i18n key (Sidebar namespace). Static map so next-intl can statically
+// see every key.
+const ROLE_LABEL_KEY: Record<OrgMembership['role'], string> = {
+  owner: 'roleOwner',
+  admin: 'roleAdmin',
+  member: 'roleMember',
+  viewer: 'roleViewer',
 };
 
 // 계정 패널 언어 스위처의 표시 순서 — 글로벌 디폴트가 영어라 EN 우선, 그다음
@@ -36,7 +54,13 @@ const localeOptions = [
 // PR-D7: 사이드바 → 헤더 탭 전환 후, 우측 끝의 account trigger. 기존
 // SidebarAccount 의 popover 동작을 가로 헤더용으로 정렬 — 트리거 = 아바타
 // + 이름 + 크레딧 + gear 한 줄, dropdown 은 트리거 아래로 펼침.
-export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
+export function TopbarAccount({
+  email,
+  credits,
+  isSuperAdmin,
+  orgs = [],
+  activeOrgId = null,
+}: Props) {
   const t = useTranslations('Sidebar');
   const tCommon = useTranslations('Common');
   const tAuth = useTranslations('Auth');
@@ -154,12 +178,50 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
     router.refresh();
   }
 
+  // Org switcher — only meaningful with 2+ memberships. "home" = first
+  // membership (oldest = the org handle_new_user auto-created at signup); when
+  // the active org differs, the user is viewing someone else's shared
+  // workspace, which we surface with a header badge.
+  const showSwitcher = orgs.length > 1;
+  const homeOrgId = orgs[0]?.org_id ?? null;
+  const activeOrg = orgs.find((o) => o.org_id === activeOrgId) ?? orgs[0] ?? null;
+  const viewingOtherOrg =
+    showSwitcher && !!activeOrg && !!homeOrgId && activeOrg.org_id !== homeOrgId;
+
+  async function switchOrg(orgId: string) {
+    if (orgId === activeOrgId) {
+      setOpen(false);
+      return;
+    }
+    track('org_switch_click', { to: orgId });
+    try {
+      await fetch('/api/account/active-org', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ org_id: orgId }),
+      });
+    } catch {
+      // Best-effort — router.refresh below re-reads server truth either way.
+    }
+    setOpen(false);
+    // Server re-resolves getActiveOrg from the new cookie → whole (app) tree
+    // (credits, projects, members…) follows the switched org.
+    router.refresh();
+  }
+
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
   const displayName = email ? email.split('@')[0] : '';
   const avatarLetter = (displayName.charAt(0) || '?').toUpperCase();
 
   return (
-    <div className="relative" ref={popRef}>
+    <div className="relative flex items-center gap-2" ref={popRef}>
+      {/* When the active org isn't the user's own, show which workspace they're
+          currently in (spec §범위 3 — 최소 표시). Hidden for single-org users. */}
+      {viewingOtherOrg && activeOrg && (
+        <Badge variant="amore" size="sm" className="hidden max-w-[140px] sm:inline-flex">
+          {activeOrg.org_name}
+        </Badge>
+      )}
       <div className="flex items-center gap-2 rounded-full bg-ink/10 px-2 py-1.5">
         <div
           className="flex shrink-0 items-center justify-center rounded-full bg-paper text-ink"
@@ -314,6 +376,42 @@ export function TopbarAccount({ email, credits, isSuperAdmin }: Props) {
           >
             {t('buyCredits')}
           </PopoverLink>
+          {showSwitcher && (
+            <>
+              <div className="my-1 h-px bg-line-soft" />
+              <div className="px-3 pt-1.5 pb-1">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                  {t('workspaces')}
+                </div>
+              </div>
+              {orgs.map((o) => {
+                const isActive = o.org_id === (activeOrg?.org_id ?? activeOrgId);
+                return (
+                  <Button
+                    key={o.org_id}
+                    variant="link"
+                    size="xs"
+                    fullWidth
+                    onClick={() => switchOrg(o.org_id)}
+                    className="!justify-start !gap-2 !px-3 !py-1.5 !text-sm font-normal !text-mute hover:bg-paper-soft hover:!text-ink-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-left">
+                      {o.org_name}
+                    </span>
+                    <Badge variant="subtle" size="sm">
+                      {t(ROLE_LABEL_KEY[o.role])}
+                    </Badge>
+                    <span
+                      className="w-3 shrink-0 text-center text-amore"
+                      aria-hidden
+                    >
+                      {isActive ? '✓' : ''}
+                    </span>
+                  </Button>
+                );
+              })}
+            </>
+          )}
           {isSuperAdmin && (
             <>
               <div className="my-1 h-px bg-line-soft" />
