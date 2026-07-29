@@ -197,12 +197,20 @@ export const env = createEnv({
 
     OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime-translate'),
     OPENAI_TRANSCRIPTION_MODEL: z.string().default('gpt-4o-mini-transcribe'),
-    // 동시통역 SOURCE 전사 lane 전용 모델. translations 엔드포인트가
-    // language 힌트를 거부하는 문제를 우회해, 소스 캡션을 language 를
-    // 받는 표준 transcription 세션으로 분리(A)할 때 쓴다. 한국어 음향
-    // 모델이 강한 FULL 모델을 기본값으로 — probing 의 mini 와 달리 소스
-    // 오인식(kana/영어환각)을 줄이기 위함.
-    OPENAI_TRANSLATE_SOURCE_MODEL: z.string().default('gpt-4o-transcribe'),
+    // UT 라이브 캡션(634/637) 전용 STT 모델. 신모델 `gpt-live-transcribe`(realtime
+    // 전용, keyword/prompt/languages 지원) 로 마이그(581). probing 이 공유하는
+    // OPENAI_TRANSCRIPTION_MODEL 과 **분리** — 캡션만 신모델로 옮기고 probing 은
+    // 그대로 두기 위해 전용 키를 둔다. 롤백 = 이 값을 'gpt-4o-transcribe' 로.
+    // (신모델 계열이면 `languages` 배열+`keywords`/`prompt` 를, legacy 계열이면
+    // singular `language` 를 쓰도록 route 가 모델명으로 분기 — 롤백 스모크 보존.)
+    OPENAI_UT_CAPTION_MODEL: z.string().default('gpt-live-transcribe'),
+    // 동시통역 SOURCE 전사 lane 전용 모델. 신모델 `gpt-live-transcribe`(581) 로
+    // 마이그 — translations 엔드포인트가 language 힌트를 거부하는 문제를 우회해
+    // 소스 캡션을 language/keywords 를 받는 표준 transcription 세션으로 분리(A)
+    // 할 때 쓴다. 신모델은 도메인 용어집(glossary)을 라이브 keywords 로 주입 가능.
+    // 롤백 = 이 값을 'gpt-4o-transcribe' 로 (route 가 모델 계열로 language/
+    // languages·keywords 를 분기하므로 구모델도 그대로 동작).
+    OPENAI_TRANSLATE_SOURCE_MODEL: z.string().default('gpt-live-transcribe'),
 
     // Live-caption VAD tuning (637). CRITICAL: the Realtime *transcription*
     // session only transcribes a segment AFTER the VAD commits it (on silence) —
@@ -408,6 +416,7 @@ export const env = createEnv({
 
     OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
     OPENAI_TRANSCRIPTION_MODEL: process.env.OPENAI_TRANSCRIPTION_MODEL,
+    OPENAI_UT_CAPTION_MODEL: process.env.OPENAI_UT_CAPTION_MODEL,
     OPENAI_TRANSLATE_SOURCE_MODEL: process.env.OPENAI_TRANSLATE_SOURCE_MODEL,
     OPENAI_CAPTION_VAD_SILENCE_MS: process.env.OPENAI_CAPTION_VAD_SILENCE_MS,
     OPENAI_CAPTION_VAD_MODE: process.env.OPENAI_CAPTION_VAD_MODE,

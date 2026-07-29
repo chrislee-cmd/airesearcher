@@ -36,7 +36,7 @@ export async function POST(
 
   const { data: row, error } = await supabase
     .from('translate_sessions')
-    .select('id, host_user_id, source_lang, status')
+    .select('id, host_user_id, source_lang, status, glossary')
     .eq('id', id)
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -48,11 +48,20 @@ export async function POST(
     return NextResponse.json({ error: 'session_ended' }, { status: 410 });
   }
 
-  // Source language is server-authoritative (from the session row), never
-  // client-supplied — the client can't spoof the recognised language.
+  // Source language + glossary are server-authoritative (from the session row),
+  // never client-supplied — the client can't spoof the recognised language or
+  // inject arbitrary keyword prompts. The glossary (JSONB) is coerced to a plain
+  // string list; issueSourceTranscriptionSession sanitizes + caps it and only
+  // forwards keywords on the new gpt-live-transcribe family (581).
+  const glossary = Array.isArray(row.glossary)
+    ? (row.glossary.filter((g): g is string => typeof g === 'string'))
+    : [];
   let s;
   try {
-    s = await issueSourceTranscriptionSession({ sourceLang: row.source_lang });
+    s = await issueSourceTranscriptionSession({
+      sourceLang: row.source_lang,
+      keywords: glossary,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'openai_failed' },

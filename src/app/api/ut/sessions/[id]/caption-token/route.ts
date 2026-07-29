@@ -25,6 +25,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/env';
 import { loadUtSession } from '@/lib/ut/auth';
 import { getLanguage } from '@/lib/transcripts/languages';
+import { usesLiveTranscribeConfig } from '@/lib/openai-realtime';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -63,8 +64,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: 'missing_openai_key' }, { status: 503 });
   }
 
-  const transcriptionModel =
-    env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-transcribe';
+  // UT live-caption STT model — dedicated env switch (581), migrated to the
+  // realtime-native `gpt-live-transcribe`. Separate from OPENAI_TRANSCRIPTION_MODEL
+  // (which probing shares) so this lane moves without touching probing. Rollback
+  // = set OPENAI_UT_CAPTION_MODEL to gpt-4o-transcribe.
+  const transcriptionModel = env.OPENAI_UT_CAPTION_MODEL;
+  const newFamily = usesLiveTranscribeConfig(transcriptionModel);
 
   // Language hint from the session (633). getLanguage() resolves legacy-null and
   // stray 'multi' to the 'multi' entry → omit so OpenAI keeps auto-detecting.
@@ -73,6 +78,22 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     : null;
   const language =
     langEntry && langEntry.code !== 'multi' ? iso639(langEntry.code) : null;
+  // New family takes a `languages` ARRAY; legacy takes the singular `language`.
+  // Branch so the env rollback switch stays valid for either model family.
+  const langField = language
+    ? newFamily
+      ? { languages: [language] }
+      : { language }
+    : {};
+
+  // Domain-term prompt (581): pass the session's task/goal as free-form `prompt`
+  // context so specialist terms transcribe better. Simplest form per spec (goal
+  // string as prompt, no keyword extraction) — new family only (legacy ignores/
+  // rejects it, so rollback keeps the old exact behaviour). Single-line + capped.
+  const promptText =
+    newFamily && session.task_goal
+      ? session.task_goal.replace(/\s+/g, ' ').trim().slice(0, 500)
+      : '';
 
   // VAD tuning (637). KEY FACT (validated on preview): the Realtime transcription
   // session transcribes a segment only AFTER the VAD commits it on silence — there
@@ -110,7 +131,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
         input: {
           transcription: {
             model: transcriptionModel,
-            ...(language ? { language } : {}),
+            ...langField,
+            ...(promptText ? { prompt: promptText } : {}),
           },
           turn_detection: turnDetection,
         },

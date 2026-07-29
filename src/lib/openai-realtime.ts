@@ -59,12 +59,44 @@ export function realtimeModel(): string {
   return env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-translate';
 }
 
-// Model for the split-off SOURCE transcription lane (fix A). Defaults to the
-// FULL gpt-4o-transcribe (stronger Korean acoustic modelling than the mini
-// probing uses) — the language hint below already blocks the kana fallback, so
-// the residual gain is pure recognition accuracy.
+// Model for the split-off SOURCE transcription lane (fix A). Migrated (581) to
+// the realtime-native `gpt-live-transcribe` (env-switchable). The new family
+// takes a `languages` ARRAY + `keywords`/`prompt`; the legacy gpt-4o[-mini]-
+// transcribe family takes the singular `language` and rejects those — the
+// caller branches on usesLiveTranscribeConfig() so the env rollback switch keeps
+// working with either family. The source language hint below still blocks the
+// #556 kana fallback either way.
 export function sourceTranscriptionModel(): string {
-  return env.OPENAI_TRANSLATE_SOURCE_MODEL ?? 'gpt-4o-transcribe';
+  return env.OPENAI_TRANSLATE_SOURCE_MODEL ?? 'gpt-live-transcribe';
+}
+
+// gpt-live-transcribe / gpt-transcribe accept a `languages` ARRAY + `keywords` +
+// `prompt`; the legacy gpt-4o-transcribe / gpt-4o-mini-transcribe family takes
+// the singular `language` and rejects the new fields. Branch on the model name
+// so the env rollback switch (spec constraint 1) stays valid for both families.
+// The '4o' families are the only legacy transcribe models, so a plain prefix
+// check cleanly separates them from the new gpt-(live-)transcribe names.
+export function usesLiveTranscribeConfig(model: string): boolean {
+  return (
+    model.startsWith('gpt-live-transcribe') || model.startsWith('gpt-transcribe')
+  );
+}
+
+// keywords must each be a single line free of `<`, `>`, CR and LF (OpenAI
+// constraint). Sanitize + dedupe + cap (defensive — glossary is already
+// bounded, but UT/other callers may not be).
+export function sanitizeKeywords(raw: readonly string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const term of raw) {
+    if (typeof term !== 'string') continue;
+    const clean = term.replace(/[<>\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+    if (out.length >= 100) break;
+  }
+  return out;
 }
 
 // Normalize a UI language value ("ko", "en", "ko-KR") to the ISO-639-1
@@ -169,12 +201,28 @@ export async function issueSourceTranscriptionSession(opts: {
   // bare ISO-639-1 code for the API. When it doesn't resolve to a 2-letter
   // code the hint is omitted and the model autodetects (never hard-coded ko).
   sourceLang: string;
+  // Domain glossary (translate_sessions.glossary) — injected as live `keywords`
+  // on the new gpt-live-transcribe family so specialist terms transcribe
+  // correctly in the source caption itself, not just in the postprocess pass.
+  // Ignored on the legacy family (which rejects `keywords`).
+  keywords?: readonly string[];
 }): Promise<OpenAIRealtimeSession> {
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('missing_openai_key');
 
   const model = sourceTranscriptionModel();
   const lang = iso639(opts.sourceLang);
+  const newFamily = usesLiveTranscribeConfig(model);
+  const keywords = opts.keywords ? sanitizeKeywords(opts.keywords) : [];
+  // Pin the source language when known (2-letter ISO). This is the parameter the
+  // translations endpoint rejects — the crux of fix A. The new family takes a
+  // `languages` ARRAY; the legacy family takes the singular `language`.
+  const langField =
+    lang.length === 2
+      ? newFamily
+        ? { languages: [lang] }
+        : { language: lang }
+      : {};
   const body = {
     session: {
       type: 'transcription',
@@ -182,9 +230,9 @@ export async function issueSourceTranscriptionSession(opts: {
         input: {
           transcription: {
             model,
-            // Pin the source language when known (2-letter ISO). This is the
-            // parameter the translations endpoint rejects — the crux of fix A.
-            ...(lang.length === 2 ? { language: lang } : {}),
+            ...langField,
+            // Live glossary injection — new family only (legacy rejects it).
+            ...(newFamily && keywords.length ? { keywords } : {}),
           },
           // server_vad so the session emits `*.completed` per utterance
           // boundary (mirrors the probing route). silence_duration matches the
