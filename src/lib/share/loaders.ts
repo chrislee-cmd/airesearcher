@@ -25,6 +25,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { assertInvitedViewer, type ShareResourceType } from './shared-views';
 import { loadShareResource, type ShareResource } from './viewer-resource';
 import {
+  normalizeGender,
+  toAgeBucket,
+  pivotGenderAgePairs,
+  type DistributionTable,
+} from '@/lib/recruiting/distribution';
+import type { RecruitingBrief } from '@/lib/recruiting-schema';
+import {
   labelTranscriptMarkdown,
   parseTranscriptTurns,
   type TranscriptTurn,
@@ -68,12 +75,42 @@ export type SharedDeskReport = {
   sources: string[];
 };
 
-/** 5타입 통합 공개 본문. 기존 2타입은 viewer-resource 의 ShareResource 재사용. */
+/** 부합도 분포 — 개별 응답자 행 없이 카운트만(집계). */
+export type SharedRecruitingFit = {
+  high: number;
+  medium: number;
+  low: number;
+  // 판단은 됐으나 fit 이 null 인 응답자(폼에 참여자 조건 미설정, 또는 근거
+  // 불명확). total 에는 포함.
+  unknown: number;
+  total: number;
+};
+
+/**
+ * 리크루팅 읽기전용 공유 공개 본문 — **집계·요약만**. 개별 응답자 행·이름·
+ * 연락처·이메일·자유응답 원문·부합도 근거 인용문은 일절 포함하지 않는다
+ * (스펙 PII 하드 규칙). criteria 는 발주자가 작성한 조건이라 응답자 PII 가
+ * 아니지만, detail(자유 서술)은 빼고 category/label/required 만 노출한다.
+ */
+export type SharedRecruitingSummary = {
+  type: 'recruiting_summary';
+  title: string;
+  createdAt: string | null;
+  // 발주자 한 줄 요약(조건 패널). 응답자 데이터 아님.
+  summary: string | null;
+  criteria: Array<{ category: string; label: string; required: boolean }>;
+  // 성별×연령 크로스탭 — 카운트만. gender/age 축이 전혀 없으면 null.
+  distribution: DistributionTable | null;
+  fit: SharedRecruitingFit;
+};
+
+/** 6타입 통합 공개 본문. 기존 2타입은 viewer-resource 의 ShareResource 재사용. */
 export type SharedResourceBody =
   | ShareResource
   | SharedTranscript
   | SharedUtInsight
-  | SharedDeskReport;
+  | SharedDeskReport
+  | SharedRecruitingSummary;
 
 export type LoadSharedResourceResult =
   | {
@@ -126,6 +163,8 @@ async function loadBody(
       return loadUtInsight(admin, resourceId);
     case 'desk_report':
       return loadDeskReport(admin, resourceId);
+    case 'recruiting_summary':
+      return loadRecruitingSummary(admin, resourceId);
     default:
       return null;
   }
@@ -234,5 +273,100 @@ async function loadDeskReport(
     keywords,
     locale: (job.locale as string | null) ?? null,
     sources,
+  };
+}
+
+// 응답자당 저장된 판단(recruiting_response_judgments.judgment)에서 집계에 필요한
+// 필드만. gender/age_group/fit 만 읽고 fit_reason(자유 근거)·region·flags 는
+// 건드리지 않는다(집계에 불필요 + PII 보수).
+type StoredJudgment = {
+  gender?: string | null;
+  age_group?: string | null;
+  fit?: 'high' | 'medium' | 'low' | null;
+};
+
+/**
+ * 리크루팅 읽기전용 공유 공개 본문 — **집계·요약만**.
+ *
+ * 소스(둘 다 service_role 로 OAuth 없이 읽힘, PII-safe):
+ *   - recruiting_forms: 제목·조건(criteria)·요약·발행일.
+ *   - recruiting_response_judgments: 응답자당 성별/연령대/부합도(이름·전화는
+ *     스키마상 저장되지 않음 — 판단 lib 참조).
+ *
+ * 라이브 Google Forms 응답 행은 발주자 OAuth 가 있어야 읽히므로 공개 로더에선
+ * 못 쓴다 → persisted 판단이 크로스탭·부합도의 유일한 OAuth-free 집계 소스다
+ * (스펙 "요약 데이터 함수 재사용": 크로스탭은 인증 풀뷰와 동일한
+ * pivotGenderAgePairs SSOT 를 공유, 입력만 판단 gender/age_group).
+ *
+ * 원본 폼이 없으면(dangling) null. 판단이 0건이면 빈 집계로 렌더(발급 게이트가
+ * 이미 ≥1 을 강제하지만 로더는 방어적으로 빈 상태 허용).
+ */
+async function loadRecruitingSummary(
+  admin: SupabaseClient,
+  formId: string,
+): Promise<SharedRecruitingSummary | null> {
+  const { data: form, error } = await admin
+    .from('recruiting_forms')
+    .select('title, criteria, summary, created_at')
+    .eq('form_id', formId)
+    .maybeSingle();
+  if (error || !form) return null;
+
+  // criteria — 발주자 조건. detail(자유 서술)은 제외, category/label/required 만.
+  const rawCriteria = (form.criteria as RecruitingBrief['criteria'] | null) ?? [];
+  const criteria = Array.isArray(rawCriteria)
+    ? rawCriteria.map((c) => ({
+        category: typeof c?.category === 'string' ? c.category : '',
+        label: typeof c?.label === 'string' ? c.label : '',
+        required: c?.required === true,
+      }))
+    : [];
+
+  const { data: judgeRows } = await admin
+    .from('recruiting_response_judgments')
+    .select('judgment')
+    .eq('form_id', formId);
+
+  const judgments: StoredJudgment[] = (judgeRows ?? []).map(
+    (r) => (r.judgment as StoredJudgment | null) ?? {},
+  );
+
+  // 부합도 카운트(집계만).
+  const fit: SharedRecruitingFit = {
+    high: 0,
+    medium: 0,
+    low: 0,
+    unknown: 0,
+    total: judgments.length,
+  };
+  const nowYear = new Date().getFullYear();
+  const pairs: Array<[string, string]> = [];
+  for (const j of judgments) {
+    if (j.fit === 'high') fit.high += 1;
+    else if (j.fit === 'medium') fit.medium += 1;
+    else if (j.fit === 'low') fit.low += 1;
+    else fit.unknown += 1;
+
+    // 성별×연령 pair — 인증 풀뷰와 동일 정규화(normalizeGender / toAgeBucket).
+    const gx = normalizeGender(j.gender ?? '');
+    const ay = toAgeBucket(j.age_group ?? '', nowYear);
+    if (gx !== null && ay !== null) pairs.push([gx, ay]);
+  }
+
+  // 축 라벨(성별/연령)은 뷰어가 i18n 헤더로 렌더하므로 xTitle/yTitle 은 미사용
+  // (빈 문자열). pivot 은 인증 풀뷰와 공유하는 SSOT.
+  const distribution =
+    pairs.length > 0
+      ? pivotGenderAgePairs(pairs, { xTitle: '', yTitle: '' })
+      : null;
+
+  return {
+    type: 'recruiting_summary',
+    title: (form.title as string | null) ?? '',
+    createdAt: (form.created_at as string | null) ?? null,
+    summary: (form.summary as string | null)?.trim() || null,
+    criteria,
+    distribution,
+    fit,
   };
 }

@@ -13,10 +13,12 @@ import { ShareGateForm } from '@/components/share/share-gate-form';
 import { TranscriptShareBody } from '@/components/share/bodies/transcript-share-body';
 import { DeskShareBody } from '@/components/share/bodies/desk-share-body';
 import { UtShareBody } from '@/components/share/bodies/ut-share-body';
+import { RecruitingShareBody } from '@/components/share/bodies/recruiting-share-body';
 import type {
   SharedTranscript,
   SharedDeskReport,
   SharedUtInsight,
+  SharedRecruitingSummary,
 } from '@/lib/share/loaders';
 
 // 통합 산출물 공개 공유 뷰어(Surface B, /share/d/[token]) — CD share-shell 셸 +
@@ -32,11 +34,13 @@ import type {
 // 통합 3타입(transcript/desk_report/ut_insight)만 그린다 — 기존 2타입은 구
 // /share/[token] 라우트 소유. 그 외 타입은 not_found 로(데이터 0).
 
-// 기능 정체성 = tone(셸은 feature-blind). transcript=lav · desk=aqua · ut=peach.
+// 기능 정체성 = tone(셸은 feature-blind). transcript=lav · desk=aqua · ut=peach ·
+// recruiting=sun.
 const TONE: Record<string, ShareTone> = {
   transcript: 'lav',
   desk_report: 'aqua',
   ut_insight: 'peach',
+  recruiting_summary: 'sun',
 };
 
 function stripExt(name: string): string {
@@ -221,6 +225,13 @@ function renderBody(
     return {
       node: <UtShareBody data={r} />,
       title: r.targetUrl ?? '',
+    };
+  }
+  if (resourceType === 'recruiting_summary') {
+    const r = resource as SharedRecruitingSummary;
+    return {
+      node: <RecruitingShareBody data={r} />,
+      title: r.title,
     };
   }
   return null;

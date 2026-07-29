@@ -30,7 +30,8 @@ export type ShareResourceType =
   | 'probing_persona'
   | 'transcript'
   | 'desk_report'
-  | 'ut_insight';
+  | 'ut_insight'
+  | 'recruiting_summary';
 
 // 산출물 통합 3타입은 신규 공개 셸 라우트(/share/d/[token], Surface B)를,
 // 기존 2타입은 구 뷰어 라우트(/share/[token])를 쓴다. 둘 다 localePrefix:'always'
@@ -39,6 +40,7 @@ const UNIFIED_TYPES: ReadonlySet<ShareResourceType> = new Set([
   'transcript',
   'desk_report',
   'ut_insight',
+  'recruiting_summary',
 ]);
 function viewerUrl(
   locale: string,
