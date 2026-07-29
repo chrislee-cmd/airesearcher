@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveOrg } from '@/lib/org';
+import { writeProbingDeliverableBestEffort } from '@/lib/probing/deliverable-write';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -83,6 +84,18 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ error: 'update_failed' }, { status: 500 });
   }
+
+  // best-effort 산출물 스냅샷 (probing_deliverables). 우리가 실제로 run 을
+  // active→ended 로 전환한 이 분기에서만 호출하므로 중복 stop/재시도에
+  // 산출물이 이중 생성되지 않는다(위 .eq('status','active') 가드와 동형의
+  // 멱등성). 저장 실패는 라이브 경로에 무영향 — 헬퍼가 throw 하지 않고
+  // run 종료 응답은 그대로 반환한다(스펙 A.2 best-effort 하드 규칙).
+  await writeProbingDeliverableBestEffort(supabase, {
+    userId: user.id,
+    orgId: org.org_id,
+    sessionStartedAt: (run.started_at as string) ?? null,
+    questionCount: count ?? 0,
+  });
 
   return NextResponse.json({
     ok: true,

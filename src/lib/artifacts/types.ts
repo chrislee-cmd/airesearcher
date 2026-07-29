@@ -8,9 +8,16 @@
 // 계약을 여기서 못박고 registry.ts 의 각 adapter.toRow 가 자기 기능 행을
 // 이 shape 로 투영한다. CD 통합 라이브러리 UI 는 이 타입을 데이터 소스로 삼는다.
 
-// Phase 1 — 1급 산출물(리스팅 가능)을 가진 기능.
-// 후속: 'probing' | 'translate' 는 persist PR 후 편입.
-export type DeliverableFeature = 'transcript' | 'desk' | 'ut' | 'recruiting';
+// 1급 산출물(리스팅 가능)을 가진 기능 — 6기능 전부 편입 완료
+// (pr-probing-translate-persist-deliverable). probing 은 신규 per-세션
+// 레코드(probing_deliverables), translate 는 기존 translate_sessions.
+export type DeliverableFeature =
+  | 'transcript'
+  | 'desk'
+  | 'ut'
+  | 'recruiting'
+  | 'probing'
+  | 'translate';
 
 // 기능별 상태 enum 을 정규화한 4-state. UI 는 이 4개만 알면 된다
 // (신규 kind 가 추가돼도 프론트 무변경 — 정규화가 서버 책임).

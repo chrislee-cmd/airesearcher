@@ -359,13 +359,151 @@ const recruitingAdapter: DeliverableAdapter = {
   },
 };
 
+// ── probing (Interview Assistant) ─────────────────────────────────────────
+// per-세션 산출물 레코드(probing_deliverables) — pr-probing-translate-persist.
+// probing_sessions(per-user 1행)가 아니라 append-only 세션 스냅샷 테이블을
+// 소스로 삼는다(세션 단위 리스팅의 SSOT). user 스코프 RLS(ut 와 동형),
+// project/folder·updated_at 컬럼이 없어 project=null·updated_at=created_at 폴백.
+// status 는 항상 ready — 완료된 세션 스냅샷만 append 되므로.
+const probingAdapter: DeliverableAdapter = {
+  feature: 'probing',
+  table: 'probing_deliverables',
+  idColumn: 'id',
+  scopeColumn: 'user_id',
+  projectTable: 'projects',
+  // shareResourceType: 기존 'probing_persona' 공유는 probing_sessions.id 기준
+  // 이라 probing_deliverables 기반 공유는 매핑 확장이 필요하다. 이 PR 은 기존
+  // 공유 흐름을 깨지 않는 것이 우선 → 우선 null(shareable=false)로 등록 후
+  // 관찰(스펙 C). 후속 PR 에서 deliverable 기반 공유로 수렴 판단.
+  shareResourceType: null,
+  // 제품명 변경(2026-07-28): "Probing Assistant" → "Interview Assistant".
+  label: 'Interview Assistant',
+  // 서버 렌더러 없음(기존 PDF 는 클라 전용 DOM) → 우선 빈 목록. 서버 pdf 는
+  // 후속 판단(스펙 C).
+  exportFormats: [],
+  selectColumns: [
+    'id',
+    'title',
+    'question_count',
+    'session_started_at',
+    'created_at',
+  ],
+  // 완료 스냅샷만 존재 → 항상 ready(상태 enum 없음).
+  normalizeStatus() {
+    return 'ready';
+  },
+  toRow(row) {
+    const created = iso(row.created_at, '');
+    const questionCount = num(row.question_count);
+    const badges: string[] = [];
+    if (questionCount && questionCount > 0) {
+      badges.push(`${questionCount} questions`);
+    }
+    return {
+      feature: 'probing',
+      id: String(row.id ?? ''),
+      kind: 'probing_persona',
+      title: str(row.title) ?? this.label,
+      status: 'ready',
+      project_id: null, // 컬럼 없음
+      folder_id: null, // 컬럼 없음
+      created_at: created,
+      updated_at: created, // updated_at 컬럼 없음 → created_at 폴백
+      shareable: this.shareResourceType != null,
+      export_formats: this.exportFormats,
+      meta: { question_count: questionCount },
+      meta_display: badges,
+      progress: null,
+    };
+  },
+};
+
+// ── translate (Live Interpreter) ──────────────────────────────────────────
+// translate_sessions 로 이미 영속 — 스키마 무변경, adapter 만(pr-probing-
+// translate-persist). org 스코프(translate_sessions_org_select). updated_at
+// 컬럼이 없어 ended_at ?? created_at 폴백. export 는 zip-output(통역본 transcript)
+// 만 등록 — m4a/원문(zip-input)/재번역은 기존 다운로드 라우트(translate_recordings
+// 기반, transcode·환불·host 게이트)를 SSOT 로 유지하고 여기로 옮기지 않는다
+// (기존 다운로드 무변경 = 스펙 제약 2·4). 상세는 renderers/translate.ts 주석.
+const translateAdapter: DeliverableAdapter = {
+  feature: 'translate',
+  table: 'translate_sessions',
+  idColumn: 'id',
+  scopeColumn: 'org_id',
+  projectTable: 'projects',
+  // 통역 자체 토큰 공유 유지 → shared_views 수렴은 이 PR 범위 밖(스펙 B).
+  shareResourceType: null,
+  // 위젯 표기 따름.
+  label: 'Live Interpreter',
+  exportFormats: ['zip-output'],
+  selectColumns: [
+    'id',
+    'source_lang',
+    'target_lang',
+    'status',
+    'started_at',
+    'ended_at',
+    'created_at',
+  ],
+  normalizeStatus(raw) {
+    switch (raw) {
+      case 'ended':
+        return 'ready';
+      case 'error':
+        return 'error';
+      // idle / live → 진행 중
+      default:
+        return 'processing';
+    }
+  },
+  toRow(row) {
+    const created = iso(row.created_at, '');
+    const startedAt = str(row.started_at);
+    const endedAt = str(row.ended_at);
+    const sourceLang = str(row.source_lang);
+    const targetLang = str(row.target_lang);
+    const langPair =
+      sourceLang && targetLang ? `${sourceLang}→${targetLang}` : null;
+    // duration = ended_at - started_at (둘 다 있을 때만).
+    let durationSeconds: number | null = null;
+    if (startedAt && endedAt) {
+      const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+      if (Number.isFinite(ms) && ms > 0) durationSeconds = Math.round(ms / 1000);
+    }
+    const day = (startedAt ?? created).slice(0, 10);
+    const title = langPair ? `${langPair} · ${day}` : `Live Interpreter · ${day}`;
+    const badges: string[] = [];
+    if (langPair) badges.push(langPair);
+    const dur = minutesBadge(durationSeconds);
+    if (dur) badges.push(dur);
+    return {
+      feature: 'translate',
+      id: String(row.id ?? ''),
+      kind: 'translate_session',
+      title,
+      status: this.normalizeStatus(str(row.status)),
+      project_id: null, // 컬럼 없음
+      folder_id: null, // 컬럼 없음
+      created_at: created,
+      updated_at: endedAt ?? created, // updated_at 컬럼 없음 → ended_at/created_at
+      shareable: this.shareResourceType != null,
+      export_formats: this.exportFormats,
+      meta: { source_lang: sourceLang, target_lang: targetLang, duration_seconds: durationSeconds },
+      meta_display: badges,
+      progress: null,
+    };
+  },
+};
+
 // ── 레지스트리(the waist) ───────────────────────────────────────────────
-// DeliverableRow 투영을 갖는 Phase1 4기능.
+// DeliverableRow 투영을 갖는 6기능(전 기능 편입 완료).
 export const DELIVERABLE_REGISTRY: Record<DeliverableFeature, DeliverableAdapter> = {
   transcript: transcriptAdapter,
   desk: deskAdapter,
   ut: utAdapter,
   recruiting: recruitingAdapter,
+  probing: probingAdapter,
+  translate: translateAdapter,
 };
 
 // assign(project/folder 배정)이 다루는 6기능의 매핑 SSOT. 4기능은 위 어댑터의
@@ -376,6 +514,12 @@ export const ASSIGN_TARGETS: Record<AssignFeature, AssignTarget> = {
   desk: pickTarget(deskAdapter),
   ut: pickTarget(utAdapter),
   recruiting: pickTarget(recruitingAdapter),
+  // probing/translate 는 리스팅만 편입 — project/folder 컬럼이 없어 assign 대상은
+  // 아니지만(selectColumns 에 project_id 없음 → 리스트 route 가 project 필터에
+  // 매칭 0 처리) AssignFeature 타입을 만족시키기 위해 매핑을 선언한다. assign
+  // route 는 이 두 기능을 UI 로 노출하지 않는다(project 컬럼 부재로 no-op).
+  probing: pickTarget(probingAdapter),
+  translate: pickTarget(translateAdapter),
   report: { table: 'report_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
   interview: { table: 'interview_jobs', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
   scheduler: { table: 'scheduler_sessions', idColumn: 'id', scopeColumn: 'org_id', projectTable: 'projects' },
