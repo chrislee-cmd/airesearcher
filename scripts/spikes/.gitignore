@@ -1,0 +1,7 @@
+# PII 하드 규칙(card 583): UT 녹화·평가 산출물은 절대 커밋 금지.
+out/
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.json
