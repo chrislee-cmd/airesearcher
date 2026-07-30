@@ -69,6 +69,14 @@ export const env = createEnv({
     // session stays 'done' with a null behavior_metrics.
     GEMINI_API_KEY: z.string().min(20).optional(),
 
+    // AI UT 인사이트 엔진 스위치 (card 585). 'gemini'(기본) = 영상이해 Gemini
+    // 단일 generateContent 호출로 모먼트+인사이트+리포트 산출. 'twelvelabs' =
+    // 레거시 4단 파이프라인(인덱싱→Marengo→ffmpeg→Pegasus). 롤백 = 이 한 줄 flip.
+    UT_INSIGHT_ENGINE: z.enum(['gemini', 'twelvelabs']).default('gemini'),
+    // gemini 경로 모델 오버라이드(코드 재배포 없이 A/B). 미설정 시 인앱 검증된
+    // 최저비용 GA 인 gemini-2.5-flash 사용(insight-gemini.ts 의 DEFAULT_MODEL).
+    UT_INSIGHT_GEMINI_MODEL: z.string().min(3).optional(),
+
     LEMONSQUEEZY_API_KEY: z.string().min(20).optional(),
     // Legacy single-store env. When the dual-store vars below are unset,
     // these still drive both rails (treated as the KRW store) so we can
@@ -301,6 +309,8 @@ export const env = createEnv({
     TWELVELABS_API_KEY: process.env.TWELVELABS_API_KEY,
     TWELVELABS_ANALYZE_INDEX_ID: process.env.TWELVELABS_ANALYZE_INDEX_ID,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    UT_INSIGHT_ENGINE: process.env.UT_INSIGHT_ENGINE,
+    UT_INSIGHT_GEMINI_MODEL: process.env.UT_INSIGHT_GEMINI_MODEL,
 
     LEMONSQUEEZY_API_KEY: process.env.LEMONSQUEEZY_API_KEY,
     LEMONSQUEEZY_STORE_ID: process.env.LEMONSQUEEZY_STORE_ID,

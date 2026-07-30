@@ -124,7 +124,7 @@ export type ClipInsight = {
   friction: string;
   emotion: string;
   severity: 'low' | 'medium' | 'high';
-  source: 'pegasus' | 'text';
+  source: 'pegasus' | 'text' | 'gemini';
 };
 
 const clipInsightSchema = z.object({

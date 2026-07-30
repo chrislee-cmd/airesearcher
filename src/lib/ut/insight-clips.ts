@@ -25,6 +25,7 @@
 // 클립은 private ut-clips 버킷, 인사이트/인용/리포트는 maskSensitiveDeep 후 저장.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { env } from '@/env';
 import {
   createAsset,
   createIndexedAsset,
@@ -45,7 +46,14 @@ import {
   type ClipInsight,
   type ClipForReport,
 } from '@/lib/ut/insight-llm';
+import { generateGeminiInsight } from '@/lib/ut/insight-gemini';
 import type { UtSessionRow } from '@/lib/ut/auth';
+
+// 인사이트 엔진 스위치(card 585). 'gemini'(기본) = 단일 Gemini 호출 · 'twelvelabs'
+// = 레거시 4단. 롤백은 env 한 줄(UT_INSIGHT_ENGINE) flip. 두 경로 병존.
+function engine(): 'gemini' | 'twelvelabs' {
+  return env.UT_INSIGHT_ENGINE;
+}
 
 const MIN_CLIP_MS = 3000;
 const MAX_CLIP_MS = 60000;
@@ -73,6 +81,17 @@ export async function startInsightPipeline(
   }
   if (!session.recording_storage_key) {
     return { status: 'error', error: 'missing_recording' };
+  }
+
+  // Gemini 경로: TwelveLabs 인덱싱/에셋 생성을 건너뛰고 곧장 'searching' 으로.
+  // 실제 heavy work(업로드+단일 추론)는 stepSearching 이 1회 수행한다. tl_* 컬럼은
+  // 손대지 않아(제약 3) 지난 TwelveLabs 세션 리포트는 그대로 열린다.
+  if (engine() === 'gemini') {
+    await admin
+      .from('ut_sessions')
+      .update({ insight_status: 'searching', insight_error: null })
+      .eq('id', session.id);
+    return { status: 'searching' };
   }
 
   let indexId: string;
@@ -142,7 +161,7 @@ export async function advanceInsightPipeline(
       case 'indexing':
         return await stepIndexing(admin, s);
       case 'searching':
-        return await stepSearching(admin, s, locale);
+        return await stepSearching(admin, s, locale, nowIso);
       case 'clipping':
         return await stepClipping(admin, s);
       case 'analyzing':
@@ -217,6 +236,7 @@ async function stepSearching(
   admin: SupabaseClient,
   s: UtSessionRow,
   locale: string,
+  nowIso: string,
 ): Promise<AdvanceResult> {
   const { data: existing } = await admin
     .from('ut_clips')
@@ -226,6 +246,15 @@ async function stepSearching(
   if (existing && existing.length > 0) {
     await setStatus(admin, s.id, 'clipping');
     return { status: 'clipping' };
+  }
+
+  // Gemini 경로: 단일 호출로 모먼트+클립인사이트+리포트를 한 번에 산출한다.
+  // 모먼트는 turn 경계에 스냅(기존 snapToTurns 재사용 — 발화 중간 컷 방지 +
+  // transcript_span 채움) 후 ut_clips 로 insert(insight 이미 채워짐). 리포트는
+  // insight_summary 로 즉시 persist(단일 호출이라 reporting 에서 재생성 안 함).
+  // 이후 clipping(ffmpeg)·analyzing 은 기존 로직 그대로 통과한다.
+  if (engine() === 'gemini') {
+    return await stepSearchingGemini(admin, s, locale, nowIso);
   }
 
   const turns = Array.isArray(s.transcript_words) ? (s.transcript_words as TranscriptTurn[]) : [];
@@ -282,6 +311,62 @@ async function stepSearching(
     relevance: seg.relevance,
   }));
   await admin.from('ut_clips').insert(rows);
+
+  await setStatus(admin, s.id, 'clipping');
+  return { status: 'clipping' };
+}
+
+// ── searching (Gemini single-call) ─────────────────────────────────────────
+// One Gemini generateContent produces moments + per-clip insight + the session
+// report. We snap each moment to turn boundaries (reusing snapToTurns), insert
+// clip rows with their insight already filled (masked), and persist the report
+// to insight_summary immediately (single call — reporting won't regenerate it).
+// A Gemini failure throws → advance()'s catch marks the run 'error' (retryable).
+async function stepSearchingGemini(
+  admin: SupabaseClient,
+  s: UtSessionRow,
+  locale: string,
+  nowIso: string,
+): Promise<AdvanceResult> {
+  const turns = Array.isArray(s.transcript_words) ? (s.transcript_words as TranscriptTurn[]) : [];
+
+  const { moments, report } = await generateGeminiInsight(admin, s, locale);
+
+  // Persist the report now (masked) so reporting only has to finalize the state.
+  const maskedSummary = maskSensitiveDeep({ ...report, generated_at: nowIso });
+  await admin
+    .from('ut_sessions')
+    .update({ insight_summary: maskedSummary })
+    .eq('id', s.id);
+
+  // Snap moments to utterance edges + fill transcript_span (never cut mid-turn),
+  // then insert as clip rows carrying the Gemini insight (media cut later in
+  // 'clipping', one row per POST). No moments → still advance; clipping/analyzing
+  // pass straight through to reporting (which flips to done with the report above).
+  const rows = moments
+    .map((m) => {
+      const seg = snapToTurns(
+        { start_ms: m.start_ms, end_ms: m.end_ms, theme: m.theme, relevance: m.relevance },
+        turns,
+      );
+      if (!seg) return null;
+      return {
+        session_id: s.id,
+        user_id: s.user_id,
+        start_ms: seg.start_ms,
+        end_ms: seg.end_ms,
+        theme: seg.theme,
+        transcript_span: seg.transcript_span || null,
+        relevance: seg.relevance,
+        insight: maskSensitiveDeep(m.insight),
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .slice(0, MAX_CLIPS);
+
+  if (rows.length > 0) {
+    await admin.from('ut_clips').insert(rows);
+  }
 
   await setStatus(admin, s.id, 'clipping');
   return { status: 'clipping' };
@@ -408,6 +493,16 @@ async function stepReporting(
   locale: string,
   nowIso: string,
 ): Promise<AdvanceResult> {
+  // Gemini 경로: insight_summary 는 searching 에서 단일 호출로 이미 기록됨 —
+  // Anthropic 종합을 재실행하지 않고 상태만 done 으로 마감(단일 호출 보존).
+  if (engine() === 'gemini') {
+    await admin
+      .from('ut_sessions')
+      .update({ insight_status: 'done', insight_error: null })
+      .eq('id', s.id);
+    return { status: 'done' };
+  }
+
   const { data: clips } = await admin
     .from('ut_clips')
     .select('start_ms, end_ms, theme, transcript_span, insight')
