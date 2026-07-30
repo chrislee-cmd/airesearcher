@@ -28,6 +28,9 @@ export const SHARE_RESOURCE_TYPES = [
   'transcript',
   'ut_insight',
   'desk_report',
+  // 리크루팅 읽기전용 공유 — resource_id = recruiting_forms.form_id(text PK,
+  // uuid 아님). 공개 노출은 집계·요약만(loaders.ts loadRecruitingSummary).
+  'recruiting_summary',
 ] as const;
 export type ShareResourceType = (typeof SHARE_RESOURCE_TYPES)[number];
 
@@ -43,7 +46,10 @@ type OrgScopedSpec = {
   doneValue: string | null;
 };
 
-const ORG_SCOPED: Record<Exclude<ShareResourceType, 'ut_insight'>, OrgScopedSpec> = {
+const ORG_SCOPED: Record<
+  Exclude<ShareResourceType, 'ut_insight' | 'recruiting_summary'>,
+  OrgScopedSpec
+> = {
   // 기존 2타입 — 상태 게이트 없음(무변경).
   interview_topline: { table: 'interview_toplines', statusColumn: null, doneValue: null },
   probing_persona: { table: 'probing_sessions', statusColumn: null, doneValue: null },
@@ -100,6 +106,9 @@ export async function resolveShareableResource(
   if (resourceType === 'ut_insight') {
     return resolveUtInsight(supabase, resourceId);
   }
+  if (resourceType === 'recruiting_summary') {
+    return resolveRecruitingSummary(supabase, resourceId);
+  }
 
   const spec = ORG_SCOPED[resourceType];
   const columns = spec.statusColumn ? `org_id, ${spec.statusColumn}` : 'org_id';
@@ -141,6 +150,48 @@ async function resolveUtInsight(
     const active = await getActiveOrg();
     orgId = active?.org_id ?? null;
   }
+  if (!orgId) return { ok: false, status: 403, error: 'no_org' };
+  return { ok: true, orgId };
+}
+
+/**
+ * recruiting_summary 는 recruiting_forms(form_id text PK, user_id 스코프, org_id
+ * 컬럼 없음)를 소스로 한다. org-scoped(RLS user) 클라이언트로 form 을 읽어
+ * 소유권을 강제(auth.uid()=user_id, 못 보면 forbidden)하고, **응답이 존재할
+ * 때만** 발급 가능(미발행/응답 0 → not_ready 409).
+ *
+ * "응답 존재" 판정: 공개 로더는 service_role 이라 Google OAuth 가 없어 라이브
+ * Google Forms 응답을 못 세므로(발급 라우트도 발급자의 Google 토큰을 여기서
+ * 쥐지 않음), persisted recruiting_response_judgments 행 수(≥1)를 응답 존재의
+ * OAuth-free proxy 로 쓴다 — 판단이 1건이라도 있으면 응답이 있었다는 뜻. 미발행
+ * 폼/응답 0 은 판단도 0 → 409. shared_views.org_id 는 NOT NULL 인데
+ * recruiting_forms 엔 org_id 가 없으므로(ut 와 동형) 발급자의 active org 로
+ * 폴백한다(발급자=폼 소유자라 그 org 멤버 → RLS insert 통과).
+ */
+async function resolveRecruitingSummary(
+  supabase: SupabaseClient,
+  formId: string,
+): Promise<ResolveShareableResult> {
+  // 소유권 — RLS(recruiting_forms_self_select)가 자기 폼만 보이게 한다.
+  const { data: form, error } = await supabase
+    .from('recruiting_forms')
+    .select('form_id')
+    .eq('form_id', formId)
+    .maybeSingle<{ form_id: string }>();
+  if (error || !form) return { ok: false, status: 403, error: 'forbidden' };
+
+  // 응답 존재(판단 캐시로 proxy). RLS(recruiting_response_judgments_own_select)
+  // 가 소유 폼 판단만 세게 한다.
+  const { count, error: countError } = await supabase
+    .from('recruiting_response_judgments')
+    .select('id', { count: 'exact', head: true })
+    .eq('form_id', formId);
+  if (countError || !count || count < 1) {
+    return { ok: false, status: 409, error: 'not_ready' };
+  }
+
+  const active = await getActiveOrg();
+  const orgId = active?.org_id ?? null;
   if (!orgId) return { ok: false, status: 403, error: 'no_org' };
   return { ok: true, orgId };
 }

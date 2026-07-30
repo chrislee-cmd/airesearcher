@@ -20,13 +20,24 @@ import {
 
 export const runtime = 'nodejs';
 
-const Body = z.object({
-  resource_type: z.enum(SHARE_RESOURCE_TYPES),
-  resource_id: z.string().uuid(),
-  invited_emails: z.array(z.string().email()).default([]),
-  // 미지정이면 기본 TTL(30일). 지정 시 미래여야 함.
-  expires_at: z.string().datetime().optional(),
-});
+const Body = z
+  .object({
+    resource_type: z.enum(SHARE_RESOURCE_TYPES),
+    // resource_id 는 polymorphic — 기존 5타입은 uuid PK, recruiting_summary 만
+    // Google Forms id(text, uuid 아님). 기존 타입의 uuid 검증은 유지하고
+    // recruiting 만 예외로 임의 문자열을 허용한다(소유권은 아래
+    // resolveShareableResource + RLS 가 이중 강제).
+    resource_id: z.string().min(1),
+    invited_emails: z.array(z.string().email()).default([]),
+    // 미지정이면 기본 TTL(30일). 지정 시 미래여야 함.
+    expires_at: z.string().datetime().optional(),
+  })
+  .refine(
+    (d) =>
+      d.resource_type === 'recruiting_summary' ||
+      z.string().uuid().safeParse(d.resource_id).success,
+    { path: ['resource_id'], message: 'resource_id must be a uuid' },
+  );
 
 export async function POST(req: Request) {
   const supabase = await createClient();

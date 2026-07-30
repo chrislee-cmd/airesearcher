@@ -314,7 +314,9 @@ const recruitingAdapter: DeliverableAdapter = {
   idColumn: 'form_id',
   scopeColumn: 'user_id',
   projectTable: 'projects',
-  shareResourceType: null,
+  // 리크루팅 읽기전용 공유(pr-recruiting-readonly-share) — 발급/공개 로더 배선.
+  // resource_id = form_id(text). /library Share 버튼 활성화(shareable=true).
+  shareResourceType: 'recruiting_summary',
   label: 'Recruiting',
   exportFormats: ['csv'],
   selectColumns: [

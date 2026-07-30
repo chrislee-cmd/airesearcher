@@ -115,6 +115,22 @@ export function buildDistributionTable(
     pairs.push([gx, ay]);
   }
 
+  return pivotGenderAgePairs(pairs, {
+    xTitle: genderCol.title,
+    yTitle: ageCol.title,
+  });
+}
+
+// 성별×연령 (gender, ageBucket) pair 목록 → crosstab. 축 순서(여성→남성→기타
+// 알파벳 / 연령 decade asc)와 셀/합계 집계 로직의 SSOT — 인증 풀뷰
+// (buildDistributionTable, Google Forms rows 기준)와 공개 공유 로더
+// (loaders.ts, persisted judgments 의 gender/age_group 기준)가 이 한 함수를
+// 공유해 크로스탭이 두 경로에서 갈라지지 않게 한다. pair 는 이미 정규화된
+// 버킷(normalizeGender / toAgeBucket 통과분)이라는 계약.
+export function pivotGenderAgePairs(
+  pairs: Array<[string, string]>,
+  titles: { xTitle: string; yTitle: string },
+): DistributionTable {
   // x order: 여성 → 남성 → any other value (alphabetical). y order: decade asc.
   const xSeen = new Set(pairs.map((p) => p[0]));
   const preferredX = ['여성', '남성'].filter((l) => xSeen.has(l));
@@ -148,8 +164,8 @@ export function buildDistributionTable(
     xTotal,
     yTotal,
     grandTotal,
-    xTitle: genderCol.title,
-    yTitle: ageCol.title,
+    xTitle: titles.xTitle,
+    yTitle: titles.yTitle,
   };
 }
 

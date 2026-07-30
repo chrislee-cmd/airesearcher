@@ -31,6 +31,7 @@ import {
 } from './recruiting/responses-spreadsheet';
 import { RecruitingFullviewBody } from '../fullview/recruiting/recruiting-fullview-body';
 import { JourneyIntakeBand } from '../fullview/recruiting/journey-intake-band';
+import { ShareInviteButton } from '@/components/share/share-invite-button';
 import {
   RecruitingJourneyShell,
   type JourneyTab,
@@ -466,7 +467,16 @@ function ExpandedBody() {
           masterLink={shareToken ? { url: `/schedule/${shareToken}` } : null}
           onShareToken={setShareToken}
           counts={undefined}
-          shareButton={undefined}
+          // 읽기전용 결과 공유 링크 발급(pr-recruiting-readonly-share) — 기존
+          // ShareInviteButton 패턴 재사용. resource_id = 활성 폼 form_id(text).
+          // 폼 미선택(null)이면 버튼 disabled. org 멤버 초대(CollabShare)와 별개
+          // 채널 — 집계·요약만 공개(개별 응답·연락처 미노출).
+          shareButton={
+            <ShareInviteButton
+              resourceType="recruiting_summary"
+              resourceId={activeFormId}
+            />
+          }
           onRefresh={handleRefresh}
           // 저니 탭 SSOT(controlled) — 브리지 전송 성공 시 host 가 탭②로 전환.
           activeTab={journeyTab}
