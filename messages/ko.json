@@ -894,6 +894,7 @@
     "adminDesignSystem": "디자인 시스템 (관리자)",
     "adminWritingSystem": "라이팅 시스템 (관리자)",
     "adminAnalytics": "분석 대시보드 (관리자)",
+    "adminWidgetVisibility": "위젯 노출 관리 (관리자)",
     "adminQaFeedback": "QA 피드백 (관리자)",
     "adminRecruitingInvitations": "리크루팅 요청 (관리자)",
     "adminRecruitingScheduling": "후보자 스케줄링 (관리자)"
@@ -2567,8 +2568,20 @@
     "createSuccess": "공유 링크를 만들었어요.",
     "createError": "링크 생성에 실패했어요."
   },
+  "AdminWidgetVisibility": {
+    "title": "위젯 노출 관리",
+    "subtitle": "일반 유저 캔버스에 노출할 위젯을 토글합니다. 변경은 즉시 반영되며, 슈퍼어드민 본인은 끈 위젯도 계속 사용할 수 있습니다.",
+    "shown": "노출",
+    "hidden": "숨김",
+    "hiddenBadge": "숨김",
+    "lastUpdated": "마지막 변경 · {when}",
+    "neverUpdated": "변경 이력 없음",
+    "toggleAria": "{name} 일반 유저 노출 토글",
+    "saveError": "변경 저장에 실패했어요. 다시 시도해 주세요."
+  },
   "Shell": {
     "locked": "준비중",
+    "hidden": "숨김",
     "navLabel": "위젯 전체보기 네비게이션",
     "navCollapse": "사이드바 접기",
     "navExpand": "사이드바 펼치기",

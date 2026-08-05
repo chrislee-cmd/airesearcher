@@ -894,6 +894,7 @@
     "adminDesignSystem": "Design system (admin)",
     "adminWritingSystem": "Writing system (admin)",
     "adminAnalytics": "Analytics (admin)",
+    "adminWidgetVisibility": "Widget visibility (admin)",
     "adminQaFeedback": "QA feedback (admin)",
     "adminRecruitingInvitations": "Recruiting requests (admin)",
     "adminRecruitingScheduling": "Recruiting scheduling (admin)"
@@ -2567,8 +2568,20 @@
     "createSuccess": "Share link created.",
     "createError": "Couldn't create the link."
   },
+  "AdminWidgetVisibility": {
+    "title": "Widget visibility",
+    "subtitle": "Toggle which widgets appear on the canvas for regular users. Changes apply immediately; you (super-admin) can still use widgets you turn off.",
+    "shown": "Shown",
+    "hidden": "Hidden",
+    "hiddenBadge": "Hidden",
+    "lastUpdated": "Last changed · {when}",
+    "neverUpdated": "Never changed",
+    "toggleAria": "Toggle visibility of {name} for regular users",
+    "saveError": "Couldn't save the change. Please try again."
+  },
   "Shell": {
     "locked": "Coming soon",
+    "hidden": "Hidden",
     "navLabel": "Widget navigation",
     "navCollapse": "Collapse sidebar",
     "navExpand": "Expand sidebar",

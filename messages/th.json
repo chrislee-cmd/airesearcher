@@ -984,6 +984,7 @@
     "adminDesignSystem": "ระบบดีไซน์ (แอดมิน)",
     "adminWritingSystem": "ระบบการเขียน (แอดมิน)",
     "adminAnalytics": "การวิเคราะห์ (แอดมิน)",
+    "adminWidgetVisibility": "การแสดงวิดเจ็ต (แอดมิน)",
     "adminQaFeedback": "QA feedback (แอดมิน)",
     "adminRecruitingInvitations": "คำขอสรรหาผู้เข้าร่วม (แอดมิน)",
     "adminRecruitingScheduling": "การนัดหมายผู้สมัคร (แอดมิน)"
@@ -2660,8 +2661,20 @@
     "createSuccess": "สร้างลิงก์แชร์แล้ว",
     "createError": "ไม่สามารถสร้างลิงก์ได้"
   },
+  "AdminWidgetVisibility": {
+    "title": "การแสดงวิดเจ็ต",
+    "subtitle": "สลับวิดเจ็ตที่จะแสดงบนแคนวาสสำหรับผู้ใช้ทั่วไป การเปลี่ยนแปลงจะมีผลทันที และผู้ดูแลระบบสูงสุดยังคงใช้วิดเจ็ตที่ปิดไว้ได้",
+    "shown": "แสดง",
+    "hidden": "ซ่อน",
+    "hiddenBadge": "ซ่อน",
+    "lastUpdated": "แก้ไขล่าสุด · {when}",
+    "neverUpdated": "ยังไม่เคยแก้ไข",
+    "toggleAria": "สลับการแสดง {name} สำหรับผู้ใช้ทั่วไป",
+    "saveError": "บันทึกการเปลี่ยนแปลงไม่สำเร็จ โปรดลองอีกครั้ง"
+  },
   "Shell": {
     "locked": "เร็วๆ นี้",
+    "hidden": "ซ่อน",
     "navLabel": "การนำทางวิดเจ็ต",
     "navCollapse": "ยุบแถบด้านข้าง",
     "navExpand": "ขยายแถบด้านข้าง",
