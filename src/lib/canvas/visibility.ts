@@ -1,11 +1,17 @@
 /* ────────────────────────────────────────────────────────────────────
-   Canvas widget visibility — PR1 은 hard-coded map.
-   PR3 에서 db 연동 (org flags / super-admin role) 으로 교체 예정.
+   Canvas widget visibility.
 
-   - 모든 6장 카드 키를 union 으로 노출 (cardId 자동 expanded 진입을 위한
-     SSOT).
-   - 현재 quotes / desk 만 노출. moderator/translate/topline/slidegen 은
-     PR2 본문 합쳐지면 visibility map 만 true 로 바꾸면 자동 노출.
+   - CANVAS_VISIBILITY = **코드 기본값(fallback)**. 실제 노출은 이제 DB 플래그
+     (widget_visibility 테이블)가 이 위에 override 한다 — getCanvasVisibility()
+     (visibility-server.ts)가 요청당 1회 로드. 슈퍼어드민이 /admin/widget-
+     visibility 에서 토글하면 즉시 반영되고, DB 조회 실패 시 이 맵으로 fallback.
+   - 모든 카드 키를 union 으로 노출 (cardId 자동 expanded 진입을 위한 SSOT).
+   - moderator/topline/slidegen = 옛 위젯(코드 기본 false). 토글 화면 미노출 —
+     되살리기는 코드 소관 유지.
+
+   ⚠️ 이 파일은 client-safe(순수 타입/상수)여야 한다 — canvas/page.tsx 외에
+   client 컴포넌트가 import 할 수 있으므로 server-only(next/headers·supabase
+   server) 코드를 두지 말 것. DB 로딩은 visibility-server.ts 에.
    ──────────────────────────────────────────────────────────────────── */
 
 export type CanvasWidgetKey =
@@ -69,6 +75,47 @@ export const CANVAS_ORDER: CanvasWidgetKey[] = [
 
 export function visibleCanvasWidgets(): CanvasWidgetKey[] {
   return CANVAS_ORDER.filter((k) => CANVAS_VISIBILITY[k]);
+}
+
+// 슈퍼어드민 토글 화면(/admin/widget-visibility)이 다루는 위젯 = 현행 노출 9종
+// (CANVAS_ORDER 순서). 옛 숨김 3종(moderator/topline/slidegen)은 제외 —
+// 되살리기는 코드 소관이라 토글 화면엔 미노출. widget_visibility DB 행/시드도
+// 이 9종이 의미 대상 (legacy 3 은 코드 false 로 이미 고정).
+export const TOGGLEABLE_WIDGET_KEYS: readonly CanvasWidgetKey[] = CANVAS_ORDER.filter(
+  (k) => k !== 'moderator' && k !== 'topline' && k !== 'slidegen',
+);
+
+// 순수 해석 함수 — DB 플래그 맵(부분적일 수 있음)을 코드 기본값 위에 override.
+// 슈퍼어드민은 전 위젯 true(캔버스에서 항상 다 봄). server/client 양쪽에서
+// 재사용 가능하도록 side-effect 없이 유지. 반환 shape:
+//   - visible: 뷰어에게 적용될 per-widget 노출 (legacy 3 은 항상 코드값=false)
+//   - hiddenForNormal: 일반 유저에게 off 인 토글 위젯 키(슈퍼어드민 "숨김" 뱃지용)
+export type ResolvedCanvasVisibility = {
+  visible: Record<CanvasWidgetKey, boolean>;
+  hiddenForNormal: CanvasWidgetKey[];
+  isSuperAdmin: boolean;
+};
+
+export function resolveCanvasVisibility(
+  dbFlags: Partial<Record<CanvasWidgetKey, boolean>>,
+  isSuperAdmin: boolean,
+): ResolvedCanvasVisibility {
+  // 일반 유저 기준 effective 노출 = 코드 기본값 ⊕ DB override.
+  const normal = { ...CANVAS_VISIBILITY };
+  for (const k of CANVAS_ORDER) {
+    const flag = dbFlags[k];
+    if (typeof flag === 'boolean') normal[k] = flag;
+  }
+  // 토글 위젯 중 일반 유저에게 off 인 것 = 슈퍼어드민 "숨김" 뱃지 대상.
+  const hiddenForNormal = TOGGLEABLE_WIDGET_KEYS.filter((k) => !normal[k]);
+
+  if (!isSuperAdmin) {
+    return { visible: normal, hiddenForNormal: [], isSuperAdmin: false };
+  }
+  // 슈퍼어드민: 토글 위젯 9종은 전부 true(항상 노출). legacy 3 은 코드값 유지.
+  const superVisible = { ...normal };
+  for (const k of TOGGLEABLE_WIDGET_KEYS) superVisible[k] = true;
+  return { visible: superVisible, hiddenForNormal, isSuperAdmin: true };
 }
 
 // 순차 배포 후순위 — 일반(비-unlimited) 계정 캔버스에서 숨기는 placeholder

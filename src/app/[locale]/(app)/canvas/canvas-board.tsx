@@ -45,6 +45,7 @@ import { widgetGuide } from '@/lib/widget-guides';
 import { useViewMode } from '@/components/view-mode-provider';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
+import { Badge } from '@/components/ui/badge';
 import {
   resolveWidgetLabel,
   type WidgetContent,
@@ -231,6 +232,7 @@ export function CanvasBoard({
   widgets: rawWidgets,
   initialFocus,
   lockedKeys,
+  hiddenBadgeKeys,
   orgId,
 }: {
   widgets: WidgetContent[];
@@ -238,9 +240,17 @@ export function CanvasBoard({
   // 일반계정에서 준비중 게이트로 막을 위젯 key 목록 (서버 page 가 계산해 전달).
   // 비었으면(unlimited) 치환 없음 → 전부 라이브.
   lockedKeys?: string[];
+  // 슈퍼어드민 전용 — 일반 유저에게 노출 off 된 위젯 key. 해당 카드에 "숨김"
+  // 뱃지를 단다(슈퍼어드민은 전 위젯을 보되 어떤 게 일반 유저에게 가려지는지
+  // 구분). 일반 유저에겐 빈 배열이라 뱃지 없음(회귀 0).
+  hiddenBadgeKeys?: string[];
   // vote 저장 컨텍스트 — 활성 org id (nullable).
   orgId?: string | null;
 }) {
+  const hiddenBadgeSet = useMemo(
+    () => new Set(hiddenBadgeKeys ?? []),
+    [hiddenBadgeKeys],
+  );
   // lockedKeys 에 든 위젯의 ExpandedBody 를 WidgetComingSoonGate 로 치환.
   // 서버 page 는 직렬화 가능한 key 목록만 넘기고 실제 컴포넌트 치환은 여기(클라)
   // 에서 — 서버→클라 closure 전달 제약 회피. 나머지 필드(meta/state/dimmed)는
@@ -1211,6 +1221,16 @@ export function CanvasBoard({
                   }}
                 />
                 </div>
+                {/* "숨김" 뱃지 — 슈퍼어드민 캔버스에서 일반 유저에게 노출 off 인
+                    위젯 표시(hiddenBadgeSet). 일반 유저는 set 이 비어 미노출.
+                    카드 우상단에 얹되 pointer-events-none 로 인터랙션 방해 X. */}
+                {hiddenBadgeSet.has(w.key) && (
+                  <div className="pointer-events-none absolute right-3 top-3 z-fab">
+                    <Badge variant="subtle" size="sm">
+                      {tRoot('Shell.hidden')}
+                    </Badge>
+                  </div>
+                )}
                 {/* click-to-focus 오버레이 — scale < FOCUS_THRESHOLD (탐색
                     모드) 에서만 활성. 위젯 표면 전체를 덮어 (1) 내부 컴포넌트로
                     클릭 전달 차단 (멀리서 안 보이는 버튼 오조작 방지), (2) 클릭
