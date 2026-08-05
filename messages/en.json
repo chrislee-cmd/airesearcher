@@ -1758,6 +1758,8 @@
       "zipOutput": "Download translation (.zip)",
       "zipRevised": "Download revised (.zip)",
       "preparingFile": "Preparing file…",
+      "retry": "Retry save",
+      "retrying": "Retrying…",
       "errors": {
         "recorder_failed": "Couldn't start the recorder. Check microphone or tab-audio permissions.",
         "reserve_failed": "Couldn't reserve storage for the recording. Please try again.",

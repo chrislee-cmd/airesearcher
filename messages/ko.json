@@ -1758,6 +1758,8 @@
       "zipOutput": "통역본 다운받기 (.zip)",
       "zipRevised": "재번역 다운받기 (.zip)",
       "preparingFile": "파일 준비 중…",
+      "retry": "녹음 다시 저장",
+      "retrying": "다시 저장 중…",
       "errors": {
         "recorder_failed": "녹음을 시작하지 못했어요. 마이크 또는 탭 오디오 권한을 확인해주세요.",
         "reserve_failed": "녹음 저장 자리를 만들지 못했어요. 잠시 후 다시 시도해주세요.",
