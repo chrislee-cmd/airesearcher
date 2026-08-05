@@ -21,18 +21,39 @@ export type OrgMembership = {
 export const getCurrentUserOrgs = cache(
   async (): Promise<OrgMembership[]> => {
     const supabase = await createClient();
+    // Scope to the caller's OWN membership rows. RLS members_select =
+    // has_org_role(org_id,'viewer') would otherwise leak EVERY member row of
+    // any org the caller belongs to (incl. pending user_id-null invites),
+    // duplicating the switcher and letting a stranger's row poison the
+    // no-cookie active-org fallback (spec §진단). No user = not signed in →
+    // empty list, unchanged behaviour.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
     const { data } = await supabase
       .from('organization_members')
       .select('role, organization:organizations(id, name)')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: true });
-    return (data ?? []).map((row) => {
+
+    const seen = new Set<string>();
+    const orgs: OrgMembership[] = [];
+    for (const row of data ?? []) {
       const o = row.organization as unknown as { id: string; name: string } | null;
-      return {
-        org_id: o?.id ?? '',
+      const orgId = o?.id ?? '';
+      // Defensive dedupe by org_id — keep first (oldest, order preserved) row
+      // in case of stray duplicate memberships.
+      if (seen.has(orgId)) continue;
+      seen.add(orgId);
+      orgs.push({
+        org_id: orgId,
         org_name: o?.name ?? '',
         role: row.role as OrgMembership['role'],
-      };
-    });
+      });
+    }
+    return orgs;
   },
 );
 
