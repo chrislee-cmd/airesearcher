@@ -51,15 +51,17 @@ export async function POST(req: Request) {
   }
   const { project_id, chunk_ids } = parsed.data;
 
-  // Ownership — the project must belong to the requester (interview_projects
-  // "own project rw" RLS, same as the projects/:id route). A project in
-  // another org/user resolves to no row ⇒ 404, so no cross-tenant excerpt ever
-  // leaves this route (spec constraint #2, PII).
+  // Ownership — the project must belong to the caller's active org
+  // (interview_projects org RLS, W1-A). Scoping to org_id (not user_id) lets a
+  // teammate view citations on a project a colleague created — the "문서 열람"
+  // half of coworking — while a project in another org resolves to no row ⇒
+  // 404, so no cross-tenant excerpt ever leaves this route (spec constraint #2,
+  // PII). Single-member orgs behave exactly as the old user_id filter.
   const { data: project, error: projectError } = await supabase
     .from('interview_projects')
     .select('id')
     .eq('id', project_id)
-    .eq('user_id', user.id)
+    .eq('org_id', org.org_id)
     .maybeSingle();
   if (projectError) {
     console.error('[interviews/v2/chunks/resolve] project lookup error', projectError);

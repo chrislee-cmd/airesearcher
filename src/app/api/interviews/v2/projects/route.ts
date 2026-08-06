@@ -6,10 +6,14 @@ import { getActiveOrg } from '@/lib/org';
 // Interview V2 — interview_projects CRUD (collection endpoint).
 //
 // V2 groups interview documents under a project. This handler backs the
-// project picker/list in the V2 widget shell. Ownership is enforced twice:
-// RLS ("own project rw", user_id = auth.uid()) on the table, and an
-// explicit user_id filter / user_id column on write here so a stray org
-// context can never leak another user's rows.
+// project picker/list in the V2 widget shell.
+//
+// org 공유 (W1-A, pr-interview-projects-org-scope): 프로젝트 컨테이너가 org
+// 공유로 전환됐다(RLS = has_org_role(org_id,'viewer')). 목록은 이제 org 축으로
+// 조회하므로 같은 org 의 팀원 프로젝트도 함께 보인다(의도된 변화 — 코워킹).
+// 단일 멤버 org(대부분의 기존 사용자)는 org 필터 == user 필터라 체감 변화 0.
+// 쓰기(POST)는 여전히 user_id = 생성자 를 명시하고, RLS insert 가 member+ 를
+// 요구한다.
 
 const CreateBody = z.object({
   name: z.string().min(1).max(200),
@@ -33,10 +37,13 @@ export async function GET(req: Request) {
   // 보관 = archived_at 이 채워진 row (soft delete). 그 외 값은 default 로 취급.
   const archivedParam = new URL(req.url).searchParams.get('archived') ?? '0';
 
+  // org 축 조회 — 팀원 프로젝트까지 목록에 포함(코워킹). RLS select
+  // (has_org_role viewer or user_id) 가 경계를 강제하므로 org_id 필터는 "이
+  // active org 의 프로젝트만" 으로 좁히는 역할. 단일 멤버 org 는 user 필터와 동치.
   let query = supabase
     .from('interview_projects')
     .select('id, name, description, tags, archived_at, created_at, updated_at')
-    .eq('user_id', user.id);
+    .eq('org_id', org.org_id);
 
   if (archivedParam === '1') query = query.not('archived_at', 'is', null);
   else if (archivedParam !== 'all') query = query.is('archived_at', null);
