@@ -22,6 +22,7 @@ import { RenameProjectModal } from './rename-project-modal';
 import { CrossProjectPicker } from './cross-project-picker';
 import { UploadModal } from './upload-modal';
 import { TagFilterBar } from './tag-filter-bar';
+import { ProjectCard, type ProjectCardStatus } from './project-card';
 
 // Interview V2 — project grid (default fullview). Each card opens the
 // detail view; the trailing "+ 새 프로젝트" tile opens the create modal and,
@@ -59,8 +60,18 @@ function onEnterOrSpace(handler: () => void) {
   };
 }
 
-const CARD =
-  'relative flex cursor-pointer flex-col items-start justify-between gap-4 rounded-sm border border-line bg-paper p-5 text-left transition-colors hover:border-ink focus-visible:outline-none focus-visible:border-amore';
+// "+ 새 프로젝트" 타일 — 카드와 같은 프레임(radius 12·2px)이되 dashed·중립.
+const NEW_TILE =
+  'flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-panel border-2 border-dashed border-line-strong bg-paper text-mute transition-colors hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:border-amore';
+
+// 목록 훅이 제공하는 데이터(파일 수)로 카드 상태 틴트를 보수적으로 파생한다.
+// 훅/API 무변경 제약상 per-project topline 상태(done vs generating vs error)는
+// 조회하지 않으므로, 파일 존재만으로 done/none 을 가른다. generating/error 틴트는
+// ProjectCard 에 구현돼 있으나 라이브 배선은 후속(projects API 에 topline status
+// 노출)에서 — CD 4상태 프레임은 컴포넌트가 전수 지원한다.
+function deriveStatus(documentCount: number): ProjectCardStatus {
+  return documentCount > 0 ? 'done' : 'none';
+}
 
 export function ProjectList({
   onOpenProject,
@@ -282,80 +293,82 @@ export function ProjectList({
         <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (
             <>
-              <Skeleton className="h-[132px] rounded-sm" />
-              <Skeleton className="h-[132px] rounded-sm" />
-              <Skeleton className="h-[132px] rounded-sm" />
+              <Skeleton className="h-[132px] rounded-panel" />
+              <Skeleton className="h-[132px] rounded-panel" />
+              <Skeleton className="h-[132px] rounded-panel" />
             </>
           ) : (
             <>
               {visibleProjects.map((p) => (
-                <div
+                <ProjectCard
                   key={p.id}
-                  role="button"
-                  tabIndex={0}
-                  className={CARD}
-                  onClick={() => onOpenProject(p.id)}
-                  onKeyDown={onEnterOrSpace(() => onOpenProject(p.id))}
-                >
-                  {/* kebab — 카드 우상단. 클릭/키 이벤트를 카드로 흘리지 않게
-                      래퍼에서 stopPropagation (아니면 메뉴 열기가 프로젝트도 연다). */}
-                  <div
-                    className="absolute right-2 top-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                    role="presentation"
-                  >
-                    <DropdownMenu
-                      align="end"
-                      items={menuItems(p)}
-                      trigger={({ open, onClick, ...aria }) => (
-                        <IconButton
-                          {...aria}
-                          data-open={open}
-                          aria-label={t('projectMenu')}
-                          variant="ghost"
-                          size="sm"
-                          onClick={onClick}
-                        >
-                          <span aria-hidden>⋯</span>
-                        </IconButton>
-                      )}
-                    />
-                  </div>
-                  {/* 정보 계층: 제목 → 메타(문서 수 · 최근 수정) → 설명 → 태그칩.
-                      태그는 읽기전용 칩(라벨만) — 편집은 kebab "편집" 모달로 이동. */}
-                  <div className="min-w-0 w-full pr-8">
-                    <div className="truncate text-lg font-semibold text-ink-2">
-                      {p.name}
-                    </div>
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-mute-soft tabular-nums">
-                      <span>{t('documentCount', { count: p.document_count })}</span>
-                      <span aria-hidden>·</span>
-                      <span>
-                        {t('updatedAt', {
-                          time: relativeTime(p.updated_at, locale),
-                        })}
-                      </span>
-                    </div>
-                    {p.description && (
-                      <div className="mt-2 line-clamp-2 text-sm text-mute-soft">
-                        {p.description}
-                      </div>
-                    )}
-                    {p.tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {p.tags.map((tag, idx) => (
-                          <span
-                            key={`${tag}-${idx}`}
-                            className="inline-flex items-center rounded-xs bg-amore-bg px-2 py-0.5 text-xs text-amore"
+                  name={p.name}
+                  status={deriveStatus(p.document_count)}
+                  onOpen={() => onOpenProject(p.id)}
+                  menu={
+                    // kebab — 헤더 스트립 우측. 클릭/키를 카드로 흘리지 않게
+                    // 래퍼에서 stopPropagation (아니면 메뉴 열기가 프로젝트도 연다).
+                    <div
+                      className="-my-1 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
+                      <DropdownMenu
+                        align="end"
+                        items={menuItems(p)}
+                        trigger={({ open, onClick, ...aria }) => (
+                          <IconButton
+                            {...aria}
+                            data-open={open}
+                            aria-label={t('projectMenu')}
+                            variant="ghost"
+                            size="sm"
+                            onClick={onClick}
                           >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                            <span aria-hidden>⋯</span>
+                          </IconButton>
+                        )}
+                      />
+                    </div>
+                  }
+                >
+                  {/* 본문: 설명 → 메타(파일 수 · 최근 수정) → 태그칩. 태그는
+                      읽기전용 칩 — 편집은 kebab "편집" 모달로. */}
+                  {p.description && (
+                    <div className="line-clamp-2 text-sm leading-[1.6] text-ink-2">
+                      {p.description}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 tabular-nums">
+                    <span
+                      className="font-mono-label text-mute-soft"
+                      style={{ fontSize: 10.5 }}
+                    >
+                      {t('documentCount', { count: p.document_count })}
+                    </span>
+                    <span
+                      className="ml-auto font-mono-label text-faint"
+                      style={{ fontSize: 10.5 }}
+                    >
+                      {t('updatedAt', {
+                        time: relativeTime(p.updated_at, locale),
+                      })}
+                    </span>
                   </div>
-                </div>
+                  {p.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.tags.map((tag, idx) => (
+                        <span
+                          key={`${tag}-${idx}`}
+                          className="inline-flex items-center rounded-xs bg-amore-bg px-2 py-0.5 text-xs text-amore"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </ProjectCard>
               ))}
 
               {/* "+ 새 프로젝트" 타일은 활성 탭에서만. 보관 탭에서 생성 유도 X. */}
@@ -363,7 +376,7 @@ export function ProjectList({
                 <div
                   role="button"
                   tabIndex={0}
-                  className={`${CARD} min-h-[132px] items-center justify-center border-dashed text-mute hover:text-ink`}
+                  className={NEW_TILE}
                   onClick={() => setCreateOpen(true)}
                   onKeyDown={onEnterOrSpace(() => setCreateOpen(true))}
                 >
