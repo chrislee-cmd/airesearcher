@@ -160,6 +160,7 @@ export function ReportBanner({
 // ── 상태: 빈(2a) ────────────────────────────────────────────────────
 
 const LANG_OPTIONS = [
+  // i18n-allow-korean -- 언어 자기표기(로케일 무관 self-label · topline-view 선례)
   { value: 'ko', label: '한국어' },
   { value: 'en', label: 'English' },
   { value: 'ja', label: '日本語' },

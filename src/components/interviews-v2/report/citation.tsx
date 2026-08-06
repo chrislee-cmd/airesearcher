@@ -194,6 +194,7 @@ function CitationChip({
   // 연속 칩은 margin-left 2, 첫 칩은 3 (§1.4 / GEOMETRY §C5).
   first: boolean;
 }) {
+  const t = useTranslations('InterviewsV2');
   const ctx = useContext(CitationCtx);
   const [open, setOpen] = useState(false);
   const data = ctx?.get(chunkId) ?? 'unavailable';
@@ -215,7 +216,7 @@ function CitationChip({
           setOpen(true);
         }}
         onBlur={() => setOpen(false)}
-        aria-label={`근거 ${n}`}
+        aria-label={t('citationChunk', { n })}
         className={`inline-block translate-y-[-3px] rounded-xs border border-rose bg-rose-bg px-1 font-mono-label text-xs font-extrabold leading-none text-amore-deep ${
           first ? 'ml-[3px]' : 'ml-[2px]'
         }`}
