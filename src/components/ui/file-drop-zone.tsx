@@ -86,8 +86,11 @@ export function FileDropZone({
   const memphisBorder = dragOver
     ? 'var(--canvas-accent)'
     : 'var(--canvas-card-border)';
+  // 활성(drag-over) 드롭존 그림자 = --shadow-dropzone 토큰 (interview-results
+  // BUILD-SPEC §2 A 승격). 기존 인라인 `4px4px0 var(--canvas-card-border)`(solid
+  // ink) → CD 지정 ink/16(rgba .16) 로 정정 — CD 가 비주얼 SSOT.
   const memphisShadow = dragOver
-    ? '4px 4px 0 var(--canvas-card-border)'
+    ? 'var(--shadow-dropzone)'
     : 'var(--memphis-shadow-sm)';
   const memphisBg = dragOver
     ? 'var(--sidebar-nav-bg-hover)'

@@ -15,7 +15,8 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -67,7 +68,15 @@ export function FullviewHeader({
     // 폴더 오버랩(active=surface-canvas)을 만든다(CD).
     <header
       className="shrink-0 border-b-2 border-ink"
-      style={tone ? { background: tone } : undefined}
+      // tone 은 배경이자, 헤더 하위 DuotoneIcon(프로젝트 pill 등)의 채움 소스.
+      // `--widget-tone` 을 여기서 노출하면 pill 아이콘이 각 위젯 헤더 톤을
+      // 상속한다(widget-shell 카드의 헤더↔아이콘 매칭과 동일 단일 소스). 미지정
+      // 시 DuotoneIcon 기본 폴백(rose 파스텔).
+      style={
+        tone
+          ? ({ background: tone, '--widget-tone': tone } as CSSProperties)
+          : undefined
+      }
     >
       <div className="flex items-center gap-[11px] px-6 py-[13px]">
         <div className="flex min-w-0 flex-1 items-center gap-[14px]">
@@ -133,8 +142,8 @@ const ARCHIVE_ICON = (
   </svg>
 );
 
-// 프로젝트 pill — 📁 + 이름 + ▾. paper · border 1.5 ink · radius-pill ·
-// memphis-sm.
+// 프로젝트 pill — project 듀오톤 아이콘 + 이름 + ▾. paper · border 1.5 ink ·
+// radius-pill · memphis-sm. (아이콘은 헤더 --widget-tone 상속 — §6-5c.)
 //
 // 두 모드 (CD closed-state 비주얼은 동일, 동작만 위젯 소유 — BUILD-SPEC §26
 // "project dropdown = worker owns"):
@@ -195,9 +204,9 @@ export function FullviewProjectPill({
 
   const content = (
     <>
-      <span aria-hidden className="text-lg">
-        📁
-      </span>
+      {/* 프로젝트 pill 아이콘 — 📁 이모지 대체(§6-5c). 채움은 헤더가 노출한
+          `--widget-tone`(각 위젯 헤더 톤) 상속, 셸 1곳 수정으로 6위젯 동시 정리. */}
+      <DuotoneIcon name="project" size={16} />
       <span className="text-md font-bold text-ink">{name}</span>
       <span aria-hidden className="text-xs text-ink">
         {trailing ?? '▾'}

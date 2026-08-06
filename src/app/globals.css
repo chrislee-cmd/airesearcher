@@ -560,6 +560,17 @@
   --color-am-accent: var(--raw-signal-am);
   --color-pm-accent: var(--raw-signal-pm);
 
+  /* Categorical chart scale (chart.cat-1…6) — interview-results BUILD-SPEC §0.5.
+     전부 기존 토큰 별칭(새 hex 아님 — 임의 #f97316·#a855f7 삭제 대체). 계열 1개
+     막대/선은 cat-1 만(무지개 금지), 파이·누적은 1→6 순서·7개째부터 mute-soft
+     "기타". 5·6이 signal 색과 겹치는 것은 의도(§0.5). am/pm-accent 는 별도 용도. */
+  --color-chart-cat-1: var(--color-amore);          /* amore */
+  --color-chart-cat-2: var(--color-accent-blue);    /* accent-blue */
+  --color-chart-cat-3: var(--color-amber);          /* amber */
+  --color-chart-cat-4: var(--color-accent-violet);  /* accent-violet */
+  --color-chart-cat-5: var(--color-success);        /* success */
+  --color-chart-cat-6: var(--color-mute);           /* mute */
+
   /* Signal */
   --color-success: var(--raw-signal-success);
   --color-success-soft: var(--raw-signal-success-soft);
@@ -735,6 +746,7 @@
   --shadow-memphis-md-success: var(--raw-memphis-md) 0 var(--color-success); /* done 성공 카드 초록 offset (Canvas 1c transDone) · recsched 토스트(BUILD-SPEC §2)도 재사용 */
   --shadow-memphis-md-amber: var(--raw-memphis-md) 0 var(--color-tag-confusion); /* recsched 공지배너 amber offset (BUILD-SPEC §2) — amber #e0a83a = tag-confusion 과 동일 값 재사용(중복 민팅 회피) */
   --shadow-memphis-md-error: var(--raw-memphis-md) 0 var(--color-error); /* ADDED 2.0 — error 상태 카드 */
+  --shadow-memphis-md-processing: var(--raw-memphis-md) 0 rgba(139, 92, 246, 0.35); /* interview-results BUILD-SPEC §2 A — stuck 배너·순회중 파일 행 (accent-violet 35%). md-error/amber 와 짝 */
   --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격) */
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 var(--color-ink);
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
@@ -743,6 +755,8 @@
   --shadow-frame: 8px 8px 0 rgba(29, 27, 32, 0.28); /* full-surface frame (fullview·library·share) = --fv-frame-shadow 승격 */
   --shadow-modal-amber: 8px 8px 0 var(--color-amber); /* spotlight 모달 = --fv-shadow-modal-amber 승격 */
   --shadow-tile-lift: 0 6px 20px rgba(29, 27, 32, 0.08); /* the ONE soft shadow — 참가자 비디오 타일·인모니터 mock UI */
+  --shadow-popover: 4px 4px 0 rgba(29, 27, 32, 0.20); /* interview-results BUILD-SPEC §2 A — 근거 팝오버·부유 카드 (memphis-lg 불투명과 sm-faint 사이 갭) */
+  --shadow-dropzone: 4px 4px 0 rgba(29, 27, 32, 0.16); /* interview-results BUILD-SPEC §2 A — 활성 드롭존 (file-drop-zone.tsx 인라인값 승격) */
 
   /* Soft selection glow — Canvas 1c 카드 프레임 method 카드 선택(R6, proposed).
      memphis 하드 오프셋(--raw-memphis-*)과 달리 blur 소프트 글로우로, 선택 카드에

@@ -443,6 +443,15 @@ export function TopbarAccount({
                 {t('adminAnalytics')}
               </PopoverLink>
               <PopoverLink
+                href="/admin/widget-visibility"
+                onClick={() => {
+                  track('admin_widget_visibility_open_click');
+                  setOpen(false);
+                }}
+              >
+                {t('adminWidgetVisibility')}
+              </PopoverLink>
+              <PopoverLink
                 href="/design-system"
                 onClick={() => {
                   track('admin_design_system_open_click');

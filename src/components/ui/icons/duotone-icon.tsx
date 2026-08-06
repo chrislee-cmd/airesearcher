@@ -30,7 +30,10 @@ export type DuotoneIconName =
   | 'host' | 'guest' | 'language' | 'project' | 'questions' | 'keywords'
   | 'target' | 'document' | 'upload' | 'interpret' | 'speakers' | 'typos'
   | 'polish' | 'link' | 'waiting' | 'start' | 'stop' | 'audio' | 'fullview'
-  | 'search' | 'trend' | 'market';
+  | 'search' | 'trend' | 'market'
+  // interview-results 리디자인 신규 3종 (BUILD-SPEC §2 A-2, 경로 SSOT = .dc.html)
+  // + chevron(단색 ink · 파일 패널 펼치기, §1.5).
+  | 'download' | 'regenerate' | 'dataset' | 'chevron';
 
 // f = 듀오톤 채움색. paths(name) 에서 fill 지정된 요소만 채워지고 나머지는
 // 순수 스트로크. mono 모드는 호출부에서 f='none' 을 넘긴다.
@@ -64,6 +67,11 @@ function paths(name: DuotoneIconName, f: string): ReactNode[] {
     case 'trend': return [<path key={0} d="M4 16l5-5 4 3 7-8" />, <path key={1} d="M15 6h5v5" />];
     case 'market': return [<rect key={0} x={4} y={11} width={4} height={8} rx={1} fill={f} />, <rect key={1} x={10} y={7} width={4} height={12} rx={1} fill={f} />, <rect key={2} x={16} y={4} width={4} height={15} rx={1} fill={f} />];
     case 'search': return [<circle key={0} cx={11} cy={11} r={6} fill={f} />, <path key={1} d="M20 20l-4-4" />];
+    // interview-results 신규 (BUILD-SPEC §2 A-2 — .dc.html 인라인 경로 그대로).
+    case 'download': return [<path key={0} d="M12 4v11" />, <path key={1} d="M8 11l4 4 4-4" />, <path key={2} d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />]; // upload 화살표 뒤집은 짝(순수 스트로크)
+    case 'regenerate': return [<path key={0} d="M20 12a8 8 0 1 1-2.6-5.9" />, <path key={1} d="M20 4v5h-5z" fill={f} />]; // 호 스트로크 + 화살촉 채움
+    case 'dataset': return [<rect key={0} x={4} y={4} width={16} height={16} rx={1.6} fill={f} />, <path key={1} d="M4 9.5h16M9.5 9.5V20" />]; // 표 형식 파일(csv·xlsx)
+    case 'chevron': return [<path key={0} d="M9 5l7 7-7 7" />]; // §1.5 단색 ink — 채움 없는 스트로크
     default: return [];
   }
 }

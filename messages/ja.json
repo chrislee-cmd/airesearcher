@@ -984,6 +984,7 @@
     "adminDesignSystem": "デザインシステム（管理者）",
     "adminWritingSystem": "ライティングシステム（管理者）",
     "adminAnalytics": "アナリティクス（管理者）",
+    "adminWidgetVisibility": "ウィジェット表示管理（管理者）",
     "adminQaFeedback": "QAフィードバック（管理者）",
     "adminRecruitingInvitations": "リクルーティングリクエスト（管理者）",
     "adminRecruitingScheduling": "候補者スケジューリング（管理者）"
@@ -2662,8 +2663,20 @@
     "createSuccess": "共有リンクを作成しました。",
     "createError": "リンクの作成に失敗しました。"
   },
+  "AdminWidgetVisibility": {
+    "title": "ウィジェット表示管理",
+    "subtitle": "一般ユーザーのキャンバスに表示するウィジェットを切り替えます。変更は即時反映され、スーパー管理者は無効にしたウィジェットも引き続き利用できます。",
+    "shown": "表示",
+    "hidden": "非表示",
+    "hiddenBadge": "非表示",
+    "lastUpdated": "最終変更 · {when}",
+    "neverUpdated": "変更履歴なし",
+    "toggleAria": "{name} の一般ユーザー向け表示を切り替え",
+    "saveError": "変更を保存できませんでした。もう一度お試しください。"
+  },
   "Shell": {
     "locked": "近日公開",
+    "hidden": "非表示",
     "navLabel": "ウィジェットナビゲーション",
     "navCollapse": "サイドバーを折りたたむ",
     "navExpand": "サイドバーを広げる",
