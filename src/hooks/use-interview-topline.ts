@@ -393,6 +393,12 @@ export type ToplineStatusState = {
   mapDone: number | null;
   // 카드 abstract 파생용 blocks. generating 중엔 비어 있다가 done 에서 채워진다.
   blocks: ToplineBlock[];
+  // abstract 카드 헤더 메타(BUILD-SPEC §1.1, S1 1e) — GET 응답에서 그대로 실어
+  // 나른다(읽기 전용 passthrough, 새 fetch/트리거 없음). realtime UPDATE 페이로드에는
+  // 없으므로 prev 값을 보존하고, done 전이 시 GET 재조회가 최신값을 채운다.
+  generatedAt: string | null;
+  model: string | null;
+  outputLang: string | null;
   // 초기 GET 로딩 중 — 카드가 skeleton 을 그려 status='none' 순간 깜빡임을 막는다.
   loading: boolean;
 };
@@ -412,6 +418,9 @@ export function useInterviewToplineStatus(
     mapTotal: null,
     mapDone: null,
     blocks: [],
+    generatedAt: null,
+    model: null,
+    outputLang: null,
     loading: true,
   });
   const aliveRef = useRef(true);
@@ -442,6 +451,9 @@ export function useInterviewToplineStatus(
         mapTotal: r.map_total,
         mapDone: r.map_done,
         blocks: Array.isArray(r.blocks) ? r.blocks : [],
+        generatedAt: r.generated_at,
+        model: r.model,
+        outputLang: r.output_lang,
         loading: false,
       });
     } catch {
@@ -458,6 +470,9 @@ export function useInterviewToplineStatus(
         mapTotal: null,
         mapDone: null,
         blocks: [],
+        generatedAt: null,
+        model: null,
+        outputLang: null,
         loading: false,
       });
       return;
@@ -498,6 +513,10 @@ export function useInterviewToplineStatus(
             mapDone:
               next.map_done !== undefined ? next.map_done : prev.mapDone,
             blocks: Array.isArray(next.blocks) ? next.blocks : prev.blocks,
+            // 페이로드에 없는 abstract 메타는 보존 — done 전이 시 아래 loadStatus 가 갱신.
+            generatedAt: prev.generatedAt,
+            model: prev.model,
+            outputLang: prev.outputLang,
             loading: false,
           }));
           if (next.status === 'done' || next.status === 'error') {
