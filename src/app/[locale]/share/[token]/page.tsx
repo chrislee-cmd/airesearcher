@@ -2,7 +2,11 @@ import { setRequestLocale } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
-import { assertInvitedViewer, isShareExpired } from '@/lib/share/shared-views';
+import {
+  assertInvitedViewer,
+  isShareExpired,
+  recordShareView,
+} from '@/lib/share/shared-views';
 import { loadShareResource } from '@/lib/share/viewer-resource';
 import {
   verifyViewerCookie,
@@ -34,7 +38,7 @@ export default async function Page({
   // 1) 죽은 링크는 이메일 게이트를 띄우지 않고 바로 안내(데이터 0).
   const { data: share } = await admin
     .from('shared_views')
-    .select('resource_type, resource_id, expires_at, revoked_at')
+    .select('id, resource_type, resource_id, expires_at, revoked_at')
     .eq('token', token)
     .maybeSingle();
   if (!share) return <ShareNotice variant="invalid" />;
@@ -72,6 +76,8 @@ export default async function Page({
       );
       // 원본이 삭제된 dangling 공유 → 데이터 노출 없이 무효 안내.
       if (!resource) return <ShareNotice variant="invalid" />;
+      // 게이트 통과 + 실렌더 경로에서만 열람 집계(best-effort, 렌더 비차단).
+      await recordShareView(admin, share.id as string);
       return <ShareViewerFrame resource={resource} />;
     }
     // 죽은 링크는 위에서 이미 걸렀지만 레이스 대비 — reason 별 안내.
