@@ -1,30 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { WidgetFullviewPanel } from '@/components/canvas/shell/widget-fullview-panel';
 import { Button } from '@/components/ui/button';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { ProjectList } from './project-list';
-import { ProjectDetail } from './project-detail';
 import { SearchChat } from './search-chat';
+import { InterviewReadDetail } from './report/interview-read-detail';
 
-// Interview V2 fullview — the widget card body stays the legacy
-// InterviewAnalyzer (사용자 결정), while "전체 보기" opens this V2 shell:
-// a project list ↔ project detail stack, plus an opt-in cross-project search
-// surface. Rendered into the shared FullviewShell slot by interviews-card
-// (renderInSlot); onClose closes the shared modal. The view toggle is local
-// state, so re-opening the fullview returns to the list.
+// Interview V2 fullview — 공유 <FullviewShell> 우 슬롯 본문 (fullviewV2 수렴,
+// pr-iv-fullview-shell-read §0.1). 구형 WidgetFullviewPanel 경로 폐기: 셸이
+// 프레임·240px 사이드바·헤더밴드(rose)·닫기✕ 를 소유하므로 이 본문은 슬롯
+// 콘텐츠만 렌더한다(자체 헤더 없음). 상세는 fresh 읽기 모드(InterviewReadDetail).
 //
-// view state: 'list' (default) · a project id string (detail) · 'cross'
-// (전체 프로젝트 검색, SearchChat scoped to the picked project ids).
+// view state: 'list'(기본) · project id(detail) · 'cross'(전체 프로젝트 검색).
 type View =
   | { kind: 'list' }
   | { kind: 'detail'; id: string }
   | { kind: 'cross'; projectIds: string[] };
 
-// Cross-project search — a thin shell (back header + full-width SearchChat)
-// since there's no single project's file list to show. The picked project
-// ids (from CrossProjectPicker) fix the search scope.
+// 크로스 검색 — 얇은 셸(뒤로 헤더 + 전폭 SearchChat). 리스킨은 C3 — 기존
+// 컴포넌트 그대로 마운트.
 function CrossSearch({
   projectIds,
   onBack,
@@ -35,12 +31,12 @@ function CrossSearch({
   const t = useTranslations('InterviewsV2');
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-6 py-3">
+      <div className="flex shrink-0 items-center gap-2 border-b-2 border-ink bg-paper px-6 py-3">
         <Button variant="ghost" size="sm" onClick={onBack}>
           ← {t('back')}
         </Button>
         <span className="truncate text-md font-semibold text-ink-2">
-          🌐 {t('crossSearch')}
+          {t('crossSearch')}
         </span>
       </div>
       <div className="min-h-0 flex-1">
@@ -51,37 +47,35 @@ function CrossSearch({
 }
 
 export function InterviewV2Fullview({
-  onClose,
   initialProjectId,
 }: {
-  onClose: () => void;
-  // When opened straight into a project (e.g. right after a widget-view
-  // upload), land on that project's detail instead of the list. The
-  // fullview remounts on every open (portal returns null while closed), so
-  // this initial value is honoured each time it opens.
+  // 셸이 닫기✕ 를 소유하므로 onClose 는 더 이상 본문이 쓰지 않는다(카드 호출
+  // 시그니처 유지용으로만 optional 로 남긴다).
+  onClose?: () => void;
   initialProjectId?: string | null;
 }) {
-  const t = useTranslations('InterviewsV2');
+  const { projects } = useInterviewV2Projects();
   const [view, setView] = useState<View>(
     initialProjectId
       ? { kind: 'detail', id: initialProjectId }
       : { kind: 'list' },
   );
 
+  const detailName = useMemo(
+    () =>
+      view.kind === 'detail'
+        ? (projects.find((p) => p.id === view.id)?.name ?? '')
+        : '',
+    [projects, view],
+  );
+
   return (
-    <WidgetFullviewPanel
-      title={t('fullviewTitle')}
-      subtitle={t('fullviewSubtitle')}
-      onClose={onClose}
-      closeLabel={t('close')}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       {view.kind === 'detail' ? (
-        <ProjectDetail
+        <InterviewReadDetail
           projectId={view.id}
+          projectName={detailName}
           onBack={() => setView({ kind: 'list' })}
-          onOpenCrossSearch={(projectIds) =>
-            setView({ kind: 'cross', projectIds })
-          }
         />
       ) : view.kind === 'cross' ? (
         <CrossSearch
@@ -96,6 +90,6 @@ export function InterviewV2Fullview({
           }
         />
       )}
-    </WidgetFullviewPanel>
+    </div>
   );
 }
