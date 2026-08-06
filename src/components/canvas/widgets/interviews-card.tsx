@@ -504,6 +504,12 @@ export const interviewsCard: WidgetContent = {
     description:
       '여러 인터뷰 파일을 프로젝트에 올리고, 코퍼스에 자연어로 질문해 근거 인용과 함께 답을 받습니다.',
     expandedCols: 3,
+    // Canvas 1c 카드 프레임 opt-in — desk·moderator-ai·probing·quotes·recruiting·
+    // translate 와 동일 공유 셸(파스텔 rose 헤더밴드 + 통합 툴바 💎10). 이 플래그가
+    // 없으면 구형 banner-top chrome(140px) 로 폴백 → accent 미소비(행 위치 색으로
+    // 폴백)라 rose 정체성이 카드에 안 보였다. S1 5모드 본문은 이미 cardFrame 규약
+    // (CardScroll flex-1 스크롤 host + CardFooter shrink-0 pinned)에 맞춰 지어졌다.
+    cardFrame: true,
     // 풀뷰 V2 — 구형 WidgetFullviewPanel 폐기, 공유 FullviewShell 로 렌더
     // (프레임+240px 사이드바+§F3 헤더 스캐폴드, 헤더밴드 톤 = accent rose).
     fullviewV2: true,
