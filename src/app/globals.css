@@ -698,6 +698,15 @@
      globals(--raw-radius-canvas-button)가 governs (제약: canvas override 그대로). */
   --radius-mode-card: 13px;
 
+  /* interview-results 읽기 모드 로컬 레이아웃 폭 (BUILD-SPEC §2 B — 셸-스코프,
+     승격 보류). 임의값 w-[132px]·grid-cols-5·h-60 을 이름 붙은 토큰으로 대체해
+     "임의값 grep 0"(§3-6)을 지킨다. 재사용되면 그때 전역 승격. */
+  --iv-lang-select-w: 132px;  /* 언어 셀렉트 — 6개 라벨 최장(Español) 미절단 최소치 */
+  --iv-file-panel-w: 300px;   /* 파일 패널 펼침(none/loading/generating) */
+  --iv-file-rail-w: 56px;     /* 파일 패널 접힘(done 기본) */
+  --iv-toc-w: 220px;          /* 목차 rail (done 한정) */
+  --iv-body-col-w: 764px;     /* 보고서 본문 컬럼 고정(거터 미구현, GEOMETRY §C1) */
+
   /* Font-size scale (B-1, option C — conservative consolidation).
      Bucket boundaries derived from frequency audit of 781 text-[Npx]
      literals. Each token absorbs adjacent half-px sizes that pair to
@@ -749,6 +758,7 @@
   --shadow-memphis-md-processing: var(--raw-memphis-md) 0 rgba(139, 92, 246, 0.35); /* interview-results BUILD-SPEC §2 A — stuck 배너·순회중 파일 행 (accent-violet 35%). md-error/amber 와 짝 */
   --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격) */
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 var(--color-ink);
+  --shadow-memphis-lg-faint: var(--raw-memphis-lg) 0 rgba(29, 27, 32, 0.16); /* interview-results BUILD-SPEC §1.3 — executive_summary 카드(4px4px0 ink/16 · 솔리드 lg 보다 약함, memphis-*-faint 패밀리) */
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
   /* ADDED 2.0 — 신규 shadow 패밀리 (tokens.json 2.0 shadow.*). 기존 셸-스코프 --fv-
      로컬 정의와 값 동일한 것은 @theme util 로 승격해 전 앱에서 소비 가능하게. */

@@ -493,6 +493,7 @@ function ExpandedBody() {
 // 인터뷰 결과 생성기 canvas widget — S1 리디자인(rose 정체성 + 5모드 fresh +
 // ambient 밴드). 헤더밴드/툴바/프레임은 WidgetShell 소유(무변경), 본문만 교체.
 // accent = rose (peach 는 AI UT 로 복귀 — TOKEN-DECISIONS §E).
+// fullviewV2 = 공유 <FullviewShell> 수렴(pr-iv-fullview-shell-read §0.1).
 export const interviewsCard: WidgetContent = {
   key: 'interviews',
   meta: {
@@ -503,6 +504,10 @@ export const interviewsCard: WidgetContent = {
     description:
       '여러 인터뷰 파일을 프로젝트에 올리고, 코퍼스에 자연어로 질문해 근거 인용과 함께 답을 받습니다.',
     expandedCols: 3,
+    // 풀뷰 V2 — 구형 WidgetFullviewPanel 폐기, 공유 FullviewShell 로 렌더
+    // (프레임+240px 사이드바+§F3 헤더 스캐폴드, 헤더밴드 톤 = accent rose).
+    fullviewV2: true,
+    fullviewFootnoteKey: 'InterviewsV2.fullviewSidebarNote',
   },
   state: 'idle',
   ExpandedBody,
