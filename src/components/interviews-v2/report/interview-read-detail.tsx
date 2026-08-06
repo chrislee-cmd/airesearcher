@@ -29,7 +29,6 @@ import { useInterviewTopline } from '@/hooks/use-interview-topline';
 import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
 import { useFullviewHeaderSlotPublisher } from '@/components/canvas/shell/fullview-header-slot-context';
 import { FullviewProjectPill } from '@/components/canvas/fullview/fullview-header';
-import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { DuotoneIcon, type DuotoneIconName } from '@/components/ui/icons/duotone-icon';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
@@ -39,6 +38,9 @@ import { UploadModal } from '../upload-modal';
 import { SearchChat } from '../search-chat';
 import { CitationResolveProvider } from './citation';
 import { ReportBody, buildToc } from './report-blocks';
+import { ReportEditBody } from './report-edit-body';
+import { RegenerateModal } from './regenerate-modal';
+import { InterviewShareModal } from './share-modal';
 import {
   ReportBanner,
   ReportEmpty,
@@ -98,6 +100,55 @@ function ActionPill({
     >
       {icon && <DuotoneIcon name={icon} size={15} />}
       {label}
+    </button>
+  );
+}
+
+// 내보내기 pill 3상태(§S4c) — idle / busy(lav) / done(success). Word·Gdoc 공용.
+// 진행 중엔 다시 못 누르고, done 은 4초 뒤 idle 로 자동 복귀(호출측 타이머).
+type ExportPhase = 'idle' | 'busy' | 'done';
+function ExportPill({
+  phase,
+  icon,
+  idleLabel,
+  busyLabel,
+  doneLabel,
+  onClick,
+  disabled,
+}: {
+  phase: ExportPhase;
+  icon: DuotoneIconName;
+  idleLabel: string;
+  busyLabel: string;
+  doneLabel: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  if (phase === 'busy') {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-lav-line bg-lav-bg px-3.5 py-1.5 text-md font-bold text-lav-text">
+        <span aria-hidden className="h-[6px] w-[6px] rounded-full bg-processing" />
+        {busyLabel}
+      </span>
+    );
+  }
+  if (phase === 'done') {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-success-line bg-success-bg px-3.5 py-1.5 text-md font-extrabold text-success-text">
+        ✓ {doneLabel}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line react/forbid-elements -- CD S3/S4c 내보내기 pill 은 rounded-pill·memphis-sm-faint 전용 chrome; Button variant 형태와 불일치(FullviewHeader pill 선례).
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3.5 py-1.5 text-md font-bold text-ink shadow-memphis-sm-faint disabled:opacity-45"
+    >
+      <DuotoneIcon name={icon} size={15} />
+      {idleLabel}
     </button>
   );
 }
@@ -163,8 +214,11 @@ export function InterviewReadDetail({
     mapDone,
     generatingStale,
     savedLang,
+    savedDirection,
+    source,
     generatedAt,
     errorMessage,
+    applyBlockMd,
   } = useInterviewTopline(projectId);
   const { documents, mutate } = useInterviewV2Documents(projectId);
 
@@ -186,6 +240,21 @@ export function InterviewReadDetail({
 
   // 우측 탭 — 탑라인(기본) / 검색. 둘 다 상시 mount(hidden 전환).
   const [rightTab, setRightTab] = useState<RightTab>('topline');
+
+  // 편집 모드 — 읽기 기본(false). ON 일 때만 SectionGap ＋ · drag-to-ask · 삽입
+  // 카드 액션이 렌더된다(§0.4 — 읽기 DOM 엔 어포던스가 미렌더, display 토글 아님).
+  const [editMode, setEditMode] = useState(false);
+  // 재생성 방향 모달 · 공유 모달.
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  // 내보내기 3상태 — Word · Gdoc. done 은 4초 뒤 idle 자동 복귀(§S4c).
+  const [wordPhase, setWordPhase] = useState<ExportPhase>('idle');
+  const [gdocPhase, setGdocPhase] = useState<ExportPhase>('idle');
+  const exportTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(
+    () => () => exportTimers.current.forEach(clearTimeout),
+    [],
+  );
 
   // 파일 패널 접힘 — done 기본 접힘(56), 그 외 펼침(300). 사용자 토글 존중 +
   // generating→done 전이 시 1회 자동 접힘.
@@ -224,8 +293,10 @@ export function InterviewReadDetail({
       ),
   });
 
-  // Word 다운로드 — attachment GET(쿠키 포함 네비게이션).
+  // Word 다운로드 — attachment GET(쿠키 포함 네비게이션). 즉시 다운로드라 busy
+  // 없이 done 표시(4초 뒤 idle).
   const downloadWord = () => {
+    if (wordPhase !== 'idle') return;
     const a = document.createElement('a');
     a.href = `/api/interviews/v2/topline/export?project_id=${encodeURIComponent(
       projectId,
@@ -234,13 +305,14 @@ export function InterviewReadDetail({
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setWordPhase('done');
+    exportTimers.current.push(setTimeout(() => setWordPhase('idle'), 4000));
   };
 
   // Google Docs 공유 — admin Drive 변환 → 링크 복사 + 새 탭.
-  const [sharing, setSharing] = useState(false);
   const shareGoogleDocs = async () => {
-    if (sharing) return;
-    setSharing(true);
+    if (gdocPhase !== 'idle') return;
+    setGdocPhase('busy');
     try {
       const res = await fetch('/api/interviews/v2/topline/share-gdoc', {
         method: 'POST',
@@ -259,6 +331,7 @@ export function InterviewReadDetail({
             : `${t('toplineShareError')} (${code})`,
           { tone: 'warn' },
         );
+        setGdocPhase('idle');
         return;
       }
       try {
@@ -268,21 +341,30 @@ export function InterviewReadDetail({
         toast.push(t('toplineShareOpened'), { tone: 'amore' });
       }
       window.open(json.url, '_blank', 'noopener,noreferrer');
+      setGdocPhase('done');
+      exportTimers.current.push(setTimeout(() => setGdocPhase('idle'), 4000));
     } catch (e) {
       toast.push(
         `${t('toplineShareError')} (${e instanceof Error ? e.message : 'network'})`,
         { tone: 'warn' },
       );
-    } finally {
-      setSharing(false);
+      setGdocPhase('idle');
     }
   };
 
-  // 재생성 — 방향 모달(C2) 없이 직접(보수적). 탭바 버튼·배너 CTA 공용.
-  const regenerate = () => {
+  // 재생성 — 방향 모달(S4b) 을 연다. 확정 시 generate(true, lang, direction).
+  // 탭바 재생성 버튼·배너 CTA 공용.
+  const requestRegenerate = () => {
     if (!canGenerate) return;
-    void generate(true, outputLang);
+    setRegenOpen(true);
   };
+  const confirmRegenerate = (direction: string, lang: string) => {
+    if (!canGenerate) return;
+    void generate(true, lang, direction || undefined);
+  };
+  const hasInsertedBlocks = blocks.some(
+    (b) => b.type === 'inserted_qa' || b.type === 'inserted_section',
+  );
 
   // 헤더밴드 슬롯 publish — 프로젝트 pill + 상태 chip. status/이름 변화 시 갱신,
   // 언마운트 시 비운다.
@@ -304,6 +386,9 @@ export function InterviewReadDetail({
     [blocks, t],
   );
   const canvasRef = useRef<HTMLDivElement>(null);
+  // 편집 body 루트 ref — drag 선택 감지 스코프(보고서 본문). canvasRef(스크롤
+  // 컨테이너)와 분리해 배너·목차가 선택 스코프에 안 들어가게 한다.
+  const editBodyRef = useRef<HTMLDivElement>(null);
   const scrollToBlock = (id: string) => {
     const el = canvasRef.current?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -342,15 +427,27 @@ export function InterviewReadDetail({
           <ReportBanner
             kind={banner}
             errorCode={errorMessage}
-            onRegenerate={regenerate}
+            onRegenerate={requestRegenerate}
             onCancel={() => void cancel()}
             disabled={!canGenerate && banner !== 'stuck'}
           />
         )}
-        <ReportBody
-          blocks={blocks}
-          metaRight={t('reportExecMeta', { n: respondentCount })}
-        />
+        {editMode ? (
+          <ReportEditBody
+            blocks={blocks}
+            metaRight={t('reportExecMeta', { n: respondentCount })}
+            projectId={projectId}
+            containerRef={editBodyRef}
+            refetch={refetch}
+            applyBlockMd={applyBlockMd}
+            askEnabled={indexed}
+          />
+        ) : (
+          <ReportBody
+            blocks={blocks}
+            metaRight={t('reportExecMeta', { n: respondentCount })}
+          />
+        )}
       </div>
     );
   } else {
@@ -420,24 +517,32 @@ export function InterviewReadDetail({
             ))}
           </div>
 
-          {/* 우측 액션 그룹 — 보고서 있을 때만(내보내기·공유·재생성). */}
+          {/* 우측 액션 그룹 — 보고서 있을 때만(내보내기·공유·재생성·편집). */}
           {showActions && (
             <div className="ml-auto flex items-center gap-2">
-              <ActionPill
-                label={t('reportExportWord')}
+              <ExportPill
+                phase={actionsDisabled ? 'idle' : wordPhase}
                 icon="download"
+                idleLabel={t('reportExportWord')}
+                busyLabel={t('reportWordBusy')}
+                doneLabel={t('reportWordDone')}
                 onClick={downloadWord}
                 disabled={actionsDisabled}
               />
-              <ActionPill
-                label={t('reportShareGdoc')}
+              <ExportPill
+                phase={actionsDisabled ? 'idle' : gdocPhase}
                 icon="document"
+                idleLabel={t('reportShareGdoc')}
+                busyLabel={t('reportGdocBusy')}
+                doneLabel={t('reportGdocDone')}
                 onClick={() => void shareGoogleDocs()}
-                disabled={actionsDisabled || sharing}
+                disabled={actionsDisabled}
               />
-              <ShareInviteButton
-                resourceType="interview_topline"
-                resourceId={toplineId}
+              <ActionPill
+                label={t('reportShareLink')}
+                icon="link"
+                onClick={() => setShareOpen(true)}
+                disabled={actionsDisabled || !toplineId}
               />
               <div className="h-[22px] w-px bg-line-strong" aria-hidden />
               {/* 언어 셀렉트 — 132px. */}
@@ -456,18 +561,26 @@ export function InterviewReadDetail({
               <ActionPill
                 label={t('reportRegenAction')}
                 icon="regenerate"
-                onClick={regenerate}
+                onClick={requestRegenerate}
                 disabled={!canGenerate}
               />
-              {/* ✎ 편집 토글 — C2 에서 활성. 이 PR 은 렌더만/비활성(spec). */}
-              <span
-                title={t('reportEditSoon')}
-                aria-disabled
-                className="inline-flex shrink-0 cursor-default items-center gap-1.5 rounded-pill border-2 border-ink bg-widget-header-rose px-3.5 py-1.5 text-md font-extrabold text-ink opacity-60 shadow-memphis-sm"
+              {/* ✎ 편집 토글 (§0.4) — ON 일 때만 SectionGap·drag-to-ask 활성. */}
+              {/* eslint-disable-next-line react/forbid-elements -- CD S3 편집 토글은 rose·border 2·memphis-sm 전용 chrome; Button variant 형태와 불일치. role=switch 로 토글 의미 노출. */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={editMode}
+                onClick={() => setEditMode((v) => !v)}
+                title={t('reportEdit')}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-2 border-ink bg-widget-header-rose px-3.5 py-1.5 text-md font-extrabold text-ink ${
+                  editMode
+                    ? 'translate-x-px translate-y-px shadow-none'
+                    : 'shadow-memphis-sm'
+                }`}
               >
                 <DuotoneIcon name="typos" size={15} />
                 {t('reportEdit')}
-              </span>
+              </button>
             </div>
           )}
         </div>
@@ -602,6 +715,26 @@ export function InterviewReadDetail({
           existingFilenames={documents.map((d) => d.filename)}
           onUploaded={() => void mutate()}
         />
+
+        {/* 재생성 방향 모달(S4b) — 방향 + 언어 확정 후 generate(true). */}
+        <RegenerateModal
+          open={regenOpen}
+          onClose={() => setRegenOpen(false)}
+          savedDirection={savedDirection}
+          outputLang={outputLang}
+          isUploaded={source === 'uploaded'}
+          hasInserted={hasInsertedBlocks}
+          onConfirm={confirmRegenerate}
+        />
+
+        {/* 공유 모달(S4c) — 링크 발급·게이트·초대. toplineId 있을 때만 마운트. */}
+        {toplineId && (
+          <InterviewShareModal
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            resourceId={toplineId}
+          />
+        )}
       </div>
     </CitationResolveProvider>
   );

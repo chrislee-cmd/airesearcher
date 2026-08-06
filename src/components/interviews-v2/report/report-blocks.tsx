@@ -392,13 +392,13 @@ function InsertedSection({ block, t }: { block: ToplineBlock; t: Tr }) {
 
 // t() 시그니처(느슨) — 삽입 렌더러에 상위 t 를 넘겨 훅 규칙(루프 내 훅 금지)을
 // 피한다.
-type Tr = (key: string, values?: Record<string, string | number>) => string;
+export type Tr = (key: string, values?: Record<string, string | number>) => string;
 
 // ── 조립 ────────────────────────────────────────────────────────────
 
 // 블록별 파생 메타(순번·라벨·마진). 렌더 밖 순수 함수에서 카운터를 돌려
 // react-hooks/immutability(JSX map 내 재할당 금지)를 피한다.
-type BlockMeta =
+export type BlockMeta =
   | { kind: 'exec' }
   | { kind: 'heading'; num: number }
   | { kind: 'subheading' }
@@ -411,11 +411,14 @@ type BlockMeta =
   | { kind: 'section' }
   | { kind: 'skip' };
 
-function planBlocks(
+// 편집 body(report-edit-body)도 같은 순번·라벨·마진 파생을 써야 하므로 export.
+// 읽기와 편집이 같은 planBlocks/renderBlock 을 공유 = 블록 비주얼 재-derive 0.
+export type PlannedBlock = { block: ToplineBlock; mt: string; meta: BlockMeta };
+export function planBlocks(
   blocks: ToplineBlock[],
   t: Tr,
-): { block: ToplineBlock; mt: string; meta: BlockMeta }[] {
-  const plan: { block: ToplineBlock; mt: string; meta: BlockMeta }[] = [];
+): PlannedBlock[] {
+  const plan: PlannedBlock[] = [];
   let headingNo = 0;
   let tableNo = 0;
   let figureNo = 0;
@@ -486,7 +489,7 @@ function planBlocks(
   return plan;
 }
 
-function renderBlock(
+export function renderBlock(
   block: ToplineBlock,
   meta: BlockMeta,
   t: Tr,
