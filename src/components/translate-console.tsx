@@ -36,6 +36,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { env } from '@/env';
 import { createTtsQueue, type TtsQueue } from '@/lib/translate-tts';
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client';
+import { uploadResumable } from '@/lib/transcripts/resumable-upload';
 import { ChromeButton } from './ui/chrome-button';
 import { Button } from './ui/button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
@@ -997,6 +998,11 @@ export function TranslateConsole({
   // Surfaced beside the localized headline so a host can report the
   // actual cause instead of a generic "잠시 후 다시 시도" message.
   const [recordingErrorDetail, setRecordingErrorDetail] = useState<string | null>(null);
+  // True while a failed recording upload can still be retried (assembled
+  // blobs retained in pendingUploadRef). Drives the "다시 시도" button in the
+  // download panel so a silent upload failure becomes a recoverable action.
+  const [canRetryUpload, setCanRetryUpload] = useState(false);
+  const [recordingRetrying, setRecordingRetrying] = useState(false);
   // Translation-only deliverables: the translated audio track + two
   // transcript zips (realtime translation "통역본" and post-hoc batch
   // re-translation "재번역", each bundling .txt + .docx). They become
@@ -1460,9 +1466,32 @@ export function TranslateConsole({
   // One DB row owns BOTH tracks. The first POST creates it, the second
   // POST attaches the other kind to the same row.
   const recordingIdRef = useRef<string | null>(null);
-  const recordingInputUploadUrlRef = useRef<string | null>(null);
-  const recordingOutputUploadUrlRef = useRef<string | null>(null);
+  // Storage object keys (under `<hostId>/translate-recordings/…`). The
+  // actual upload now goes through the resumable(TUS) endpoint with the
+  // host's live session token (uploadResumable) rather than a signed
+  // upload URL minted at Start. Signed upload URLs expire ~2h after mint,
+  // so a 2.5–4h session PUT to an already-dead URL and the whole recording
+  // was lost silently (status stuck at 'recording'). The session token
+  // auto-refreshes and the TUS path also chunks + resumes, so long
+  // sessions and flaky networks both survive. The key prefix is the host's
+  // uid, matching the audio-uploads RLS (foldername[1] = auth.uid()).
+  const recordingInputStorageKeyRef = useRef<string | null>(null);
+  const recordingOutputStorageKeyRef = useRef<string | null>(null);
   const recordingStartedAtRef = useRef<number | null>(null);
+  // Assembled-but-not-yet-uploaded tracks, retained across cleanup() so the
+  // host can retry a failed upload from the download panel after the
+  // session has already torn down. Cleared on a fully successful upload or
+  // when a new session starts. Survives cleanup('stop') by design.
+  const pendingUploadRef = useRef<{
+    sessionId: string;
+    recordingId: string;
+    tracks: Array<{
+      label: 'input' | 'output';
+      storageKey: string;
+      blob: Blob;
+      durationSec: number;
+    }>;
+  } | null>(null);
 
   // Heartbeat ticker for elapsed display.
   useEffect(() => {
@@ -1672,9 +1701,12 @@ export function TranslateConsole({
     recordedInputChunksRef.current = [];
     recordedOutputChunksRef.current = [];
     recordingIdRef.current = null;
-    recordingInputUploadUrlRef.current = null;
-    recordingOutputUploadUrlRef.current = null;
+    recordingInputStorageKeyRef.current = null;
+    recordingOutputStorageKeyRef.current = null;
     recordingStartedAtRef.current = null;
+    // NOTE: pendingUploadRef is deliberately NOT cleared here — it holds
+    // the assembled blobs so a failed upload can be retried after teardown.
+    // It is cleared on a successful upload or when the next session starts.
     setRecorderActive(false);
     setSlotActive(emptySlotRecord(false));
     // 🚨 Auto-renewal teardown — stop the renewal clock + clear the in-flight
@@ -2748,6 +2780,11 @@ export function TranslateConsole({
     setRecording(null);
     setRecordingError(null);
     setRecordingErrorDetail(null);
+    // Drop any retained-but-failed upload from a previous session so its
+    // retry affordance doesn't linger into the new session.
+    pendingUploadRef.current = null;
+    setCanRetryUpload(false);
+    setRecordingRetrying(false);
     setDownloadingFormat(null);
     // Same for the post-hoc revision UI — last session's "done" pill
     // shouldn't carry over and tempt the host into a stale download.
@@ -3200,17 +3237,17 @@ export function TranslateConsole({
               }
               return (await res.json()) as {
                 recording_id: string;
-                upload_url: string;
+                storage_key: string;
               };
             };
             try {
               const j1 = await reserve('output');
               recordingIdRef.current = j1.recording_id;
-              recordingOutputUploadUrlRef.current = j1.upload_url;
+              recordingOutputStorageKeyRef.current = j1.storage_key;
 
               const j2 = await reserve('input');
               recordingIdRef.current = j2.recording_id;
-              recordingInputUploadUrlRef.current = j2.upload_url;
+              recordingInputStorageKeyRef.current = j2.storage_key;
             } catch {
               // Banner state already set inside reserve() on a non-OK
               // response. A network throw (fetch rejected) lands here with
@@ -4354,6 +4391,90 @@ export function TranslateConsole({
     [],
   );
 
+  // Upload whatever tracks are still pending in pendingUploadRef and PATCH
+  // each one to finalize. Shared by the end-of-session flush and the manual
+  // "다시 시도" retry so both take the identical, expiry-proof path.
+  //
+  // Upload goes through the resumable(TUS) endpoint with the host's live
+  // session token — NOT the Start-time signed URL — so multi-hour sessions
+  // no longer PUT to an expired URL. Each track that fully succeeds (upload
+  // + PATCH) is dropped from the pending set, so a partial failure retries
+  // only the leftover track and never double-PATCHes a finalized one.
+  const runPendingUpload = useCallback(async (): Promise<boolean> => {
+    const pending = pendingUploadRef.current;
+    if (!pending) return true;
+    const { sessionId, recordingId, tracks } = pending;
+
+    const remaining = [...tracks];
+    let hadFailure = false;
+
+    for (const t of tracks) {
+      try {
+        await uploadResumable({
+          file: new File([t.blob], `${sessionId}-${t.label}.webm`, {
+            type: t.blob.type || 'audio/webm',
+          }),
+          objectKey: t.storageKey,
+          contentType: t.blob.type || 'audio/webm',
+        });
+      } catch {
+        hadFailure = true;
+        setRecordingError('upload_failed');
+        continue;
+      }
+      try {
+        const patch = await fetch(
+          `/api/translate/sessions/${sessionId}/recording`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recording_id: recordingId,
+              size_bytes: t.blob.size,
+              duration_sec: t.durationSec,
+            }),
+          },
+        );
+        if (!patch.ok) {
+          hadFailure = true;
+          setRecordingError('finalize_failed');
+          continue;
+        }
+      } catch {
+        hadFailure = true;
+        setRecordingError('finalize_failed');
+        continue;
+      }
+      // Fully finalized — drop it so a retry won't re-upload / re-PATCH.
+      const idx = remaining.indexOf(t);
+      if (idx >= 0) remaining.splice(idx, 1);
+    }
+
+    if (remaining.length === 0) {
+      pendingUploadRef.current = null;
+      setCanRetryUpload(false);
+      setRecordingError(null);
+    } else {
+      pendingUploadRef.current = { sessionId, recordingId, tracks: remaining };
+      setCanRetryUpload(true);
+    }
+
+    try {
+      // Re-read the row so the post-session CTA renders with the canonical
+      // server state (status='uploaded' once at least one track finalized).
+      const get = await fetch(`/api/translate/sessions/${sessionId}/recording`);
+      if (get.ok) {
+        const json = (await get.json()) as { recording: RecordingRow | null };
+        setRecording(json.recording ?? null);
+      }
+    } catch {
+      // The recording row exists; the CTA reload-from-mount path will pick
+      // it up next time. No need to surface a separate error.
+    }
+
+    return !hadFailure;
+  }, []);
+
   const uploadAndFinalizeRecording = useCallback(
     async (sessionId: string) => {
       // Stop and finalize both recorders in parallel — they share a
@@ -4377,88 +4498,66 @@ export function TranslateConsole({
         return;
       }
 
-      // Upload each track to its own signed URL, then PATCH (one PATCH
-      // per track — server-side merges sizes and keeps the longer of
-      // the two durations). Either side missing → recorder for that
-      // side never ran; just skip it. The row still ends up
-      // status='uploaded' so the unlock CTA appears.
+      // Assemble the pending track set. Either side missing → that
+      // recorder never ran; skip it. A missing storage key means the
+      // Start-time reserve() never landed — surface reserve_failed.
       const tracks: Array<{
         label: 'input' | 'output';
-        uploadUrl: string | null;
+        storageKey: string;
+        blob: Blob;
+        durationSec: number;
+      }> = [];
+      const sources: Array<{
+        label: 'input' | 'output';
+        storageKey: string | null;
         finalized: { blob: Blob; durationSec: number } | null;
       }> = [
         {
           label: 'input',
-          uploadUrl: recordingInputUploadUrlRef.current,
+          storageKey: recordingInputStorageKeyRef.current,
           finalized: inputFinal,
         },
         {
           label: 'output',
-          uploadUrl: recordingOutputUploadUrlRef.current,
+          storageKey: recordingOutputStorageKeyRef.current,
           finalized: outputFinal,
         },
       ];
-
-      for (const t of tracks) {
-        if (!t.finalized) continue;
-        if (!t.uploadUrl) {
+      for (const s of sources) {
+        if (!s.finalized) continue;
+        if (!s.storageKey) {
           setRecordingError('reserve_failed');
           continue;
         }
-        try {
-          const put = await fetch(t.uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': t.finalized.blob.type || 'audio/webm',
-            },
-            body: t.finalized.blob,
-          });
-          if (!put.ok) {
-            setRecordingError('upload_failed');
-            continue;
-          }
-        } catch {
-          setRecordingError('upload_failed');
-          continue;
-        }
-        try {
-          const patch = await fetch(
-            `/api/translate/sessions/${sessionId}/recording`,
-            {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                recording_id: recordingId,
-                size_bytes: t.finalized.blob.size,
-                duration_sec: t.finalized.durationSec,
-              }),
-            },
-          );
-          if (!patch.ok) {
-            setRecordingError('finalize_failed');
-          }
-        } catch {
-          setRecordingError('finalize_failed');
-        }
+        tracks.push({
+          label: s.label,
+          storageKey: s.storageKey,
+          blob: s.finalized.blob,
+          durationSec: s.finalized.durationSec,
+        });
       }
+      if (tracks.length === 0) return;
 
-      try {
-        // Re-read the row so the post-session CTA renders with the
-        // canonical server state (status='uploaded').
-        const get = await fetch(
-          `/api/translate/sessions/${sessionId}/recording`,
-        );
-        if (get.ok) {
-          const json = (await get.json()) as { recording: RecordingRow | null };
-          setRecording(json.recording ?? null);
-        }
-      } catch {
-        // The recording row exists; the CTA reload-from-mount path will
-        // pick it up next time. No need to surface a separate error.
-      }
+      // Retained across cleanup() so a failed upload stays retryable after
+      // the session tears down.
+      pendingUploadRef.current = { sessionId, recordingId, tracks };
+      await runPendingUpload();
     },
-    [finalizeOneRecorder],
+    [finalizeOneRecorder, runPendingUpload],
   );
+
+  // Manual retry from the download panel. Re-runs the resumable upload for
+  // whatever tracks are still pending (blobs retained in pendingUploadRef).
+  const retryRecordingUpload = useCallback(async () => {
+    if (!pendingUploadRef.current || recordingRetrying) return;
+    setRecordingRetrying(true);
+    setRecordingError(null);
+    try {
+      await runPendingUpload();
+    } finally {
+      setRecordingRetrying(false);
+    }
+  }, [runPendingUpload, recordingRetrying]);
 
   const stop = useCallback(async () => {
     if (status === 'idle' || status === 'ended') return;
@@ -5550,6 +5649,9 @@ export function TranslateConsole({
           recording={recording}
           recordingError={recordingError}
           recordingErrorDetail={recordingErrorDetail}
+          canRetryUpload={canRetryUpload}
+          recordingRetrying={recordingRetrying}
+          onRetryUpload={() => void retryRecordingUpload()}
           downloadingFormat={downloadingFormat}
           onDownload={(f) => void downloadFormat(f)}
           revisionStatus={revisionStatus}
@@ -5617,6 +5719,9 @@ function RecordingDownloadPanel({
   recording,
   recordingError,
   recordingErrorDetail,
+  canRetryUpload,
+  recordingRetrying,
+  onRetryUpload,
   downloadingFormat,
   onDownload,
   revisionStatus,
@@ -5628,6 +5733,9 @@ function RecordingDownloadPanel({
   recording: RecordingRow | null;
   recordingError: string | null;
   recordingErrorDetail: string | null;
+  canRetryUpload: boolean;
+  recordingRetrying: boolean;
+  onRetryUpload: () => void;
   downloadingFormat:
     | 'm4a-output'
     | 'zip-output'
@@ -5669,17 +5777,37 @@ function RecordingDownloadPanel({
         {t('download.eyebrow')}
       </div>
       {recordingError ? (
-        <div className="mb-3 rounded-xs border border-line-soft px-3 py-2 text-md text-mute">
-          {t.has(`download.errors.${recordingError}`)
-            ? t(`download.errors.${recordingError}`)
-            : recordingError}
-          {/* Server root-cause detail (storage_unavailable / row insert
-              failure / …). Only the reserve path carries one; rendered in
-              a muted monospace tail so a host can copy it into a report. */}
-          {recordingError === 'reserve_failed' && recordingErrorDetail ? (
-            <span className="ml-1 break-all font-mono text-sm text-mute-soft">
-              ({recordingErrorDetail})
-            </span>
+        // amore accent (not the muted line-soft) so a save failure is
+        // actually noticed — the whole bug was that a lost recording
+        // surfaced nothing. When the assembled audio is still retained we
+        // offer an inline "다시 시도" so the host can recover it.
+        <div className="mb-3 rounded-xs border border-amore px-3 py-2 text-md text-ink">
+          <div>
+            {t.has(`download.errors.${recordingError}`)
+              ? t(`download.errors.${recordingError}`)
+              : recordingError}
+            {/* Server root-cause detail (storage_unavailable / row insert
+                failure / …). Only the reserve path carries one; rendered in
+                a muted monospace tail so a host can copy it into a report. */}
+            {recordingError === 'reserve_failed' && recordingErrorDetail ? (
+              <span className="ml-1 break-all font-mono text-sm text-mute-soft">
+                ({recordingErrorDetail})
+              </span>
+            ) : null}
+          </div>
+          {canRetryUpload ? (
+            <div className="mt-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={onRetryUpload}
+                disabled={recordingRetrying}
+              >
+                {recordingRetrying
+                  ? t('download.retrying')
+                  : t('download.retry')}
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : null}

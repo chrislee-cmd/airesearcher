@@ -1852,6 +1852,8 @@
       "zipOutput": "翻訳をダウンロード（.zip）",
       "zipRevised": "修正済みをダウンロード（.zip）",
       "preparingFile": "ファイルを準備中…",
+      "retry": "録音を再保存",
+      "retrying": "再保存中…",
       "errors": {
         "recorder_failed": "録音を開始できませんでした。マイクまたはタブ音声の権限を確認してください。",
         "reserve_failed": "録音用の保存先を確保できませんでした。後ほど再試行してください。",
