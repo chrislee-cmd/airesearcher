@@ -31,9 +31,9 @@ export type DuotoneIconName =
   | 'target' | 'document' | 'upload' | 'interpret' | 'speakers' | 'typos'
   | 'polish' | 'link' | 'waiting' | 'start' | 'stop' | 'audio' | 'fullview'
   | 'search' | 'trend' | 'market'
-  // interview-results 리디자인 신규 3종 (BUILD-SPEC §2 A-2, 경로 SSOT = .dc.html)
-  // + chevron(단색 ink · 파일 패널 펼치기, §1.5).
-  | 'download' | 'regenerate' | 'dataset' | 'chevron'
+  // interview-results 리디자인 신규 (BUILD-SPEC §2 A-2, 경로 SSOT = .dc.html)
+  // + chevron(단색 ink · 파일 패널 펼치기, §1.5) + highlight(드래그 힌트 스트립).
+  | 'download' | 'regenerate' | 'dataset' | 'chevron' | 'highlight'
   // icon-fullset 인바운드 — "Icon System.dc.html" 전수 대조로 확정한 미구현 7종
   // (Actions/Process/Persona 섹션의 유니크 글리프). 경로 SSOT = .dc.html.
   | 'transcribe' | 'copy' | 'pin' | 'person' | 'listener' | 'log' | 'timestamp';
@@ -75,6 +75,7 @@ function paths(name: DuotoneIconName, f: string): ReactNode[] {
     case 'regenerate': return [<path key={0} d="M20 12a8 8 0 1 1-2.6-5.9" />, <path key={1} d="M20 4v5h-5z" fill={f} />]; // 호 스트로크 + 화살촉 채움
     case 'dataset': return [<rect key={0} x={4} y={4} width={16} height={16} rx={1.6} fill={f} />, <path key={1} d="M4 9.5h16M9.5 9.5V20" />]; // 표 형식 파일(csv·xlsx)
     case 'chevron': return [<path key={0} d="M9 5l7 7-7 7" />]; // §1.5 단색 ink — 채움 없는 스트로크
+    case 'highlight': return [<path key={0} d="M6 7h7" />, <path key={1} d="M6 11h5" />, <path key={2} d="M13.5 12.5l6.5 6.5" />, <path key={3} d="M13.5 12.5l1.6 8 1.8-3.2 3.4-.6z" fill={f} />]; // 드래그 힌트 — 하이라이터 커서(BUILD-SPEC §2 A-2, 단색 ink + tip 채움)
     // icon-fullset 인바운드 — "Icon System.dc.html" 미구현분을 인라인 경로 그대로 포팅.
     case 'transcribe': return [<line key={0} x1={4} y1={10} x2={4} y2={14} />, <line key={1} x1={8} y1={6} x2={8} y2={18} />, <line key={2} x1={12} y1={3} x2={12} y2={21} />, <line key={3} x1={16} y1={7} x2={16} y2={17} />, <line key={4} x1={20} y1={10} x2={20} y2={14} />]; // 파형 바 — 순수 스트로크(듀오톤 채움 없음)
     case 'copy': return [<rect key={0} x={8} y={8} width={12} height={12} rx={2} fill={f} />, <path key={1} d="M4 16V5a1 1 0 0 1 1-1h11" />]; // 앞 카드 톤 채움 + 뒤 원본 스트로크
