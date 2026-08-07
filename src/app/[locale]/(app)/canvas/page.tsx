@@ -6,6 +6,7 @@ import {
   type CanvasWidgetKey,
 } from '@/lib/canvas/visibility';
 import { getCanvasVisibility } from '@/lib/canvas/visibility-server';
+import { getPublishedCanvasLayout } from '@/lib/canvas/layout-publish-server';
 import { getCurrentUser } from '@/lib/supabase/user';
 import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
@@ -84,6 +85,10 @@ export default async function CanvasPage({
   const user = await getCurrentUser();
   const vis = await getCanvasVisibility(user?.email);
 
+  // 발행된 캔버스 배치(전역 단일 row). 없으면 null → board 는 종전
+  // defaultPositions 폴백(회귀 0). 조회 실패도 null 로 삼켜 렌더를 막지 않는다.
+  const published = await getPublishedCanvasLayout();
+
   // 3단 필터: (1) **DB 기반 visibility**(옛 하드코딩 CANVAS_VISIBILITY 대체) →
   // (2) preview 게이트(FeatureKey 인 recruiting·desk·interviews 등 일반계정
   // 숨김) → (3) 캔버스 전용 placeholder 키(guideline·ppt_report) 일반계정 숨김.
@@ -121,6 +126,12 @@ export default async function CanvasPage({
         lockedKeys={lockedKeys}
         hiddenBadgeKeys={hiddenBadgeKeys}
         orgId={orgId}
+        publishedLayout={published?.positions ?? null}
+        publishedVersion={published?.version ?? null}
+        // 슈퍼어드민이면 발행 컨트롤 노출. 발행 baseline 적용은 일반계정(비-
+        // 슈퍼어드민·비-unlimited)만 — 슈퍼어드민/unlimited 는 개인 배치 유지.
+        canPublish={vis.isSuperAdmin}
+        applyPublished={!vis.isSuperAdmin && !isUnlimited}
       />
     </RealtimeTranscriptProvider>
   );
