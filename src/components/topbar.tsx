@@ -47,10 +47,14 @@ export async function Topbar({
 
   const tabs = [
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
-    { key: 'projects', href: '/projects', label: tTabs('projects') },
+    // Projects·Members 탭 숨김 (2026-08-07 사용자 요청 — 당장 미사용).
+    // 라우트(/projects·/members)·초대·collab 로직은 전부 보존 — 탭 진입점만
+    // 감춰 딥링크·기존 링크는 그대로 동작. 초대는 우측 CollabShareButton 로도
+    // 도달 가능. 복원하려면 아래 두 줄의 주석을 해제하면 된다.
+    // { key: 'projects', href: '/projects', label: tTabs('projects') },
     // 통합 산출물 라이브러리 — 6기능 횡단 산출물 리스트(CD Surface A).
     { key: 'library', href: '/library', label: tTabs('library') },
-    { key: 'members', href: '/members', label: tTabs('members') },
+    // { key: 'members', href: '/members', label: tTabs('members') },
   ];
 
   return (
