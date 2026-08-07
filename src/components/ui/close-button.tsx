@@ -76,26 +76,26 @@ const BASE =
 const VARIANT: Record<CloseButtonVariant, string> = {
   // Destructive · borderless idle → crimson on hover.
   'row-remove':
-    'h-7 w-7 rounded-icon text-[15px] ' +
+    'h-7 w-7 rounded-icon text-xl ' +
     'border-[1.5px] border-transparent bg-transparent text-mute-soft ' +
     'hover:bg-error-bg hover:border-amore-deep hover:text-amore-deep',
   // The only bordered idle variant: paper fill, ink border, faint hard shadow.
   // Non-destructive (folds a surface) so no crimson; active settles 1px in.
   'dialog-close':
-    'h-8 w-8 rounded-icon text-[16px] ' +
+    'h-8 w-8 rounded-icon text-2xl ' +
     'border-[1.5px] border-ink bg-paper text-ink shadow-memphis-sm-faint ' +
     'hover:bg-surface-canvas hover:shadow-memphis-sm ' +
     'active:translate-x-px active:translate-y-px active:shadow-none',
   // Destructive · glyph only (chip is already the box). pill radius, 16-px
   // exemption. crimson on hover, never a background/border of its own.
   'chip-clear':
-    'h-4 w-4 rounded-pill text-[11px] ' +
+    'h-4 w-4 rounded-pill text-sm ' +
     'border-transparent bg-transparent text-mute-soft ' +
     'hover:text-amore-deep',
   // Non-destructive dismiss: borderless, soft ink wash on hover, ink glyph.
   // 24-px exemption (low banner, reversible) — no crimson.
   'banner-dismiss':
-    'h-6 w-6 rounded-icon text-[13px] ' +
+    'h-6 w-6 rounded-icon text-lg ' +
     'border-transparent bg-transparent text-mute-soft ' +
     'hover:bg-ink/6 hover:text-ink',
 };

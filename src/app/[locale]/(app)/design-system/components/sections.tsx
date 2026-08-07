@@ -745,9 +745,9 @@ function CloseButtonSection() {
           {variants.map(({ v, spec, ctx }) => (
             <div key={v} className="flex flex-col items-center gap-2 text-center">
               <CloseButton variant={v} aria-label={`${v} 데모`} />
-              <div className="text-[11px] font-semibold text-ink">{v}</div>
-              <div className="max-w-[9rem] text-[10px] leading-snug text-mute-soft">{spec}</div>
-              <div className="max-w-[9rem] text-[10px] leading-snug text-mute">{ctx}</div>
+              <div className="text-sm font-semibold text-ink">{v}</div>
+              <div className="max-w-[9rem] text-xs leading-snug text-mute-soft">{spec}</div>
+              <div className="max-w-[9rem] text-xs leading-snug text-mute">{ctx}</div>
             </div>
           ))}
         </div>
