@@ -3770,5 +3770,109 @@
     "ut_insight": "사용성 테스트",
     "desk_report": "데스크 리서치",
     "recruiting_summary": "리크루팅"
+  },
+  "ShareDashboard": {
+    "tabs": {
+      "artifacts": "산출물",
+      "shares": "공유"
+    },
+    "scope": {
+      "mine": "내 링크",
+      "org": "조직 전체",
+      "projectAll": "프로젝트 전체"
+    },
+    "section": {
+      "title": "공유 링크"
+    },
+    "status": {
+      "alive": "살아있는 링크",
+      "expired": "만료",
+      "revoked": "철회",
+      "all": "전체"
+    },
+    "statusBadge": {
+      "active": "활성",
+      "expired": "만료",
+      "revoked": "철회됨"
+    },
+    "col": {
+      "deliverable": "산출물",
+      "invited": "초대",
+      "views": "열람",
+      "expiry": "만료",
+      "status": "상태",
+      "actions": "액션"
+    },
+    "searchPlaceholder": "산출물 제목 · 이메일로 찾기",
+    "searchPlaceholderShort": "제목 · 이메일로 찾기",
+    "sort": {
+      "recent": "최신 발급순"
+    },
+    "issuerFilter": {
+      "all": "발급자 전체"
+    },
+    "meta": {
+      "issuedOn": "{date} 발급",
+      "mine": "나",
+      "revokedOn": "{date} 철회",
+      "retiredMember": "(탈퇴한 멤버)"
+    },
+    "invited": {
+      "none": "초대 없음 · 링크를 아는 사람"
+    },
+    "views": {
+      "count": "{count}회"
+    },
+    "expiry": {
+      "daysLeft": "{days}일 남음",
+      "daysAgo": "{days}일 전 만료",
+      "none": "만료 없음"
+    },
+    "footer": {
+      "summary": "{shown} / {total} · 최신 발급순"
+    },
+    "actions": {
+      "copy": "복사",
+      "copied": "복사됨",
+      "inviteEdit": "초대 편집",
+      "revoke": "철회",
+      "copyFailedTitle": "복사하지 못했습니다 — 직접 선택해 주세요"
+    },
+    "popover": {
+      "inviteCount": "초대 {count}명",
+      "inviteEdit": "초대 편집 →"
+    },
+    "empty": {
+      "title": "아직 공유한 링크가 없습니다",
+      "body": "보고서·전사록·집계를 링크로 내보내면 여기 모입니다. 발급은 산출물을 열어 <b>공유</b>를 누르는 자리에서 합니다 — 이 화면은 발급한 링크를 <b>끄고 관리하는</b> 곳입니다.",
+      "cta": "산출물 보기 →"
+    },
+    "emptyOrg": {
+      "title": "조직에 공유한 링크가 아직 없습니다"
+    },
+    "filteredEmpty": {
+      "title": "이 조건에 맞는 링크가 없습니다",
+      "body": "전체 {total}개 중 지금 필터에 맞는 링크가 없습니다.",
+      "clear": "전체 {total}개 보기"
+    },
+    "error": {
+      "body": "목록을 불러오지 못했습니다.",
+      "retry": "다시 시도"
+    },
+    "revokeModal": {
+      "title": "이 링크를 끕니다",
+      "close": "닫기",
+      "targetMeta": "{date} 발급 · {invites} · {views}회 열람",
+      "inviteCount": "초대 {count}명",
+      "noInvite": "초대 없음",
+      "bodyInvited": "끄면 <b>초대받은 {count}명 모두 이 링크로 더 열 수 없습니다.</b> 다시 켤 수는 없고, 필요하면 산출물에서 링크를 새로 발급해야 합니다 — 그때 주소가 바뀌므로 이미 보낸 메일의 링크는 살아나지 않습니다.",
+      "bodyPublic": "이 링크는 초대 없이 <b>주소를 아는 사람이면 누구나</b> 열 수 있고, 지금까지 {views}회 열렸습니다. 끄면 그 주소는 즉시 막힙니다. 다시 켤 수는 없고, 필요하면 산출물에서 새로 발급해야 합니다 — 그때 주소가 바뀌므로 이미 돌아다니는 링크는 살아나지 않습니다.",
+      "impactTitle": "이 링크로 열던 사람들",
+      "ownerBand": "<b>{name} 님이 발급한 링크입니다.</b>",
+      "footerNote": "되돌릴 수 없습니다",
+      "cancel": "그대로 두기",
+      "confirm": "링크 끄기",
+      "confirming": "끄는 중…"
+    }
   }
 }
