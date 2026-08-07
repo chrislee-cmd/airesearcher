@@ -351,7 +351,7 @@ export function ShareDashboardContainer({
           <span className="w-[108px] font-mono-label text-xs font-bold uppercase tracking-[0.08em] text-mute-soft">
             {t('col.status')}
           </span>
-          <span className="w-[212px] text-right font-mono-label text-xs font-bold uppercase tracking-[0.08em] text-mute-soft">
+          <span className="w-[236px] text-right font-mono-label text-xs font-bold uppercase tracking-[0.08em] text-mute-soft">
             {t('col.actions')}
           </span>
         </div>

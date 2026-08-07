@@ -13,7 +13,10 @@ import type { ShareStatus } from './types';
 //  expired  잠금        secondary   잠금        (초대 편집 = 기한 연장 경로)
 //  revoked  잠금        잠금        잠금
 
-const PILL = 'inline-flex items-center justify-center gap-1.5 rounded-pill';
+// shrink-0 + whitespace-nowrap: 액션 열이 좁아져도 버튼이 압축돼 텍스트가
+// 줄바꿈("초대 편집"→2줄, "철회"→철/회)되지 않게 한다.
+const PILL =
+  'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill';
 const PRIMARY = 'border-2 border-ink bg-ink text-paper shadow-memphis-sm';
 const SECONDARY = 'border-[1.5px] border-ink bg-paper text-ink shadow-memphis-sm';
 const DANGER =
@@ -62,7 +65,7 @@ export function ShareRowActions({
   const revokeLocked = status !== 'active';
 
   return (
-    <div className="flex w-[212px] shrink-0 items-center justify-end gap-[7px]">
+    <div className="flex w-[236px] shrink-0 items-center justify-end gap-[7px]">
       {/* 복사 — min-width 로 "복사"↔"복사됨" 폭 차이 흡수(§1.7). */}
       <Pressable
         onPress={onCopy}

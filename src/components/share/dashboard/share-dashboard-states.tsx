@@ -104,8 +104,8 @@ export function ShareDashboardSkeleton() {
           <div className="w-[108px] shrink-0">
             <div className="h-[21px] w-16 rounded-pill bg-surface-disabled" />
           </div>
-          <div className="flex w-[212px] shrink-0 justify-end gap-[7px]">
-            <div className="h-[27px] w-[66px] rounded-pill bg-surface-disabled" />
+          <div className="flex w-[236px] shrink-0 justify-end gap-[7px]">
+            <div className="h-[27px] w-[82px] rounded-pill bg-surface-disabled" />
             <div className="h-[27px] w-[74px] rounded-pill bg-paper-soft" />
             <div className="h-[27px] w-[48px] rounded-pill bg-paper-soft" />
           </div>
