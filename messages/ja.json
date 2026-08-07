@@ -3758,5 +3758,13 @@
     "fullPhoneBody": "ご本人を区別するため、電話番号をすべて入力してください。",
     "fullPhoneLabel": "電話番号",
     "gatePrivacy": "本人確認のみに使用し、この端末には何も保存されません。"
+  },
+  "ShareResourceLabels": {
+    "interview_topline": "インタビュー結果",
+    "probing_persona": "プロービングペルソナ",
+    "transcript": "文字起こし",
+    "ut_insight": "ユーザビリティテスト",
+    "desk_report": "デスクリサーチ",
+    "recruiting_summary": "リクルーティング"
   }
 }

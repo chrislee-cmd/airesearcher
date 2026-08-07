@@ -35,20 +35,12 @@ export const SHARE_RESOURCE_TYPES = [
 export type ShareResourceType = (typeof SHARE_RESOURCE_TYPES)[number];
 
 /**
- * 타입 → 한국어 라벨 · 파스텔 톤(관리 대시보드 계약). 서버가 제공한다 —
- * 클라이언트 타입→라벨 맵 금지(DECISIONS §5-1, share-shell §5.2 선례). 톤은 CD
- * BUILD-SPEC §0.2 표 그대로: 전사록=lav · 데스크=aqua · UT=peach · 리크루팅=sun ·
- * 프로빙=sky · 인터뷰=rose. (한 곳에 모아 mine API 가 소비.)
+ * 타입 → 파스텔 톤(관리 대시보드 계약). 서버가 제공 — 클라 타입맵 금지
+ * (DECISIONS §5-1). 톤은 CD BUILD-SPEC §0.2 표 그대로: 전사록=lav · 데스크=aqua ·
+ * UT=peach · 리크루팅=sun · 프로빙=sky · 인터뷰=rose.
+ * (라벨은 i18n 문자열이라 messages/ShareResourceLabels 로 분리 — 하드코딩 한글이
+ * 영어 뷰에 누출되지 않도록. mine API 가 요청 locale 로 해석해 제공.)
  */
-export const RESOURCE_LABELS: Record<ShareResourceType, string> = {
-  interview_topline: '인터뷰 결과',
-  probing_persona: '프로빙 페르소나',
-  transcript: '전사록',
-  ut_insight: '사용성 테스트',
-  desk_report: '데스크 리서치',
-  recruiting_summary: '리크루팅',
-};
-
 export const RESOURCE_TONES: Record<ShareResourceType, string> = {
   interview_topline: 'rose',
   probing_persona: 'sky',

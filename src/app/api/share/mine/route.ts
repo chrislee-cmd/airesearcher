@@ -12,12 +12,13 @@
 // camelCase 로 매핑한다.
 
 import { NextResponse } from 'next/server';
+import { getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
 import {
-  RESOURCE_LABELS,
   RESOURCE_TONES,
+  SHARE_RESOURCE_TYPES,
   type ShareResourceType,
 } from '@/lib/share/shared-views';
 import { shareViewerUrl } from '@/lib/share/viewer-url';
@@ -104,6 +105,14 @@ export async function GET(req: Request) {
       ? reqLocale
       : routing.defaultLocale;
 
+  // 타입 라벨 — messages/*.json(ShareResourceLabels)에서 요청 locale 로 해석.
+  // 서버가 로컬라이즈된 문자열을 제공(DECISIONS §5-1: 클라 타입맵 금지) + 한글
+  // 하드코딩 회피(영어 뷰 누출 방지, check:korean 가드).
+  const tLabel = await getTranslations({
+    locale,
+    namespace: 'ShareResourceLabels',
+  });
+
   // 조직 전체 스코프 열람 가능 여부 — 활성 org 에서 admin/owner 인지 파생
   // (capability boolean, role enum 문자열 노출 안 함 — CD 질의 확정).
   const activeOrg = await getActiveOrg();
@@ -125,7 +134,9 @@ export async function GET(req: Request) {
       invited_emails: invitesByShare.get(s.id) ?? [],
       // 보강 필드(additive, ShareLinkItem 계약).
       resource_title: titleByShare.get(s.id) ?? null,
-      resource_label: RESOURCE_LABELS[rt] ?? s.resource_type,
+      resource_label: SHARE_RESOURCE_TYPES.includes(rt)
+        ? tLabel(rt)
+        : s.resource_type,
       tone: RESOURCE_TONES[rt] ?? 'lav',
       status: deriveStatus(s.revoked_at, s.expires_at),
       url: shareViewerUrl(origin, locale, s.token, rt),
