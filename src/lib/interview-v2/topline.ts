@@ -142,12 +142,22 @@ export type ToplineChunk = {
  *
  * content_hash = 각 interview_documents.content_hash 를 정렬·결합한 것의 해시.
  * 파일 추가/삭제/교체 시 이 값이 바뀌어 기존 탑라인이 stale 로 판정된다.
+ *
+ * indexedDocCount = 청크가 1개 이상 있는 문서 수(= 실제로 map 순회 가능한 문서).
+ * docCount 와 다르면(indexedDocCount < docCount) 인덱싱 미완 문서가 있는 것 —
+ * fetchDocumentsWithChunks 가 그 문서들을 map 대상에서 조용히 제외하므로, 생성
+ * 게이트(route)가 이 두 값의 차이로 "무음 부분분석"을 차단한다(카드 #681).
  */
 export async function computeProjectCorpus(
   admin: AdminClient,
   orgId: string,
   projectId: string,
-): Promise<{ hash: string; docCount: number; chunkCount: number }> {
+): Promise<{
+  hash: string;
+  docCount: number;
+  chunkCount: number;
+  indexedDocCount: number;
+}> {
   const { data: docs, error: docErr } = await admin
     .from('interview_documents')
     .select('id, content_hash')
@@ -163,7 +173,7 @@ export async function computeProjectCorpus(
 
   const docIds = (docs ?? []).map((d) => d.id);
   if (docIds.length === 0) {
-    return { hash, docCount: 0, chunkCount: 0 };
+    return { hash, docCount: 0, chunkCount: 0, indexedDocCount: 0 };
   }
 
   const { count, error: cntErr } = await admin
@@ -173,7 +183,24 @@ export async function computeProjectCorpus(
     .in('document_id', docIds);
   if (cntErr) throw new Error(`computeProjectCorpus chunks: ${cntErr.message}`);
 
-  return { hash, docCount: hashes.length, chunkCount: count ?? 0 };
+  // 청크를 가진 고유 문서 수 — id 아닌 document_id 컬럼만 로드해 Set 으로 센다
+  // (content 미로드라 가볍다; getProjectChunkIds 와 동일 부하 수준). 인덱싱 미완
+  // (청크 0) 문서는 여기 안 잡혀 docCount 와 벌어진다.
+  let indexedDocCount = 0;
+  if ((count ?? 0) > 0) {
+    const { data: chunkDocRows, error: cdErr } = await admin
+      .from('interview_chunks')
+      .select('document_id')
+      .eq('org_id', orgId)
+      .in('document_id', docIds);
+    if (cdErr) throw new Error(`computeProjectCorpus chunk docs: ${cdErr.message}`);
+    const withChunks = new Set(
+      (chunkDocRows ?? []).map((r) => String(r.document_id)),
+    );
+    indexedDocCount = withChunks.size;
+  }
+
+  return { hash, docCount: hashes.length, chunkCount: count ?? 0, indexedDocCount };
 }
 
 /**
@@ -234,6 +261,15 @@ export async function fetchDocumentsWithChunks(
       content_hash: String(d.content_hash ?? ''),
       chunks,
     });
+  }
+  // 무음 제외 집계·표면화(카드 #681) — 청크 0 문서를 몇 개 뺐는지 로그로 남긴다.
+  // 생성 게이트(route)가 사전에 차단하므로 정상 흐름에선 0 이지만, allow_partial
+  // 로 명시 진행한 부분분석의 실제 제외 수를 관측 가능하게 한다.
+  const excluded = docs.length - out.length;
+  if (excluded > 0) {
+    console.warn(
+      `[v2/topline] fetchDocumentsWithChunks excluded ${excluded} unindexed doc(s) (${out.length}/${docs.length} mapped)`,
+    );
   }
   return out;
 }

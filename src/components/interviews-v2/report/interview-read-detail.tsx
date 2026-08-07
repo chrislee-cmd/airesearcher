@@ -46,6 +46,7 @@ import {
   ReportEmpty,
   ReportGenerating,
   ReportLoading,
+  IndexingGatePrompt,
   type ReportBannerKind,
 } from './report-states';
 
@@ -209,6 +210,8 @@ export function InterviewReadDetail({
     generating,
     generate,
     refetch,
+    pendingIndex,
+    clearPendingIndex,
     cancel,
     mapTotal,
     mapDone,
@@ -398,13 +401,27 @@ export function InterviewReadDetail({
   const showActions = hasBlocks && rightTab === 'topline';
   const actionsDisabled = status === 'generating';
 
-  // exec 우측 메타 — "n=N · 전수 순회 · 모델".
-  const respondentCount = documents.length;
+  // exec 우측 메타 — 실제 분석 문서 수(map_total)를 정직하게 반영(카드 #681).
+  // 업로드 수(documents.length)가 아니라 이 보고서가 실제로 순회한 문서 수를
+  // 쓴다. mapTotal 이 null 인 레거시 row 는 업로드 수로 폴백(옛 동작 유지 —
+  // 완전 인덱싱 프로젝트 회귀 0). 분석 수 < 업로드 수면 부분분석 → "전수 순회"
+  // 라벨을 떼고 "분석 N / 업로드 M" 로 병기해 완전성 거짓 주장을 제거한다.
+  const uploadCount = documents.length;
+  const analyzedCount = mapTotal ?? uploadCount;
+  const isPartial = mapTotal != null && analyzedCount < uploadCount;
+  const metaRight = isPartial
+    ? t('reportExecMetaPartial', { analyzed: analyzedCount, uploaded: uploadCount })
+    : t('reportExecMeta', { n: analyzedCount });
 
-  // 배너 종류 — stuck(generatingStale) > stale > (blocks 있는데 error).
+  // 생성 후 문서가 추가돼 분석 수 < 현재 업로드 수인 done 보고서 = 드리프트 stale
+  // (§1b — DB 확정 실제 트리거). 저장 해시 stale(파일 교체)과 별개로, 낡은 부분
+  // 보고서를 최신으로 오인하지 않게 stale 배너를 재사용해 재생성을 유도한다.
+  const driftStale = status === 'done' && isPartial;
+
+  // 배너 종류 — stuck(generatingStale) > stale/drift > (blocks 있는데 error).
   let banner: ReportBannerKind | null = null;
   if (generatingStale) banner = 'stuck';
-  else if (stale && status !== 'generating') banner = 'stale';
+  else if ((stale || driftStale) && status !== 'generating') banner = 'stale';
   else if (status === 'error' && hasBlocks) banner = 'error';
   else if (status === 'cancelled' && hasBlocks) banner = 'cancelled';
 
@@ -435,7 +452,7 @@ export function InterviewReadDetail({
         {editMode ? (
           <ReportEditBody
             blocks={blocks}
-            metaRight={t('reportExecMeta', { n: respondentCount })}
+            metaRight={metaRight}
             projectId={projectId}
             containerRef={editBodyRef}
             refetch={refetch}
@@ -445,7 +462,7 @@ export function InterviewReadDetail({
         ) : (
           <ReportBody
             blocks={blocks}
-            metaRight={t('reportExecMeta', { n: respondentCount })}
+            metaRight={metaRight}
           />
         )}
       </div>
@@ -670,6 +687,23 @@ export function InterviewReadDetail({
                 rightTab === 'topline' ? '' : 'hidden'
               }`}
             >
+              {/* 생성 완전성 게이트(카드 #681) — 인덱싱 미완으로 무음 부분분석이
+                  차단됐을 때 대기/부분생성 선택. 부분 생성은 기존 보고서가 있으면
+                  force=true(교체), 없으면 최초 생성. 방향은 이 경로에선 생략(보수). */}
+              {pendingIndex && (
+                <div className="mx-auto mb-5 w-[var(--iv-body-col-w)] max-w-full">
+                  <IndexingGatePrompt
+                    pending={pendingIndex.pending}
+                    indexed={pendingIndex.indexed}
+                    total={pendingIndex.total}
+                    onWait={clearPendingIndex}
+                    onGeneratePartial={() =>
+                      void generate(hasBlocks, outputLang, undefined, true)
+                    }
+                    disabled={!canGenerate}
+                  />
+                </div>
+              )}
               {canvas}
             </div>
             <div
