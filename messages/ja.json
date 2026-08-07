@@ -2694,6 +2694,10 @@
       "error": "エラー"
     }
   },
+  "ShareOtpEmail": {
+    "subject": "Research-Canvas 共有ビューの認証コード",
+    "body": "共有ビューの認証コードは {code} です。\n\n{minutes}分以内に入力してください。心当たりがない場合はこのメールを無視してください。"
+  },
   "ShareViewer": {
     "eyebrow": "共有ビュー",
     "readOnlyHint": "これは読み取り専用のビューです。編集および再生成は無効になっています。",
