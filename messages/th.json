@@ -2154,6 +2154,8 @@
     "reportGdocDone": "คัดลอกลิงก์ · เปิดแท็บใหม่แล้ว",
     "reportShareLink": "แชร์",
     "citationChunk": "chunk {n}",
+    "citationOpenFile": "ดูไฟล์ต้นฉบับ",
+    "citationFileDeleted": "ไฟล์ต้นฉบับถูกลบแล้ว",
     "reportExecLabel": "สรุปหลัก",
     "reportExecMeta": "n={n} · อ่านครบทุกคน",
     "reportExecMetaPartial": "วิเคราะห์ {analyzed} / อัปโหลด {uploaded} · บางส่วน",

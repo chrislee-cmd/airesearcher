@@ -2154,6 +2154,8 @@
     "reportGdocDone": "링크 복사됨 · 새 탭 열림",
     "reportShareLink": "공유",
     "citationChunk": "chunk {n}",
+    "citationOpenFile": "원본 파일 보기",
+    "citationFileDeleted": "원본 파일이 삭제됨",
     "reportExecLabel": "핵심 요약",
     "reportExecMeta": "n={n} · 전수 순회",
     "reportExecMetaPartial": "분석 {analyzed} / 업로드 {uploaded} · 부분",

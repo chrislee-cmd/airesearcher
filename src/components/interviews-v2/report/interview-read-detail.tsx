@@ -18,6 +18,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -36,6 +37,11 @@ import { useToplineImport } from '@/hooks/use-topline-import';
 import { isToplineHardBillingMessage } from '@/lib/interview-v2/types';
 import { UploadModal } from '../upload-modal';
 import { SearchChat } from '../search-chat';
+import {
+  CitationBackrefProvider,
+  type CitationBackref,
+  type CitationDocRef,
+} from '../citation-backref-context';
 import { CitationResolveProvider } from './citation';
 import { ReportBody, buildToc } from './report-blocks';
 import { ReportEditBody } from './report-edit-body';
@@ -275,6 +281,48 @@ export function InterviewReadDetail({
     if (prev === 'generating' && status === 'done') setCollapsed(true);
   }, [status]);
 
+  // 근거 팝오버 → 원본 파일 역참조(card 672). 검색 근거 팝오버가 "원본 파일 보기"를
+  // 누르면 좌측 파일 패널을 대상 문서로 점프·하이라이트한다. resolve API·검색
+  // 파이프라인 무변경 — 이미 로드된 documents 목록으로 매칭만 한다.
+  const fileListRef = useRef<HTMLDivElement>(null);
+  const [highlightDocId, setHighlightDocId] = useState<string | null>(null);
+  // 참조 → 실제 문서 해석. document_id 우선(검색 Citation), 없으면 파일명 유일
+  // 매칭(리졸브 청크). 유일 매칭이 아니면 null(보수적 — 동명 파일 오점프 방지).
+  const resolveDoc = useCallback(
+    (ref: CitationDocRef): { id: string } | null => {
+      if (ref.documentId) {
+        const byId = documents.find((d) => d.id === ref.documentId);
+        if (byId) return byId;
+      }
+      if (ref.filename) {
+        const byName = documents.filter((d) => d.filename === ref.filename);
+        if (byName.length === 1) return byName[0];
+      }
+      return null;
+    },
+    [documents],
+  );
+  const backref = useMemo<CitationBackref>(
+    () => ({
+      has: (ref: CitationDocRef) => resolveDoc(ref) !== null,
+      open: (ref: CitationDocRef) => {
+        const doc = resolveDoc(ref);
+        if (!doc) return;
+        setCollapsed(false); // 접혀 있으면 펼쳐 대상이 보이게.
+        setHighlightDocId(doc.id);
+      },
+    }),
+    [resolveDoc],
+  );
+  // 하이라이트 대상이 정해지면(그리고 패널이 펼쳐지면) 그 카드로 스크롤.
+  useEffect(() => {
+    if (!highlightDocId || collapsed) return;
+    const el = fileListRef.current?.querySelector<HTMLElement>(
+      `[data-doc-id="${CSS.escape(highlightDocId)}"]`,
+    );
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightDocId, collapsed]);
+
   // 업로드(자체 보고서) — 편집전용 진입. 파일 피커 hidden input.
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importReport = useToplineImport({
@@ -489,6 +537,7 @@ export function InterviewReadDetail({
 
   return (
     <CitationResolveProvider projectId={projectId}>
+      <CitationBackrefProvider value={backref}>
       <div className="flex min-h-0 flex-1 flex-col">
         {/* 숨은 파일 피커 — 자체 보고서 업로드(편집전용 진입). */}
         {/* eslint-disable-next-line react/forbid-elements -- 숨은 파일 선택 input; 가시 컨트롤은 <Button>(ReportEmpty), 파일 피커 primitive 미존재(topline-view 선례) */}
@@ -624,7 +673,10 @@ export function InterviewReadDetail({
               </div>
             </div>
           ) : (
-            <div className="flex w-[var(--iv-file-panel-w)] shrink-0 flex-col gap-[11px] overflow-y-auto border-r-2 border-ink bg-paper p-4">
+            <div
+              ref={fileListRef}
+              className="flex w-[var(--iv-file-panel-w)] shrink-0 flex-col gap-[11px] overflow-y-auto border-r-2 border-ink bg-paper p-4"
+            >
               <div className="flex items-center gap-2">
                 <div className="font-mono-label text-xs uppercase tracking-[0.14em] text-mute-soft">
                   {t('reportUploadedFiles', { n: documents.length })}
@@ -649,7 +701,12 @@ export function InterviewReadDetail({
               {documents.map((d) => (
                 <div
                   key={d.id}
-                  className="flex items-center gap-[9px] rounded-card border-[1.5px] border-line-strong bg-paper px-3 py-2.5"
+                  data-doc-id={d.id}
+                  className={`flex items-center gap-[9px] rounded-card border-[1.5px] px-3 py-2.5 transition-colors ${
+                    highlightDocId === d.id
+                      ? 'border-amore bg-amore-bg'
+                      : 'border-line-strong bg-paper'
+                  }`}
                 >
                   <DuotoneIcon name={fileIcon(d.mime, d.filename)} size={16} />
                   <div className="min-w-0 flex-1">
@@ -770,6 +827,7 @@ export function InterviewReadDetail({
           />
         )}
       </div>
+      </CitationBackrefProvider>
     </CitationResolveProvider>
   );
 }

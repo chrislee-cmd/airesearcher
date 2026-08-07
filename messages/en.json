@@ -2154,6 +2154,8 @@
     "reportGdocDone": "Link copied · new tab opened",
     "reportShareLink": "Share",
     "citationChunk": "chunk {n}",
+    "citationOpenFile": "View source file",
+    "citationFileDeleted": "Source file deleted",
     "reportExecLabel": "Key summary",
     "reportExecMeta": "n={n} · full pass",
     "reportExecMetaPartial": "analyzed {analyzed} / uploaded {uploaded} · partial",
