@@ -1,131 +1,78 @@
 'use client';
 
+import type { RefObject } from 'react';
 import { useTranslations } from 'next-intl';
 import DuotoneIcon from '@/components/ui/icons/duotone-icon';
-import type { ToplineAbstract } from '@/lib/interview-v2/topline-abstract';
 import type { InterviewDocument } from '@/hooks/use-interview-v2-documents';
-import { MonoChip } from './card-parts';
 import { FileRow } from './file-row';
 
-// "2026-08-05 14:22" — 로컬 타임 yyyy-MM-dd HH:mm (client 컴포넌트).
-function formatStamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-// ─── abstract 카드 (BUILD-SPEC §1.1, S1 1e) — 완료 요약 hero ─────────────────
-// 헤더 스트립(rose-bg) + 제목/요약/키포인트(✦) + 푸터 메타 칩 + 전체보기 링크.
-export function AbstractCard({
-  abstract,
-  generatedAt,
-  model,
-  outputLang,
-  blockCount,
+// ─── 완료 상태 hero (BUILD-SPEC §1.1, S1 1e) — 전사록 생성기 `TG_done` 패턴 ────
+// abstract 요약 카드(rose 헤더 스트립 + 요약/키포인트/메타 칩)를 대체(superseded).
+// 공유 done 레이아웃 미러 (참조 구현 = quotes-card-body done hero): 중앙 정렬 ·
+// success 착색 완료 타일(✓) + 제목 + 부연(규모) + ink pill CTA + 되돌아가기 링크.
+// 별도 요약 박스·메타 칩 없음 — 규모는 부연 문장(과 셀 푸터 노트)에만.
+export function AbstractDoneHero({
   docCount,
+  blockCount,
   onOpenFullview,
+  onBackToFiles,
 }: {
-  abstract: ToplineAbstract;
-  generatedAt: string | null;
-  model: string | null;
-  outputLang: string | null;
-  blockCount: number;
   docCount: number;
+  blockCount: number;
   onOpenFullview: () => void;
+  onBackToFiles: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
-  const lang = (outputLang ?? 'ko').toUpperCase();
-  const stamp = generatedAt ? formatStamp(generatedAt) : '';
-  const metaRight = [stamp, model].filter(Boolean).join(' · ');
 
   return (
     <div
-      className="overflow-hidden rounded-sm bg-paper shadow-memphis-md-faint"
-      style={{ border: '2px solid var(--color-ink)' }}
+      className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto text-center"
+      style={{ padding: 20 }}
     >
-      {/* 헤더 스트립 */}
-      <div
-        className="flex items-center gap-2 bg-rose-bg"
-        style={{ padding: '10px 16px', borderBottom: '1.5px solid var(--color-line)' }}
+      {/* 완료 타일 — 64×64 · border2 ink · success 연초록 틴트 + success memphis
+          그림자. radius 는 CD 16 근접 rounded-sm(14) (공유 done hero 선례 · 임의값
+          회피). */}
+      <div className="flex h-16 w-16 items-center justify-center rounded-sm border-2 border-ink bg-success-bg text-display font-extrabold text-success shadow-memphis-md-success">
+        ✓
+      </div>
+      <div className="text-3xl font-extrabold text-ink">{t('cardDoneTitle')}</div>
+      <p className="max-w-[300px] text-lg leading-relaxed text-mute">
+        {t('cardDoneSubtitle', { docCount, blockCount })}
+      </p>
+      {/* 본문 CTA — ink pill (fullview 진입). native <button> 금지(forbid-elements)
+          → role=button span (card-parts 관례). */}
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={onOpenFullview}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpenFullview();
+          }
+        }}
+        className="inline-flex cursor-pointer select-none items-center gap-2 rounded-pill bg-ink font-bold text-paper shadow-memphis-sm-faint"
+        style={{ fontSize: 14, padding: '12px 22px', border: '1.4px solid var(--color-ink)' }}
       >
-        <span
-          className="font-mono-label font-extrabold uppercase text-amore-deep"
-          style={{ fontSize: 10, letterSpacing: '0.14em' }}
-        >
-          {t('toplineExecSummaryLabel')}
-        </span>
-        {metaRight && (
-          <span
-            className="ml-auto truncate font-mono-label text-mute-soft"
-            style={{ fontSize: 10 }}
-          >
-            {metaRight}
-          </span>
-        )}
-      </div>
-
-      {/* 본문 */}
-      <div className="flex flex-col gap-3" style={{ padding: 16 }}>
-        <div
-          className="font-extrabold text-ink"
-          style={{ fontSize: 15.5, lineHeight: 1.4 }}
-        >
-          {abstract.title}
-        </div>
-        <p
-          className="whitespace-pre-wrap text-mute"
-          style={{ fontSize: 12.5, lineHeight: 1.75 }}
-        >
-          {abstract.summary}
-        </p>
-        {abstract.keyPoints.length > 0 && (
-          <div className="flex flex-col gap-1.5" style={{ paddingTop: 2 }}>
-            {abstract.keyPoints.slice(0, 4).map((point, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span
-                  aria-hidden
-                  className="text-amore-deep"
-                  style={{ fontSize: 12, lineHeight: 1.6 }}
-                >
-                  ✦
-                </span>
-                <span className="text-ink" style={{ fontSize: 12.5, lineHeight: 1.6 }}>
-                  {point}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 푸터 메타 */}
-      <div
-        className="flex items-center gap-2.5 bg-paper-soft"
-        style={{ padding: '11px 16px', borderTop: '1.5px solid var(--color-line)' }}
+        <DuotoneIcon name="fullview" size={16} mono />
+        {t('cardDoneOpenFullview')}
+      </span>
+      {/* 되돌아가기 — 밑줄 텍스트 링크(버튼 아님). 아래 파일 목록을 펼쳐 노출. */}
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={onBackToFiles}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onBackToFiles();
+          }
+        }}
+        className="cursor-pointer select-none font-semibold text-mute-soft"
+        style={{ fontSize: 12.5, borderBottom: '1.5px solid var(--color-line-strong)', paddingBottom: 1 }}
       >
-        <MonoChip>{t('metaFiles', { count: docCount })}</MonoChip>
-        <MonoChip>{t('metaBlocks', { count: blockCount })}</MonoChip>
-        <MonoChip>
-          <DuotoneIcon name="language" size={13} />
-          {lang}
-        </MonoChip>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={onOpenFullview}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onOpenFullview();
-            }
-          }}
-          className="ml-auto cursor-pointer font-extrabold text-amore-deep"
-          style={{ fontSize: 12.5 }}
-        >
-          {t('cardAbstractViewAll')} →
-        </span>
-      </div>
+        {t('cardDoneBackToFiles')}
+      </span>
     </div>
   );
 }
@@ -134,13 +81,16 @@ export function AbstractCard({
 // native <details>/<summary> 는 forbid-elements(button/input/textarea) 밖이라 허용.
 export function FilesCollapse({
   documents,
+  detailsRef,
 }: {
   documents: InterviewDocument[];
+  // 되돌아가기 링크가 이 <details> 를 열고 스크롤하기 위한 참조(선택).
+  detailsRef?: RefObject<HTMLDetailsElement | null>;
 }) {
   const t = useTranslations('InterviewsV2');
   const allDone = documents.every((d) => d.index_status === 'done');
   return (
-    <details className="group">
+    <details ref={detailsRef} className="group">
       <summary
         className="flex cursor-pointer list-none items-center gap-2.5 rounded-card bg-paper [&::-webkit-details-marker]:hidden"
         style={{ padding: '11px 14px', border: '1.5px solid var(--color-line)' }}

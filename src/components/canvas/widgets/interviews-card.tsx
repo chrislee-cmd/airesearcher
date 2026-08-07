@@ -249,9 +249,6 @@ function ActiveBody({
     blocks: toplineBlocks,
     mapTotal,
     mapDone,
-    generatedAt,
-    model,
-    outputLang,
     loading: toplineLoading,
   } = useInterviewToplineStatus(projectId);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -351,11 +348,7 @@ function ActiveBody({
     // 1e abstract — 완료 요약.
     modeBody = (
       <AbstractModeBody
-        abstract={abstract}
         documents={documents}
-        generatedAt={generatedAt}
-        model={model}
-        outputLang={outputLang}
         blockCount={toplineBlocks.length}
         onOpenFullview={onOpenFullview}
       />
