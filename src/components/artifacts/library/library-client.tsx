@@ -226,7 +226,7 @@ export function LibraryClient({
   const showListHeader = view === 'list' && !loading && !error && rows.length > 0;
 
   return (
-    <LibraryShell title={t('title')} count={total} search={search} sort={sortTrigger} view={viewToggle} rail={
+    <LibraryShell count={total} search={search} sort={sortTrigger} view={viewToggle} rail={
       <FilterRail
         featureFacets={facets.by_feature}
         statusFacets={facets.by_status}

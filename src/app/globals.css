@@ -756,7 +756,8 @@
   --shadow-memphis-md-amber: var(--raw-memphis-md) 0 var(--color-tag-confusion); /* recsched 공지배너 amber offset (BUILD-SPEC §2) — amber #e0a83a = tag-confusion 과 동일 값 재사용(중복 민팅 회피) */
   --shadow-memphis-md-error: var(--raw-memphis-md) 0 var(--color-error); /* ADDED 2.0 — error 상태 카드 */
   --shadow-memphis-md-processing: var(--raw-memphis-md) 0 rgba(139, 92, 246, 0.35); /* interview-results BUILD-SPEC §2 A — stuck 배너·순회중 파일 행 (accent-violet 35%). md-error/amber 와 짝 */
-  --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격) */
+  --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격). share-management BUILD-SPEC §2 A 의 목록 철회 버튼·확인 모달 확정 버튼이 이 토큰 재사용 — .dc.html 의 24%/35% alpha 는 렌더값, DS memphis 패밀리는 불투명 signal 색(§2 주석: md-error/-amber 와 같은 문법). */
+  --shadow-memphis-sm-success: var(--raw-memphis-sm) 0 var(--color-success); /* ADDED — share-management BUILD-SPEC §2 A 복사됨 상태. md-success 의 sm 변형(불투명 signal 색, memphis 패밀리 문법). */
   --shadow-memphis-lg: var(--raw-memphis-lg) 0 var(--color-ink);
   --shadow-memphis-lg-faint: var(--raw-memphis-lg) 0 rgba(29, 27, 32, 0.16); /* interview-results BUILD-SPEC §1.3 — executive_summary 카드(4px4px0 ink/16 · 솔리드 lg 보다 약함, memphis-*-faint 패밀리) */
   --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
