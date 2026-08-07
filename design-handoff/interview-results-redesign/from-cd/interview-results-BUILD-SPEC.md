@@ -74,11 +74,12 @@
 | 상태 칩 READY/청킹/QUEUE/FAIL | mono 10/800 · success / lav / neutral / error 셋 | `font-mono-label` + `signal.*` |
 | 인덱싱 4단 타임라인 | 노드 20–22px 원 · 연결선 2px · done `success` / 현재 `processing` / 대기 `ink/6` | `bg-success` · `bg-processing` · `bg-ink/5` |
 | Ambient progress 밴드 | `border-t 2px ink` · pad 13/22 · **bg = rose 헤더 톤** · 진행바 8px radius 999 · fill ink | `border-t-2 border-ink bg-widget-header-rose` |
-| abstract 카드 | border 2px ink · radius 14 · paper · shadow 3px3px0 ink/14 | `border-2 border-ink rounded-sm paper shadow-memphis-md-faint` |
-| — 헤더 스트립 | `rose-bg` · mono eyebrow `amore-deep` · 우측 생성시각 mono `mute-soft` | `bg-rose-bg text-amore-deep font-mono-label` |
-| — 제목 / 요약 | 15.5/800 ink (2줄 clamp) / 12.5·1.75 mute (5줄 clamp) | `text-xl font-extrabold` / `text-md text-mute` |
-| — 키포인트 불릿 | 마커 `✦` amore-deep · 12.5/1.6 ink | `text-amore-deep` |
-| — 푸터 메타 칩 | mono 10.5/800 · paper · border 1.4 line-strong · radius 6 | `font-mono-label paper border-line-strong rounded-chip` |
+| done 본문 | **전사록 생성기 `TG_done` 패턴 그대로** — 카드 안에 별도 박스 없음 · 본문 영역 중앙 정렬 · gap 16 · pad 20 | 재구현 금지 — 공유 done 레이아웃 |
+| — 완료 타일 | 64×64 · border 2 ink · radius 16 · **bg `success.bg`** · **shadow 3px3px0 `success`** · `✓` 30/800 `success` | `shadow-memphis-md-success bg-success-bg text-success` |
+| — 제목 / 부연 | 21/800 ink (Outfit 아님) / 13·1.55 mute · **max-w 300** | `text-2xl font-extrabold` / `text-sm text-mute` |
+| — 본문 CTA | ink pill · pad 12/22 · 14/700 · shadow 2px2px0 ink/20 · `fullview` 아이콘 mono #fff | `bg-ink text-paper rounded-pill shadow-memphis-sm` |
+| — 되돌아가기 | 12.5/600 `mute-soft` · 밑줄 1.5 `line-strong` · 버튼 아님 | `text-mute-soft border-b-[1.5px]` |
+| — 메타 | 칩 없음. 규모는 부연 문장과 셀 푸터 노트에만 | — |
 | analyze-prompt 박스 | border 2px ink · radius 14 · **`rose-bg`** · shadow 3px3px0 ink/14 | `border-2 border-ink rounded-sm bg-rose-bg shadow-memphis-md-faint` |
 | CTA · 중단 | border 2px `amore-deep` · 텍스트 amore-deep · shadow 2px2px0 amore-deep | `border-amore-deep text-amore-deep shadow-memphis-sm-crimson` |
 
@@ -211,7 +212,7 @@
 | 카드 | empty(선택됨·파일 0) | S1 · 1b |
 | 카드 | generating(인덱싱+탑라인) | S1 · 1c |
 | 카드 | analyze-prompt(파일 준비·보고서 없음) | S1 · 1d |
-| 카드 | abstract(완료 요약) | S1 · 1e |
+| 카드 | done(완료 · 전체보기로 넘김 · `TG_done` 패턴) | S1 · 1e |
 | 파일 인덱싱 | 업로드→파싱→청킹→임베딩 4단 + QUEUE + FAIL | S1 · 1b(예고) / 1c(진행·실패) |
 | 풀뷰 | 빈 상태 | S2 · 2a |
 | 풀뷰 | 로딩 skeleton | S2 · 2b |
