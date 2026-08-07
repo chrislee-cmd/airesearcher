@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+a{color:#c2334f;text-decoration:none;}a:hover{color:#9e2740;}</style>
+</helmet>
+
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:56px;display:flex;flex-direction:column;align-items:flex-start;width:max-content;gap:0;">
+
+  <div style="width:2480px;display:flex;flex-direction:column;gap:13px;margin-bottom:34px;">
+    <div style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:9px;padding:5px 14px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;letter-spacing:2px;box-shadow:3px 3px 0 rgba(29,27,32,0.3);">USER FLOW MAP</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:46px;font-weight:800;color:#1d1b20;letter-spacing:-1.4px;line-height:1.1;">들어와서 · 갈라지고 · 다시 모인다</div>
+    <div style="font-size:14.5px;color:#5b5965;line-height:1.85;max-width:1000px;">랜딩에서 시작해 캔버스에서 일곱 갈래로 갈라지고, 산출물에서 하나로 모이는 전체 경로입니다. 모든 노드는 <b style="color:#1d1b20;">그 화면의 실제 축소본</b>입니다 — 헤더 톤 · 영역 분할 · 상태 칩이 실물과 같습니다.</div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:6px;align-items:center;">
+      <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:4px 12px;font-size:11.5px;font-weight:700;color:#1d1b20;"><span style="width:20px;height:13px;border:1.5px solid #1d1b20;border-radius:3px;background:#ffd0e2;"></span>카드 604×900</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:4px 12px;font-size:11.5px;font-weight:700;color:#1d1b20;"><span style="width:20px;height:13px;border:1.5px solid #1d1b20;border-radius:3px;background:#fff;display:flex;"><span style="width:5px;background:#f7f7f5;border-right:1px solid #1d1b20;"></span></span>풀뷰 1400×840</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:4px 12px;font-size:11.5px;font-weight:700;color:#1d1b20;"><span style="width:20px;height:13px;border:1.5px dashed #1d1b20;border-radius:3px;background:#fff;"></span>공개 · 로그인 없음</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px dashed rgba(29,27,32,.3);background:#f7f7f5;border-radius:999px;padding:4px 12px;font-size:11.5px;font-weight:700;color:#5b5965;"><span style="width:20px;height:13px;border:1.5px dashed #c9ccd2;border-radius:3px;background:#fff;"></span>미설계</span>
+    </div>
+  </div>
+
+  <!-- ═══ 0 · 랜딩 ═══ -->
+  <div style="width:2480px;display:flex;flex-direction:column;align-items:center;gap:0;">
+    <div style="display:flex;align-items:flex-start;gap:26px;">
+      <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+        <div style="width:300px;height:200px;border:1.5px dashed #c9ccd2;border-radius:11px;background:#f7f7f5;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#fff;border-bottom:1.5px dashed #c9ccd2;padding:8px 12px;display:flex;align-items:center;gap:7px;"><span style="width:14px;height:14px;border-radius:4px;background:#eceef1;"></span><span style="width:56px;height:7px;border-radius:3px;background:#eceef1;"></span><span style="margin-left:auto;width:40px;height:14px;border-radius:999px;background:#eceef1;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;"><div style="width:64%;height:12px;border-radius:4px;background:#e4e4e0;"></div><div style="width:82%;height:6px;border-radius:3px;background:#eceef1;"></div><div style="width:70%;height:6px;border-radius:3px;background:#eceef1;"></div><div style="width:88px;height:22px;border-radius:999px;background:#e4e4e0;margin-top:6px;"></div></div>
+        </div>
+        <div style="text-align:center;"><div style="font-size:13px;font-weight:800;color:#8a8693;">랜딩 · 가입 · 로그인</div><div style="font-size:11px;color:#a3a7ad;line-height:1.6;margin-top:3px;">그려진 적 없음</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+        <div style="width:300px;height:200px;border:1.5px dashed #c9ccd2;border-radius:11px;background:#f7f7f5;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#fff;border-bottom:1.5px dashed #c9ccd2;padding:8px 12px;display:flex;align-items:center;gap:7px;"><span style="width:56px;height:7px;border-radius:3px;background:#eceef1;"></span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:16px;"><div style="width:100%;height:100%;border:1.5px dashed #d6d9df;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;"><div style="width:30px;height:30px;border-radius:8px;background:#eceef1;"></div><div style="width:54%;height:7px;border-radius:3px;background:#eceef1;"></div></div></div>
+        </div>
+        <div style="text-align:center;"><div style="font-size:13px;font-weight:800;color:#8a8693;">첫 프로젝트 · 빈 캔버스</div><div style="font-size:11px;color:#a3a7ad;line-height:1.6;margin-top:3px;">그려진 적 없음 — 캔버스는 언제나 채워진 상태로만</div></div>
+      </div>
+    </div>
+    <div style="width:2px;height:36px;background:rgba(29,27,32,.25);margin-top:16px;"></div>
+    <div style="display:inline-flex;align-items:center;gap:7px;border:1.5px dashed rgba(29,27,32,.3);background:#fff;border-radius:999px;padding:5px 14px;font-size:12px;font-weight:800;color:#5b5965;">여기서부터 디자인이 있습니다</div>
+    <div style="width:2px;height:36px;background:#1d1b20;"></div>
+    <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #1d1b20;"></div>
+  </div>
+
+  <!-- ═══ 1 · 캔버스 뷰 ═══ -->
+  <div style="width:2480px;border:3px solid #1d1b20;border-radius:18px;background:#fff;box-shadow:8px 8px 0 rgba(29,27,32,.26);overflow:hidden;margin-top:14px;">
+    <div style="background:#f7f7f5;border-bottom:3px solid #1d1b20;padding:15px 26px;display:flex;align-items:center;gap:14px;">
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:4px 11px;">01</span>
+      <span style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">캔버스</span>
+      <span style="font-size:12.5px;color:#8a8693;">로그인 후 첫 화면. 일곱 카드가 놓여 있고 <b style="color:#1d1b20;">여기서 갈라집니다</b> — 카드 하나를 고르는 것이 유일한 분기 행위입니다.</span>
+    </div>
+    <div style="padding:26px;background:#fbfbf9;background-image:radial-gradient(#e0e2de 1px,transparent 1px);background-size:18px 18px;">
+      <div style="display:flex;gap:18px;justify-content:center;">
+        <sc-for list="{{ canvasCards }}" as="c" hint-placeholder-count="7">
+          <div style="width:298px;height:340px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;">
+            <div style="background:{{ c.tone }};border-bottom:2px solid #1d1b20;padding:12px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <span style="font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ c.ko }}</span>
+              <span style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:6px;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;overflow:hidden;flex-shrink:0;"><span style="width:18px;height:15px;"></span><span style="width:1.2px;background:#1d1b20;"></span><span style="width:14px;"></span><span style="width:1.2px;background:#1d1b20;"></span><span style="width:14px;"></span><span style="width:1.2px;background:#1d1b20;"></span><span style="width:14px;"></span></span>
+            </div>
+            <div style="border-bottom:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;padding:7px 14px;flex-shrink:0;display:flex;align-items:center;gap:7px;"><span style="display:inline-block;width:86px;height:14px;border-radius:999px;background:#fff;border:1.5px solid #1d1b20;"></span><span style="margin-left:auto;display:inline-block;width:48px;height:14px;border-radius:999px;border:1.5px solid rgba(29,27,32,.2);"></span></div>
+            <div style="flex:1;padding:13px 14px;display:flex;flex-direction:column;gap:8px;">
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:8px;letter-spacing:.12em;color:#a3a7ad;font-weight:800;">{{ c.section }}</div>
+              <div style="height:40px;border:1.5px solid #1d1b20;border-radius:8px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.1);"></div>
+              <div style="height:34px;border:1.5px solid rgba(29,27,32,.14);border-radius:8px;background:#fff;"></div>
+              <div style="height:34px;border:1.5px solid rgba(29,27,32,.14);border-radius:8px;background:#fff;"></div>
+              <div style="height:30px;border:1.5px solid rgba(29,27,32,.1);border-radius:8px;background:#fbfbf9;"></div>
+            </div>
+            <div style="border-top:1px solid rgba(29,27,32,.08);padding:10px 14px;display:flex;align-items:center;flex-shrink:0;background:#fff;">
+              <span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;color:#8a8693;font-weight:700;">💎{{ c.credit }}</span>
+              <span style="margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:74px;height:24px;border-radius:999px;background:#1d1b20;color:#fff;font-size:9px;font-weight:800;">시작 →</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- fan out -->
+  <div style="width:2480px;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:2px;height:26px;background:#1d1b20;"></div>
+    <div style="display:inline-flex;align-items:center;gap:8px;border:2px solid #1d1b20;background:#fff;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:800;color:#1d1b20;box-shadow:3px 3px 0 rgba(29,27,32,.2);">카드를 고르면 일곱 갈래로</div>
+    <div style="width:2px;height:22px;background:#1d1b20;"></div>
+    <div style="width:2168px;height:2px;background:#1d1b20;"></div>
+    <div style="width:2168px;display:flex;justify-content:space-between;">
+      <sc-for list="{{ canvasCards }}" as="c" hint-placeholder-count="7">
+        <div style="display:flex;flex-direction:column;align-items:center;width:20px;">
+          <div style="width:2px;height:20px;background:#1d1b20;"></div>
+          <div style="width:14px;height:14px;border-radius:50%;background:{{ c.tone }};border:2px solid #1d1b20;"></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ═══ 2 · 위젯별 시나리오 ═══ -->
+  <sc-for list="{{ tracks }}" as="tk" hint-placeholder-count="7">
+    <div style="width:2480px;border:3px solid #1d1b20;border-radius:18px;background:#fff;box-shadow:8px 8px 0 rgba(29,27,32,.26);overflow:hidden;margin-top:26px;">
+      <div style="background:{{ tk.tone }};border-bottom:2px solid #1d1b20;padding:14px 26px;display:flex;align-items:center;gap:14px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:4px 11px;">{{ tk.n }}</span>
+        <span style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">{{ tk.ko }}</span>
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#1d1b20;background:#fff;border:1.5px solid #1d1b20;border-radius:6px;padding:2px 9px;">💎{{ tk.credit }}</span>
+        <span style="font-size:12.5px;color:#1d1b20;opacity:.75;">{{ tk.scenario }}</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;opacity:.55;font-weight:700;">{{ tk.bundle }}</span>
+      </div>
+      <div style="padding:26px;display:flex;align-items:flex-start;gap:0;">
+        <sc-for list="{{ tk.screens }}" as="s" hint-placeholder-count="5">
+          <div style="display:flex;align-items:flex-start;flex-shrink:0;">
+            <sc-if value="{{ s.arrow }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;padding-top:110px;flex-shrink:0;"><div style="width:14px;height:2px;background:#1d1b20;"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid #1d1b20;"></div></div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:{{ s.colW }};">
+              <div style="width:{{ s.w }};height:236px;border:{{ s.bd }};border-radius:{{ s.rd }};background:{{ s.bodyBg }};box-shadow:{{ s.sh }};overflow:hidden;display:flex;">
+                <sc-if value="{{ s.sidebar }}" hint-placeholder-val="{{ true }}">
+                  <div style="width:40px;flex-shrink:0;background:#f7f7f5;border-right:1.5px solid #1d1b20;padding:7px 5px;display:flex;flex-direction:column;gap:3px;">
+                    <div style="height:8px;border-radius:3px;background:rgba(29,27,32,.05);"></div><div style="height:8px;border-radius:3px;background:rgba(29,27,32,.05);"></div><div style="height:8px;border-radius:3px;background:rgba(29,27,32,.05);"></div>
+                    <div style="height:8px;border:1.2px solid #1d1b20;border-radius:3px;background:{{ s.tone }};"></div>
+                    <div style="height:8px;border-radius:3px;background:rgba(29,27,32,.05);"></div><div style="height:8px;border-radius:3px;background:rgba(29,27,32,.05);"></div><div style="height:8px;border-radius:3px;background:rgba(29,27,32,.05);"></div>
+                  </div>
+                </sc-if>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+                  <div style="background:{{ s.headBg }};border-bottom:{{ s.headLine }};padding:7px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                    <span style="font-family:'Outfit',sans-serif;font-size:9.5px;font-weight:800;color:{{ s.headFg }};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;">{{ s.headText }}</span>
+                    <span style="display:inline-block;width:{{ s.headChipW }};height:11px;border-radius:{{ s.headChipR }};background:{{ s.headChipBg }};border:{{ s.headChipBd }};flex-shrink:0;"></span>
+                  </div>
+                  <sc-if value="{{ s.subbar }}" hint-placeholder-val="{{ true }}">
+                    <div style="background:{{ s.subbarBg }};border-bottom:1.5px solid {{ s.subbarLine }};padding:5px 10px;display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                      <span style="display:inline-block;width:44px;height:11px;border-radius:999px;border:1.2px solid #1d1b20;background:#fff;"></span>
+                      <span style="margin-left:auto;display:inline-block;width:26px;height:11px;border-radius:999px;border:1.2px solid rgba(29,27,32,.22);"></span>
+                      <span style="display:inline-block;width:26px;height:11px;border-radius:999px;border:1.2px solid rgba(29,27,32,.22);"></span>
+                    </div>
+                  </sc-if>
+                  <div style="flex:1;min-height:0;padding:9px 10px;display:flex;flex-direction:column;gap:0;overflow:hidden;">
+                    <sc-for list="{{ s.rows }}" as="r" hint-placeholder-count="4">
+                      <div style="height:{{ r.h }};width:{{ r.w }};background:{{ r.bg }};border:{{ r.bd }};border-radius:{{ r.rd }};margin-top:{{ r.mt }};flex-shrink:0;display:flex;align-items:center;gap:5px;padding:{{ r.pd }};overflow:hidden;">
+                        <sc-if value="{{ r.tile }}" hint-placeholder-val="{{ true }}">
+                          <span style="width:13px;height:13px;border:1.2px solid #1d1b20;border-radius:4px;background:{{ r.tileBg }};flex-shrink:0;"></span>
+                          <span style="flex:1;height:5px;border-radius:2px;background:rgba(29,27,32,.1);"></span>
+                          <span style="width:22px;height:9px;border-radius:999px;background:{{ r.pillBg }};border:1px solid {{ r.pillLine }};flex-shrink:0;"></span>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ s.footer }}" hint-placeholder-val="{{ true }}">
+                    <div style="border-top:1px solid rgba(29,27,32,.08);background:#fff;padding:7px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                      <span style="font-family:ui-monospace,Menlo,monospace;font-size:7.5px;color:#8a8693;font-weight:700;">{{ s.footNote }}</span>
+                      <span style="margin-left:auto;display:inline-block;width:52px;height:16px;border-radius:999px;background:{{ s.ctaBg }};border:{{ s.ctaBd }};"></span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="width:{{ s.colW }};display:flex;flex-direction:column;gap:3px;margin-top:9px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-family:ui-monospace,Menlo,monospace;font-size:8px;font-weight:800;letter-spacing:.08em;color:{{ s.tagFg }};background:{{ s.tagBg }};border:1px solid {{ s.tagLine }};border-radius:4px;padding:1px 5px;flex-shrink:0;">{{ s.tag }}</span>
+                  <span style="font-size:12.5px;font-weight:800;color:{{ s.capFg }};line-height:1.3;">{{ s.cap }}</span>
+                </div>
+                <div style="font-size:10.5px;color:{{ s.subFg }};line-height:1.6;">{{ s.sub }}</div>
+              </div>
+              <sc-if value="{{ s.hasBranch }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;align-items:center;width:{{ s.colW }};margin-top:12px;">
+                  <div style="width:2px;height:16px;background:{{ s.brLine }};"></div>
+                  <div style="display:inline-flex;align-items:center;border:1.3px solid {{ s.brLine }};background:{{ s.brBg }};border-radius:999px;padding:2px 10px;font-size:9.5px;font-weight:800;color:{{ s.brFg }};white-space:nowrap;">{{ s.brWhen }}</div>
+                  <div style="width:2px;height:16px;background:{{ s.brLine }};"></div>
+                  <div style="width:{{ s.brW }};height:170px;border:{{ s.brBd }};border-radius:{{ s.brRd }};background:{{ s.brBodyBg }};overflow:hidden;display:flex;flex-direction:column;">
+                    <div style="background:{{ s.brHeadBg }};border-bottom:{{ s.brHeadLine }};padding:6px 9px;"><span style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:800;color:{{ s.brHeadFg }};">{{ s.brHeadText }}</span></div>
+                    <div style="flex:1;padding:8px 9px;display:flex;flex-direction:column;gap:0;overflow:hidden;">
+                      <sc-for list="{{ s.brRows }}" as="r" hint-placeholder-count="3">
+                        <div style="height:{{ r.h }};width:{{ r.w }};background:{{ r.bg }};border:{{ r.bd }};border-radius:{{ r.rd }};margin-top:{{ r.mt }};flex-shrink:0;"></div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="width:{{ s.brW }};display:flex;flex-direction:column;gap:3px;margin-top:8px;">
+                    <div style="display:flex;align-items:center;gap:6px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8px;font-weight:800;letter-spacing:.08em;color:{{ s.brTagFg }};background:{{ s.brTagBg }};border:1px solid {{ s.brTagLine }};border-radius:4px;padding:1px 5px;flex-shrink:0;">{{ s.brTag }}</span><span style="font-size:12px;font-weight:800;color:{{ s.brCapFg }};line-height:1.3;">{{ s.brCap }}</span></div>
+                    <div style="font-size:10.5px;color:{{ s.brSubFg }};line-height:1.6;">{{ s.brSub }}</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+
+  <!-- converge -->
+  <div style="width:2480px;display:flex;flex-direction:column;align-items:center;margin-top:26px;">
+    <div style="width:2168px;display:flex;justify-content:space-between;">
+      <sc-for list="{{ canvasCards }}" as="c" hint-placeholder-count="7">
+        <div style="display:flex;flex-direction:column;align-items:center;width:20px;"><div style="width:14px;height:14px;border-radius:50%;background:{{ c.tone }};border:2px solid #1d1b20;"></div><div style="width:2px;height:20px;background:#1d1b20;"></div></div>
+      </sc-for>
+    </div>
+    <div style="width:2168px;height:2px;background:#1d1b20;"></div>
+    <div style="width:2px;height:22px;background:#1d1b20;"></div>
+    <div style="display:inline-flex;align-items:center;gap:8px;border:2px solid #1d1b20;background:#fff;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:800;color:#1d1b20;box-shadow:3px 3px 0 rgba(29,27,32,.2);">산출물이 되고 나면 뒤는 같습니다</div>
+    <div style="width:2px;height:26px;background:#1d1b20;"></div>
+    <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #1d1b20;"></div>
+  </div>
+
+  <!-- ═══ 3 · 수렴 ═══ -->
+  <div style="width:2480px;border:3px solid #1d1b20;border-radius:18px;background:#fff;box-shadow:8px 8px 0 rgba(29,27,32,.26);overflow:hidden;margin-top:14px;">
+    <div style="background:#f7f7f5;border-bottom:3px solid #1d1b20;padding:15px 26px;display:flex;align-items:center;gap:14px;">
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:4px 11px;">09</span>
+      <span style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">산출물 · 공유 · 내보내기</span>
+      <span style="font-size:12.5px;color:#8a8693;">일곱 위젯 전부가 이 경로를 씁니다 — 셸이 하나인 이유가 여기서 보입니다</span>
+      <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;font-weight:700;">05-artifacts · 07-share-management</span>
+    </div>
+    <div style="padding:26px;display:flex;align-items:flex-start;gap:0;">
+      <sc-for list="{{ converge }}" as="s" hint-placeholder-count="6">
+        <div style="display:flex;align-items:flex-start;flex-shrink:0;">
+          <sc-if value="{{ s.arrow }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;padding-top:110px;flex-shrink:0;"><div style="width:14px;height:2px;background:#1d1b20;"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid #1d1b20;"></div></div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:{{ s.colW }};">
+            <div style="width:{{ s.w }};height:236px;border:{{ s.bd }};border-radius:{{ s.rd }};background:{{ s.bodyBg }};box-shadow:{{ s.sh }};overflow:hidden;display:flex;flex-direction:column;">
+              <div style="background:{{ s.headBg }};border-bottom:{{ s.headLine }};padding:7px 10px;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span style="font-family:'Outfit',sans-serif;font-size:9.5px;font-weight:800;color:{{ s.headFg }};flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ s.headText }}</span>
+                <span style="display:inline-block;width:{{ s.headChipW }};height:11px;border-radius:{{ s.headChipR }};background:{{ s.headChipBg }};border:{{ s.headChipBd }};flex-shrink:0;"></span>
+              </div>
+              <sc-if value="{{ s.subbar }}" hint-placeholder-val="{{ true }}">
+                <div style="background:{{ s.subbarBg }};border-bottom:1.5px solid {{ s.subbarLine }};padding:5px 10px;display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                  <span style="display:inline-flex;border:1.2px solid #1d1b20;border-radius:999px;overflow:hidden;"><span style="width:30px;height:11px;background:#1d1b20;"></span><span style="width:1.2px;background:#1d1b20;"></span><span style="width:20px;background:#fff;"></span></span>
+                  <span style="margin-left:auto;display:inline-block;width:34px;height:11px;border-radius:5px;border:1.2px solid #1d1b20;background:#fff;"></span>
+                </div>
+              </sc-if>
+              <div style="flex:1;min-height:0;padding:9px 10px;display:flex;flex-direction:column;gap:0;overflow:hidden;">
+                <sc-for list="{{ s.rows }}" as="r" hint-placeholder-count="4">
+                  <div style="height:{{ r.h }};width:{{ r.w }};background:{{ r.bg }};border:{{ r.bd }};border-radius:{{ r.rd }};margin-top:{{ r.mt }};flex-shrink:0;display:flex;align-items:center;gap:5px;padding:{{ r.pd }};overflow:hidden;">
+                    <sc-if value="{{ r.tile }}" hint-placeholder-val="{{ true }}">
+                      <span style="width:13px;height:13px;border:1.2px solid #1d1b20;border-radius:4px;background:{{ r.tileBg }};flex-shrink:0;"></span>
+                      <span style="flex:1;height:5px;border-radius:2px;background:rgba(29,27,32,.1);"></span>
+                      <span style="width:22px;height:9px;border-radius:999px;background:{{ r.pillBg }};border:1px solid {{ r.pillLine }};flex-shrink:0;"></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="width:{{ s.w }};display:flex;flex-direction:column;gap:3px;margin-top:9px;">
+              <div style="display:flex;align-items:center;gap:6px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8px;font-weight:800;letter-spacing:.08em;color:{{ s.tagFg }};background:{{ s.tagBg }};border:1px solid {{ s.tagLine }};border-radius:4px;padding:1px 5px;flex-shrink:0;">{{ s.tag }}</span><span style="font-size:12.5px;font-weight:800;color:{{ s.capFg }};line-height:1.3;">{{ s.cap }}</span></div>
+              <div style="font-size:10.5px;color:{{ s.subFg }};line-height:1.6;">{{ s.sub }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- 끊긴 곳 -->
+  <div style="width:2480px;border:3px solid #1d1b20;border-radius:18px;background:#1d1b20;box-shadow:8px 8px 0 rgba(29,27,32,.3);overflow:hidden;margin-top:30px;">
+    <div style="padding:24px 28px;display:flex;flex-direction:column;gap:18px;">
+      <div style="display:flex;align-items:baseline;gap:13px;">
+        <div style="font-family:'Outfit',sans-serif;font-size:25px;font-weight:800;color:#fff;letter-spacing:-0.6px;">이 지도에서 화살표가 없는 곳</div>
+        <div style="font-size:12.5px;color:#a3a7ad;">경로가 끊긴 자리 — 다음에 그릴 것의 후보입니다</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        <sc-for list="{{ gaps }}" as="g" hint-placeholder-count="6">
+          <div style="border:1.5px solid {{ g.line }};border-radius:12px;background:rgba(255,255,255,.05);padding:16px 18px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9px;font-weight:800;letter-spacing:.1em;color:{{ g.wFg }};background:{{ g.wBg }};border-radius:5px;padding:2px 8px;">{{ g.where }}</span><span style="font-size:13.5px;font-weight:800;color:#fff;">{{ g.name }}</span></div>
+            <div style="font-size:11.5px;color:#a3a7ad;line-height:1.8;">{{ g.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.15);padding-top:16px;font-size:13px;color:#a3a7ad;line-height:1.9;">일곱 트랙이 캔버스에서 갈라져 산출물로 모이는 동안, <b style="color:#fff;">트랙끼리 가로지르는 선이 하나도 없습니다.</b> 전사록이 만든 것을 프로빙이 쓰고 AI UT 클립이 보고서로 가는 연결은 조각이 다 있는데 사이가 비어 있습니다 — 나머지 다섯 구멍은 경로의 <b style="color:#fff;">양 끝</b>이라 독립적으로 그릴 수 있지만, 이건 <b style="color:#fff;">사이를 메우는</b> 일이라 성격이 다릅니다.</div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const CARDS = [
+  { ko: '프로빙 어시스턴트', tone: '#cfe6ff', credit: 20, section: '1 · 연구 목적' },
+  { ko: '라이브 통역', tone: '#cdebd9', credit: 50, section: '1 · 언어쌍' },
+  { ko: '전사록 생성기', tone: '#e7defe', credit: 30, section: '1 · 파일' },
+  { ko: 'AI UT', tone: '#ffd9be', credit: 40, section: '1 · 과제' },
+  { ko: '리크루팅', tone: '#ffe8a8', credit: 30, section: '1 · 모집 조건' },
+  { ko: '데스크 리서치', tone: '#bfe9ef', credit: 60, section: '1 · 질의' },
+  { ko: '인터뷰 결과 생성기', tone: '#ffd0e2', credit: 10, section: '1 · 프로젝트' },
+];
+
+// ── row primitives ──
+const R = o => ({ h: '6px', w: '100%', bg: 'rgba(29,27,32,.07)', bd: 'none', rd: '3px', mt: '6px', pd: '0', tile: false, tileBg: '#fff', pillBg: '#f4fbf6', pillLine: '#cdeed8', ...o });
+const H = (w = '70%') => R({ h: '9px', w, bg: 'rgba(29,27,32,.14)', mt: '0' });
+const T = (w = '100%') => R({ w });
+const BOX = (h, o = {}) => R({ h, bg: '#fff', bd: '1.5px solid #1d1b20', rd: '6px', ...o });
+const SOFT = (h, o = {}) => R({ h, bg: '#fff', bd: '1.2px solid rgba(29,27,32,.14)', rd: '6px', ...o });
+const LROW = (tileBg, o = {}) => R({ h: '22px', bg: '#fff', bd: '1.2px solid rgba(29,27,32,.14)', rd: '5px', pd: '0 6px', tile: true, tileBg, ...o });
+const TINT = (h, bg, line) => R({ h, bg, bd: '1.5px solid ' + line, rd: '6px' });
+const PROG = (pct, c) => R({ h: '7px', bg: 'rgba(29,27,32,.1)', rd: '999px', mt: '8px' });
+const DASH = h => R({ h, bg: '#fbfbf9', bd: '1.5px dashed #c9ccd2', rd: '6px' });
+
+// ── frame kinds ──
+const TAG = { card: ['카드', '#1d1b20', '#fff', 'rgba(29,27,32,.2)'], full: ['풀뷰', '#1d1b20', '#fff', 'rgba(29,27,32,.2)'], pub: ['공개', '#c2334f', '#ffeef4', '#ffd0e2'], modal: ['모달', '#5b5965', '#f7f7f5', 'rgba(29,27,32,.16)'], list: ['리스트', '#1d1b20', '#fff', 'rgba(29,27,32,.2)'], doc: ['문서', '#5b5965', '#eceef1', 'rgba(29,27,32,.16)'], gap: ['미설계', '#a3a7ad', '#f7f7f5', '#c9ccd2'] };
+
+function frame(kind, tone) {
+  const [tag, tagFg, tagBg, tagLine] = TAG[kind];
+  const base = { tag, tagFg, tagBg, tagLine, tone, capFg: '#1d1b20', subFg: '#5b5965', sidebar: false, subbar: false, footer: false, headChipW: '26px', headChipR: '999px', headChipBg: '#fff', headChipBd: '1.2px solid #1d1b20' };
+  if (kind === 'card') return { ...base, w: '176px', bd: '2.5px solid #1d1b20', rd: '11px', sh: '4px 4px 0 #1d1b20', bodyBg: '#fff', headBg: tone, headLine: '2px solid #1d1b20', headFg: '#1d1b20', footer: true, ctaBg: '#1d1b20', ctaBd: 'none' };
+  if (kind === 'full') return { ...base, w: '308px', bd: '2.5px solid #1d1b20', rd: '10px', sh: '4px 4px 0 rgba(29,27,32,.26)', bodyBg: '#fbfbf9', headBg: tone, headLine: '2px solid #1d1b20', headFg: '#1d1b20', sidebar: true, subbar: true, subbarBg: '#fff', subbarLine: '#1d1b20' };
+  if (kind === 'pub') return { ...base, w: '190px', bd: '2.5px dashed #1d1b20', rd: '10px', sh: '4px 4px 0 rgba(29,27,32,.18)', bodyBg: '#fbfbf9', headBg: '#fff', headLine: '2px dashed #1d1b20', headFg: '#1d1b20' };
+  if (kind === 'modal') return { ...base, w: '212px', bd: '2.5px solid #1d1b20', rd: '14px', sh: '5px 5px 0 rgba(29,27,32,.34)', bodyBg: '#fff', headBg: '#f7f7f5', headLine: '1.5px solid #1d1b20', headFg: '#1d1b20' };
+  if (kind === 'list') return { ...base, w: '308px', bd: '2.5px solid #1d1b20', rd: '10px', sh: '4px 4px 0 rgba(29,27,32,.26)', bodyBg: '#fff', headBg: '#fff', headLine: '2.5px solid #1d1b20', headFg: '#1d1b20', subbar: true, subbarBg: '#fff', subbarLine: '#1d1b20' };
+  if (kind === 'doc') return { ...base, w: '190px', bd: '2.5px solid #1d1b20', rd: '10px', sh: '4px 4px 0 rgba(29,27,32,.26)', bodyBg: '#fff', headBg: '#eceef1', headLine: '1.5px solid #1d1b20', headFg: '#1d1b20' };
+  return { ...base, w: '176px', bd: '1.5px dashed #c9ccd2', rd: '10px', sh: 'none', bodyBg: '#f7f7f5', headBg: '#fff', headLine: '1.5px dashed #c9ccd2', headFg: '#a3a7ad', capFg: '#8a8693', subFg: '#a3a7ad', headChipBg: '#eceef1', headChipBd: 'none' };
+}
+
+const BRC = { fail: ['#c2334f', '#ffeef4'], warn: ['#e0a83a', '#fff1e6'], out: ['#1d1b20', '#fff'] };
+
+function mk(i, d, tone) {
+  const f = frame(d.k, tone);
+  const o = { ...f, colW: f.w, arrow: i > 0, headText: d.head, cap: d.cap, sub: d.sub, rows: d.rows || [], footNote: d.foot || '', hasBranch: !!d.br };
+  if (d.br) {
+    const b = d.br, bf = frame(b.k, tone), [line, bg] = BRC[b.type];
+    o.colW = Math.max(parseInt(f.w, 10), parseInt(bf.w, 10)) + 'px';
+    Object.assign(o, {
+      brLine: line, brBg: bg, brFg: b.type === 'warn' ? '#8a5a10' : (b.type === 'fail' ? '#c2334f' : '#1d1b20'), brWhen: b.when,
+      brW: bf.w, brBd: bf.bd, brRd: bf.rd, brBodyBg: bf.bodyBg, brHeadBg: bf.headBg, brHeadLine: bf.headLine, brHeadFg: bf.headFg, brHeadText: b.head,
+      brTag: bf.tag, brTagFg: bf.tagFg, brTagBg: bf.tagBg, brTagLine: bf.tagLine, brCap: b.cap, brSub: b.sub, brCapFg: bf.capFg, brSubFg: bf.subFg, brRows: b.rows || [],
+    });
+  }
+  return o;
+}
+
+const TRACKS = [
+  ['02', '프로빙 어시스턴트', '#cfe6ff', 20, '02 · 03', '인터뷰 전에 물어볼 것을 준비한다', [
+    { k: 'card', head: '프로빙 어시스턴트', cap: '프로젝트 미선택', sub: '무엇을 하는 도구인지부터 말합니다', foot: '💎20', rows: [H('62%'), SOFT('30px'), DASH('44px'), T('80%')] },
+    { k: 'card', head: '프로빙 어시스턴트', cap: '목적 · 대상 입력', sub: '아코디언 3단 · 방법 카드 선택', foot: '💎20', rows: [BOX('26px'), R({ h: '38px', bg: '#fff', bd: '2px solid #ff5c8a', rd: '6px' }), SOFT('26px'), SOFT('22px')] },
+    { k: 'card', head: '프로빙 어시스턴트', cap: '생성 중', sub: '진행 밴드가 카드 하단에 상주', foot: '약 2분', rows: [H('54%'), T('90%'), T('72%'), TINT('40px', '#f6f2ff', '#d6c7f5'), PROG()] },
+    {
+      k: 'full', head: '프로빙 어시스턴트', cap: '페르소나 + 질문', sub: '좌 페르소나 카드 / 우 질문 트리', rows: [H('58%'), BOX('24px'), SOFT('20px'), SOFT('20px'), T('84%')],
+      br: { k: 'full', type: 'warn', when: '채움 3/3 미만', head: '페르소나', cap: '빈 페르소나', sub: '점선 카드 + 채움 도트로 부족을 표시', rows: [DASH('30px'), DASH('30px'), T('70%')] },
+    },
+    { k: 'modal', head: '스포트라이트', cap: '질문 하나만 크게', sub: '인터뷰 중에 읽는 화면 · amber 프레임', rows: [H('86%'), R({ h: '11px', w: '64%', bg: 'rgba(29,27,32,.14)', rd: '3px', mt: '7px' }), T('50%'), TINT('30px', '#fff1e6', '#f0d78a')] },
+  ]],
+
+  ['03', '라이브 통역', '#cdebd9', 50, '02 · 03 · 04', '세션 중 실시간 통역 — 옵저버가 따라 듣는다', [
+    { k: 'card', head: '라이브 통역', cap: '언어쌍 설정', sub: '원문 → 통역 방향', foot: '💎50', rows: [H('56%'), BOX('26px'), BOX('26px'), SOFT('22px')] },
+    { k: 'card', head: '라이브 통역', cap: '세션 진행 중', sub: '카드는 진행만 · 캡션은 풀뷰에서', foot: '● LIVE', rows: [TINT('34px', '#f4fbf6', '#cdeed8'), T('86%'), T('64%'), PROG()] },
+    {
+      k: 'full', head: '라이브 통역', cap: '쌍둥이 캡션', sub: '원문 / 통역 · 활성 채널이 진해짐', rows: [BOX('44px'), TINT('44px', '#f4fbf6', '#16a34a'), R({ h: '16px', bg: '#fff', bd: '1.5px solid #1d1b20', rd: '999px', mt: '7px' })],
+      br: { k: 'pub', type: 'out', when: '옵저버 링크 발급', head: '옵저버', cap: '오디오 언락', sub: '브라우저가 한 번의 탭을 요구합니다', rows: [DASH('40px'), R({ h: '16px', w: '70%', bg: '#1d1b20', rd: '999px', mt: '9px' })] },
+    },
+    {
+      k: 'full', head: '라이브 통역', cap: '화면 공유', sub: '모니터 크롬 + 참가자 타일 + 2열 캡션', rows: [R({ h: '58px', bg: '#1d1b20', rd: '5px', mt: '0' }), R({ h: '30px', bg: '#fff', bd: '1.5px solid #1d1b20', rd: '5px', mt: '7px' })],
+      br: { k: 'pub', type: 'out', when: '옵저버가 듣는 동안', head: '옵저버 캡션', cap: '읽기 전용 화면', sub: '원문 / 통역 / 음소거 3택', rows: [BOX('34px'), TINT('34px', '#f4fbf6', '#16a34a'), R({ h: '14px', bg: '#fff', bd: '1.2px solid #1d1b20', rd: '999px', mt: '7px' })] },
+    },
+    { k: 'full', head: '라이브 통역', cap: '세션 종료', sub: '중립 헤더 · 시간 + 언어쌍 요약', rows: [R({ h: '40px', bg: '#eceef1', rd: '6px', mt: '0' }), T('72%'), T('56%')] },
+  ]],
+
+  ['04', '전사록 생성기', '#e7defe', 30, '02 · 03', '녹음을 텍스트로 — 여러 파일을 한 번에', [
+    { k: 'card', head: '전사록 생성기', cap: '파일 없음', sub: '드롭존 하나가 화면 전부', foot: '💎30', rows: [DASH('72px'), T('84%'), T('60%')] },
+    {
+      k: 'card', head: '전사록 생성기', cap: '처리 중', sub: '업로드 → 파싱 → 청킹 → 임베딩', foot: '6/8', rows: [LROW('#e7defe'), TINT('30px', '#f6f2ff', '#d6c7f5'), LROW('#fff'), PROG()],
+      br: { k: 'card', type: 'fail', when: '텍스트 레이어 없음', head: '전사록 생성기', cap: '파싱 실패', sub: '그 행만 붉게 · 나머지는 계속', rows: [TINT('26px', '#fdf0f0', '#f0c0c0'), T('80%')] },
+    },
+    { k: 'card', head: '전사록 생성기', cap: '완료', sub: '파일 수와 길이만 요약', foot: '8개', rows: [TINT('40px', '#f4fbf6', '#cdeed8'), LROW('#e7defe'), LROW('#e7defe')] },
+    { k: 'full', head: '전사록 생성기', cap: '파일 목록', sub: '좌 목록 / 우 상세 · 상태 칩으로 구분', rows: [H('50%'), LROW('#e7defe'), LROW('#e7defe'), LROW('#fff')] },
+    { k: 'full', head: '전사록 생성기', cap: '전사 상세', sub: '화자 분리 · 타임스탬프 · 검색', rows: [H('42%'), T('96%'), T('88%'), T('70%'), T('92%')] },
+  ]],
+
+  ['05', 'AI UT', '#ffd9be', 40, '02 · 03', '참가자가 자기 기기에서 과제를 하고, 연구자가 본다', [
+    { k: 'card', head: 'AI UT', cap: '과제 설정', sub: '무엇을 시킬지 · 몇 명에게', foot: '💎40', rows: [BOX('30px'), SOFT('26px'), SOFT('26px')] },
+    {
+      k: 'card', head: 'AI UT', cap: '링크 발급', sub: '참가자에게 보낼 주소가 생김', foot: '3명', rows: [TINT('28px', '#fff7f0', '#ffd9be'), BOX('22px'), T('76%')],
+      br: { k: 'gap', type: 'out', when: '참가자가 열면', head: '참가자 기기', cap: '과제 수행 화면', sub: '화면 + 마이크 권한. 그려진 적 없음', rows: [DASH('58px'), T('64%')] },
+    },
+    {
+      k: 'card', head: 'AI UT', cap: '진행 중', sub: '몇 명이 하고 있는지', foot: '1/3', rows: [TINT('34px', '#f6f2ff', '#d6c7f5'), LROW('#ffd9be'), PROG()],
+      br: { k: 'gap', type: 'warn', when: '아무도 아직 안 함', head: 'AI UT', cap: '참가자 대기', sub: '중간 상태가 계약에 없어 미해결', rows: [DASH('44px')] },
+    },
+    { k: 'full', head: 'AI UT', cap: '라이브 관전', sub: '참가자 화면 + 발화 · 실시간', rows: [R({ h: '62px', bg: '#1d1b20', rd: '5px', mt: '0' }), T('88%'), T('66%')] },
+    { k: 'full', head: 'AI UT', cap: '사후 리뷰', sub: '클립 타임라인 · 태스크별 지표', rows: [R({ h: '30px', bg: '#fff', bd: '1.5px solid #1d1b20', rd: '5px', mt: '0' }), LROW('#ffd9be'), LROW('#ffd9be'), T('72%')] },
+  ]],
+
+  ['06', '리크루팅', '#ffe8a8', 30, '02 · 03 · 04', '조건에 맞는 사람을 찾아 일정까지 확정한다', [
+    { k: 'card', head: '리크루팅', cap: '모집 조건', sub: '성별 · 연령 · 스크리닝 문항', foot: '💎30', rows: [BOX('26px'), SOFT('24px'), SOFT('24px'), SOFT('20px')] },
+    {
+      k: 'card', head: '리크루팅', cap: '스크리너 발행', sub: '응답 수집 링크가 생김', foot: '61건', rows: [TINT('30px', '#fffdf6', '#f0d78a'), BOX('22px'), T('70%')],
+      br: { k: 'pub', type: 'out', when: '응답자가 열면', head: '스크리너', cap: '응답 폼', sub: '외부 폼 · 응답이 ①로 들어옵니다', rows: [BOX('22px'), BOX('22px'), R({ h: '16px', w: '60%', bg: '#1d1b20', rd: '999px', mt: '9px' })] },
+    },
+    { k: 'full', head: '리크루팅 · ①', cap: '응답', sub: '교차표로 분포를 보며 좁힘', rows: [H('44%'), R({ h: '54px', bg: '#fff', bd: '1.5px solid #1d1b20', rd: '5px', mt: '6px' }), LROW('#ffe8a8'), LROW('#ffe8a8')] },
+    {
+      k: 'full', head: '리크루팅 · ②', cap: '후보 선별', sub: '적합도 High/Med/Low · 플래그', rows: [LROW('#ffe8a8'), LROW('#ffe8a8', { pillBg: '#fff1e6', pillLine: '#f0d78a' }), LROW('#fff', { pillBg: '#f7f7f5', pillLine: 'rgba(29,27,32,.16)' }), T('60%')],
+      br: { k: 'full', type: 'warn', when: '조건 충족 0명', head: '리크루팅 · ②', cap: '해당 없음', sub: '전체가 몇 명인지 말하고 필터를 풀어줌', rows: [DASH('44px'), T('66%')] },
+    },
+    {
+      k: 'full', head: '리크루팅 · ③', cap: '일정 확정', sub: '슬롯 배정 · 마스터 링크 하나', rows: [H('50%'), LROW('#ffe8a8'), LROW('#ffe8a8'), BOX('20px')],
+      br: { k: 'pub', type: 'out', when: '참가자에게', head: '참가자 일정', cap: '확정 슬롯 · 채팅', sub: '휴대폰 뒷 6자리로 식별', rows: [BOX('26px'), TINT('24px', '#fff1e6', '#f0d78a'), T('72%')] },
+    },
+  ]],
+
+  ['07', '데스크 리서치', '#bfe9ef', 60, '02 · 03', '키워드로 시장·트렌드를 훑어 보고서를 만든다', [
+    { k: 'card', head: '데스크 리서치', cap: '질의 설정', sub: '지역 · 기간 · 시장/트렌드 모드', foot: '💎60', rows: [BOX('26px'), SOFT('24px'), SOFT('24px')] },
+    { k: 'card', head: '데스크 리서치', cap: '키워드', sub: 'AI 확장 제안 포함', foot: '12개', rows: [BOX('30px'), R({ h: '18px', bg: '#f0fbfd', bd: '1.2px solid #bfe9ef', rd: '999px', mt: '7px' }), T('80%')] },
+    {
+      k: 'card', head: '데스크 리서치', cap: '수집 중', sub: '8단계 스테이지가 순서대로', foot: '5/8', rows: [TINT('40px', '#f6f2ff', '#d6c7f5'), T('86%'), PROG()],
+      br: { k: 'card', type: 'fail', when: '출처 부족', head: '데스크 리서치', cap: '수집 실패', sub: '크레딧 미차감 · 다시 시도', rows: [TINT('30px', '#fdf0f0', '#f0c0c0'), T('74%')] },
+    },
+    { k: 'full', head: '데스크 리서치', cap: '보고서', sub: '스크롤스파이 목차 + 섹션 카드 5종', rows: [TINT('34px', '#ffeef4', '#1d1b20'), H('56%'), T('94%'), T('82%'), BOX('26px')] },
+  ]],
+
+  ['08', '인터뷰 결과 생성기', '#ffd0e2', 10, '06-interview-results', '녹취를 전수 순회해 탑라인 보고서를 쓴다', [
+    { k: 'card', head: '인터뷰 결과 생성기', cap: '프로젝트 미선택', sub: '무엇을 하는 도구인지부터', foot: '💎10', rows: [H('58%'), SOFT('28px'), DASH('50px')] },
+    {
+      k: 'card', head: '인터뷰 결과 생성기', cap: '파일 업로드', sub: '드롭존 + 처리 4단 예고', foot: '0개', rows: [DASH('66px'), T('80%'), T('58%')],
+      br: { k: 'card', type: 'fail', when: '파싱 실패', head: '인터뷰 결과', cap: '파일 오류', sub: '그 행만 붉게 · 나머지는 계속', rows: [TINT('26px', '#fdf0f0', '#f0c0c0'), T('76%')] },
+    },
+    { k: 'card', head: '인터뷰 결과 생성기', cap: '분석 시작 안내', sub: '파일이 준비되면 뜨는 권유 박스', foot: '💎10 차감', rows: [TINT('56px', '#ffeef4', '#1d1b20'), LROW('#ffd0e2'), LROW('#ffd0e2')] },
+    {
+      k: 'card', head: '인터뷰 결과 생성기', cap: '생성 중', sub: 'Map 응답자 순회 → Reduce 작성', foot: '3/8', rows: [LROW('#ffd0e2'), TINT('28px', '#f6f2ff', '#d6c7f5'), PROG()],
+      br: { k: 'card', type: 'fail', when: '중간에 멈춤', head: '인터뷰 결과', cap: '생성 실패', sub: '몇 명까지 읽었는지 + 크레딧 미차감', rows: [TINT('32px', '#fdf0f0', '#f0c0c0'), T('70%')] },
+    },
+    { k: 'card', head: '인터뷰 결과 생성기', cap: '완료 요약', sub: '핵심 문장 + 키포인트 4줄', foot: '블록 34', rows: [TINT('62px', '#ffeef4', '#1d1b20'), T('88%'), T('64%')] },
+    {
+      k: 'full', head: '인터뷰 결과 생성기', cap: '보고서 · 읽기', sub: '블록 11종 · 근거 칩 · 목차 rail', rows: [TINT('34px', '#ffeef4', '#1d1b20'), H('62%'), T('96%'), T('84%'), BOX('24px')],
+      br: { k: 'full', type: 'warn', when: '파일이 바뀜', head: '인터뷰 결과', cap: 'stale 배너', sub: '새 응답자가 빠졌다고 알리고 재생성 권유', rows: [TINT('30px', '#fff1e6', '#f0d78a'), T('80%')] },
+    },
+    { k: 'full', head: '인터뷰 결과 생성기', cap: '보고서 · 편집', sub: '＋ 절 삽입 · 드래그 질문이 여기서만', rows: [H('54%'), R({ h: '16px', bg: '#fff', bd: '1.5px dashed #ffd0e2', rd: '6px', mt: '7px' }), T('90%'), R({ h: '26px', bg: '#f7f7f5', bd: '1.5px dashed rgba(29,27,32,.28)', rd: '6px', mt: '7px' })] },
+    { k: 'modal', head: '재생성', cap: '방향 + 언어', sub: '600자 지시 · 언어 6종', rows: [H('50%'), BOX('40px'), R({ h: '14px', bg: '#ffd0e2', bd: '1.5px solid #1d1b20', rd: '999px', mt: '8px', w: '56%' })] },
+  ]],
+];
+
+const CONVERGE = [
+  { k: 'list', head: '라이브러리', cap: '산출물 목록', sub: '일곱 위젯의 결과가 한 목록에 · 필터 레일 240', rows: [LROW('#cfe6ff'), LROW('#ffd0e2'), LROW('#bfe9ef'), LROW('#e7defe'), LROW('#ffe8a8')] },
+  { k: 'modal', head: '공유', cap: '링크 발급', sub: '이메일 게이트 · 만료일 선택', rows: [BOX('22px'), TINT('30px', '#fbfbf9', 'rgba(29,27,32,.14)'), R({ h: '16px', w: '52%', bg: '#1d1b20', rd: '999px', mt: '9px' })] },
+  { k: 'list', head: '공유 관리', cap: '발급한 링크', sub: '스코프 축 · 잠금 매트릭스 · 열람 수', rows: [LROW('#ffd0e2'), LROW('#e7defe'), LROW('#bfe9ef'), LROW('#ffd9be', { pillBg: '#f7f7f5', pillLine: 'rgba(29,27,32,.2)' }), LROW('#f2f2ef', { pillBg: '#f2f2ef', pillLine: 'rgba(29,27,32,.24)' })] },
+  { k: 'modal', head: '철회 확인', cap: '링크 끄기', sub: '영향 인원 + 비가역 명시', rows: [TINT('26px', '#fbfbf9', 'rgba(29,27,32,.14)'), T('92%'), TINT('30px', '#fdf0f0', '#1d1b20'), R({ h: '16px', w: '48%', bg: '#c2334f', rd: '999px', mt: '8px' })] },
+  { k: 'pub', head: '공유된 보고서', cap: '받은 사람의 화면', sub: '읽기 전용 · 워터마크 · 6상태', rows: [H('74%'), T('96%'), T('82%'), BOX('40px')] },
+  { k: 'doc', head: '내보내기', cap: 'Word · Docs', sub: 'Letter 페이지 조판 · 화면이 아니라 종이', rows: [H('64%'), T('100%'), T('100%'), T('86%'), T('100%'), T('72%')] },
+];
+
+const CG = (where, name, body, hot) => ({ where, name, body, line: hot ? '#ffd0e2' : 'rgba(255,255,255,.2)', wBg: hot ? '#ffd0e2' : 'rgba(255,255,255,.14)', wFg: hot ? '#1d1b20' : '#fff' });
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      canvasCards: CARDS,
+      tracks: TRACKS.map(([n, ko, tone, credit, bundle, scenario, ss]) =>
+        ({ n, ko, tone, credit, bundle, scenario, screens: ss.map((d, i) => mk(i, d, tone)) })),
+      converge: CONVERGE.map((d, i) => mk(i, d, '#f7f7f5')),
+      gaps: [
+        CG('지도 앞', '랜딩 · 가입 · 로그인', '이 지도의 첫 두 노드가 점선인 이유입니다. 일곱 트랙은 전부 "카드가 이미 있다"에서 시작합니다.'),
+        CG('지도 앞', '첫 프로젝트 · 빈 캔버스', '캔버스는 언제나 일곱 카드가 채워진 상태로만 그려졌습니다.'),
+        CG('트랙 사이', '위젯 → 위젯 핸드오프', '전사록 → 프로빙 페르소나, AI UT 클립 → 보고서. 트랙끼리 가로지르는 선이 없습니다.', true),
+        CG('캔버스', '크레딧 구매 · 부족', '💎 비용은 일곱 카드 전부에 있는데, 모자랄 때 무엇이 뜨는지가 없습니다.'),
+        CG('AI UT', '참가자 과제 화면', '링크를 받은 사람이 실제로 보는 화면. 연구자 쪽만 그려졌습니다.'),
+        CG('수렴 뒤', '프로젝트 탭', '라이브러리의 네 번째 탭. 셸 위에 올라간다는 것만 정해져 있습니다.'),
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

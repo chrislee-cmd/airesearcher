@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}
+.sc::-webkit-scrollbar{width:8px;height:8px;}.sc::-webkit-scrollbar-thumb{background:#d6d9df;border-radius:4px;}.sc::-webkit-scrollbar-track{background:transparent;}
+a{color:#c2334f;text-decoration:none;}a:hover{color:#9e2740;}
+table{border-collapse:collapse;}</style>
+</helmet>
+
+<div style="min-height:100vh;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:48px;display:flex;flex-direction:column;align-items:flex-start;gap:64px;">
+
+  <!-- ══════ TITLE ══════ -->
+  <div style="display:flex;flex-direction:column;gap:14px;max-width:1180px;">
+    <div style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:9px;padding:5px 14px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;letter-spacing:2px;box-shadow:3px 3px 0 rgba(29,27,32,0.3);">DESIGN SSOT · MASTER</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:44px;font-weight:800;color:#1d1b20;letter-spacing:-1.4px;line-height:1.1;">일곱 표면을 하나의 규격으로</div>
+    <div style="font-size:14.5px;color:#5b5965;line-height:1.85;max-width:900px;">Share Management · Share Shell · Widget Canvas · Fullview · Export Template · Deliverables Library · Picker System 이 각자 만들어 온 값을 한자리에 놓고, <b style="color:#1d1b20;">충돌하는 것만 판정</b>했습니다. 이 파일은 표면의 내용을 복제하지 않습니다 — 각 표면의 전체 상태와 컴프는 자기 번들에 그대로 있고, 여기는 <b style="color:#1d1b20;">공통 규격과 그 판정</b>만 삽니다.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+      <a href="#A" style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;border:1.5px solid #1d1b20;border-radius:7px;background:#ffd0e2;padding:5px 12px;box-shadow:2px 2px 0 #1d1b20;">§A 충돌 판정 6건</a>
+      <a href="#B" style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;padding:5px 12px;box-shadow:2px 2px 0 rgba(29,27,32,.14);">§B 파운데이션</a>
+      <a href="#C" style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;padding:5px 12px;box-shadow:2px 2px 0 rgba(29,27,32,.14);">§C 셸 4종</a>
+      <a href="#D" style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;padding:5px 12px;box-shadow:2px 2px 0 rgba(29,27,32,.14);">§D 컴포넌트 정합</a>
+      <a href="#E" style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;padding:5px 12px;box-shadow:2px 2px 0 rgba(29,27,32,.14);">§E 표면 색인</a>
+    </div>
+    <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);padding:16px 20px;margin-top:10px;display:flex;flex-direction:column;gap:9px;max-width:900px;">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;">이 파일의 권한</div>
+      <div style="font-size:13px;color:#2a262f;line-height:1.8;"><b>§A 판정은 표면 스펙보다 우선합니다.</b> §A 에 적힌 6건은 각 표면의 BUILD-SPEC 에 서로 다른 값으로 적혀 있고, 이 파일이 그중 하나를 고른 것입니다. 나머지 전부는 표면 스펙이 계속 SSOT 입니다 — 여기 없는 값을 여기서 찾지 마세요.<br><b>토큰 어휘의 SSOT 는 여전히 <code style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:4px;padding:1px 5px;">tokens.json 2.0</code> 입니다.</b> §B 는 그 파일을 눈으로 볼 수 있게 편 것이고, §B 에서 새로 제안하는 값은 <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#c2334f;background:#ffeef4;border:1px solid #ffd0e2;border-radius:4px;padding:1px 5px;">NEW</span> 로 표시했습니다.</div>
+    </div>
+  </div>
+
+  <!-- ══════ §A 충돌 판정 ══════ -->
+  <div id="A" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;background:#c2334f;color:#fff;border-radius:8px;padding:5px 12px;">§A</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">충돌 판정</div>
+      <div style="font-size:13px;color:#8a8693;">같은 종류의 요소에 두 값이 적혀 있던 6건. <b style="color:#1d1b20;">전부 기존 값 중 하나를 고른 것이고, 새 값을 만들지 않았습니다.</b></div>
+    </div>
+
+    <!-- A1 -->
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <div style="background:#ffeef4;border-bottom:2px solid #1d1b20;padding:13px 20px;display:flex;align-items:center;gap:11px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A1</span>
+        <span style="font-size:16.5px;font-weight:800;color:#1d1b20;">전면 프레임 radius — 14 vs 16</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:6px;padding:3px 10px;">판정 → 16</span>
+      </div>
+      <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+        <div style="display:flex;gap:18px;flex-shrink:0;">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="width:150px;height:96px;border:3px solid #1d1b20;border-radius:14px;background:#fbfbf9;box-shadow:6px 6px 0 rgba(29,27,32,.28);display:flex;align-items:flex-start;overflow:hidden;"><div style="width:100%;height:26px;background:#cdebd9;border-bottom:2px solid #1d1b20;"></div></div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#8a8693;">radius 14 · rounded-sm</div>
+            <div style="font-size:10.5px;color:#a3a7ad;text-align:center;line-height:1.5;">FULLVIEW-SHELL §F1<br>recruiting-scheduling</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="width:150px;height:96px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;box-shadow:6px 6px 0 rgba(29,27,32,.28);display:flex;align-items:flex-start;overflow:hidden;"><div style="width:100%;height:26px;background:#cdebd9;border-bottom:2px solid #1d1b20;"></div></div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#1d1b20;">radius 16 · rounded-panel-lg</div>
+            <div style="font-size:10.5px;color:#14713a;text-align:center;line-height:1.5;font-weight:700;">library · share-shell<br>share-mgmt · observer</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:13.5px;color:#2a262f;line-height:1.85;"><b>4 대 2 로 16 이 이미 다수입니다.</b> 그리고 tokens 2.0 이 <code style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:3px;padding:0 4px;">panel-lg 16</code> 에 붙여 둔 역할이 정확히 "large panel, <b>page frame</b>" 입니다. 14(<code style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:3px;padding:0 4px;">rounded-sm</code>)는 "card / button / modal" 이 역할이고, 전면 프레임은 카드가 아닙니다.</div>
+          <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;color:#2a262f;line-height:1.75;"><b>고칠 곳:</b> <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">FULLVIEW-SHELL.md §F1</code> 프레임 radius 14 → 16 · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">recruiting-scheduling-BUILD-SPEC §1</code> 스크린 프레임 · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">interview-results/GEOMETRY §B</code>. 위젯 카드 radius 20 은 <b>건드리지 않습니다</b> — 카드는 다른 종류입니다(§C1).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A2 -->
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <div style="background:#ffeef4;border-bottom:2px solid #1d1b20;padding:13px 20px;display:flex;align-items:center;gap:11px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A2</span>
+        <span style="font-size:16.5px;font-weight:800;color:#1d1b20;">헤더밴드 하단 보더 — 2px vs 3px</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:6px;padding:3px 10px;">판정 → 역할로 분리</span>
+      </div>
+      <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+        <div style="display:flex;gap:18px;flex-shrink:0;">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="width:190px;border:2.5px solid #1d1b20;border-radius:12px;background:#fff;overflow:hidden;">
+              <div style="background:#ffd0e2;border-bottom:2px solid #1d1b20;padding:9px 12px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#1d1b20;">기능 헤더</div>
+              <div style="padding:11px 12px;font-size:10.5px;color:#a3a7ad;">본문</div>
+            </div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#1d1b20;">border-b <b style="color:#c2334f;">2px</b></div>
+            <div style="font-size:10.5px;color:#14713a;font-weight:700;text-align:center;line-height:1.5;">위젯 카드 · 풀뷰<br>정체성 파스텔 밴드</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="width:190px;border:2.5px solid #1d1b20;border-radius:12px;background:#fff;overflow:hidden;">
+              <div style="background:#fff;border-bottom:3px solid #1d1b20;padding:9px 12px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#1d1b20;">제품 헤더</div>
+              <div style="padding:11px 12px;font-size:10.5px;color:#a3a7ad;">본문</div>
+            </div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#1d1b20;">border-b <b style="color:#c2334f;">3px</b></div>
+            <div style="font-size:10.5px;color:#14713a;font-weight:700;text-align:center;line-height:1.5;">라이브러리 · 공유관리<br>공개 페이지</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:13.5px;color:#2a262f;line-height:1.85;">둘 다 맞습니다 — <b>다른 종류의 헤더였습니다.</b> 2px 는 <b>기능 헤더</b>(파스텔 정체성 밴드가 깔린 위젯·풀뷰 헤더)이고, 3px 는 <b>제품 헤더</b>(파스텔이 없는 흰 바탕에 제품/페이지 이름이 오는 라이브러리·공유관리·공개 페이지)입니다. 파스텔 밴드는 색으로 이미 구분되므로 3px 까지 쓰면 과합니다. 흰 헤더는 색이 없어 선이 유일한 경계입니다.</div>
+          <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;color:#2a262f;line-height:1.75;"><b>규칙:</b> 헤더 바탕이 <b>파스텔이면 2px</b>, <b>흰색이면 3px</b>. 예외 1건 — <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">interpreter-observer</code> 는 파스텔(mint) 밴드에 3px 를 씁니다. <b>2px 로 내립니다.</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A3 -->
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <div style="background:#ffeef4;border-bottom:2px solid #1d1b20;padding:13px 20px;display:flex;align-items:center;gap:11px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A3</span>
+        <span style="font-size:16.5px;font-weight:800;color:#1d1b20;">같은 그림자, 세 개의 이름</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:6px;padding:3px 10px;">판정 → shadow-frame 하나</span>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+        <table style="width:100%;font-size:12.5px;">
+          <thead><tr style="background:#f7f7f5;">
+            <th style="text-align:left;padding:9px 13px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">쓰던 이름</th>
+            <th style="text-align:left;padding:9px 13px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">값</th>
+            <th style="text-align:left;padding:9px 13px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">어디</th>
+            <th style="text-align:left;padding:9px 13px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;background:#ffeef4;">판정</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:9px 13px;font-family:ui-monospace,Menlo,monospace;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.1);">--fv-frame-shadow</td><td style="padding:9px 13px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">8px 8px 0 ink/28</td><td style="padding:9px 13px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">FULLVIEW-SHELL §F6 (shell-local)</td><td style="padding:9px 13px;border-bottom:1px solid rgba(29,27,32,.1);background:#ffeef4;font-weight:800;color:#c2334f;">삭제</td></tr>
+            <tr style="background:#fbfbf9;"><td style="padding:9px 13px;font-family:ui-monospace,Menlo,monospace;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.1);">shadow-fullview-frame</td><td style="padding:9px 13px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">8px 8px 0 ink/28</td><td style="padding:9px 13px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">observer · recruiting-scheduling</td><td style="padding:9px 13px;border-bottom:1px solid rgba(29,27,32,.1);background:#ffeef4;font-weight:800;color:#c2334f;">삭제</td></tr>
+            <tr><td style="padding:9px 13px;font-family:ui-monospace,Menlo,monospace;color:#1d1b20;font-weight:800;">shadow-frame</td><td style="padding:9px 13px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;">8px 8px 0 ink/28</td><td style="padding:9px 13px;color:#5b5965;"><b>tokens.json 2.0 에 이미 있음</b></td><td style="padding:9px 13px;background:#ffeef4;font-weight:800;color:#14713a;">단일 이름</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;color:#2a262f;line-height:1.8;">값이 셋 다 같습니다. tokens 2.0 이 <code style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:3px;padding:0 4px;">shadow-frame</code> 을 이미 정의해 뒀는데(role: "full-surface frame — fullview, library, share page") 앞선 두 표면이 그 전에 쓰던 로컬 이름을 아직 들고 있습니다. <b>이름만 정리하면 되고 값 변경은 없습니다.</b></div>
+        <div style="border:1.5px solid #f0d78a;border-radius:10px;background:#fff1e6;padding:12px 15px;font-size:12.5px;color:#8a5a10;line-height:1.75;">같은 문제가 하나 더 있습니다 — <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">shadow-popover</code> <b>4px 4px 0 ink/20</b> 을 <b>인터뷰 번들과 공유관리 번들이 각각 따로 승격 요청</b>했습니다. 값이 같으므로 <b>하나로 승격</b>하세요.</div>
+      </div>
+    </div>
+
+    <!-- A4 -->
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <div style="background:#ffeef4;border-bottom:2px solid #1d1b20;padding:13px 20px;display:flex;align-items:center;gap:11px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A4</span>
+        <span style="font-size:16.5px;font-weight:800;color:#1d1b20;">보더 두께 — 한 제품에 일곱 값</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:6px;padding:3px 10px;">판정 → 4단으로 축약</span>
+      </div>
+      <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+        <div style="flex-shrink:0;display:flex;flex-direction:column;gap:9px;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:2px;">현재 쓰이는 값</div>
+          <div style="display:flex;gap:7px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:1.3px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#c2334f;font-weight:800;">1.3</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:1.4px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#c2334f;font-weight:800;">1.4</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#14713a;font-weight:800;">1.5</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:1.8px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#c2334f;font-weight:800;">1.8</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:2px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#14713a;font-weight:800;">2</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:2.5px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#c2334f;font-weight:800;">2.5</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div style="width:46px;height:34px;border:3px solid #1d1b20;border-radius:7px;background:#fff;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#14713a;font-weight:800;">3</span></div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:13.5px;color:#2a262f;line-height:1.85;"><b>1.3 · 1.4 · 1.8 · 2.5 는 의미가 없습니다.</b> 1.3 과 1.5 는 화면에서 구분되지 않고, 서로 다른 표면이 같은 것(칩 테두리)에 다른 값을 쓰고 있을 뿐입니다. Picker 스펙이 스스로 "네 폭이 한 컴포넌트에 있고 1.5+2 로 접어야 한다"고 이미 적어 뒀습니다.</div>
+          <table style="width:100%;font-size:12.5px;">
+            <thead><tr style="background:#f7f7f5;"><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">남기는 값</th><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">토큰</th><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">역할</th><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;background:#ffeef4;">흡수</th></tr></thead>
+            <tbody>
+              <tr><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.1);">1.5px</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">border-thin</td><td style="padding:8px 12px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.1);">크롬 — 칩 · pill · 인풋 · 세컨더리 버튼</td><td style="padding:8px 12px;background:#ffeef4;font-family:ui-monospace,Menlo,monospace;color:#c2334f;font-weight:700;border-bottom:1px solid rgba(29,27,32,.1);">1.3 · 1.4</td></tr>
+              <tr style="background:#fbfbf9;"><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.1);">2px</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">border-strong</td><td style="padding:8px 12px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.1);">강조 — 카드 · 패널 · 영역 분할 · 프라이머리 버튼</td><td style="padding:8px 12px;background:#ffeef4;font-family:ui-monospace,Menlo,monospace;color:#c2334f;font-weight:700;border-bottom:1px solid rgba(29,27,32,.1);">1.8 · 2.5</td></tr>
+              <tr><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.1);">3px</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">border-frame</td><td style="padding:8px 12px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.1);">바깥 경계 — 전면 프레임 · 위젯 카드 · 모달 · 제품 헤더 하단</td><td style="padding:8px 12px;background:#ffeef4;color:#a3a7ad;border-bottom:1px solid rgba(29,27,32,.1);">—</td></tr>
+              <tr style="background:#fbfbf9;"><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;">1px</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;">border-hair</td><td style="padding:8px 12px;color:#2a262f;">행 구분선(<code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">ink/8~10</code>) — 색으로만 존재</td><td style="padding:8px 12px;background:#ffeef4;color:#a3a7ad;">—</td></tr>
+            </tbody>
+          </table>
+          <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;color:#2a262f;line-height:1.75;"><b>2.5px 예외 1건:</b> 인터뷰 보고서의 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">executive_summary</code> 블록이 "본문 카드(2px)보다 두껍지만 프레임(3px)은 아닌" 위계를 노리고 2.5 를 씁니다. <b>3px 로 올립니다</b> — 그 블록은 보고서에서 프레임급으로 읽혀야 하는 유일한 블록이고, 2.5 를 지키자고 눈금을 하나 더 두는 건 비쌉니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A5 -->
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <div style="background:#ffeef4;border-bottom:2px solid #1d1b20;padding:13px 20px;display:flex;align-items:center;gap:11px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A5</span>
+        <span style="font-size:16.5px;font-weight:800;color:#1d1b20;">아이콘 채움 — 위젯 톤 vs 흰색</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:6px;padding:3px 10px;">판정 → 바탕이 정한다</span>
+      </div>
+      <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+        <div style="flex-shrink:0;display:flex;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="width:120px;height:74px;border:2px solid #1d1b20;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z" fill="#ffd0e2"></path><path d="M14 3v4h4"></path><path d="M9 13h6M9 17h5"></path></svg></div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">흰 바탕 → 톤 채움</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+            <div style="width:120px;height:74px;border:2px solid #1d1b20;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;"><div style="width:38px;height:38px;border:2px solid #1d1b20;border-radius:10px;background:#ffd0e2;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z" fill="#fff"></path><path d="M14 3v4h4"></path><path d="M9 13h6M9 17h5"></path></svg></div></div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">파스텔 타일 → 흰 채움</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:13.5px;color:#2a262f;line-height:1.85;">인터뷰 번들은 "아이콘 채움 = 위젯 톤", 공유관리 번들은 "아이콘 채움 = 흰색"이라고 적었습니다. 충돌처럼 보이지만 <b>아이콘이 놓인 바탕이 달랐습니다.</b> 파스텔 타일 위에 파스텔 채움을 또 쓰면 34px 타일 안 18px 아이콘의 형태가 사라집니다.</div>
+          <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;color:#2a262f;line-height:1.75;"><b>규칙 한 줄:</b> 듀오톤 채움은 <b>바탕이 흰색일 때만</b> 정체성 파스텔을 씁니다. 아이콘이 <b>파스텔 타일 안에</b> 있으면 채움은 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">paper</code>, <b>ink 버튼 안에</b> 있으면 채움 없이 흰 스트로크(mono)입니다. 세 경우 모두 스트로크 폭은 2 고정.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A6 -->
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <div style="background:#ffeef4;border-bottom:2px solid #1d1b20;padding:13px 20px;display:flex;align-items:center;gap:11px;">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">A6</span>
+        <span style="font-size:16.5px;font-weight:800;color:#1d1b20;">Picker 의 off-scale radius 4종</span>
+        <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#14713a;background:#f4fbf6;border:1.4px solid #cdeed8;border-radius:6px;padding:3px 10px;">판정 → 2.0 눈금으로 흡수</span>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:13px;">
+        <div style="font-size:13.5px;color:#2a262f;line-height:1.85;">Picker 스펙은 radius <b>5 · 8 · 10 · 13</b> 을 쓰면서 "DS 눈금이 2/4/14/24/999 라 넷 다 off-scale" 이라고 적었습니다. <b>그 관찰은 tokens 1.x 기준이고, 2.0 이 이미 눈금을 늘렸습니다.</b> 넷 중 셋은 그대로 들어맞습니다.</div>
+        <table style="width:100%;font-size:12.5px;">
+          <thead><tr style="background:#f7f7f5;"><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">Picker</th><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">쓰던 값</th><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;background:#ffeef4;">2.0 토큰</th><th style="text-align:left;padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;color:#5b5965;font-weight:800;border-bottom:2px solid #1d1b20;">판정</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:8px 12px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.1);">체크박스</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">5</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;background:#ffeef4;border-bottom:1px solid rgba(29,27,32,.1);">rounded-xs 4</td><td style="padding:8px 12px;color:#14713a;font-weight:700;border-bottom:1px solid rgba(29,27,32,.1);">4 로 내림 · 1px 차이는 안 보임</td></tr>
+            <tr style="background:#fbfbf9;"><td style="padding:8px 12px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.1);">옵션 행</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">8</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;background:#ffeef4;border-bottom:1px solid rgba(29,27,32,.1);">rounded-nav 8</td><td style="padding:8px 12px;color:#14713a;font-weight:700;border-bottom:1px solid rgba(29,27,32,.1);">그대로 맞음</td></tr>
+            <tr><td style="padding:8px 12px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.1);">트리거</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.1);">10</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;background:#ffeef4;border-bottom:1px solid rgba(29,27,32,.1);">rounded-control 10</td><td style="padding:8px 12px;color:#14713a;font-weight:700;border-bottom:1px solid rgba(29,27,32,.1);">그대로 맞음</td></tr>
+            <tr style="background:#fbfbf9;"><td style="padding:8px 12px;color:#2a262f;">패널</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;color:#5b5965;">13</td><td style="padding:8px 12px;font-family:ui-monospace,Menlo,monospace;font-weight:800;color:#1d1b20;background:#ffeef4;">rounded-panel 12</td><td style="padding:8px 12px;color:#14713a;font-weight:700;">12 로 내림</td></tr>
+          </tbody>
+        </table>
+        <div style="border:1.5px solid #f0d78a;border-radius:10px;background:#fff1e6;padding:12px 15px;font-size:12.5px;color:#8a5a10;line-height:1.75;"><b>남는 진짜 갭 3건은 유효합니다</b> — <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">focus-ring</code>(제품 전체에 포커스 토큰이 없음) · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">control-h-md/-sm</code>(높이 토큰이 없어 표면마다 패딩에서 흘러나옴) · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">shadow-picker-panel</code>. Picker 스펙이 권고한 승격 순서(<b>focus-ring → control-h → 나머지</b>)를 그대로 지지합니다 — 앞의 둘은 Picker 문제가 아니라 <b>Picker 가 드러낸 제품 전체의 구멍</b>입니다.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════ §B 파운데이션 ══════ -->
+  <div id="B" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;background:#1d1b20;color:#fff;border-radius:8px;padding:5px 12px;">§B</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">파운데이션</div>
+      <div style="font-size:13px;color:#8a8693;"><code style="font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:3px;padding:0 4px;">tokens.json 2.0</code> 을 눈으로 본 것. <span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#c2334f;background:#ffeef4;border:1px solid #ffd0e2;border-radius:4px;padding:1px 5px;">NEW</span> 는 §A 판정으로 생긴 신규 제안</div>
+    </div>
+
+    <!-- B1 색 -->
+    <div style="width:1180px;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+      <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">B1</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">색</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">파스텔은 정체성, 시그널은 상태, 잉크·회색은 구조. 세 계열은 서로 자리를 바꾸지 않습니다.</span></div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:20px;">
+
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:10px;">정체성 파스텔 · 위젯 1:1</div>
+          <div style="display:flex;gap:11px;flex-wrap:wrap;">
+            <div style="width:158px;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;"><div style="height:46px;background:#cfe6ff;border-bottom:1.5px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">sky</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#cfe6ff · Probing</div></div></div>
+            <div style="width:158px;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;"><div style="height:46px;background:#cdebd9;border-bottom:1.5px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">mint</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#cdebd9 · Interpreter</div></div></div>
+            <div style="width:158px;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;"><div style="height:46px;background:#e7defe;border-bottom:1.5px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">lav</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#e7defe · Transcript</div></div></div>
+            <div style="width:158px;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;"><div style="height:46px;background:#ffd9be;border-bottom:1.5px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">peach</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#ffd9be · AI UT</div></div></div>
+            <div style="width:158px;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;"><div style="height:46px;background:#ffe8a8;border-bottom:1.5px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">sun</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#ffe8a8 · Recruiting</div></div></div>
+            <div style="width:158px;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;"><div style="height:46px;background:#bfe9ef;border-bottom:1.5px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">aqua</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#bfe9ef · Desk</div></div></div>
+            <div style="width:158px;border:2px solid #1d1b20;border-radius:10px;overflow:hidden;box-shadow:2px 2px 0 #1d1b20;"><div style="height:46px;background:#ffd0e2;border-bottom:2px solid #1d1b20;"></div><div style="padding:8px 10px;"><div style="font-size:12px;font-weight:800;color:#1d1b20;">rose</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">#ffd0e2 · 인터뷰 결과</div></div></div>
+          </div>
+          <div style="font-size:11.5px;color:#8a8693;line-height:1.65;margin-top:9px;">7 개가 배정 완료입니다. 다음 기능은 <b style="color:#1d1b20;">예약된 톤이 없습니다</b> — 새 파스텔을 만들지 말고 CD 로 회부하세요. 각 톤의 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">-bg</code> 워시(문서용 옅은 틴트)는 정체성이 아니라 종이색이므로 다른 위젯이 써도 됩니다.</div>
+        </div>
+
+        <div style="display:flex;gap:26px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:10px;">시그널 · 상태만</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #cdeed8;background:#f4fbf6;border-radius:9px;padding:8px 12px;"><span style="width:14px;height:14px;border-radius:50%;background:#16a34a;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:800;color:#14713a;flex:1;">success</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;">#16a34a · bg #f4fbf6 · line #cdeed8 · text #14713a</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #f0d78a;background:#fff1e6;border-radius:9px;padding:8px 12px;"><span style="width:14px;height:14px;border-radius:50%;background:#e0a83a;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:800;color:#8a5a10;flex:1;">amber</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;">#e0a83a · bg #fff1e6 · line #f0d78a · text #8a5a10</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #d6c7f5;background:#f6f2ff;border-radius:9px;padding:8px 12px;"><span style="width:14px;height:14px;border-radius:50%;background:#8b5cf6;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:800;color:#6b4aa0;flex:1;">processing</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;">#8b5cf6 · bg #f6f2ff · line #d6c7f5 · text #6b4aa0</span></div>
+              <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #f0c0c0;background:#fdf0f0;border-radius:9px;padding:8px 12px;"><span style="width:14px;height:14px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:800;color:#b4443f;flex:1;">error</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;">#ef4444 · bg #fdf0f0 · line #f0c0c0 · text #b4443f</span></div>
+            </div>
+            <div style="border:1.5px solid rgba(29,27,32,.14);border-radius:9px;background:#fbfbf9;padding:10px 13px;font-size:11.5px;color:#5b5965;line-height:1.7;margin-top:9px;"><b style="color:#1d1b20;">processing 이 lav 파스텔과 다른 색인 것은 의도입니다.</b> lav(#e7defe)는 Transcript 의 정체성이고 processing(#8b5cf6)은 어느 위젯에서든 "돌아가는 중"입니다. 두 색을 섞으면 인터뷰 위젯의 진행 상태가 Transcript 처럼 읽힙니다.</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:10px;">잉크 · 회색 · 종이</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#1d1b20;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">ink</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#1d1b20 — 보더 · 본문 · 프라이머리 채움</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#2a262f;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">ink-2</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#2a262f — 긴 본문</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#5b5965;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">mute</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#5b5965 — 보조 · 잠긴 라벨</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#8a8693;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">mute-soft</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#8a8693 — mono 라벨 · 메타</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#a3a7ad;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">faint</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#a3a7ad — 각주 · 플레이스홀더</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#c9ccd2;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">line-empty</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#c9ccd2 — 점선 빈 상태</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#eceef1;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">disabled</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#eceef1 — 잠긴 트랙</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#f7f7f5;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">paper-soft</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#f7f7f5 — 헤더 스트립 · 레일</span></div>
+              <div style="display:flex;align-items:center;gap:10px;"><span style="width:52px;height:26px;border-radius:6px;background:#fbfbf9;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;font-weight:700;color:#1d1b20;width:78px;">canvas</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#5b5965;flex:1;">#fbfbf9 — 표면 바탕 · hover</span></div>
+            </div>
+            <div style="border:1.5px solid rgba(29,27,32,.14);border-radius:9px;background:#fbfbf9;padding:10px 13px;font-size:11.5px;color:#5b5965;line-height:1.7;margin-top:9px;"><b style="color:#1d1b20;">잠금에 래퍼 opacity 를 쓰지 않습니다.</b> <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">disabled</code> 트랙 + <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">mute</code> 라벨 + 그림자 제거로 표현합니다 — opacity 는 명암비를 4.5:1 아래로 떨어뜨립니다.</div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:10px;">차트 카테고리 · <span style="color:#c2334f;">기존 토큰의 별칭 — 새 색 없음</span></div>
+          <div style="display:flex;gap:9px;">
+            <div style="flex:1;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="height:32px;background:#ff5c8a;"></div><div style="padding:6px 9px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;font-weight:700;">cat-1 <span style="color:#8a8693;">amore</span></div></div>
+            <div style="flex:1;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="height:32px;background:#2563a8;"></div><div style="padding:6px 9px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;font-weight:700;">cat-2 <span style="color:#8a8693;">blue</span></div></div>
+            <div style="flex:1;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="height:32px;background:#e0a83a;"></div><div style="padding:6px 9px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;font-weight:700;">cat-3 <span style="color:#8a8693;">amber</span></div></div>
+            <div style="flex:1;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="height:32px;background:#8b5cf6;"></div><div style="padding:6px 9px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;font-weight:700;">cat-4 <span style="color:#8a8693;">violet</span></div></div>
+            <div style="flex:1;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="height:32px;background:#16a34a;"></div><div style="padding:6px 9px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;font-weight:700;">cat-5 <span style="color:#8a8693;">success</span></div></div>
+            <div style="flex:1;border:1.5px solid #1d1b20;border-radius:9px;overflow:hidden;"><div style="height:32px;background:#5b5965;"></div><div style="padding:6px 9px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#1d1b20;font-weight:700;">cat-6 <span style="color:#8a8693;">mute</span></div></div>
+          </div>
+          <div style="font-size:11.5px;color:#8a8693;line-height:1.65;margin-top:9px;">계열이 하나인 막대·선은 <b style="color:#1d1b20;">cat-1 만</b> 씁니다(무지개 금지). 7개째부터는 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">mute-soft</code> 로 묶어 "기타"로 접습니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B2 그림자 -->
+    <div style="width:1180px;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+      <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">B2</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">그림자</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">Memphis 하드 오프셋 · <b style="color:#1d1b20;">blur 는 언제나 0</b>. 예외는 아래 하나뿐.</span></div>
+      <div style="padding:22px 20px;display:flex;flex-direction:column;gap:22px;">
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:14px;">불투명 사다리 — 위계</div>
+          <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">xs 1.5px</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:2px 2px 0 #1d1b20;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">sm 2px</div><div style="font-size:10px;color:#8a8693;">버튼 · 칩</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:3px 3px 0 #1d1b20;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">md 3px</div><div style="font-size:10px;color:#8a8693;">카드 기본</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:4px 4px 0 #1d1b20;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">lg 4px</div><div style="font-size:10px;color:#8a8693;">위젯 카드</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:3px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:8px 8px 0 #1d1b20;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">2xl 8px</div><div style="font-size:10px;color:#8a8693;">모달</div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:14px;">반투명 — 면적이 큰 것에</div>
+          <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.12);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">sm-faint</div><div style="font-size:10px;color:#8a8693;">리스트 카드</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">md-faint</div><div style="font-size:10px;color:#8a8693;">표 래퍼</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:11px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.20);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">popover <span style="color:#c2334f;">NEW</span></div><div style="font-size:10px;color:#8a8693;">부유 패널</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:3px solid #1d1b20;border-radius:13px;background:#fbfbf9;box-shadow:8px 8px 0 rgba(29,27,32,.28);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">frame</div><div style="font-size:10px;color:#8a8693;">전면 프레임</div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;margin-bottom:14px;">시그널 착색 — 카드가 상태를 말할 때</div>
+          <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#f4fbf6;box-shadow:3px 3px 0 #16a34a;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#14713a;">md-success</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#fff1e6;box-shadow:3px 3px 0 #e0a83a;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#8a5a10;">md-amber</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#f6f2ff;box-shadow:3px 3px 0 rgba(139,92,246,.35);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#6b4aa0;">md-processing <span style="color:#c2334f;">NEW</span></div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #1d1b20;border-radius:9px;background:#fdf0f0;box-shadow:3px 3px 0 #ef4444;"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#b4443f;">md-error</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:1.5px solid #c2334f;border-radius:9px;background:#fff;box-shadow:2px 2px 0 rgba(194,51,79,.24);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#c2334f;">sm-crimson</div><div style="font-size:10px;color:#8a8693;">파괴 액션</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:96px;height:56px;border:2px solid #16a34a;border-radius:9px;background:#f4fbf6;box-shadow:2px 2px 0 rgba(22,163,74,.30);"></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#14713a;">sm-success <span style="color:#c2334f;">NEW</span></div><div style="font-size:10px;color:#8a8693;">확인 피드백</div></div>
+          </div>
+        </div>
+        <div style="border:1.5px solid #f0d78a;border-radius:10px;background:#fff1e6;padding:12px 15px;font-size:12.5px;color:#8a5a10;line-height:1.75;"><b>blur 를 쓰는 그림자는 제품 전체에 하나뿐입니다</b> — <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">tile-lift</code> <b>0 6px 20px ink/8</b>, 참가자 비디오 타일과 모니터 안 목업 UI 전용. 이건 Memphis 표면이 아니라 "화면 안의 화면"이라 다른 물리를 씁니다. <b>그 외에 blur 가 보이면 드리프트입니다.</b></div>
+      </div>
+    </div>
+
+    <!-- B3 radius + border -->
+    <div style="width:1180px;display:flex;gap:20px;align-items:stretch;">
+      <div style="flex:1;min-width:0;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">B3</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">radius</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">작을수록 안쪽</span></div>
+        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:4px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">xs 4</span><span style="font-size:11.5px;color:#5b5965;flex:1;">근거 칩 · 체크박스 · 미세 배지</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:6px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">chip 6</span><span style="font-size:11.5px;color:#5b5965;flex:1;">mono 마이크로 배지 · 표 셀 하이라이트</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:8px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">nav 8</span><span style="font-size:11.5px;color:#5b5965;flex:1;">사이드바 항목 · Picker 옵션 행</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:9px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">icon 9</span><span style="font-size:11.5px;color:#5b5965;flex:1;">30–34px 아이콘 버튼 · 타일</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:10px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">control 10</span><span style="font-size:11.5px;color:#5b5965;flex:1;">인풋 · Picker 트리거 · 링크 필드</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:11px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">card 11</span><span style="font-size:11.5px;color:#5b5965;flex:1;">안쪽 카드 · 리스트 행</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:12px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">panel 12</span><span style="font-size:11.5px;color:#5b5965;flex:1;">패널 · 표 래퍼 · <b style="color:#1d1b20;">Picker 패널</b></span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:14px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">sm 14</span><span style="font-size:11.5px;color:#5b5965;flex:1;">카드 · 버튼 · <b style="color:#c2334f;">프레임 아님</b></span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:2px solid #1d1b20;border-radius:16px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">panel-lg 16</span><span style="font-size:11.5px;color:#5b5965;flex:1;"><b style="color:#1d1b20;">전면 프레임</b> — §A1 판정</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:2px solid #1d1b20;border-radius:18px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">modal 18</span><span style="font-size:11.5px;color:#5b5965;flex:1;">다이얼로그 · 스포트라이트</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:2px solid #1d1b20;border-radius:20px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">card-lg 20</span><span style="font-size:11.5px;color:#5b5965;flex:1;"><b style="color:#1d1b20;">위젯 카드 전용</b> · 604×900</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:22px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">field 22</span><span style="font-size:11.5px;color:#5b5965;flex:1;">검색 · 폼 셀렉트 · 채팅 입력</span></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:34px;border:1.5px solid #1d1b20;border-radius:999px;background:#fbfbf9;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:104px;">pill 999</span><span style="font-size:11.5px;color:#5b5965;flex:1;">CTA · 상태 배지 · 세그먼트</span></div>
+        </div>
+      </div>
+      <div style="width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:20px;">
+        <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+          <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 18px;display:flex;align-items:center;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">B4</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">보더</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#c2334f;">§A4 판정 후</span></div>
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:11px;">
+            <div style="display:flex;align-items:center;gap:11px;"><div style="width:44px;height:0;border-top:1px solid rgba(29,27,32,.1);flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:92px;">hair 1</span><span style="font-size:11.5px;color:#5b5965;flex:1;">행 구분선</span></div>
+            <div style="display:flex;align-items:center;gap:11px;"><div style="width:44px;height:0;border-top:1.5px solid #1d1b20;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:92px;">thin 1.5</span><span style="font-size:11.5px;color:#5b5965;flex:1;">칩 · pill · 인풋</span></div>
+            <div style="display:flex;align-items:center;gap:11px;"><div style="width:44px;height:0;border-top:2px solid #1d1b20;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:92px;">strong 2</span><span style="font-size:11.5px;color:#5b5965;flex:1;">카드 · 영역 분할</span></div>
+            <div style="display:flex;align-items:center;gap:11px;"><div style="width:44px;height:0;border-top:3px solid #1d1b20;flex-shrink:0;"></div><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:92px;">frame 3</span><span style="font-size:11.5px;color:#5b5965;flex:1;">바깥 경계</span></div>
+            <div style="border-top:1px solid rgba(29,27,32,.1);padding-top:11px;font-size:11.5px;color:#8a8693;line-height:1.7;"><b style="color:#c2334f;">폐기:</b> 1.3 · 1.4 · 1.8 · 2.5</div>
+          </div>
+        </div>
+        <div style="flex:1;border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 18px;display:flex;align-items:center;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">B5</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">타입</span></div>
+          <div style="padding:16px 18px;display:flex;flex-direction:column;gap:13px;">
+            <div><div style="font-family:'Outfit',sans-serif;font-size:29px;font-weight:800;color:#1d1b20;letter-spacing:-0.9px;line-height:1.2;">위젯 카드 제목</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;margin-top:3px;">Outfit 800 · 29 · ls -0.9</div></div>
+            <div><div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;line-height:1.25;">풀뷰 · 제품 헤더</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;margin-top:3px;">Outfit 800 · 22~24 · ls -0.5</div></div>
+            <div><div style="font-size:13.5px;color:#2a262f;line-height:1.85;">본문. 한국어 장문은 <b style="color:#1d1b20;">13.5 / 1.85</b> 가 기본입니다. 줄 길이는 40~45자.</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;margin-top:3px;">Pretendard 400 · 13.5 / 1.85</div></div>
+            <div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;">MONO LABEL · 기술 라벨</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;margin-top:3px;">mono 10 · .14em · 800 · uppercase</div></div>
+            <div style="border-top:1px solid rgba(29,27,32,.1);padding-top:11px;font-size:11.5px;color:#5b5965;line-height:1.7;"><b style="color:#1d1b20;">mono 는 기술 라벨 전용입니다</b> — 섹션 eyebrow · 타임스탬프 · ID · 카운트 · 표 헤더. 본문에 쓰지 않습니다. <b style="color:#1d1b20;">이탤릭은 쓰지 않습니다</b> — 한글 합성 기울임은 가독성이 떨어집니다(인용문 포함).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════ §C 셸 4종 ══════ -->
+  <div id="C" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;background:#1d1b20;color:#fff;border-radius:8px;padding:5px 12px;">§C</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">셸 4종</div>
+      <div style="font-size:13px;color:#8a8693;">일곱 표면이 실제로는 <b style="color:#1d1b20;">네 개의 셸</b> 위에 있습니다. 아래는 비례 다이어그램 — 내용이 아니라 골격입니다.</div>
+    </div>
+
+    <div style="width:1180px;display:flex;flex-direction:column;gap:20px;">
+
+      <!-- C1 위젯 카드 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">C1</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">위젯 카드</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#5b5965;background:#fff;border:1.5px solid rgba(29,27,32,.16);border-radius:6px;padding:2px 8px;">604 × 900</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">Widget Canvas · 7 위젯이 전부 이 셸</span></div>
+        <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+          <div style="width:242px;height:360px;border:3px solid #1d1b20;border-radius:20px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;">
+            <div style="background:#ffd0e2;border-bottom:2px solid #1d1b20;padding:11px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;"><span style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">제목</span><span style="margin-left:auto;display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;overflow:hidden;"><span style="width:19px;height:17px;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:19px;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:19px;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:19px;"></span></span></div>
+            <div style="border-bottom:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;padding:7px 12px;flex-shrink:0;"><span style="display:inline-block;width:80px;height:15px;border-radius:999px;background:#fff;border:1.5px solid #1d1b20;"></span></div>
+            <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;"><div style="height:38px;border:2px solid #1d1b20;border-radius:11px;background:#fff;"></div><div style="height:38px;border:1.5px solid rgba(29,27,32,.14);border-radius:11px;background:#fff;"></div><div style="height:38px;border:1.5px solid rgba(29,27,32,.14);border-radius:11px;background:#fff;"></div></div>
+            <div style="border-top:2px solid #1d1b20;background:#ffd0e2;padding:9px 12px;flex-shrink:0;"><div style="height:7px;border-radius:999px;background:rgba(29,27,32,.14);overflow:hidden;"><div style="width:44%;height:100%;background:#1d1b20;"></div></div></div>
+            <div style="border-top:1px solid rgba(29,27,32,.08);padding:10px 12px;display:flex;align-items:center;flex-shrink:0;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:8.5px;color:#8a8693;">메타</span><span style="margin-left:auto;display:inline-block;width:64px;height:22px;border-radius:999px;background:#1d1b20;"></span></div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+            <table style="width:100%;font-size:12.5px;">
+              <tbody>
+                <tr><td style="padding:7px 0;width:150px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">프레임</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">604 × 900 · border <b>3</b> · radius <b>20</b> · shadow <b>lg 4px 불투명</b></td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">헤더밴드</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">정체성 파스텔 · <b>border-b 2px</b>(§A2) · 제목 Outfit 800/29 · 툴바 우측</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">툴바</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">셀 44 × 4 + 구분선 1.5 × 3 = <b>180.5</b> · radius 10 · 💎 / ? / 팔레트 / ⤢</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">본문</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);"><b>기능 고유 · 셸이 정하지 않는 유일한 층</b></td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">진행 밴드</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">돌아가는 동안만 · <b>바탕 = 그 위젯의 헤더 톤</b> · border-t 2px</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">푸터</td><td style="padding:7px 0;color:#2a262f;">border-t <b>hair</b> · 좌 메타 mono / 우 CTA pill</td></tr>
+              </tbody>
+            </table>
+            <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:11px 14px;font-size:12px;color:#2a262f;line-height:1.75;"><b>radius 20 은 카드에만 남습니다.</b> 전면 프레임(16)과 다른 값인 것은 드리프트가 아니라 위계입니다 — 카드는 캔버스 위에 떠 있는 물건이고, 프레임은 화면 자체입니다. 카드만 <b>불투명 그림자</b>를 쓰는 것도 같은 이유입니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C2 풀뷰 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">C2</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">풀뷰</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#5b5965;background:#fff;border:1.5px solid rgba(29,27,32,.16);border-radius:6px;padding:2px 8px;">1400 × 840</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">Fullview · 사이드바는 <b style="color:#1d1b20;">공유 chrome</b> — 위젯별로 다시 만들지 않습니다</span></div>
+        <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+          <div style="width:466px;height:280px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;box-shadow:6px 6px 0 rgba(29,27,32,.28);overflow:hidden;display:flex;flex-shrink:0;">
+            <div style="width:80px;flex-shrink:0;background:#f7f7f5;border-right:2px solid #1d1b20;padding:9px 7px;display:flex;flex-direction:column;gap:4px;">
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:7px;color:#a3a7ad;font-weight:700;padding:2px 4px;">SIDEBAR 240</div>
+              <div style="height:15px;border-radius:5px;background:rgba(29,27,32,.05);"></div><div style="height:15px;border-radius:5px;background:rgba(29,27,32,.05);"></div><div style="height:15px;border-radius:5px;background:rgba(29,27,32,.05);"></div><div style="height:15px;border:1.5px solid #1d1b20;border-radius:5px;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;"></div><div style="height:15px;border-radius:5px;background:rgba(29,27,32,.05);"></div><div style="height:15px;border-radius:5px;background:rgba(29,27,32,.05);"></div><div style="height:15px;border-radius:5px;background:rgba(29,27,32,.05);"></div>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+              <div style="background:#ffd0e2;border-bottom:2px solid #1d1b20;padding:9px 12px;display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'Outfit',sans-serif;font-size:12px;font-weight:800;color:#1d1b20;">헤더밴드 · 2px</span><span style="margin-left:auto;width:18px;height:18px;border:1.5px solid #1d1b20;border-radius:5px;background:#fff;"></span></div>
+              <div style="background:#fff;border-bottom:2px solid #1d1b20;padding:7px 12px;display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="display:inline-block;width:66px;height:16px;border-radius:999px;border:1.5px solid #1d1b20;background:#fff;"></span><span style="margin-left:auto;display:inline-block;width:44px;height:16px;border-radius:999px;border:1.5px solid rgba(29,27,32,.2);"></span><span style="display:inline-block;width:44px;height:16px;border-radius:999px;border:1.5px solid rgba(29,27,32,.2);"></span></div>
+              <div style="flex:1;display:flex;min-height:0;">
+                <div style="width:96px;flex-shrink:0;border-right:2px solid #1d1b20;background:#fff;padding:9px;display:flex;flex-direction:column;gap:6px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:7px;color:#a3a7ad;font-weight:700;">좌 패널 300</div><div style="height:20px;border:1.5px solid rgba(29,27,32,.14);border-radius:5px;"></div><div style="height:20px;border:1.5px solid rgba(29,27,32,.14);border-radius:5px;"></div><div style="height:20px;border:1.5px solid rgba(29,27,32,.14);border-radius:5px;"></div></div>
+                <div style="flex:1;min-width:0;padding:10px;display:flex;flex-direction:column;gap:6px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:7px;color:#a3a7ad;font-weight:700;">본문 · flex</div><div style="height:8px;border-radius:3px;background:rgba(29,27,32,.07);"></div><div style="height:8px;border-radius:3px;background:rgba(29,27,32,.07);"></div><div style="height:8px;width:70%;border-radius:3px;background:rgba(29,27,32,.07);"></div><div style="height:36px;border-radius:6px;background:rgba(29,27,32,.05);margin-top:2px;"></div></div>
+                <div style="width:72px;flex-shrink:0;border-left:2px solid #1d1b20;background:#fff;padding:9px;display:flex;flex-direction:column;gap:5px;"><div style="font-family:ui-monospace,Menlo,monospace;font-size:7px;color:#a3a7ad;font-weight:700;">rail 220</div><div style="height:6px;border-radius:3px;background:rgba(29,27,32,.06);"></div><div style="height:6px;width:80%;border-radius:3px;background:rgba(29,27,32,.06);"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+            <table style="width:100%;font-size:12.5px;">
+              <tbody>
+                <tr><td style="padding:7px 0;width:150px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">프레임</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">1400 × 840 · border <b>3</b> · radius <b>16</b>(§A1) · <b>shadow-frame</b>(§A3)</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">사이드바</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);"><b>240 고정</b> · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">paper-soft</code> · border-r 2px · <b>7항목 수용 확인</b>(여유 394px)</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">헤더밴드</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">정체성 파스텔 · border-b <b>2px</b> · 제목 Outfit 800/22 <b>(카드의 29 아님)</b></td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">탭·액션바</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">흰 바탕 · border-b 2px · 좌 탭 pill / 우 액션 그룹</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">3열</td><td style="padding:7px 0;color:#2a262f;">좌 패널 <b>300</b> / 본문 flex / 우 rail <b>220</b> — 분할선은 전부 <b>2px</b></td></tr>
+              </tbody>
+            </table>
+            <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:11px 14px;font-size:12px;color:#2a262f;line-height:1.75;"><b>고정 폭은 240 / 300 / 220 세 개뿐입니다.</b> 나머지는 flex 입니다. 열을 하나 더 넣고 싶으면 본문에서 빼야 하고, 본문이 <b>764px</b> 아래로 내려가면 한국어 본문의 줄당 글자수가 깨집니다 — 그게 열 추가의 한계선입니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C3 리스트 표면 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">C3</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">리스트 표면</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#5b5965;background:#fff;border:1.5px solid rgba(29,27,32,.16);border-radius:6px;padding:2px 8px;">1560 × 880</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">Deliverables Library · Share Management — <b style="color:#1d1b20;">같은 셸의 두 탭</b></span></div>
+        <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+          <div style="width:466px;height:266px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;box-shadow:6px 6px 0 rgba(29,27,32,.28);overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;">
+            <div style="background:#fff;border-bottom:3px solid #1d1b20;flex-shrink:0;">
+              <div style="padding:9px 12px 0;display:flex;align-items:center;gap:8px;"><span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#1d1b20;">제품 헤더 · 3px</span><span style="margin-left:auto;display:inline-block;width:56px;height:15px;border-radius:999px;border:1.5px solid #1d1b20;background:#fff;"></span></div>
+              <div style="padding:8px 12px 0;display:flex;gap:2px;align-items:flex-end;"><span style="padding:5px 10px;font-size:9px;font-weight:700;color:#5b5965;">탭</span><span style="padding:5px 10px;font-size:9px;font-weight:700;color:#5b5965;">탭</span><span style="padding:5px 10px;font-size:9px;font-weight:800;color:#1d1b20;background:#fbfbf9;border:1.5px solid #1d1b20;border-bottom:1.5px solid #fbfbf9;border-radius:8px 8px 0 0;margin-bottom:-1.5px;">활성 탭</span></div>
+            </div>
+            <div style="background:#fff;border-bottom:2px solid #1d1b20;padding:8px 12px;display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="display:inline-flex;border:1.5px solid #1d1b20;border-radius:999px;overflow:hidden;box-shadow:1.5px 1.5px 0 rgba(29,27,32,.12);"><span style="width:38px;height:16px;background:#1d1b20;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:26px;background:#fff;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:26px;background:#fff;"></span></span><span style="display:inline-block;width:74px;height:16px;border-radius:999px;border:1.5px solid #1d1b20;background:#fff;"></span><span style="margin-left:auto;display:inline-block;width:52px;height:16px;border-radius:6px;border:1.5px solid #1d1b20;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;"></span></div>
+            <div style="background:#fff;border-bottom:1px solid rgba(29,27,32,.1);padding:5px 12px;display:flex;gap:7px;flex-shrink:0;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:6.5px;color:#8a8693;font-weight:700;flex:1;">COL</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:6.5px;color:#8a8693;font-weight:700;width:56px;">COL</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:6.5px;color:#8a8693;font-weight:700;width:36px;">COL</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:6.5px;color:#8a8693;font-weight:700;width:30px;">ST</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:6.5px;color:#8a8693;font-weight:700;width:58px;text-align:right;">ACT</span></div>
+            <div style="flex:1;background:#fff;display:flex;flex-direction:column;">
+              <div style="padding:7px 12px;border-bottom:1px solid rgba(29,27,32,.08);display:flex;align-items:center;gap:7px;"><span style="width:16px;height:16px;border:1.5px solid #1d1b20;border-radius:5px;background:#ffd0e2;flex-shrink:0;"></span><span style="flex:1;height:7px;border-radius:3px;background:rgba(29,27,32,.09);"></span><span style="width:56px;height:7px;border-radius:3px;background:rgba(29,27,32,.05);"></span><span style="width:36px;height:7px;border-radius:3px;background:rgba(29,27,32,.05);"></span><span style="width:30px;height:11px;border-radius:999px;background:#f4fbf6;border:1.2px solid #cdeed8;"></span><span style="width:58px;display:flex;gap:3px;justify-content:flex-end;"><span style="width:24px;height:13px;border-radius:999px;background:#1d1b20;"></span><span style="width:28px;height:13px;border-radius:999px;border:1.5px solid #1d1b20;"></span></span></div>
+              <div style="padding:7px 12px;border-bottom:1px solid rgba(29,27,32,.08);display:flex;align-items:center;gap:7px;background:#fbfbf9;"><span style="width:16px;height:16px;border:1.5px solid #1d1b20;border-radius:5px;background:#bfe9ef;flex-shrink:0;"></span><span style="flex:1;height:7px;border-radius:3px;background:rgba(29,27,32,.09);"></span><span style="width:56px;height:7px;border-radius:3px;background:rgba(29,27,32,.05);"></span><span style="width:36px;height:7px;border-radius:3px;background:rgba(29,27,32,.05);"></span><span style="width:30px;height:11px;border-radius:999px;background:#f4fbf6;border:1.2px solid #cdeed8;"></span><span style="width:58px;display:flex;gap:3px;justify-content:flex-end;"><span style="width:24px;height:13px;border-radius:999px;background:#1d1b20;"></span><span style="width:28px;height:13px;border-radius:999px;border:1.5px solid #1d1b20;"></span></span></div>
+              <div style="padding:7px 12px;display:flex;align-items:center;gap:7px;"><span style="width:16px;height:16px;border:1.5px solid rgba(29,27,32,.28);border-radius:5px;background:#f2f2ef;flex-shrink:0;"></span><span style="flex:1;height:7px;border-radius:3px;background:rgba(29,27,32,.055);"></span><span style="width:56px;height:7px;border-radius:3px;background:rgba(29,27,32,.04);"></span><span style="width:36px;height:7px;border-radius:3px;background:rgba(29,27,32,.04);"></span><span style="width:30px;height:11px;border-radius:999px;background:#f2f2ef;border:1.2px solid rgba(29,27,32,.24);"></span><span style="width:58px;display:flex;gap:3px;justify-content:flex-end;opacity:.5;"><span style="width:24px;height:13px;border-radius:999px;background:#eceef1;border:1.2px solid rgba(29,27,32,.2);"></span><span style="width:28px;height:13px;border-radius:999px;background:#eceef1;border:1.2px solid rgba(29,27,32,.2);"></span></span></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+            <table style="width:100%;font-size:12.5px;">
+              <tbody>
+                <tr><td style="padding:7px 0;width:150px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">프레임</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">1560 × 880 · border <b>3</b> · radius <b>16</b> · <b>shadow-frame</b></td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">제품 헤더</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">흰 바탕 · border-b <b>3px</b>(§A2) · 탭바가 이 선을 1.5px 덮어 본문과 이어짐</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">툴바</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">border-b 2px · <b>세그먼트는 한 줄에 하나</b> — 두 축이면 하나는 헤더로</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">열 헤더</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">border-b <b>hair</b> · mono 9.5 · .08em · uppercase</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">행</td><td style="padding:7px 0;color:#2a262f;">높이 <b>60</b>(pad 13 + 타일 34) · hover <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">canvas</code> · 타일이 정체성을 실어 나름</td></tr>
+              </tbody>
+            </table>
+            <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:11px 14px;font-size:12px;color:#2a262f;line-height:1.75;"><b>탭을 오갈 때 행 높이가 튀면 셸이 두 개인 것입니다.</b> 라이브러리와 공유관리는 프레임·툴바·열 헤더·행 높이가 픽셀 단위로 같아야 합니다 — 같은 클래스 조합을 쓰라는 뜻이고, 라이브러리 컴포넌트를 리스킨하라는 뜻은 아닙니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C4 공개 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">C4</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">공개 표면</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#5b5965;background:#fff;border:1.5px solid rgba(29,27,32,.16);border-radius:6px;padding:2px 8px;">가변 폭</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">Share Shell · Export Template — <b style="color:#1d1b20;">로그인하지 않은 사람이 보는 화면</b></span></div>
+        <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+          <div style="display:flex;gap:14px;flex-shrink:0;">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+              <div style="width:214px;height:230px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;box-shadow:6px 6px 0 rgba(29,27,32,.28);overflow:hidden;display:flex;flex-direction:column;">
+                <div style="background:#fff;border-bottom:3px solid #1d1b20;padding:9px 11px;display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="width:16px;height:16px;border-radius:50%;background:#ffd0e2;border:1.5px solid #1d1b20;flex-shrink:0;"></span><span style="font-family:'Outfit',sans-serif;font-size:11px;font-weight:800;color:#1d1b20;">공유된 보고서</span></div>
+                <div style="flex:1;padding:13px 11px;display:flex;flex-direction:column;gap:7px;"><div style="height:9px;width:78%;border-radius:3px;background:rgba(29,27,32,.11);"></div><div style="height:6px;border-radius:3px;background:rgba(29,27,32,.06);"></div><div style="height:6px;border-radius:3px;background:rgba(29,27,32,.06);"></div><div style="height:6px;width:64%;border-radius:3px;background:rgba(29,27,32,.06);"></div><div style="height:44px;border:1.5px solid rgba(29,27,32,.14);border-radius:8px;background:#fff;margin-top:3px;"></div></div>
+                <div style="border-top:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;padding:7px 11px;font-family:ui-monospace,Menlo,monospace;font-size:7.5px;color:#8a8693;">읽기 전용 · 워터마크</div>
+              </div>
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">valid</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+              <div style="width:214px;height:230px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;box-shadow:6px 6px 0 rgba(29,27,32,.24);overflow:hidden;display:flex;align-items:center;justify-content:center;padding:22px;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center;"><div style="width:52px;height:52px;border:2.5px dashed #c9ccd2;border-radius:15px;background:#fff;display:flex;align-items:center;justify-content:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a3a7ad" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></div><div style="font-size:12px;font-weight:800;color:#1d1b20;">더 이상 열 수 없는 링크</div><div style="font-size:10px;color:#8a8693;line-height:1.6;">만료 · 철회 · 없는 주소<br>세 경우가 같은 레이아웃</div></div>
+              </div>
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;">dead end · <span style="color:#c2334f;">톤 없음</span></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+            <table style="width:100%;font-size:12.5px;">
+              <tbody>
+                <tr><td style="padding:7px 0;width:150px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">프레임</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">border <b>3</b> · radius <b>16</b> · <b>shadow-frame</b> · dead end 는 24%</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">헤더</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">흰 바탕 · border-b <b>3px</b> · 산출물 톤은 <b>도트로만</b> 등장</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">상태</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);"><code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">valid · loading · gated · expired · revoked · not_found</code></td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">인쇄</td><td style="padding:7px 0;color:#2a262f;">Export Template 은 같은 문서를 <b>Letter 페이지 박스</b>로 다시 조판</td></tr>
+              </tbody>
+            </table>
+            <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:11px 14px;font-size:12px;color:#2a262f;line-height:1.75;"><b>죽은 끝은 톤을 버립니다.</b> 만료·철회된 링크 화면에 정체성 파스텔이 남아 있으면 "색만 다른 살아있는 페이지"로 읽힙니다. 이 규칙은 공유관리 목록의 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">revoked</code> 행 타일에도 <b>같은 형태로</b> 적용됩니다 — 두 표면이 같은 사실을 같은 방식으로 말해야 합니다.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ §D 컴포넌트 정합 ══════ -->
+  <div id="D" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;background:#1d1b20;color:#fff;border-radius:8px;padding:5px 12px;">§D</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">컴포넌트 정합</div>
+      <div style="font-size:13px;color:#8a8693;">여러 표면이 각자 그린 같은 물건. <b style="color:#1d1b20;">여기 그려진 것이 정본입니다</b> — 표면에서 다르게 그렸으면 표면을 고치세요.</div>
+    </div>
+
+    <div style="width:1180px;display:flex;flex-direction:column;gap:20px;">
+
+      <!-- D1 버튼 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">D1</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">버튼 4단</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">한 화면에 프라이머리는 <b style="color:#1d1b20;">하나</b>. 붉은 채움은 <b style="color:#1d1b20;">비가역 확정</b>에만.</span></div>
+        <div style="padding:22px 20px;display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;gap:10px;"><div style="display:inline-flex;align-items:center;justify-content:center;background:#1d1b20;color:#fff;border:2px solid #1d1b20;border-radius:999px;padding:11px 22px;font-size:13.5px;font-weight:800;box-shadow:2px 2px 0 rgba(29,27,32,.28);">프라이머리</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;line-height:1.6;">bg-ink · text-paper<br>border 2 · sm 2px/28</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;"><div style="display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#1d1b20;border:1.5px solid #1d1b20;border-radius:999px;padding:11px 20px;font-size:13px;font-weight:700;box-shadow:2px 2px 0 rgba(29,27,32,.12);">세컨더리</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;line-height:1.6;">paper · border thin<br>sm-faint</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;"><div style="display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#c2334f;border:1.5px solid #c2334f;border-radius:999px;padding:11px 20px;font-size:13px;font-weight:800;box-shadow:2px 2px 0 rgba(194,51,79,.24);">파괴 · 목록</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;line-height:1.6;">테두리만 붉음<br>sm-crimson</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;"><div style="display:inline-flex;align-items:center;justify-content:center;background:#c2334f;color:#fff;border:2px solid #c2334f;border-radius:999px;padding:11px 22px;font-size:13.5px;font-weight:800;box-shadow:2px 2px 0 rgba(194,51,79,.35);">파괴 · 확정</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;line-height:1.6;">채움 — 모달 안 <b style="color:#c2334f;">하나만</b><br>라벨은 결과를 말함</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;"><div style="display:inline-flex;align-items:center;justify-content:center;background:#eceef1;color:#5b5965;border:1.5px solid rgba(29,27,32,.2);border-radius:999px;padding:11px 20px;font-size:13px;font-weight:700;">잠김</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;line-height:1.6;">disabled 트랙 · mute<br><b style="color:#c2334f;">그림자 없음 · opacity 금지</b></div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;"><div style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#f4fbf6;color:#14713a;border:2px solid #16a34a;border-radius:999px;padding:11px 20px;font-size:13px;font-weight:800;box-shadow:2px 2px 0 rgba(22,163,74,.30);min-width:118px;">✓ 완료됨</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;line-height:1.6;">1.6초 후 복귀<br><b style="color:#c2334f;">min-width 로 폭 고정</b></div></div>
+        </div>
+      </div>
+
+      <!-- D2 상태 배지 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">D2</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">상태 배지</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">pill · pad 3/10 · 11.5/700 · 도트 7px — <b style="color:#1d1b20;">모든 표면 공통</b></span></div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;gap:11px;flex-wrap:wrap;align-items:center;">
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #cdeed8;background:#f4fbf6;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#14713a;"><span style="width:7px;height:7px;border-radius:50%;background:#16a34a;"></span>활성 · 완료</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #d6c7f5;background:#f6f2ff;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#6b4aa0;"><span style="width:7px;height:7px;border-radius:50%;background:#8b5cf6;"></span>진행 중</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #f0d78a;background:#fff1e6;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#8a5a10;"><span style="width:7px;height:7px;border-radius:50%;background:#e0a83a;"></span>주의 · 임박</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid #f0c0c0;background:#fdf0f0;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#b4443f;"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;"></span>실패</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,.16);background:#f7f7f5;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#5b5965;"><span style="width:7px;height:7px;border-radius:50%;background:#fff;border:1.6px solid #8a8693;"></span>만료 · 속 빈 도트</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid rgba(29,27,32,.24);background:#f2f2ef;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700;color:#5b5965;"><span style="width:7px;height:7px;border-radius:50%;background:#1d1b20;"></span>철회 · 채운 잉크</span>
+          </div>
+          <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;color:#2a262f;line-height:1.8;"><b>중립 두 상태를 도트 모양으로 가릅니다.</b> 만료(속 빈 링)는 저절로 닫힌 것이고 되살릴 수 있습니다. 철회(채운 잉크)는 사람이 끈 것이고 비가역입니다. 둘 다 회색이라 <b>색으로는 구분되지 않으므로</b> 도트가 유일한 신호입니다.<br><b style="color:#c2334f;">철회에 error 틴트를 쓰지 마세요</b> — 사람이 의도해서 한 일은 고장이 아닙니다. 목록에 붉은 배지가 여럿 떠 있으면 뭔가 잘못된 화면처럼 읽힙니다.</div>
+        </div>
+      </div>
+
+      <!-- D3 Picker -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">D3</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">Picker</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">모든 드롭다운·정렬·필터가 하나의 가족. <b style="color:#1d1b20;">위젯 톤을 절대 입지 않습니다.</b></span></div>
+        <div style="padding:20px;display:flex;gap:30px;align-items:flex-start;">
+          <div style="flex-shrink:0;display:flex;flex-direction:column;gap:18px;">
+            <div>
+              <div style="font-size:11.5px;font-weight:800;color:#14713a;margin-bottom:9px;">✓ 형제 2개 이상 → 세그먼트 하나</div>
+              <div style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;background:#fff;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:8px 14px;font-size:12.5px;font-weight:800;background:#1d1b20;color:#fff;">전체</div><div style="width:1.5px;background:#1d1b20;"></div><div style="padding:8px 14px;font-size:12.5px;font-weight:700;color:#5b5965;">진행</div><div style="width:1.5px;background:#1d1b20;"></div><div style="padding:8px 14px;font-size:12.5px;font-weight:700;color:#5b5965;">완료</div></div>
+            </div>
+            <div>
+              <div style="font-size:11.5px;font-weight:800;color:#c2334f;margin-bottom:9px;">✕ 간격으로 띄운 낱개 pill</div>
+              <div style="display:flex;gap:22px;opacity:.42;"><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:8px 14px;font-size:12.5px;box-shadow:2px 2px 0 #1d1b20;">전체</div><div style="border:1.5px solid #1d1b20;border-radius:10px;padding:8px 14px;font-size:12.5px;box-shadow:2px 2px 0 #1d1b20;">진행</div></div>
+            </div>
+            <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.22);overflow:hidden;width:236px;">
+              <div style="background:#f7f7f5;border-bottom:1.5px solid #1d1b20;padding:8px 13px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;letter-spacing:.1em;color:#5b5965;">PANEL · radius 12</div>
+              <div style="padding:7px;display:flex;flex-direction:column;gap:2px;">
+                <div style="display:flex;align-items:center;gap:9px;border-radius:8px;padding:7px 10px;background:#fffdf6;"><span style="width:14px;height:14px;border:2px solid #1d1b20;border-radius:4px;background:#1d1b20;flex-shrink:0;"></span><span style="font-size:12.5px;color:#1d1b20;flex:1;">선택된 옵션</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;">12</span></div>
+                <div style="display:flex;align-items:center;gap:9px;border-radius:8px;padding:7px 10px;"><span style="width:14px;height:14px;border:2px solid #1d1b20;border-radius:4px;background:#fff;flex-shrink:0;"></span><span style="font-size:12.5px;color:#1d1b20;flex:1;">옵션</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;">4</span></div>
+                <div style="display:flex;align-items:center;gap:9px;border-radius:8px;padding:7px 10px;"><span style="width:14px;height:14px;border:2px solid #1d1b20;border-radius:4px;background:#fff;flex-shrink:0;"></span><span style="font-size:12.5px;color:#1d1b20;flex:1;">옵션</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;">—</span></div>
+              </div>
+              <div style="border-top:1.5px solid rgba(29,27,32,.12);background:#fbfbf9;padding:8px 11px;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;font-weight:700;color:#5b5965;">초기화</span><span style="margin-left:auto;display:inline-flex;background:#1d1b20;color:#fff;border-radius:999px;padding:5px 13px;font-size:11.5px;font-weight:800;">적용</span></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:11px;">
+            <table style="width:100%;font-size:12.5px;">
+              <tbody>
+                <tr><td style="padding:7px 0;width:132px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">트리거</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">border <b>thin</b> · radius <b>control 10</b> · shadow <b>sm</b> · 셀 사이 1.5px 구분선</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">패널</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">border <b>strong</b> · radius <b>panel 12</b>(§A6) · <b>포털 z-60</b> — 카드·풀뷰가 overflow hidden 이라 자식으로 두면 잘림</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">옵션 행</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">radius <b>nav 8</b> · 선택 틴트 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">#fffdf6</code> · 체크박스 radius <b>xs 4</b></td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">적용 모델</td><td style="padding:7px 0;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);">단일 = 즉시 + 닫힘 / 다중 = <b>명시적 적용</b> — 아니면 체크 한 번에 표를 다시 불러옴</td></tr>
+                <tr><td style="padding:7px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">폼 셀렉트</td><td style="padding:7px 0;color:#2a262f;"><b>Picker 가 아닙니다</b> — radius <b>field 22</b> · 전체 폭. 패널 본문만 공유합니다</td></tr>
+              </tbody>
+            </table>
+            <div style="border:1.5px solid #f0d78a;border-radius:10px;background:#fff1e6;padding:12px 15px;font-size:12.5px;color:#8a5a10;line-height:1.75;"><b>승격 순서:</b> <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">focus-ring</code> → <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">control-h-md/-sm</code> → <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">shadow-picker-panel</code>. 앞의 둘은 Picker 문제가 아니라 <b>제품 전체에 포커스 토큰과 높이 토큰이 없다는 사실</b>입니다 — 높이가 패딩에서 흘러나오니 표면마다 컨트롤 높이가 다릅니다(§A6).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- D4 빈 상태 / skeleton -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">D4</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">빈 상태 · 로딩</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">"아직 안 했다"와 "이 필터에는 없다"는 <b style="color:#1d1b20;">다른 화면</b>입니다</span></div>
+        <div style="padding:20px;display:flex;gap:26px;align-items:stretch;">
+          <div style="width:290px;flex-shrink:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fbfbf9;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center;">
+            <div style="width:58px;height:58px;border:3px solid #1d1b20;border-radius:17px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:4px 4px 0 rgba(29,27,32,.22);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"></path><path d="M8 8l4-4 4 4"></path><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"></path></svg></div>
+            <div style="font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;color:#1d1b20;">아직 아무것도 없습니다</div>
+            <div style="font-size:11.5px;color:#5b5965;line-height:1.7;">무엇을 하면 여기가 채워지는지 말하고, <b style="color:#1d1b20;">그 동선으로 보냅니다.</b></div>
+            <div style="display:inline-flex;background:#1d1b20;color:#fff;border-radius:999px;padding:9px 18px;font-size:12px;font-weight:800;box-shadow:2px 2px 0 rgba(29,27,32,.25);margin-top:2px;">시작하기 →</div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;margin-top:4px;">타일 <b style="color:#1d1b20;">3px 실선 · 그림자 있음</b></div>
+          </div>
+          <div style="width:290px;flex-shrink:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fbfbf9;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;text-align:center;">
+            <div style="width:52px;height:52px;border:2.5px dashed #c9ccd2;border-radius:15px;background:#fff;display:flex;align-items:center;justify-content:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a3a7ad" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg></div>
+            <div style="font-size:14px;font-weight:800;color:#1d1b20;">이 조건에는 없습니다</div>
+            <div style="font-size:11.5px;color:#5b5965;line-height:1.7;">전체가 몇 개인지 말하고, <b style="color:#1d1b20;">필터를 풀어줍니다.</b></div>
+            <div style="display:inline-flex;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:8px 15px;font-size:12px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 rgba(29,27,32,.12);margin-top:2px;">전체 42개 보기</div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;margin-top:4px;">타일 <b style="color:#1d1b20;">2.5px 점선 · 그림자 없음</b></div>
+          </div>
+          <div style="flex:1;min-width:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8a8693;font-weight:800;">로딩 skeleton</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:9px;"><div style="width:26px;height:26px;border-radius:8px;background:rgba(29,27,32,.09);"></div><div style="flex:1;height:10px;border-radius:4px;background:rgba(29,27,32,.09);"></div><div style="width:42px;height:16px;border-radius:999px;background:rgba(29,27,32,.07);"></div></div>
+              <div style="display:flex;align-items:center;gap:9px;opacity:.72;"><div style="width:26px;height:26px;border-radius:8px;background:rgba(29,27,32,.09);"></div><div style="flex:1;height:10px;border-radius:4px;background:rgba(29,27,32,.09);"></div><div style="width:42px;height:16px;border-radius:999px;background:rgba(29,27,32,.07);"></div></div>
+              <div style="display:flex;align-items:center;gap:9px;opacity:.52;"><div style="width:26px;height:26px;border-radius:8px;background:rgba(29,27,32,.09);"></div><div style="flex:1;height:10px;border-radius:4px;background:rgba(29,27,32,.09);"></div><div style="width:42px;height:16px;border-radius:999px;background:rgba(29,27,32,.07);"></div></div>
+              <div style="display:flex;align-items:center;gap:9px;opacity:.36;"><div style="width:26px;height:26px;border-radius:8px;background:rgba(29,27,32,.09);"></div><div style="flex:1;height:10px;border-radius:4px;background:rgba(29,27,32,.09);"></div><div style="width:42px;height:16px;border-radius:999px;background:rgba(29,27,32,.07);"></div></div>
+            </div>
+            <div style="border-top:1px solid rgba(29,27,32,.1);padding-top:10px;font-size:11.5px;color:#5b5965;line-height:1.75;"><b style="color:#1d1b20;">행 높이가 실제와 같아야 합니다</b> — 다르면 로드 완료 순간 목록이 튑니다. 색은 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">ink/.05~.09</code>, 위계가 높은 요소일수록 진하게. opacity 는 아래로 갈수록 낮춰 <b style="color:#1d1b20;">"더 있다"</b>를 말합니다. <b style="color:#c2334f;">카운터를 0 으로 그리지 마세요</b> — 빈 상태로 잘못 읽힙니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- D5 아이콘 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">D5</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">아이콘</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">듀오톤 인라인 SVG · viewBox 24 · <b style="color:#1d1b20;">stroke-width 2 고정</b> · linecap/join round</span></div>
+        <div style="padding:20px;display:flex;gap:26px;align-items:flex-start;">
+          <div style="display:flex;gap:18px;flex-shrink:0;">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:64px;height:64px;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a1 1 0 0 1 1-1h4l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#ffd0e2"></path></svg></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;color:#1d1b20;text-align:center;line-height:1.5;">흰 바탕<br>채움 = 톤</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:64px;height:64px;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;"><div style="width:34px;height:34px;border:2px solid #1d1b20;border-radius:9px;background:#bfe9ef;display:flex;align-items:center;justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7l9 9-7 7-9-9z" fill="#fff"></path><circle cx="8.5" cy="8.5" r="1.4"></circle></svg></div></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;color:#1d1b20;text-align:center;line-height:1.5;">파스텔 타일<br>채움 = paper</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:64px;height:64px;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;"><div style="display:inline-flex;align-items:center;gap:5px;background:#1d1b20;border-radius:999px;padding:7px 12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg><span style="font-size:11px;font-weight:800;color:#fff;">복사</span></div></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;color:#1d1b20;text-align:center;line-height:1.5;">ink 버튼<br>흰 스트로크 · 채움 없음</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:center;"><div style="width:64px;height:64px;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8a8693" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a1 1 0 0 1 1-1h4l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#f7f7f5"></path></svg></div><div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;font-weight:800;color:#1d1b20;text-align:center;line-height:1.5;">잠김<br>스트로크 mute</div></div>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:13px;color:#2a262f;line-height:1.85;">UI 컨트롤 글리프에 <b>이모지를 쓰지 않습니다.</b> 유지되는 예외는 셋뿐입니다 — <b>💎</b> 크레딧(WIDGET-SHELL §S1 명시), <b>✦</b> 위젯 글리프(콘텐츠 마커), 그리고 <b>✓ ✕ ■</b>(문자·도형이지 이모지가 아님).</div>
+            <div style="border:1.5px solid #f0d78a;border-radius:10px;background:#fff1e6;padding:12px 15px;font-size:12.5px;color:#8a5a10;line-height:1.75;"><b>세트 갱신 3건이 밀려 있습니다.</b> ① <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">download</code>·<code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">regenerate</code>·<code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">dataset</code> 3종이 세트에 없어 인터뷰 번들이 세트 규격대로 그려 인라인으로 들고 있습니다 — 세트에 넣으세요. ② 세트의 하드코딩 채움 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">#ffd7e4</code> 가 tokens 2.0 의 rose <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">#ffd0e2</code> 와 다릅니다. ③ 공유 풀뷰 헤더의 프로젝트 pill 이 아직 <b>📁 이모지</b>입니다 — 셸 컴포넌트에서 한 번 교체하면 7 위젯이 같이 정리됩니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- D6 닫기 -->
+      <div style="border:2px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.18);overflow:hidden;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:11px 20px;display:flex;align-items:center;gap:11px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">D6</span><span style="font-size:15px;font-weight:800;color:#1d1b20;">닫기 · 제거 ✕</span><span style="margin-left:auto;font-size:11.5px;color:#8a8693;">변종은 <b style="color:#1d1b20;">넷</b>. 가르는 축은 둘뿐 — ① 파괴적인가 ② 주변에 테두리가 이미 있는가</span></div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:18px;">
+
+          <div style="display:flex;gap:16px;">
+            <div style="flex:1;min-width:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fbfbf9;padding:15px;display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#c2334f;background:#ffeef4;border:1px solid #ffd0e2;border-radius:4px;padding:1px 6px;">A</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">row-remove</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">28 · r9 · 14px</span></div>
+              <div style="display:flex;gap:9px;align-items:center;">
+                <span style="width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#8a8693;line-height:1;">✕</span>
+                <span style="width:28px;height:28px;border:1.5px solid #c2334f;border-radius:9px;background:#fdf0f0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#c2334f;line-height:1;">✕</span>
+                <span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;line-height:1.5;">기본 무테 · mute-soft<br>hover error.bg + crimson</span>
+              </div>
+              <div style="font-size:11.5px;color:#5b5965;line-height:1.7;">업로드 파일 행 · 첨부 목록. <b style="color:#1d1b20;">목록 안에 있어 평상시엔 조용해야 합니다.</b></div>
+            </div>
+            <div style="flex:1;min-width:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fbfbf9;padding:15px;display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;background:#fff;border:1px solid rgba(29,27,32,.2);border-radius:4px;padding:1px 6px;">B</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">dialog-close</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">32 · r9 · 16px</span></div>
+              <div style="display:flex;gap:9px;align-items:center;">
+                <span style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.12);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#1d1b20;line-height:1;">✕</span>
+                <span style="width:32px;height:32px;border:1.5px solid #1d1b20;border-radius:9px;background:#fbfbf9;box-shadow:2px 2px 0 #1d1b20;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#1d1b20;line-height:1;">✕</span>
+                <span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;line-height:1.5;">thin + shadow-sm-faint<br>hover canvas + shadow-sm</span>
+              </div>
+              <div style="font-size:11.5px;color:#5b5965;line-height:1.7;">모달 · 시트 헤더 우측. <b style="color:#1d1b20;">유일하게 평상시 보더를 갖는 변종</b> — 주변에 테두리가 없어 스스로 컨트롤임을 밝혀야 합니다.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:16px;">
+            <div style="flex:1;min-width:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fbfbf9;padding:15px;display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#c2334f;background:#ffeef4;border:1px solid #ffd0e2;border-radius:4px;padding:1px 6px;">C</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">chip-clear</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">16 · 무테 · 11px</span></div>
+              <div style="display:flex;gap:9px;align-items:center;">
+                <span style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;padding:4px 10px;font-size:11.5px;font-weight:700;color:#1d1b20;">Sulwhasoo <span style="font-size:11px;font-weight:700;color:#8a8693;line-height:1;">✕</span></span>
+                <span style="display:inline-flex;align-items:center;gap:7px;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;padding:4px 10px;font-size:11.5px;font-weight:700;color:#1d1b20;">Sulwhasoo <span style="font-size:11px;font-weight:700;color:#c2334f;line-height:1;">✕</span></span>
+              </div>
+              <div style="font-size:11.5px;color:#5b5965;line-height:1.7;">필터 칩 · 태그 안쪽. <b style="color:#1d1b20;">칩 자체가 이미 테두리라 상자를 겹치지 않습니다.</b> 28 예외 — 클릭 대상은 칩 전체이고 ✕ 는 그 안의 글리프입니다.</div>
+            </div>
+            <div style="flex:1;min-width:0;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;background:#fbfbf9;padding:15px;display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;background:#fff;border:1px solid rgba(29,27,32,.2);border-radius:4px;padding:1px 6px;">D</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">banner-dismiss</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">24 · r9 · 13px</span></div>
+              <div style="display:flex;gap:9px;align-items:center;">
+                <span style="width:24px;height:24px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#8a8693;line-height:1;">✕</span>
+                <span style="width:24px;height:24px;border-radius:9px;background:rgba(29,27,32,.06);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1d1b20;line-height:1;">✕</span>
+                <span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;line-height:1.5;">기본 무테 · mute-soft<br>hover ink/6 · ink</span>
+              </div>
+              <div style="font-size:11.5px;color:#5b5965;line-height:1.7;">토스트 · 진행 배너 · 안내 밴드. <b style="color:#1d1b20;">접는 동작이라 파괴적이지 않습니다</b> — crimson 을 쓰지 않습니다. 24 예외 — 실수로 눌리면 안 되는 자리입니다.</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:16px;">
+            <div style="flex:1;min-width:0;border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 15px;font-size:12.5px;color:#2a262f;line-height:1.8;"><b>파괴적 변종만 hover 에서 crimson 입니다</b>(A · C). 무언가를 버리는 동작과 화면을 접는 동작은 결과가 다릅니다 — 배너를 닫는 데 붉은색이 뜨면 되돌릴 수 없는 일처럼 읽힙니다.<br><b>평상시 무테가 기본입니다</b>(B 제외). 목록 안 컨트롤이 자기 테두리를 가지면 행 테두리와 겹쳐 이중선이 됩니다.</div>
+            <div style="flex:1;min-width:0;border:1.5px solid #f0d78a;border-radius:10px;background:#fff1e6;padding:12px 15px;font-size:12.5px;color:#8a5a10;line-height:1.8;"><b>✕ 는 문자로 남습니다</b> — §D5 가 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">✓ ✕ ■</code> 를 이모지 아닌 문자·도형으로 이미 판정했습니다. 아이콘 세트에 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">close</code> 를 추가하지 마세요.<br><b>히트 영역 최소 28×28</b>(C 16 · D 24 는 위 명시 예외). 레거시는 15×15 였습니다 — 행 높이 45px 대비 1/3 이라 빗나감이 잦습니다.<br><b>잠금에 opacity 를 쓰지 않습니다</b> — §B1 과 같은 규칙.</div>
+          </div>
+
+          <div style="border-top:1px solid rgba(29,27,32,.1);padding-top:13px;font-size:12px;color:#5b5965;line-height:1.75;">전체 토큰표 · 상태 매트릭스 · 적용 지점 · 마이그레이션 절차는 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f7f7f5;border:1px solid rgba(29,27,32,.12);border-radius:3px;padding:0 4px;">close-button-BUILD-SPEC.md</code> §1~§4. <b style="color:#c2334f;">grep 은 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">✕</code> 로 하지 마세요</b> — 유지 대상인 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">✓ ■</code> 까지 딸려 옵니다. 찾을 지문은 하드코딩 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">#999 · #d0d0d0 · #ccc</code> 와 눈금 밖 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">radius 2·3</code> 입니다.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════ §E 표면 색인 ══════ -->
+  <div id="E" style="display:flex;flex-direction:column;gap:20px;">
+    <div style="display:flex;align-items:baseline;gap:12px;">
+      <div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;background:#1d1b20;color:#fff;border-radius:8px;padding:5px 12px;">§E</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;color:#1d1b20;letter-spacing:-0.8px;">표면 색인</div>
+      <div style="font-size:13px;color:#8a8693;">전체 상태와 컴프는 <b style="color:#1d1b20;">각자의 번들</b>에 있습니다. 이 파일은 그걸 복제하지 않습니다.</div>
+    </div>
+    <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#fff;box-shadow:5px 5px 0 rgba(29,27,32,.22);overflow:hidden;">
+      <table style="width:100%;font-size:12.5px;">
+        <thead><tr style="background:#1d1b20;">
+          <th style="text-align:left;padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;">표면</th>
+          <th style="text-align:left;padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;border-left:1px solid rgba(255,255,255,.14);">셸</th>
+          <th style="text-align:left;padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;border-left:1px solid rgba(255,255,255,.14);">번들</th>
+          <th style="text-align:left;padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;border-left:1px solid rgba(255,255,255,.14);">이 표면만 소유하는 것</th>
+          <th style="text-align:left;padding:11px 16px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a3a7ad;font-weight:700;border-left:1px solid rgba(255,255,255,.14);background:#2a262f;">§A 영향</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:12px 16px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">Widget Canvas</td><td style="padding:12px 16px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">C1 카드</td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">02-surfaces-canvas</td><td style="padding:12px 16px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">툴바 4셀 · 진행 밴드 · 7 위젯의 본문</td><td style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);background:#fbfbf9;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#14713a;">A4</span></td></tr>
+          <tr style="background:#fbfbf9;"><td style="padding:12px 16px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">Fullview</td><td style="padding:12px 16px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">C2 풀뷰</td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">03-surfaces-fullview</td><td style="padding:12px 16px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">사이드바 · 3열 배분 · 위젯 전환 중 세션 유지</td><td style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);background:#fff1e6;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#8a5a10;">A1 A3 A4</span></td></tr>
+          <tr><td style="padding:12px 16px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">Deliverables Library</td><td style="padding:12px 16px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">C3 리스트</td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">05-artifacts</td><td style="padding:12px 16px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">필터 레일 240 · 4상태 배지 원본 · 다중선택 bulk bar</td><td style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);background:#f4fbf6;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#14713a;">A4</span></td></tr>
+          <tr style="background:#fbfbf9;"><td style="padding:12px 16px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">Share Management</td><td style="padding:12px 16px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">C3 리스트</td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">07-share-management</td><td style="padding:12px 16px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">스코프 축 · 잠금 매트릭스 · 철회 확인 · 이메일 마스킹</td><td style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);background:#fff1e6;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#8a5a10;">A3 A4 A5</span></td></tr>
+          <tr><td style="padding:12px 16px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">Share Shell</td><td style="padding:12px 16px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">C4 공개</td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">05-artifacts</td><td style="padding:12px 16px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">6상태 게이트 · dead end · <b>"톤을 버린다" 규칙의 출처</b></td><td style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);background:#f4fbf6;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#14713a;">A4</span></td></tr>
+          <tr style="background:#fbfbf9;"><td style="padding:12px 16px;font-weight:800;color:#1d1b20;border-bottom:1px solid rgba(29,27,32,.08);">Export Template</td><td style="padding:12px 16px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">C4 공개 · 인쇄</td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);">05-artifacts</td><td style="padding:12px 16px;color:#2a262f;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);"><b>Letter 페이지 해부 · print type scale</b> — 문서 레이아웃 SSOT</td><td style="padding:12px 16px;border-bottom:1px solid rgba(29,27,32,.08);border-left:1px solid rgba(29,27,32,.06);background:#f7f7f5;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:700;color:#8a8693;">없음</span></td></tr>
+          <tr><td style="padding:12px 16px;font-weight:800;color:#1d1b20;">Picker System</td><td style="padding:12px 16px;color:#5b5965;border-left:1px solid rgba(29,27,32,.06);"><b>셸 없음 — 전 표면 공통</b></td><td style="padding:12px 16px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5b5965;border-left:1px solid rgba(29,27,32,.06);">01-design-system</td><td style="padding:12px 16px;color:#2a262f;border-left:1px solid rgba(29,27,32,.06);">트리거 그룹핑 · P1/P2/P3 패널 · 포털 · 키보드 계약</td><td style="padding:12px 16px;border-left:1px solid rgba(29,27,32,.06);background:#ffeef4;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;color:#c2334f;">A4 A6</span></td></tr>
+        </tbody>
+      </table>
+      <div style="border-top:2px solid #1d1b20;background:#f7f7f5;padding:14px 18px;font-size:12.5px;color:#5b5965;line-height:1.8;"><b style="color:#1d1b20;">인터뷰 결과 생성기(06)</b>는 C1 카드 + C2 풀뷰 위에 올라간 일곱 번째 기능이라 위 표에 별도 행이 없습니다. 영향받는 판정은 <b>A1 · A3 · A4</b> 입니다 — 프레임 radius 14→16, <code style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">shadow-popover</code> 중복 승격, exec 블록 보더 2.5→3.</div>
+    </div>
+  </div>
+
+  <!-- ══════ 반영 순서 ══════ -->
+  <div style="width:1180px;border:3px solid #1d1b20;border-radius:14px;background:#1d1b20;box-shadow:6px 6px 0 rgba(29,27,32,.3);overflow:hidden;">
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+      <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;">반영 순서</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:250px;border:1.5px solid rgba(255,255,255,.2);border-radius:11px;background:rgba(255,255,255,.05);padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#a3a7ad;font-weight:800;">1 · 이름만 정리 (렌더 변화 0)</div>
+          <div style="font-size:12.5px;color:#fff;line-height:1.75;"><b>A3</b> 그림자 3이름 → <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#ffd0e2;">shadow-frame</code> 하나 · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#ffd0e2;">shadow-popover</code> 중복 승격 병합. 값이 같으므로 <b>픽셀이 바뀌지 않습니다.</b> 여기서 시작하세요.</div>
+        </div>
+        <div style="flex:1;min-width:250px;border:1.5px solid rgba(255,255,255,.2);border-radius:11px;background:rgba(255,255,255,.05);padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#a3a7ad;font-weight:800;">2 · 눈금 흡수 (미세 변화)</div>
+          <div style="font-size:12.5px;color:#fff;line-height:1.75;"><b>A4</b> 보더 1.3/1.4→1.5, 1.8/2.5→2 · <b>A6</b> Picker radius 5→4, 13→12. 각각 1px 이하라 <b>픽셀 diff 가 통과할 수 있습니다</b> — 눈이 아니라 grep 으로 확인하세요.</div>
+        </div>
+        <div style="flex:1;min-width:250px;border:1.5px solid rgba(255,255,255,.2);border-radius:11px;background:rgba(255,255,255,.05);padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#a3a7ad;font-weight:800;">3 · 눈에 보이는 변화</div>
+          <div style="font-size:12.5px;color:#fff;line-height:1.75;"><b>A1</b> 프레임 radius 14→16 (풀뷰·recruiting) · <b>A2</b> observer 헤더 3px→2px · <b>A5</b> 아이콘 채움 규칙. <b>표면 컴프도 같이 갱신</b>해야 픽셀 diff 가 의미를 갖습니다.</div>
+        </div>
+        <div style="flex:1;min-width:250px;border:2px solid #ffd0e2;border-radius:11px;background:rgba(255,208,226,.1);padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#ffd0e2;font-weight:800;">4 · 별도 티켓</div>
+          <div style="font-size:12.5px;color:#fff;line-height:1.75;"><code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#ffd0e2;">focus-ring</code> · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#ffd0e2;">control-h-md/-sm</code> 승격 (§A6) · 아이콘 세트 3종 추가 + 채움값 정정 (§D5). <b>규격 정리가 아니라 제품 전체의 구멍</b>이라 순서를 따로 잡아야 합니다.</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,.15);padding-top:14px;font-size:12.5px;color:#a3a7ad;line-height:1.8;">전부 반영하면 표면 전체에서 <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#fff;">rounded-\[</code> · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#fff;">shadow-\[</code> · <code style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#fff;">border-\[</code> · raw hex 가 <b style="color:#fff;">0건</b>이어야 합니다. 남아 있으면 그건 이 파일이 놓친 드리프트이고, CD 로 회부할 대상입니다.</div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+</body>
+</html>
