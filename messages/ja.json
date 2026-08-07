@@ -3766,5 +3766,109 @@
     "ut_insight": "ユーザビリティテスト",
     "desk_report": "デスクリサーチ",
     "recruiting_summary": "リクルーティング"
+  },
+  "ShareDashboard": {
+    "tabs": {
+      "artifacts": "成果物",
+      "shares": "共有"
+    },
+    "scope": {
+      "mine": "自分のリンク",
+      "org": "組織全体",
+      "projectAll": "すべてのプロジェクト"
+    },
+    "section": {
+      "title": "共有リンク"
+    },
+    "status": {
+      "alive": "有効なリンク",
+      "expired": "期限切れ",
+      "revoked": "取り消し",
+      "all": "すべて"
+    },
+    "statusBadge": {
+      "active": "有効",
+      "expired": "期限切れ",
+      "revoked": "取り消し済み"
+    },
+    "col": {
+      "deliverable": "成果物",
+      "invited": "招待",
+      "views": "閲覧",
+      "expiry": "期限",
+      "status": "状態",
+      "actions": "操作"
+    },
+    "searchPlaceholder": "タイトル・メールで検索",
+    "searchPlaceholderShort": "タイトル・メール",
+    "sort": {
+      "recent": "発行が新しい順"
+    },
+    "issuerFilter": {
+      "all": "発行者すべて"
+    },
+    "meta": {
+      "issuedOn": "{date} 発行",
+      "mine": "自分",
+      "revokedOn": "{date} 取り消し",
+      "retiredMember": "(退職メンバー)"
+    },
+    "invited": {
+      "none": "招待なし · リンクを知っている人"
+    },
+    "views": {
+      "count": "{count}回"
+    },
+    "expiry": {
+      "daysLeft": "残り{days}日",
+      "daysAgo": "{days}日前に期限切れ",
+      "none": "期限なし"
+    },
+    "footer": {
+      "summary": "{shown} / {total} · 発行が新しい順"
+    },
+    "actions": {
+      "copy": "コピー",
+      "copied": "コピー済み",
+      "inviteEdit": "招待を編集",
+      "revoke": "取り消し",
+      "copyFailedTitle": "コピーできませんでした — 直接選択してください"
+    },
+    "popover": {
+      "inviteCount": "招待{count}名",
+      "inviteEdit": "招待を編集 →"
+    },
+    "empty": {
+      "title": "まだ共有したリンクはありません",
+      "body": "レポート・文字起こし・集計をリンクで共有するとここに集まります。発行は成果物を開いて<b>共有</b>を押す場所で行います — この画面は発行したリンクを<b>停止・管理する</b>場所です。",
+      "cta": "成果物を見る →"
+    },
+    "emptyOrg": {
+      "title": "組織に共有したリンクはまだありません"
+    },
+    "filteredEmpty": {
+      "title": "この条件に合うリンクはありません",
+      "body": "全{total}件のうち、現在のフィルタに合うリンクはありません。",
+      "clear": "全{total}件を表示"
+    },
+    "error": {
+      "body": "一覧を読み込めませんでした。",
+      "retry": "再試行"
+    },
+    "revokeModal": {
+      "title": "このリンクを停止します",
+      "close": "閉じる",
+      "targetMeta": "{date} 発行 · {invites} · {views}回 閲覧",
+      "inviteCount": "招待{count}名",
+      "noInvite": "招待なし",
+      "bodyInvited": "停止すると<b>招待した{count}名全員がこのリンクで開けなくなります。</b>元に戻すことはできず、必要なら成果物からリンクを新しく発行します — その際アドレスが変わるため、すでに送ったメールのリンクは復活しません。",
+      "bodyPublic": "このリンクは招待なしで<b>アドレスを知っている人なら誰でも</b>開けて、これまでに{views}回開かれました。停止するとそのアドレスは即座に使えなくなります。元に戻すことはできず、必要なら成果物から新しく発行します — その際アドレスが変わるため、すでに出回っているリンクは復活しません。",
+      "impactTitle": "このリンクで開いていた人",
+      "ownerBand": "<b>{name} さんが発行したリンクです。</b>",
+      "footerNote": "元に戻せません",
+      "cancel": "そのままにする",
+      "confirm": "リンクを停止",
+      "confirming": "停止中…"
+    }
   }
 }
