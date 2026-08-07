@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { getActiveOrg } from '@/lib/org';
 import { listProjects } from '@/lib/projects';
-import { LibraryClient } from '@/components/artifacts/library/library-client';
+import { LibrarySurface } from '@/components/artifacts/library/library-surface';
 
 // Unified deliverables library — CD Surface A. Auth is enforced by the (app)
 // layout gate; here we only supply the project list (the rail groups by
@@ -20,7 +20,7 @@ export default async function LibraryPage({
 
   return (
     <div className="h-full">
-      <LibraryClient
+      <LibrarySurface
         projects={projects.map((p) => ({ id: p.id, name: p.name }))}
         hasOrg={Boolean(org)}
       />

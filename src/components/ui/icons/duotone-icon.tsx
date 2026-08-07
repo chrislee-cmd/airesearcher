@@ -81,6 +81,7 @@ export function DuotoneIcon({
   size = 20,
   fill = DEFAULT_TONE_FILL,
   mono = false,
+  stroke: strokeOverride,
   className,
 }: {
   name: DuotoneIconName;
@@ -89,9 +90,12 @@ export function DuotoneIcon({
   fill?: string;
   // 어두운 배경(CTA/공유 버튼)용 단색 — 흰 스트로크 + 채움 없음.
   mono?: boolean;
+  // 스트로크 색 오버라이드 (예: 잠긴 컨트롤 = var(--color-mute)). 토큰만.
+  // mono 가 우선(흰 스트로크). 미지정 시 기본 ink.
+  stroke?: string;
   className?: string;
 }) {
-  const stroke = mono ? 'var(--color-paper)' : INK;
+  const stroke = mono ? 'var(--color-paper)' : (strokeOverride ?? INK);
   const f = mono ? 'none' : fill;
   return (
     <svg

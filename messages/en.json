@@ -2156,6 +2156,11 @@
     "citationChunk": "chunk {n}",
     "reportExecLabel": "Key summary",
     "reportExecMeta": "n={n} · full pass",
+    "reportExecMetaPartial": "analyzed {analyzed} / uploaded {uploaded} · partial",
+    "reportIndexGateTitle": "{pending} document(s) still indexing",
+    "reportIndexGateBody": "Generating now analyzes only the {indexed} indexed document(s); the remaining {pending} will be left out of the report (of {total} total). Wait until indexing finishes for a full pass.",
+    "reportIndexGateWait": "Wait for indexing",
+    "reportIndexGatePartial": "Generate with {indexed} now",
     "reportInsightFound": "Finding",
     "reportInsightContrast": "Contrast",
     "reportTableLabel": "Table {n}",
@@ -2698,6 +2703,10 @@
       "unconfigured": "Not set",
       "error": "Error"
     }
+  },
+  "ShareOtpEmail": {
+    "subject": "Your Research-Canvas shared view verification code",
+    "body": "Your verification code for the shared view is {code}.\n\nEnter it within {minutes} minutes. If you didn't request this, you can ignore this email."
   },
   "ShareViewer": {
     "eyebrow": "Shared view",
@@ -3771,5 +3780,109 @@
     "ut_insight": "Usability test",
     "desk_report": "Desk research",
     "recruiting_summary": "Recruiting"
+  },
+  "ShareDashboard": {
+    "tabs": {
+      "artifacts": "Deliverables",
+      "shares": "Shares"
+    },
+    "scope": {
+      "mine": "My links",
+      "org": "Whole org",
+      "projectAll": "All projects"
+    },
+    "section": {
+      "title": "Shared links"
+    },
+    "status": {
+      "alive": "Live links",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "all": "All"
+    },
+    "statusBadge": {
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked"
+    },
+    "col": {
+      "deliverable": "Deliverable",
+      "invited": "Invited",
+      "views": "Views",
+      "expiry": "Expiry",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "searchPlaceholder": "Search by title · email",
+    "searchPlaceholderShort": "Title · email",
+    "sort": {
+      "recent": "Newest first"
+    },
+    "issuerFilter": {
+      "all": "All issuers"
+    },
+    "meta": {
+      "issuedOn": "Issued {date}",
+      "mine": "Me",
+      "revokedOn": "Revoked {date}",
+      "retiredMember": "(former member)"
+    },
+    "invited": {
+      "none": "No invites · anyone with the link"
+    },
+    "views": {
+      "count": "{count} views"
+    },
+    "expiry": {
+      "daysLeft": "{days} days left",
+      "daysAgo": "expired {days} days ago",
+      "none": "No expiry"
+    },
+    "footer": {
+      "summary": "{shown} / {total} · Newest first"
+    },
+    "actions": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "inviteEdit": "Manage invites",
+      "revoke": "Revoke",
+      "copyFailedTitle": "Couldn't copy — select the address manually"
+    },
+    "popover": {
+      "inviteCount": "{count} invited",
+      "inviteEdit": "Manage invites →"
+    },
+    "empty": {
+      "title": "No shared links yet",
+      "body": "Reports, transcripts, and summaries you share as links collect here. You issue links from a deliverable's <b>Share</b> action — this screen is where you <b>turn them off and manage them</b>.",
+      "cta": "Browse deliverables →"
+    },
+    "emptyOrg": {
+      "title": "No links shared across the org yet"
+    },
+    "filteredEmpty": {
+      "title": "No links match this filter",
+      "body": "None of the {total} links match the current filter.",
+      "clear": "Show all {total}"
+    },
+    "error": {
+      "body": "Couldn't load the list.",
+      "retry": "Try again"
+    },
+    "revokeModal": {
+      "title": "Turn off this link",
+      "close": "Close",
+      "targetMeta": "Issued {date} · {invites} · {views} views",
+      "inviteCount": "{count} invited",
+      "noInvite": "No invites",
+      "bodyInvited": "Turning it off means <b>all {count} invited people can no longer open this link.</b> You can’t turn it back on; if needed, issue a new link from the deliverable — the address changes then, so links in already-sent emails won’t come back to life.",
+      "bodyPublic": "This link has no invites — <b>anyone with the address</b> can open it, and it’s been opened {views} times so far. Turning it off blocks that address immediately. You can’t turn it back on; if needed, issue a new one from the deliverable — the address changes then, so links already circulating won’t come back.",
+      "impactTitle": "People who opened this link",
+      "ownerBand": "<b>This link was issued by {name}.</b>",
+      "footerNote": "This can’t be undone",
+      "cancel": "Keep it",
+      "confirm": "Turn off link",
+      "confirming": "Turning off…"
+    }
   }
 }

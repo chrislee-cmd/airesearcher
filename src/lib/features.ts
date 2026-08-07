@@ -125,10 +125,11 @@ export const PREVIEW_FEATURES: ReadonlySet<FeatureKey> = new Set<FeatureKey>([
   // 순차 배포 후순위 — 일반(비-unlimited) 계정 프론트에서 숨긴다 (2026-07-14,
   // card 600). 캔버스 위젯 + preview-gate 소비처(/recruiting 라우트 gate,
   // 크레딧 예측기)에서 자동 제외. unlimited(관리자)는 전부 그대로 노출 → 회귀 0.
-  // 되돌리기 = 이 세 키를 목록에서 빼면 즉시 GA (라우트·백엔드는 그대로 유지).
+  // 되돌리기 = 이 키들을 목록에서 빼면 즉시 GA (라우트·백엔드는 그대로 유지).
+  // interviews 는 2026-08-07 GA 해제(card 676) — 리디자인 에픽 완결로 조건 충족,
+  // widget_visibility 토글 + OPEN_FOR_NORMAL 편입으로 일반계정 라이브 노출.
   'recruiting',
   'desk',
-  'interviews',
 ]);
 
 // Single source of truth for credit pricing — read by both the

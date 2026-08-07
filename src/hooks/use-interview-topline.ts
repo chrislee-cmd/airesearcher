@@ -19,6 +19,16 @@ import {
 // 사용자 결정). 초기 로드는 절대 POST 를 부르지 않아 stale/미존재 시에도
 // 과금이 없다.
 
+// 생성 완전성 게이트(카드 #681) — POST 가 409(indexing_incomplete)로 막을 때
+// 클라가 사용자에게 "① 대기 ② 지금 M개로 생성" 선택을 띄우기 위한 카운트.
+// pending = 인덱싱 미완(무음 제외 대상) 문서 수, indexed = 지금 생성 가능한 수,
+// total = 프로젝트 전체 문서 수. null = 게이트 미발동(정상 생성/진행).
+export type PendingIndexInfo = {
+  pending: number;
+  indexed: number;
+  total: number;
+};
+
 export type ToplineState = {
   // interview_toplines.id — 공유 링크(#477) resource_id. 미생성이면 null.
   toplineId: string | null;
@@ -58,8 +68,16 @@ export type ToplineState = {
     force: boolean,
     outputLang?: string,
     userDirection?: string,
+    // 인덱싱 미완 문서가 있어도 현재 인덱싱분만으로 부분 생성(사용자 명시 승인).
+    // 미지정(false)이면 게이트가 pendingIndex 를 세팅하고 생성을 시작하지 않는다.
+    allowPartial?: boolean,
   ) => Promise<void>;
   refetch: () => Promise<void>;
+  // 생성 완전성 게이트 발동 정보(카드 #681) — null 이면 미발동. UI 가 이 값이
+  // 있으면 "대기 / 지금 부분 생성" 선택 프롬프트를 띄운다.
+  pendingIndex: PendingIndexInfo | null;
+  // 게이트 프롬프트 닫기(사용자 "대기" 선택) — pendingIndex 를 null 로.
+  clearPendingIndex: () => void;
   // 생성 강제종료 — status='generating' 인 탑라인을 취소 종결(POST /cancel).
   // durable resume/self-heal/cron 은 generating 만 재kick 하므로 취소 후 재개 X.
   cancel: () => Promise<void>;
@@ -74,6 +92,11 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  // 생성 완전성 게이트(카드 #681) — 인덱싱 미완 문서로 POST 가 막히면 세팅.
+  const [pendingIndex, setPendingIndex] = useState<PendingIndexInfo | null>(
+    null,
+  );
+  const clearPendingIndex = useCallback(() => setPendingIndex(null), []);
 
   // 위젯별 동시사용 게이트 (#512) — 탑라인 생성(POST)이 인터뷰 위젯의 비싼
   // 작업 kick 지점이다. generate 시 슬롯 획득, 서버 잡이 종점(done/error)에
@@ -203,7 +226,12 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
   }, [supabase, projectId, refetch]);
 
   const generate = useCallback(
-    async (force: boolean, outputLang?: string, userDirection?: string) => {
+    async (
+      force: boolean,
+      outputLang?: string,
+      userDirection?: string,
+      allowPartial = false,
+    ) => {
       if (!projectId) return;
       // 슬롯 획득 — 정원 초과면 카드 국소 대기 UI 후 admitted 시 자동 진행.
       const admitted = await gate.acquire();
@@ -222,13 +250,39 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
             force,
             output_lang: outputLang,
             user_direction: userDirection,
+            // 부분분석 명시 승인(카드 #681) — 미지정이면 서버 게이트가 인덱싱
+            // 미완 문서를 409(indexing_incomplete)로 막는다.
+            allow_partial: allowPartial,
           }),
         });
         const json = (await res.json().catch(() => null)) as
-          | { status?: ToplineStatus; error?: string }
+          | {
+              status?: ToplineStatus;
+              error?: string;
+              pending?: number;
+              indexed?: number;
+              total?: number;
+            }
           | null;
         if (!aliveRef.current) return;
         if (!res.ok) {
+          // 생성 완전성 게이트(카드 #681) — 인덱싱 미완 문서로 막힌 경우. 에러가
+          // 아니라 "선택 대기" 상태이므로 fetchError 대신 pendingIndex 를 세팅해
+          // UI 가 대기/부분생성 프롬프트를 띄우게 한다.
+          if (
+            res.status === 409 &&
+            json?.error === 'indexing_incomplete' &&
+            typeof json.pending === 'number'
+          ) {
+            setPendingIndex({
+              pending: json.pending,
+              indexed: json.indexed ?? 0,
+              total: json.total ?? 0,
+            });
+            gate.release();
+            await refetch();
+            return;
+          }
           setFetchError(
             json && typeof json.error === 'string'
               ? json.error
@@ -241,6 +295,8 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
           return;
         }
         setFetchError(null);
+        // 생성 시작 성공 — 게이트 프롬프트 해제(부분 승인 재요청 포함).
+        setPendingIndex(null);
         // 캐시 히트면 즉시 done + blocks 를 반환하기도 함.
         await refetch();
       } catch (e) {
@@ -369,6 +425,8 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     generating,
     generate,
     refetch,
+    pendingIndex,
+    clearPendingIndex,
     cancel,
     applyBlockMd,
   };
