@@ -5,6 +5,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { useCountUp } from '@/hooks/use-count-up';
 import { Button, type ButtonVariant, type ButtonSize } from '@/components/ui/button';
 import { IconButton, type IconButtonVariant, type IconButtonSize } from '@/components/ui/icon-button';
+import { CloseButton, type CloseButtonVariant } from '@/components/ui/close-button';
 import { ChromeButton, type ChromeButtonVariant, type ChromeButtonSize } from '@/components/ui/chrome-button';
 import { Input } from '@/components/ui/input';
 import { ChromeInput } from '@/components/ui/chrome-input';
@@ -64,6 +65,7 @@ export type SectionId =
   | 'motion'
   | 'button'
   | 'icon-button'
+  | 'close-button'
   | 'chrome-button'
   | 'input'
   | 'chrome-input'
@@ -123,6 +125,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
     sections: [
       { id: 'button', label: 'Button', render: () => <ButtonSection /> },
       { id: 'icon-button', label: 'IconButton', render: () => <IconButtonSection /> },
+      { id: 'close-button', label: 'CloseButton', render: () => <CloseButtonSection /> },
       { id: 'chrome-button', label: 'ChromeButton', render: () => <ChromeButtonSection /> },
       { id: 'input', label: 'Input', render: () => <InputSection /> },
       { id: 'chrome-input', label: 'ChromeInput', render: () => <ChromeInputSection /> },
@@ -715,6 +718,45 @@ function IconButtonSection() {
             <IconButton key={s} variant="bordered" size={s} aria-label={s}>
               <CloseIcon />
             </IconButton>
+          ))}
+        </div>
+      </Subsection>
+    </PrimitivePage>
+  );
+}
+
+function CloseButtonSection() {
+  // Order + labels mirror CLOSE-BUTTON-AUDIT.dc.html §1 (row-remove · dialog-
+  // close · chip-clear · banner-dismiss) so this catalog entry doubles as the
+  // pixel-diff oracle target against the CD frame.
+  const variants: { v: CloseButtonVariant; spec: string; ctx: string }[] = [
+    { v: 'row-remove', spec: '28×28 · r9 · 무테 → hover crimson thin', ctx: '파일/첨부/선택 목록 행' },
+    { v: 'dialog-close', spec: '32×32 · r9 · thin border + shadow-sm-faint', ctx: '모달·시트 헤더 우측' },
+    { v: 'chip-clear', spec: '16×16 · pill · 글리프만 → hover crimson', ctx: '필터 칩·태그 안쪽' },
+    { v: 'banner-dismiss', spec: '24×24 · r9 · 무테 · hover ink 워시', ctx: '토스트·진행 배너·안내 밴드' },
+  ];
+  return (
+    <PrimitivePage
+      title="CloseButton"
+      hint="src/components/ui/close-button.tsx · 제품 전역 닫기·제거 컨트롤 SSOT (✕ 상자 4변종 통일) · aria-label required (a11y enforced by type) · ✕ 는 SVG 아님, U+2715 문자 유지(§D5 불변) · 파괴적 변종(row-remove·chip-clear)만 hover crimson · dialog-close 만 평상시 보더 · 히트영역 28+(banner 24·chip 16 예외) · CD SSOT: close-button-BUILD-SPEC.md §1"
+    >
+      <Subsection label="Variants (idle — hover 로 상태 확인)">
+        <div className="flex flex-wrap items-end gap-6">
+          {variants.map(({ v, spec, ctx }) => (
+            <div key={v} className="flex flex-col items-center gap-2 text-center">
+              <CloseButton variant={v} aria-label={`${v} 데모`} />
+              <div className="text-sm font-semibold text-ink">{v}</div>
+              <div className="max-w-[9rem] text-xs leading-snug text-mute-soft">{spec}</div>
+              <div className="max-w-[9rem] text-xs leading-snug text-mute">{ctx}</div>
+            </div>
+          ))}
+        </div>
+      </Subsection>
+
+      <Subsection label="disabled (opacity 금지 — mute 트랙)">
+        <div className="flex flex-wrap items-center gap-6">
+          {variants.map(({ v }) => (
+            <CloseButton key={v} variant={v} aria-label={`${v} disabled 데모`} disabled />
           ))}
         </div>
       </Subsection>

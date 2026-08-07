@@ -129,6 +129,7 @@
   "src/lib/interview-eval/run-eval.ts": 19,
   "src/lib/interview-v2/ask-prompt.ts": 6,
   "src/lib/interview-v2/search-prompt.ts": 3,
+  "src/lib/interview-v2/section-aggregate.ts": 35,
   "src/lib/interview-v2/topline-docx.ts": 4,
   "src/lib/interview-v2/topline-map.ts": 16,
   "src/lib/interview-v2/topline-prompt.ts": 19,

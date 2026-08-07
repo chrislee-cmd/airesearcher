@@ -1523,6 +1523,13 @@
       "stateError": "エラー",
       "hideWidget": "ウィジェットを非表示にする",
       "showWidget": "ウィジェットを表示する"
+    },
+    "publish": {
+      "publish": "既定レイアウトとして公開",
+      "publishing": "公開中…",
+      "published": "公開しました",
+      "failed": "公開に失敗しました",
+      "hint": "現在のレイアウトを一般アカウントの既定レイアウトとして公開します"
     }
   },
   "Desk": {

@@ -1523,6 +1523,13 @@
       "stateError": "Error",
       "hideWidget": "Hide widget",
       "showWidget": "Show widget"
+    },
+    "publish": {
+      "publish": "Publish as default layout",
+      "publishing": "Publishing…",
+      "published": "Published",
+      "failed": "Publish failed",
+      "hint": "Publishes the current layout as the default for regular accounts"
     }
   },
   "Desk": {
