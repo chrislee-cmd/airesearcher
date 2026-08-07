@@ -30,6 +30,12 @@ export type FileDropZoneProps = {
   // Return true to indicate the drop was consumed and the default
   // file-handling path should be skipped.
   onDropRaw?: (e: DragEvent<HTMLDivElement>) => boolean;
+  // Bare 모드 — 프리미티브의 memphis 인라인 프레임(border/radius/shadow/bg)을
+  // 걷어내고 className 이 프레임 비주얼을 통째로 소유한다(예: 업로드 모달의 CD
+  // 점선 드롭존 — upload-modal-BUILD-SPEC §1·3). 네이티브 <input>·drag·키보드
+  // 메커니즘은 그대로. Modal.bare 와 동일 패턴. 미지정(기본 false)이면 기존
+  // memphis 룩 그대로 → 6 위젯 컨트롤 dropzone 회귀 0.
+  bare?: boolean;
   // 슈퍼어드민 DS 인스펙터용 primitive 이름. 기본 'FileDropZone'. ControlDropzone
   // 이 FileDropZone 을 감싸 쓰므로 자기 이름('ControlDropzone')으로 덮어쓴다.
   dsPrimitive?: string;
@@ -47,6 +53,7 @@ export function FileDropZone({
   children,
   className,
   onDropRaw,
+  bare = false,
   dsPrimitive = 'FileDropZone',
   ...rest
 }: FileDropZoneProps) {
@@ -128,12 +135,16 @@ export function FileDropZone({
       className={`flex flex-col items-center justify-center text-center transition-[transform,box-shadow,background-color,border-color] duration-[140ms] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--canvas-accent)] ${
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
       } ${dragOver ? '-translate-x-[1px] -translate-y-[1px]' : ''} ${className ?? ''}`}
-      style={{
-        background: memphisBg,
-        border: `3px solid ${memphisBorder}`,
-        borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: memphisShadow,
-      }}
+      style={
+        bare
+          ? undefined
+          : {
+              background: memphisBg,
+              border: `3px solid ${memphisBorder}`,
+              borderRadius: 'var(--sidebar-nav-radius)',
+              boxShadow: memphisShadow,
+            }
+      }
       {...rest}
       data-ds-primitive={dsPrimitive}
     >
