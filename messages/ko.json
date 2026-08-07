@@ -2694,6 +2694,10 @@
       "error": "오류"
     }
   },
+  "ShareOtpEmail": {
+    "subject": "Research-Canvas 공유 열람 인증 코드",
+    "body": "공유 열람 인증 코드는 {code} 입니다.\n\n{minutes}분 안에 입력해 주세요. 본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다."
+  },
   "ShareViewer": {
     "eyebrow": "공유 열람",
     "readOnlyHint": "읽기 전용 화면입니다. 편집·재생성은 할 수 없습니다.",

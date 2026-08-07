@@ -2694,6 +2694,10 @@
       "error": "Error"
     }
   },
+  "ShareOtpEmail": {
+    "subject": "Your Research-Canvas shared view verification code",
+    "body": "Your verification code for the shared view is {code}.\n\nEnter it within {minutes} minutes. If you didn't request this, you can ignore this email."
+  },
   "ShareViewer": {
     "eyebrow": "Shared view",
     "readOnlyHint": "This is a read-only view. Editing and regeneration are disabled.",
