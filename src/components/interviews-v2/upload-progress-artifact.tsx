@@ -55,6 +55,20 @@ export function useHasInterviewUploadFor(projectId: string | null): boolean {
   return batches.some((b) => b.projectId === projectId);
 }
 
+// Is a batch for this project still IN FLIGHT (not yet settled)? Distinct from
+// useHasInterviewUploadFor, which stays true through the post-completion linger.
+// The readiness prompt ("N files ready · ALL READY · Build the report") must NOT
+// appear mid-batch: the DB doc count is a partial view while files are still
+// converting client-side (no DB row yet), so "40 ready" would flash before the
+// batch settles at 61. Gate the prompt on this being false.
+export function useHasActiveInterviewUploadFor(
+  projectId: string | null,
+): boolean {
+  const { batches } = useInterviewUpload();
+  if (!projectId) return false;
+  return batches.some((b) => b.projectId === projectId && !b.done);
+}
+
 function BatchProgressCard({ batch }: { batch: UploadBatch }) {
   const t = useTranslations('InterviewsV2');
   const { dismissBatch } = useInterviewUpload();

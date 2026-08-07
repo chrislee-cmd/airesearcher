@@ -20,6 +20,7 @@ import { UploadModal } from '@/components/interviews-v2/upload-modal';
 import {
   InlineUploadProgress,
   useHasInterviewUploadFor,
+  useHasActiveInterviewUploadFor,
 } from '@/components/interviews-v2/upload-progress-artifact';
 import { InterviewV2Fullview } from '@/components/interviews-v2/interview-v2-fullview';
 import { track as trackEvent } from '@/lib/analytics/events';
@@ -256,6 +257,10 @@ function ActiveBody({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const hasUpload = useHasInterviewUploadFor(projectId);
+  // In-flight batch (not yet settled) — keeps the card in its indexing view so
+  // the "N files ready · ALL READY" prompt can't flash a partial count (40)
+  // before the upload settles at its true total (61).
+  const uploadInFlight = useHasActiveInterviewUploadFor(projectId);
   const toast = useToast();
 
   const openWithFiles = (files: File[]) => {
@@ -355,8 +360,11 @@ function ActiveBody({
         onOpenFullview={onOpenFullview}
       />
     );
-  } else if (isGenerating || anyProcessing) {
-    // 1c generating — 탑라인 생성 중 또는 파일 인덱싱 중. 밴드는 generating 일 때만.
+  } else if (isGenerating || anyProcessing || uploadInFlight) {
+    // 1c generating — 탑라인 생성 중 · 파일 인덱싱 중 · 업로드 배치 진행 중.
+    // uploadInFlight 를 포함해야 DB 에 아직 안 들어온 변환 중 파일 때문에 "전부
+    // READY" 프롬프트가 조기 노출(40개)되지 않고 배치 정착(61개)까지 진행 뷰 유지.
+    // 밴드는 generating 일 때만.
     modeBody = (
       <GeneratingModeBody
         documents={documents}
