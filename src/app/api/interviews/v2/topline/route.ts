@@ -23,8 +23,10 @@ import { readRequestLocale } from '@/lib/i18n/request-locale';
 
 // 인터뷰 탑라인 보고서 — 생성/캐시 엔드포인트.
 //
-// POST { project_id, force? }:
-//   1. 인덱싱 완료 확인 — 프로젝트 chunk 0 개면 409(not_indexed).
+// POST { project_id, force?, allow_partial? }:
+//   1. 인덱싱 완료 확인 — 프로젝트 chunk 0 개면 409(not_indexed). 일부 문서만
+//      인덱싱 미완이면 409(indexing_incomplete)로 무음 부분분석 차단(카드 #681);
+//      allow_partial=true 면 사용자 명시 승인으로 통과(현재 인덱싱분만 생성).
 //   2. 캐시 — 기존 row 가 status='done' 이고 content_hash 가 현재 프로젝트
 //      문서 셋 해시와 같으면 즉시 반환(LLM 0). force=true 면 무시하고 재생성.
 //   3. row 를 'generating' 으로 마킹하고 Opus 생성을 after() 로 스케줄 —
@@ -51,6 +53,11 @@ const Body = z.object({
   // 캐시 키의 일부라 방향이 다르면 문서셋·언어가 같아도 재생성한다. 길이는
   // TOPLINE_DIRECTION_MAX 로 제한(프롬프트 토큰/주입 표면 통제).
   user_direction: z.string().max(TOPLINE_DIRECTION_MAX).optional(),
+  // 부분분석 명시 승인(카드 #681) — 프로젝트에 인덱싱 미완 문서가 있으면 생성
+  // 게이트가 409(indexing_incomplete)로 막는다(무음 부분분석 차단). 사용자가
+  // "지금 M개 기준으로 생성" 을 명시 선택하면 클라가 이 값을 true 로 재요청 →
+  // 게이트를 통과해 현재 인덱싱된 문서만으로 생성한다. 기본 false(대기 권장).
+  allow_partial: z.boolean().optional().default(false),
 });
 
 // GET ?project_id=<uuid> — 읽기 전용 조회. 2-tab UI 가 탭 열자마자 저장된
@@ -171,7 +178,8 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  const { project_id, force, output_lang, user_direction } = parsed.data;
+  const { project_id, force, output_lang, user_direction, allow_partial } =
+    parsed.data;
   // 요청 언어 정규화 — 위젯 명시 출력언어 선택 > 유저 로케일(NEXT_LOCALE) > en
   // (i18n Phase 7 통일 규칙). 과거엔 미지정 시 한국어 고정이라 /en 유저 topline 이
   // 한국어로 새어 나왔다. 캐시 비교/저장 모두 이 값 기준. resolveOutputLang 의
@@ -196,10 +204,14 @@ export async function POST(req: Request) {
 
   let hash: string;
   let chunkCount: number;
+  let docCount: number;
+  let indexedDocCount: number;
   try {
     const corpus = await computeProjectCorpus(admin, org.org_id, project_id);
     hash = corpus.hash;
     chunkCount = corpus.chunkCount;
+    docCount = corpus.docCount;
+    indexedDocCount = corpus.indexedDocCount;
   } catch (e) {
     console.error('[v2/topline] corpus failed', e);
     return NextResponse.json({ error: 'corpus_failed' }, { status: 500 });
@@ -231,6 +243,28 @@ export async function POST(req: Request) {
       generated_at: existing.generated_at,
       model: existing.model,
     });
+  }
+
+  // ── 생성 완전성 게이트(카드 #681) — 무음 부분분석 차단 ──
+  // 프로젝트에 인덱싱 미완 문서(청크 0)가 있으면 fetchDocumentsWithChunks 가
+  // 그것들을 map 대상에서 조용히 제외해 부분분석 보고서가 나온다(본문 5명인데
+  // 헤더 n=9 "전수 순회" 자기모순). 사용자가 명시로 부분 진행(allow_partial)을
+  // 고르지 않는 한, 여기서 409(indexing_incomplete) + 카운트를 돌려주고 생성을
+  // 시작하지 않는다. 클라는 이 응답으로 "① 완료까지 대기(권장) ② 지금 M개로
+  // 생성" 선택을 띄우고, ②면 allow_partial=true 로 재요청한다. 캐시 히트는 위에서
+  // 이미 반환됐으므로(전 문서 인덱싱된 상태의 완전 보고서), 여기 도달 = 실제
+  // 생성이 필요한 경로 — 인덱싱 미완 차단이 안전하다.
+  const pendingIndex = docCount - indexedDocCount;
+  if (pendingIndex > 0 && !allow_partial) {
+    return NextResponse.json(
+      {
+        error: 'indexing_incomplete',
+        pending: pendingIndex,
+        indexed: indexedDocCount,
+        total: docCount,
+      },
+      { status: 409 },
+    );
   }
 
   // 이미 다른 요청이 생성 중이면 중복 kick 하지 않는다(중복 방지). 단 아래는

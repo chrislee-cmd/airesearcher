@@ -157,6 +157,49 @@ export function ReportBanner({
   );
 }
 
+// ── 생성 완전성 게이트 프롬프트(카드 #681) ─────────────────────────
+// 인덱싱 미완 문서가 있어 무음 부분분석이 차단됐을 때, 사용자에게 "완료까지
+// 대기(권장)" 또는 "지금 M개로 생성(부분 명시)" 선택을 띄운다. stale 배너와
+// 같은 warning 톤이되 선택 액션 2개를 노출한다.
+export function IndexingGatePrompt({
+  pending,
+  indexed,
+  total,
+  onWait,
+  onGeneratePartial,
+  disabled,
+}: {
+  pending: number;
+  indexed: number;
+  total: number;
+  onWait: () => void;
+  onGeneratePartial: () => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations('InterviewsV2');
+  return (
+    <div className="flex items-start gap-[13px] rounded-panel border-2 border-ink bg-warning-bg px-[18px] py-[15px] shadow-memphis-md-amber">
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 text-lg font-extrabold text-amber-text">
+          {t('reportIndexGateTitle', { pending })}
+        </div>
+        <div className="text-md leading-[1.65] text-amber-text">
+          {t('reportIndexGateBody', { pending, indexed, total })}
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <BannerButton label={t('reportIndexGateWait')} onClick={onWait} />
+        {!disabled && (
+          <BannerButton
+            label={t('reportIndexGatePartial', { indexed })}
+            onClick={onGeneratePartial}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── 상태: 빈(2a) ────────────────────────────────────────────────────
 
 const LANG_OPTIONS = [
