@@ -34,7 +34,23 @@
 - `citations` 가 비면 **아무것도 렌더하지 않습니다.** 회색 칩·빈 칩 금지.
 
 ### 0.4 읽기 vs 편집 → **모드 분리 (확정)**
-헤더 우측 `✎ 편집` 토글. **읽기 모드가 기본이고 그 상태에서는 블록 사이 ＋도, 드래그 하이라이트도 존재하지 않습니다.** 편집 모드에서만 SectionGap ＋ · drag-to-ask · 삽입 카드 액션이 활성화됩니다. 근거 칩은 두 모드 모두에서 보입니다(읽기의 일부지 편집이 아님). 상세 S5a–S5c.
+헤더 우측 `✎ 보고서 편집` 토글. **읽기 모드가 기본이고 그 상태에서는 블록 사이 ＋도, 드래그 하이라이트도 존재하지 않습니다.** 편집 모드에서만 SectionGap
+
+### 0.4b 액션바 위계 → **보조를 무테 아이콘으로 · 편집은 ink 채움 (확정 · 탐색 `1b`)**
+액션바에 보더를 가진 버튼이 여섯이면 무엇부터 볼지 정해지지 않습니다. **Word · Gdoc · 공유 · 재생성을 34×34 무테 아이콘으로 내리고, 언어는 텍스트 트리거로** 둘어 **라벨이 붙은 버튼을 편집 하나로** 만듭니다.
+
+편집은 **rose 채움 → `bg-ink` 채움**으로 바뀍니다. 보조가 전부 무테가 되면 rose 의 대비가 오히려 약해지고, `DESIGN-SSOT-MASTER §D1` 의 "프라이머리 = ink 채움 · 한 화면에 하나"와도 맞습니다. 라벨도 `편집` → **`보고서 편집`** 으로 늘려 무엇을 편집하는지 밝힙니다.
+
+> ⚠️ **무테 아이콘은 툴팁이 필수입니다.** 내보내기와 공유는 둘 다 "밖으로 보낸다"라 아이콘만으로 갈리지 않습니다. hover 400ms · ink 배경 · 11/700 paper.
+
+### 0.4c 드래그를 모르는 사용자 → **힌트 스트립 (확정 · 탐색 `1d`)**
+드래그는 **보이지 않는 기능**입니다. 편집 모드 진입 직후 본문 최상단에 한 줄짜리 스트립을 띄우고, **첫 드래그가 성공하면 사라지고 다시 뜼지 않습니다.**
+
+- 생김새는 `§1.4` 드래그 힌트 스트립 행. `rose-bg` · border 1.5 ink · radius 10.
+- 닫기는 `DESIGN-SSOT-MASTER §D6` 의 **`banner-dismiss`** (24 · 무테 · hover ink/6). 파괴적이 아니므로 crimson 을 쓰지 않습니다.
+- 아이콘 **`highlight`** 는 세트에 없어 그렸습니다 — 경로는 §2 A-2.
+
+> ⚠️ **contract-change:** "첫 드래그 성공했는가"를 기억할 곳이 필요합니다. 사용자 단위 `localStorage` 플래그로 충분하고 서버 계약은 늘리지 않아도 됩니다. 플래그를 안 두면 매 번 뜼게 되는데, 그것도 동작하긴 하나 숨기는 버튼이 무의미해집니다. ＋ · drag-to-ask · 삽입 카드 액션이 활성화됩니다. 근거 칩은 두 모드 모두에서 보입니다(읽기의 일부지 편집이 아님). 상세 S5a–S5c.
 
 ### 0.5 차트 팔레트 → **`chart.cat-1…6` 신설 · 값은 전부 기존 토큰 별칭 (확정)**
 임의 hex `#f97316` · `#a855f7` 는 삭제합니다. 새 hex 를 만들지 않고 기존 토큰을 순서 있는 카테고리 스케일로 묶습니다.
@@ -93,10 +109,10 @@
 | 상태 칩 · no report | paper · border 1.5 ink · 도트 `faint` | `bg-faint` |
 | **탭바** (헤더밴드 아래 신규 행) | `border-b 2px ink` · paper · pad 9/20~24 · 좌: ← · 탭 pill · 우: 액션 그룹 | `border-b-2 border-ink paper` |
 | — 탭 pill 그룹 | border 1.5 ink · radius 999 · 활성 `bg-ink text-paper` | `border-ink rounded-pill` / `bg-ink text-white` |
-| — 액션 버튼 (Word/Gdoc/공유/재생성) | paper · border 1.5 ink · radius 999 · 12/700 · shadow 2px2px0 ink/12 | `paper border-ink rounded-pill shadow-memphis-sm-faint` |
-| — 액션 버튼 아이콘 | 15 × 15 · 라벨과 gap 6 | §1.5 |
-| — 언어 셀렉트 | **width 132px** · border 1.5 ink · radius 10 · shadow 2px2px0 ink | `border-ink rounded-control shadow-memphis-sm` + `proposed:w-lang-select` (§2) |
-| — 편집 토글(신규) | border 2px ink · radius 999 · **bg rose** · 12/800 · shadow 2px2px0 ink | `border-2 border-ink rounded-pill bg-widget-header-rose shadow-memphis-sm` |
+| — 액션 아이콘 버튼 (Word/Gdoc/공유/재생성) | **34×34 무테** · radius 9 · bg transparent · 스트로크 `mute` 17px · hover `canvas` | `w-[34px] h-[34px] rounded-icon hover:bg-canvas` |
+| — 언어 트리거 | **텍스트만** · 12/700 `mute` · pad 6/4 · 보더·그림자 없음 | `text-mute font-bold` |
+| — 편집 CTA | **`bg-ink` 채움** · border 2 ink · radius 999 · pad **9/22** · **13.5/800** paper · shadow **3px3px0 ink/28** · 라벨 **"보고서 편집"** | `bg-ink text-paper border-2 border-ink rounded-pill shadow-memphis-md-faint` |
+| — 편집 토글(신규) | §1.2 액션바의 편집 CTA 참조 — **ink 채움 · rose 아님** | `bg-ink text-paper` |
 | 파일 패널 (펼침) | **width 300 고정** · `border-r 2px ink` · paper | `w-[300px] border-r-2 border-ink paper` |
 | 파일 패널 (접힘) | **width 56 고정** · `paper-soft` · ▶ 버튼 30px radius 9 · 세로 mono 라벨 | `w-[56px] paper-soft` |
 | 목차 rail | **width 220 고정** · `border-l 2px ink` · paper | `w-[220px] border-l-2 border-ink paper` |
@@ -131,6 +147,7 @@
 | SectionGap · 유휴 | height **26 고정** · 선 `rose/55` 1.5px · 노드 20px border 1.4 `line-strong` · `＋` `line-empty` | 높이 고정 = 레이아웃 점프 방지 |
 | SectionGap · hover | 라벨 pill border 1.5 ink · radius 8 · shadow 2px2px0 ink · 11.5/800 | `border-ink rounded-nav shadow-memphis-sm` |
 | SectionGap · pending | 2px dashed `processing` · `lav-bg` · 도트 `processing` | `border-dashed border-processing bg-lav-bg` |
+| 드래그 힌트 스트립 | border 1.5 ink · radius 10 · **`rose-bg`** · pad 10/14 · shadow 2px2px0 ink/12 · 아이콘 `highlight` 17 · 12.5/1.6 · 우측 `banner-dismiss` ✕ 24 | `border-ink rounded-panel bg-rose-bg shadow-memphis-sm-faint` |
 | 드래그 선택 하이라이트 | `bg sun` + `border-b 2px amber` · pad 1/2 | `bg-pastel-sun border-b-2 border-amber` |
 | 배너 · stale | border 2px ink · radius 12 · `warning-bg` · shadow **3px3px0 amber** · 텍스트 `amber-text` | `bg-warning-bg shadow-memphis-md-amber text-amber-text` |
 | 배너 · stuck | border 2px ink · radius 12 · `lav-bg` · shadow 3px3px0 processing/35 · 텍스트 `lav-text` | `bg-lav-bg text-lav-text` + `proposed:shadow-memphis-md-processing` |
@@ -155,12 +172,13 @@
 | 파일 행 · 오디오 | `mic` | 15 / 16 / 17 | 듀오톤 rose |
 | 파일 행 · 표 데이터(csv) | **`dataset`** ⚠️ 세트에 없음 (§6-5) | 15 / 16 | 듀오톤 rose |
 | 업로드 버튼 · 드롭존 | `upload` | 15 / 30 / 34 | 듀오톤 rose (드롭존 비활성은 `opacity:.35`) |
-| Word 내보내기 | **`download`** ⚠️ 세트에 없음 (§6-5) | 15 | 듀오톤 rose |
-| Google Docs | `document` | 15 | 듀오톤 rose |
-| 공유 · 링크 필드 | `link` | 15 / 18 | 듀오톤 rose |
+| Word 내보내기 | **`download`** ⚠️ 세트에 없음 (§6-5) | **17** | **mono** (`mute` 스트로크 · 채움 없음) |
+| Google Docs | `document` | **17** | **mono** (`mute` 스트로크 · 채움 없음) |
+| 공유 · 링크 필드 | `link` | **17** / 18 | 액션바 **mono** · 링크 필드는 듀오톤 rose |
 | 언어 셀렉트 · 언어 칩 | `language` | 13 / 15 | 듀오톤 rose |
-| 재생성 (버튼 · stale 배너 · 모달 헤더) | **`regenerate`** ⚠️ 세트에 없음 (§6-5) | 15 / 19 | 듀오톤 rose |
-| 편집 토글 | `typos` | 12 / 15 | 듀오톤 rose |
+| 재생성 (버튼 · stale 배너 · 모달 헤더) | **`regenerate`** ⚠️ 세트에 없음 (§6-5) | **17** / 19 | 액션바 **mono** · 배너/모달은 듀오톤 rose |
+| 편집 CTA | `typos` | **16** | **mono** (ink 배경 → 흰 스트로크, 채움 없음) |
+| 드래그 힌트 스트립 | **`highlight`** ⚠️ 세트에 없음 (§6-5) | 17 | 단색 ink |
 | 드래그 질문 CTA | `questions` | 15 | **mono**(ink 배경 → 흰 스트로크, 채움 없음) |
 | 파일 패널 펼치기 | `chevron` (경로 `M9 5l7 7-7 7`) | 14 | 단색 ink |
 | 크레딧 `💎` | **이모지 유지** | — | `WIDGET-SHELL.md §S1` 이 명시한 유일한 예외 |
@@ -189,6 +207,7 @@
 | `download` | `M12 4v11` · `M8 11l4 4 4-4` · `M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4` | Word 내보내기. `upload` 의 화살표만 뒤집은 짝 |
 | `regenerate` | `M20 12a8 8 0 1 1-2.6-5.9` · `M20 4v5h-5z`(fill) | 재생성 · 다시 만들기 |
 | `dataset` | `rect 4,4,16,16 rx1.6`(fill) · `M4 9.5h16M9.5 9.5V20` | 표 형식 파일(csv·xlsx). `minutes`(회의록)를 대신 쓰면 뜻이 틀립니다 |
+| `highlight` | `M6 7h7` · `M6 11h5` · `M13.5 12.5l6.5 6.5` · `M13.5 12.5l1.6 8 1.8-3.2 3.4-.6z`(fill) | 드래그 힌트 스트립. 텍스트 위 커서 = "문장을 끌어보라" |
 
 ### (B) 로컬 (승격 보류)
 | 토큰 | 값 | 위치 |
@@ -223,6 +242,7 @@
 | 공유 | Word 3상태 · Gdoc 3상태 · 초대 모달(이메일 게이트) | S4 · 4c |
 | 편집 | 읽기↔편집 대조 | S5 · 5a |
 | 편집 | SectionGap 유휴/hover/열림/pending | S5 · 5b |
+| 편집 | 드래그 힌트 스트립(편집 진입 직후) | S5 · 5c |
 | 편집 | drag-to-ask 선택→입력→답변(+근거 없음 폴백) | S5 · 5c |
 | 근거 | 칩 기본/hover 팝오버/다건/없음 | S5 · 5d |
 | 목록 | done / generating / none / error 프로젝트 카드 | S6 · 6a |
