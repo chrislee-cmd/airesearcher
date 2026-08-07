@@ -14,7 +14,7 @@
    section-insert · use-topline-drag-to-ask · use-topline-edit 재사용(계약 무변경).
    ──────────────────────────────────────────────────────────────────── */
 
-import { Fragment, useMemo, useState, type RefObject } from 'react';
+import { Fragment, useCallback, useMemo, useState, type RefObject } from 'react';
 import { useTranslations } from 'next-intl';
 import type { ToplineBlock } from '@/lib/interview-v2/types';
 import { isEditableToplineBlockType } from '@/lib/interview-v2/types';
@@ -26,6 +26,37 @@ import { useToplineEdit } from '@/hooks/use-topline-edit';
 import { planBlocks, renderBlock, type Tr } from './report-blocks';
 import { SectionGap, PendingSectionCard } from './section-gap';
 import { AskLayer, PendingQaCard } from './ask-popup';
+
+// 드래그 힌트 "이미 봤는가" 플래그 — 사용자 단위 localStorage(§0.4c contract-
+// change: 서버 계약 안 늘림). 첫 드래그 성공 or ✕ 닫기로 세팅되면 다시 안 뜬다.
+const DRAG_HINT_KEY = 'iv:drag-hint-dismissed';
+
+// 드래그 힌트 스트립(§0.4c · §1.4 · S5c) — 편집 진입 직후 본문 최상단 한 줄.
+// 드래그는 보이지 않는 기능이라 "문장을 끌어보라"를 안내한다. rose-bg · border
+// 1.5 ink · radius 10 · shadow 2px2px0 ink/12 · highlight 아이콘(단색 ink) ·
+// 우측 banner-dismiss ✕(무테 · hover ink/6 — 파괴적 아님이라 crimson 아님, §D6).
+function DragHintStrip({ onDismiss }: { onDismiss: () => void }) {
+  const t = useTranslations('InterviewsV2');
+  return (
+    <div className="mb-3.5 flex items-center gap-2.5 rounded-control border-[1.5px] border-ink bg-rose-bg px-3.5 py-2.5 shadow-memphis-sm-faint">
+      <DuotoneIcon name="highlight" size={17} fill="var(--color-paper)" />
+      <div className="flex-1 text-md leading-relaxed text-ink-2">
+        {t.rich('dragHintText', {
+          b: (chunks) => <b className="text-ink">{chunks}</b>,
+        })}
+      </div>
+      {/* eslint-disable-next-line react/forbid-elements -- §D6 banner-dismiss 는 24px 무테 ✕ chrome(hover ink/6); IconButton 고정 radius/배경과 불일치 */}
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label={t('dragHintDismiss')}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-icon text-md font-bold text-mute-soft hover:bg-ink/5"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
 
 // 인라인 블록 편집기 — 편집 대상 블록의 md 를 plain textarea 로 열어 내용만 수정
 // (스타일 X). 저장 = 낙관적 반영 + PATCH(edit_block), 취소 = 원문 유지(닫기만).
@@ -127,6 +158,25 @@ export function ReportEditBody({
   const [openGapKey, setOpenGapKey] = useState<string | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
+  // 드래그 힌트 표시 여부 — localStorage 플래그 미설정이면 편집 진입 직후 뜬다.
+  // 첫 드래그 성공(AskLayer onSelected) 또는 ✕ 닫기로 영구 dismiss(§0.4c).
+  const [hintDismissed, setHintDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return window.localStorage.getItem(DRAG_HINT_KEY) === '1';
+    } catch {
+      return true;
+    }
+  });
+  const dismissHint = useCallback(() => {
+    setHintDismissed(true);
+    try {
+      window.localStorage.setItem(DRAG_HINT_KEY, '1');
+    } catch {
+      // storage 접근 불가(프라이빗 모드 등) — 세션 내 dismiss 로만 폴백.
+    }
+  }, []);
+
   const blockIds = useMemo(() => new Set(blocks.map((b) => b.id)), [blocks]);
   // anchor 가 현재 블록 목록에 없는 pending(그 사이 재생성 등) 은 말미에.
   const topPendingSections = section.pending.filter((p) => p.anchorBlockId === null);
@@ -165,6 +215,8 @@ export function ReportEditBody({
       ref={containerRef as RefObject<HTMLDivElement>}
       className="mx-auto flex w-[var(--iv-body-col-w)] max-w-full flex-col selection:bg-sun selection:text-ink"
     >
+      {/* 드래그 힌트 스트립 — 근거 있고(askEnabled) 아직 안 봤을 때만 최상단에. */}
+      {askEnabled && !hintDismissed && <DragHintStrip onDismiss={dismissHint} />}
       {askEnabled && <div className="mb-3.5">{renderGap(null, 'top')}</div>}
       {topPendingSections.map((p) => (
         <div key={p.id} className="mt-3.5">
@@ -241,11 +293,13 @@ export function ReportEditBody({
         </div>
       ))}
 
-      {/* 드래그 질문 레이어 — 선택 감지 + CTA + 입력 카드(fixed). */}
+      {/* 드래그 질문 레이어 — 선택 감지 + CTA + 입력 카드(fixed). 첫 선택(=드래그
+          성공) 시 힌트 스트립 영구 dismiss(§0.4c). */}
       <AskLayer
         containerRef={containerRef}
         enabled
         askEnabled={askEnabled}
+        onSelected={dismissHint}
         onAsk={(anchorBlockId, selectedText, question, mode) =>
           void dta.ask(anchorBlockId, selectedText, question, mode)
         }

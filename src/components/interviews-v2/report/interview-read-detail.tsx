@@ -112,52 +112,59 @@ function ActionPill({
   );
 }
 
-// 내보내기 pill 3상태(§S4c) — idle / busy(lav) / done(success). Word·Gdoc 공용.
-// 진행 중엔 다시 못 누르고, done 은 4초 뒤 idle 로 자동 복귀(호출측 타이머).
+// 내보내기 3상태(§S4c) — idle / busy / done. Word·PDF·Gdoc 공용. 진행 중엔
+// 다시 못 누르고, done 은 4초 뒤 idle 로 자동 복귀(호출측 타이머).
 type ExportPhase = 'idle' | 'busy' | 'done';
-function ExportPill({
-  phase,
+
+// 액션바 무테 아이콘 버튼(§0.4b·§1.2) — 34×34 · radius 9 · 투명 · mono mute
+// 스트로크 17 · hover surface-canvas. 아이콘만으론 export vs 공유가 안 갈리므로
+// 툴팁 필수(hover 400ms · ink 배경 · paper — §0.4b ⚠️). 내보내기 3상태는 아이콘
+// 자리에서 처리(busy=처리중 도트 · done=✓ success). reduced-motion 무력화.
+function ActionIconButton({
   icon,
-  idleLabel,
-  busyLabel,
-  doneLabel,
+  title,
   onClick,
   disabled,
+  phase = 'idle',
 }: {
-  phase: ExportPhase;
   icon: DuotoneIconName;
-  idleLabel: string;
-  busyLabel: string;
-  doneLabel: string;
-  onClick: () => void;
+  title: string;
+  onClick?: () => void;
   disabled?: boolean;
+  phase?: ExportPhase;
 }) {
-  if (phase === 'busy') {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-lav-line bg-lav-bg px-3.5 py-1.5 text-md font-bold text-lav-text">
-        <span aria-hidden className="h-[6px] w-[6px] rounded-full bg-processing" />
-        {busyLabel}
-      </span>
-    );
-  }
-  if (phase === 'done') {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-success-line bg-success-bg px-3.5 py-1.5 text-md font-extrabold text-success-text">
-        ✓ {doneLabel}
-      </span>
-    );
-  }
+  const busy = phase === 'busy';
+  const done = phase === 'done';
   return (
-    // eslint-disable-next-line react/forbid-elements -- CD S3/S4c 내보내기 pill 은 rounded-pill·memphis-sm-faint 전용 chrome; Button variant 형태와 불일치(FullviewHeader pill 선례).
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3.5 py-1.5 text-md font-bold text-ink shadow-memphis-sm-faint disabled:opacity-45"
-    >
-      <DuotoneIcon name={icon} size={15} />
-      {idleLabel}
-    </button>
+    <span className="group relative inline-flex">
+      {/* eslint-disable-next-line react/forbid-elements -- CD S3 무테 아이콘 액션은 34×34 투명 radius-icon chrome; IconButton 고정 radius/배경과 불일치. 라벨은 aria-label + 시각 툴팁이 전달. */}
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled || busy}
+        aria-label={title}
+        className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-icon bg-transparent hover:bg-surface-canvas disabled:opacity-40"
+      >
+        {done ? (
+          <span aria-hidden className="text-md font-extrabold text-success">
+            ✓
+          </span>
+        ) : busy ? (
+          <span
+            aria-hidden
+            className="h-[7px] w-[7px] animate-pulse rounded-full bg-processing motion-reduce:animate-none"
+          />
+        ) : (
+          <DuotoneIcon name={icon} size={17} fill="none" stroke="var(--color-mute)" />
+        )}
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-fab mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-xs bg-ink px-2 py-1 text-sm font-bold text-paper opacity-0 transition-opacity delay-[400ms] group-hover:opacity-100 motion-reduce:transition-none motion-reduce:delay-0"
+      >
+        {title}
+      </span>
+    </span>
   );
 }
 
@@ -619,78 +626,76 @@ export function InterviewReadDetail({
             ))}
           </div>
 
-          {/* 우측 액션 그룹 — 보고서 있을 때만(내보내기·공유·재생성·편집). */}
+          {/* 우측 액션 그룹(§0.4b) — 보조는 무테 mono 아이콘 · 언어는 텍스트
+              트리거 · 편집만 라벨 버튼(ink 채움). 보고서 있을 때만. */}
           {showActions && (
             <div className="ml-auto flex items-center gap-2">
-              <ExportPill
-                phase={actionsDisabled ? 'idle' : wordPhase}
+              <ActionIconButton
                 icon="download"
-                idleLabel={t('reportExportWord')}
-                busyLabel={t('reportWordBusy')}
-                doneLabel={t('reportWordDone')}
+                title={t('reportExportWord')}
                 onClick={downloadWord}
                 disabled={actionsDisabled}
+                phase={actionsDisabled ? 'idle' : wordPhase}
               />
-              <ExportPill
-                phase={actionsDisabled ? 'idle' : pdfPhase}
+              <ActionIconButton
                 icon="download"
-                idleLabel={t('reportExportPdf')}
-                busyLabel={t('reportPdfBusy')}
-                doneLabel={t('reportPdfDone')}
+                title={t('reportExportPdf')}
                 onClick={() => void downloadPdf()}
                 disabled={actionsDisabled}
+                phase={actionsDisabled ? 'idle' : pdfPhase}
               />
-              <ExportPill
-                phase={actionsDisabled ? 'idle' : gdocPhase}
+              <ActionIconButton
                 icon="document"
-                idleLabel={t('reportShareGdoc')}
-                busyLabel={t('reportGdocBusy')}
-                doneLabel={t('reportGdocDone')}
+                title={t('reportShareGdoc')}
                 onClick={() => void shareGoogleDocs()}
                 disabled={actionsDisabled}
+                phase={actionsDisabled ? 'idle' : gdocPhase}
               />
-              <ActionPill
-                label={t('reportShareLink')}
+              <ActionIconButton
                 icon="link"
+                title={t('reportShareLink')}
                 onClick={() => setShareOpen(true)}
                 disabled={actionsDisabled || !toplineId}
               />
-              <div className="h-[22px] w-px bg-line-strong" aria-hidden />
-              {/* 언어 셀렉트 — 132px. */}
-              <div className="w-[var(--iv-lang-select-w)]">
-                <SelectMenu
-                  value={outputLang}
-                  onChange={setOutputLang}
-                  options={LANG_OPTIONS.map((o) => ({
-                    value: o.value,
-                    label: o.label,
-                  }))}
-                  disabled={!canGenerate}
-                  aria-label={t('toplineLangLabel')}
-                />
-              </div>
-              <ActionPill
-                label={t('reportRegenAction')}
+              <ActionIconButton
                 icon="regenerate"
+                title={t('reportRegenAction')}
                 onClick={requestRegenerate}
                 disabled={!canGenerate}
               />
-              {/* ✎ 편집 토글 (§0.4) — ON 일 때만 SectionGap·drag-to-ask 활성. */}
-              {/* eslint-disable-next-line react/forbid-elements -- CD S3 편집 토글은 rose·border 2·memphis-sm 전용 chrome; Button variant 형태와 불일치. role=switch 로 토글 의미 노출. */}
+              {/* 언어 — 텍스트 트리거(§0.4b·§1.2). 132px 박스 폐기. */}
+              <SelectMenu
+                value={outputLang}
+                onChange={setOutputLang}
+                options={LANG_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+                disabled={!canGenerate}
+                aria-label={t('toplineLangLabel')}
+                buttonClassName="inline-flex items-center gap-1.5 px-1 py-1.5 text-md font-bold text-mute disabled:opacity-45"
+                renderSummary={(vals) =>
+                  LANG_OPTIONS.find((o) => o.value === vals[0])?.label ?? DEFAULT_LANG
+                }
+              />
+              <div className="h-[22px] w-px bg-ink/15" aria-hidden />
+              {/* 편집 CTA(§0.4b) — ink 채움 · 화면의 유일한 라벨 버튼. 토글 동작
+                  유지(#595 무변경) — ON 일 때만 SectionGap·drag-to-ask 활성. */}
+              {/* eslint-disable-next-line react/forbid-elements -- CD S3 편집 CTA 는 ink 채움 rounded-pill·memphis-md-faint 전용 chrome; Button variant 형태와 불일치. role=switch 로 토글 의미 노출. */}
               <button
                 type="button"
                 role="switch"
                 aria-checked={editMode}
                 onClick={() => setEditMode((v) => !v)}
-                title={t('reportEdit')}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-2 border-ink bg-widget-header-rose px-3.5 py-1.5 text-md font-extrabold text-ink ${
+                title={t('reportEditFull')}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-pill border-2 border-ink bg-ink px-[22px] py-[9px] text-md font-extrabold text-paper ${
                   editMode
                     ? 'translate-x-px translate-y-px shadow-none'
-                    : 'shadow-memphis-sm'
+                    : 'shadow-memphis-md-faint'
                 }`}
               >
-                <DuotoneIcon name="typos" size={15} />
-                {t('reportEdit')}
+                <DuotoneIcon name="typos" size={16} mono />
+                {t('reportEditFull')}
               </button>
             </div>
           )}
