@@ -1,10 +1,9 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import DuotoneIcon from '@/components/ui/icons/duotone-icon';
 import type { InterviewDocument } from '@/hooks/use-interview-v2-documents';
-import type { ToplineAbstract } from '@/lib/interview-v2/topline-abstract';
 import {
   CardScroll,
   CardFooter,
@@ -13,7 +12,7 @@ import {
 } from './card-parts';
 import { FileRow, FileSummaryCard } from './file-row';
 import { AmbientProgressBand } from './ambient-band';
-import { AbstractCard, FilesCollapse } from './abstract-card';
+import { AbstractDoneHero, FilesCollapse } from './abstract-card';
 
 // ════════════════════════════════════════════════════════════════════════
 // S1 5모드 본문 (fresh, BUILD-SPEC §1.1). 각 body = 스크롤 영역 + (밴드) + 푸터.
@@ -276,39 +275,39 @@ export function AnalyzePromptModeBody({
   );
 }
 
-// ─── 1e abstract · 완료 요약 ─────────────────────────────────────────────────
+// ─── 1e done · 완료 상태 (전사록 `TG_done` 패턴) ──────────────────────────────
+// abstract 요약 카드 대체(#684): 중앙 정렬 done hero(✓ 타일 + CTA) + 접힌 파일
+// 목록 밴드 + 푸터. 로직(abstract 파생 → 이 모드 진입 · 풀뷰 열기)은 그대로.
 export function AbstractModeBody({
-  abstract,
   documents,
-  generatedAt,
-  model,
-  outputLang,
   blockCount,
   onOpenFullview,
 }: {
-  abstract: ToplineAbstract;
   documents: InterviewDocument[];
-  generatedAt: string | null;
-  model: string | null;
-  outputLang: string | null;
   blockCount: number;
   onOpenFullview: () => void;
 }) {
   const t = useTranslations('InterviewsV2');
+  const filesRef = useRef<HTMLDetailsElement>(null);
+  // 되돌아가기 → 파일 목록 펼침 + 스크롤(회귀 0: 모드/상태 전환 없이 카드 내부에서
+  // 파일 접근만 노출).
+  const handleBackToFiles = () => {
+    const el = filesRef.current;
+    if (!el) return;
+    el.open = true;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
   return (
     <>
-      <CardScroll>
-        <AbstractCard
-          abstract={abstract}
-          generatedAt={generatedAt}
-          model={model}
-          outputLang={outputLang}
-          blockCount={blockCount}
-          docCount={documents.length}
-          onOpenFullview={onOpenFullview}
-        />
-        <FilesCollapse documents={documents} />
-      </CardScroll>
+      <AbstractDoneHero
+        docCount={documents.length}
+        blockCount={blockCount}
+        onOpenFullview={onOpenFullview}
+        onBackToFiles={handleBackToFiles}
+      />
+      <div className="shrink-0" style={{ padding: '0 22px 18px' }}>
+        <FilesCollapse documents={documents} detailsRef={filesRef} />
+      </div>
       <CardFooter
         note={t('reportReadyNote')}
         cta={

@@ -1,7 +1,7 @@
 /* ────────────────────────────────────────────────────────────────────
    DuotoneIcon — Research-Canvas 듀오톤 아이콘 세트 (CD 핸드오프, R7 토큰화).
 
-   SSOT: Widgets Canvas 1c 프로토. 이모지 전면 대체용 · 총 25종.
+   SSOT: design-handoff/Icon System.dc.html (전수 대조). 이모지 전면 대체용 · 총 39종.
    스타일: viewBox 0 0 24 24 · stroke 2 · round cap+join.
 
    듀오톤 = ink 스트로크 + **위젯 톤 채움**. 채움은 정적 hex 가 아니라
@@ -33,7 +33,10 @@ export type DuotoneIconName =
   | 'search' | 'trend' | 'market'
   // interview-results 리디자인 신규 3종 (BUILD-SPEC §2 A-2, 경로 SSOT = .dc.html)
   // + chevron(단색 ink · 파일 패널 펼치기, §1.5).
-  | 'download' | 'regenerate' | 'dataset' | 'chevron';
+  | 'download' | 'regenerate' | 'dataset' | 'chevron'
+  // icon-fullset 인바운드 — "Icon System.dc.html" 전수 대조로 확정한 미구현 7종
+  // (Actions/Process/Persona 섹션의 유니크 글리프). 경로 SSOT = .dc.html.
+  | 'transcribe' | 'copy' | 'pin' | 'person' | 'listener' | 'log' | 'timestamp';
 
 // f = 듀오톤 채움색. paths(name) 에서 fill 지정된 요소만 채워지고 나머지는
 // 순수 스트로크. mono 모드는 호출부에서 f='none' 을 넘긴다.
@@ -72,6 +75,14 @@ function paths(name: DuotoneIconName, f: string): ReactNode[] {
     case 'regenerate': return [<path key={0} d="M20 12a8 8 0 1 1-2.6-5.9" />, <path key={1} d="M20 4v5h-5z" fill={f} />]; // 호 스트로크 + 화살촉 채움
     case 'dataset': return [<rect key={0} x={4} y={4} width={16} height={16} rx={1.6} fill={f} />, <path key={1} d="M4 9.5h16M9.5 9.5V20" />]; // 표 형식 파일(csv·xlsx)
     case 'chevron': return [<path key={0} d="M9 5l7 7-7 7" />]; // §1.5 단색 ink — 채움 없는 스트로크
+    // icon-fullset 인바운드 — "Icon System.dc.html" 미구현분을 인라인 경로 그대로 포팅.
+    case 'transcribe': return [<line key={0} x1={4} y1={10} x2={4} y2={14} />, <line key={1} x1={8} y1={6} x2={8} y2={18} />, <line key={2} x1={12} y1={3} x2={12} y2={21} />, <line key={3} x1={16} y1={7} x2={16} y2={17} />, <line key={4} x1={20} y1={10} x2={20} y2={14} />]; // 파형 바 — 순수 스트로크(듀오톤 채움 없음)
+    case 'copy': return [<rect key={0} x={8} y={8} width={12} height={12} rx={2} fill={f} />, <path key={1} d="M4 16V5a1 1 0 0 1 1-1h11" />]; // 앞 카드 톤 채움 + 뒤 원본 스트로크
+    case 'pin': return [<path key={0} d="M12 15v6" />, <path key={1} d="M8 4h8l-1.5 7 2.5 2.5H7L9.5 11z" fill={f} />]; // 핀 헤드 채움 + 침 스트로크
+    case 'person': return [<circle key={0} cx={12} cy={8} r={4} fill={f} />, <path key={1} d="M4 20a8 8 0 0 1 16 0" />]; // 머리 채움 + 어깨 스트로크
+    case 'listener': return [<path key={0} d="M3 14v-2a9 9 0 0 1 18 0v2" />, <path key={1} d="M18 20a2 2 0 0 0 2-2v-4" />, <rect key={2} x={3} y={13} width={4} height={7} rx={1.6} fill={f} />, <rect key={3} x={17} y={13} width={4} height={7} rx={1.6} fill={f} />, <circle key={4} cx={14} cy={20} r={1.2} />]; // 헤드폰 + 이어컵 채움
+    case 'log': return [<rect key={0} x={4} y={3} width={16} height={18} rx={1.6} fill={f} />, <path key={1} d="M8 8h8M8 12h8M8 16h5" />]; // 노트 톤 채움 (minutes 계열 · 더 넓음)
+    case 'timestamp': return [<circle key={0} cx={12} cy={12} r={8} fill={f} />, <path key={1} d="M12 7.5v5l3 2" />]; // 시계 — waiting 과 침 각도만 다름
     default: return [];
   }
 }
