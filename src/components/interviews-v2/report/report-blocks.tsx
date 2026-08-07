@@ -19,7 +19,7 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { ToplineBlock } from '@/lib/interview-v2/types';
 import { ReportProse } from './report-prose';
 import { ReportChart } from './report-chart';
@@ -531,16 +531,23 @@ export function renderBlock(
 export function ReportBody({
   blocks,
   metaRight,
+  containerRef,
 }: {
   blocks: ToplineBlock[];
   // executive_summary 우측 메타 = "n=N · 전수 순회 · 모델".
   metaRight: string;
+  // PDF export(exportDomToPdf) 캡처 대상 — 읽기 본문 루트. 클라 렌더 DOM 을
+  // 소스로 삼아 차트(recharts SVG)까지 canvas 캡처로 자동 포함된다.
+  containerRef?: Ref<HTMLElement>;
 }) {
   const t = useTranslations('InterviewsV2') as unknown as Tr;
   const execLabel = t('reportExecLabel');
   const plan = planBlocks(blocks, t);
   return (
-    <article className="mx-auto flex w-[var(--iv-body-col-w)] max-w-full flex-col">
+    <article
+      ref={containerRef}
+      className="mx-auto flex w-[var(--iv-body-col-w)] max-w-full flex-col"
+    >
       {plan.map(({ block, mt, meta }) => (
         <div key={block.id} className={mt}>
           {renderBlock(block, meta, t, execLabel, metaRight)}
