@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import type { ShareResource } from '@/lib/share/viewer-resource';
 import type { ToplineBlock } from '@/lib/interview-v2/types';
-import { ReadonlyToplineBlocks } from '@/components/interviews-v2/topline-blocks';
+import { ReportBody } from '@/components/interviews-v2/report/report-blocks';
 import { SharePersonaLive } from './share-persona-live';
 
 // 공유 뷰어 read-only 프레임 — 사이드바·편집 컨트롤 없는 최소 헤더 + 메인
@@ -9,8 +9,10 @@ import { SharePersonaLive } from './share-persona-live';
 // 않는다(결정 1·3).
 //
 // resource_type 별 리치 렌더(#476):
-//   - interview_topline → 탑라인 보고서 블록(topline-blocks 재사용, 편집/
-//     드래그/재생성/자유검색 없음). 자유검색은 공유 대상 아님.
+//   - interview_topline → 리디자인 블록 렌더러(report/ReportBody 재사용 — #594
+//     인앱 읽기모드와 SSOT 공유, 드리프트 0). 편집/드래그/재생성/자유검색 없음.
+//     citation 은 CitationResolveProvider 미주입 → 칩만 렌더·팝오버 미동작(공개
+//     뷰어는 인증 필요한 /chunks/resolve 미접근, 소프트 의존 폴백 — 에러 UI 0).
 //   - probing_persona → 리서치 컨텍스트(goal/KRQ) + 페르소나 그리드
 //     (PersonaPanel 재사용) + 생성 질문 리스트. 데이터는 #493 스냅샷.
 
@@ -121,13 +123,24 @@ export async function ShareViewerFrame({
       </header>
 
       {resource.type === 'interview_topline' ? (
-        <div className="border border-line bg-paper p-6 rounded-sm md:p-8">
-          {resource.blocks.length > 0 ? (
-            <ReadonlyToplineBlocks blocks={resource.blocks as ToplineBlock[]} />
-          ) : (
+        resource.blocks.length > 0 ? (
+          // 인앱 읽기 캔버스(bg-surface-canvas)와 동일 서피스 위에 리디자인 블록을
+          // 그린다 — 블록의 rose/paper 정체성이 인앱과 같은 대비로 읽힌다. 프레임
+          // 컨벤션(감싸는 카드·1px border)은 유지하고 본문만 리스킨(결정 4).
+          // metaRight 는 빈 문자열: 공유 리소스(viewer-resource)는 blocks+generatedAt
+          // 만 노출하고 인앱이 쓰는 "분석 문서 수(n=N)" 데이터가 없다 — 없는 값을
+          // 지어내지 않고 exec 우측 메타 슬롯만 비운다(보수적, PR 본문 명시).
+          <div className="rounded-sm border border-line bg-surface-canvas px-6 py-8">
+            <ReportBody
+              blocks={resource.blocks as ToplineBlock[]}
+              metaRight=""
+            />
+          </div>
+        ) : (
+          <div className="rounded-sm border border-line bg-paper p-6 md:p-8">
             <p className="text-md text-mute">{t('emptyContent')}</p>
-          )}
-        </div>
+          </div>
+        )
       ) : (
         <PersonaBody
           resource={resource}
