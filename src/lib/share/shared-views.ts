@@ -35,6 +35,22 @@ export const SHARE_RESOURCE_TYPES = [
 export type ShareResourceType = (typeof SHARE_RESOURCE_TYPES)[number];
 
 /**
+ * 타입 → 파스텔 톤(관리 대시보드 계약). 서버가 제공 — 클라 타입맵 금지
+ * (DECISIONS §5-1). 톤은 CD BUILD-SPEC §0.2 표 그대로: 전사록=lav · 데스크=aqua ·
+ * UT=peach · 리크루팅=sun · 프로빙=sky · 인터뷰=rose.
+ * (라벨은 i18n 문자열이라 messages/ShareResourceLabels 로 분리 — 하드코딩 한글이
+ * 영어 뷰에 누출되지 않도록. mine API 가 요청 locale 로 해석해 제공.)
+ */
+export const RESOURCE_TONES: Record<ShareResourceType, string> = {
+  interview_topline: 'rose',
+  probing_persona: 'sky',
+  transcript: 'lav',
+  ut_insight: 'peach',
+  desk_report: 'aqua',
+  recruiting_summary: 'sun',
+};
+
+/**
  * org 스코프로 소유권을 강제하는 리소스 스펙. org_id 컬럼을 org-scoped(RLS)
  * 클라이언트로 읽어 "자기 org resource 만" 을 강제하고, statusColumn 이 있으면
  * doneValue 인 완료본만 발급(미완성은 409). ut_insight 는 org_id 가 nullable +
@@ -259,4 +275,28 @@ export async function assertInvitedViewer(
       expires_at: share.expires_at,
     },
   };
+}
+
+/**
+ * 열람 집계 increment — 뷰어 게이트 통과 후 렌더 시점에 호출(뷰어 페이지,
+ * service_role admin). 원자적 SQL 식으로 view_count+1 · last_viewed_at=now().
+ *
+ * best-effort: 집계 RPC 실패가 열람을 막지 않도록 에러를 삼킨다(뷰어 경험 우선).
+ * 게이트 실패 경로에서는 호출하지 않으므로, 실패 열람은 카운트되지 않는다.
+ * 새로고침 남발에 따른 과도집계는 허용(정밀 dedupe 범위 밖 — 스펙 확정).
+ *
+ * @param admin  createAdminClient() 로 만든 service_role 클라이언트
+ * @param shareId  shared_views.id (게이트가 돌려준 share.id)
+ */
+export async function recordShareView(
+  admin: SupabaseClient,
+  shareId: string,
+): Promise<void> {
+  try {
+    // rpc() 는 { error } 를 돌려줄 뿐 throw 하지 않지만, 네트워크 예외까지
+    // 삼켜 렌더를 절대 막지 않는다(집계는 부수효과, 게이트가 SSOT).
+    await admin.rpc('increment_shared_view', { p_share_id: shareId });
+  } catch {
+    // best-effort — 무음. 열람수 유실은 허용, 뷰어 경험이 우선.
+  }
 }

@@ -13,6 +13,7 @@ import { ChromeButton } from '@/components/ui/chrome-button';
 import { ChipField } from '@/components/ui/chip-field';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
+import { shareViewerUrl } from '@/lib/share/viewer-url';
 
 // 공유 + 초대 관리 모달 (#477) — 인터뷰 탑라인 / 프로빙 페르소나 전체보기에서
 // 재사용하는 단일 컴포넌트. #474 backend API(POST /api/share, invite add/remove,
@@ -33,24 +34,15 @@ export type ShareResourceType =
   | 'ut_insight'
   | 'recruiting_summary';
 
-// 산출물 통합 3타입은 신규 공개 셸 라우트(/share/d/[token], Surface B)를,
-// 기존 2타입은 구 뷰어 라우트(/share/[token])를 쓴다. 둘 다 localePrefix:'always'
-// 라 locale 세그먼트 필수. 한 곳에 모아 둔다.
-const UNIFIED_TYPES: ReadonlySet<ShareResourceType> = new Set([
-  'transcript',
-  'desk_report',
-  'ut_insight',
-  'recruiting_summary',
-]);
+// 공유 뷰어 URL(세그 판정 포함)은 @/lib/share/viewer-url 의 shareViewerUrl 로
+// 추출 — /api/share/mine 서버 경로와 동일 규칙을 공유(중복 구현 금지).
 function viewerUrl(
   locale: string,
   token: string,
   resourceType: ShareResourceType,
 ): string {
-  const seg = UNIFIED_TYPES.has(resourceType) ? 'share/d' : 'share';
-  const path = `/${locale}/${seg}/${token}`;
-  if (typeof window === 'undefined') return path;
-  return `${window.location.origin}${path}`;
+  const origin = typeof window === 'undefined' ? null : window.location.origin;
+  return shareViewerUrl(origin, locale, token, resourceType);
 }
 
 // 만료 프리셋 — backend POST /api/share 는 expires_at 미지정 시 30일 기본이며

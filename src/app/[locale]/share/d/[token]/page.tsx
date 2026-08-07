@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
-import { isShareExpired } from '@/lib/share/shared-views';
+import { isShareExpired, recordShareView } from '@/lib/share/shared-views';
 import { loadSharedResource } from '@/lib/share/loaders';
 import {
   verifyViewerCookie,
@@ -69,7 +69,7 @@ export default async function Page({
   //    deleted 를 구별하지 않는다.
   const { data: share } = await admin
     .from('shared_views')
-    .select('resource_type, expires_at, revoked_at')
+    .select('id, resource_type, expires_at, revoked_at')
     .eq('token', token)
     .maybeSingle();
   if (!share) {
@@ -148,6 +148,9 @@ export default async function Page({
           />
         );
       }
+      // 게이트 통과 + 실렌더(그릴 수 있는 타입) 경로에서만 열람 집계
+      // (best-effort, 렌더 비차단).
+      await recordShareView(admin, share.id as string);
       return (
         <ShareShell
           state="valid"
