@@ -19,6 +19,8 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { usePopoverBase } from '@/components/ui/use-popover-base';
+import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { useCitationBackref } from '@/components/interviews-v2/citation-backref-context';
 import type { Citation } from '@/lib/interview-v2/types';
 
 // 패널 폭 — 뷰포트가 좁으면 좌우 0.5rem 여백만 남기고 축소.
@@ -35,6 +37,16 @@ export function CitationPopover({
   const t = useTranslations('InterviewsV2');
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
+  // 원본 파일 역참조 — 좌측 파일 패널을 소유한 컨텍스트(InterviewReadDetail)에서만
+  // provider 가 있다. 없으면(크로스 검색·파일 모달·카탈로그) 진입점 생략.
+  const backref = useCitationBackref();
+  const backrefRef = {
+    documentId: citation.document_id,
+    filename: citation.filename,
+    chunkId: citation.chunk_id,
+  };
+  // 삭제된 원본 파일이면 진입점 비활성 + 툴팁(폴백 #4).
+  const fileExists = backref ? backref.has(backrefRef) : false;
   // 포털 mount + escape/외부클릭 + trigger rect 추적은 공통 훅. 배치 계산만 로컬.
   const { triggerRef, panelRef, anchorRect } = usePopoverBase<
     HTMLButtonElement,
@@ -92,6 +104,33 @@ export function CitationPopover({
             <div className="max-h-64 overflow-y-auto whitespace-pre-wrap text-sm leading-[1.7] text-ink-2">
               {citation.excerpt}
             </div>
+            {/* 원본 파일 보기 — 좌측 파일 패널로 점프·하이라이트. 삭제된 파일은
+                비활성 + 툴팁(폴백 #4). backref provider 없으면 행 자체 생략. */}
+            {backref && (
+              <div className="mt-3 border-t border-line-soft pt-2.5">
+                {fileExists ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      backref.open(backrefRef);
+                      close();
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xs px-1 py-0.5 text-xs-soft font-semibold text-amore transition-colors hover:bg-amore-bg"
+                  >
+                    <DuotoneIcon name="document" size={14} />
+                    {t('citationOpenFile')}
+                  </button>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-1 py-0.5 text-xs-soft text-mute-soft"
+                    title={t('citationFileDeleted')}
+                  >
+                    <DuotoneIcon name="document" size={14} />
+                    {t('citationFileDeleted')}
+                  </span>
+                )}
+              </div>
+            )}
           </div>,
           document.body,
         )}

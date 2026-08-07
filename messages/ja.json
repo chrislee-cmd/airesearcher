@@ -2161,6 +2161,8 @@
     "reportGdocDone": "リンクをコピー・新しいタブを開きました",
     "reportShareLink": "共有",
     "citationChunk": "chunk {n}",
+    "citationOpenFile": "元ファイルを表示",
+    "citationFileDeleted": "元ファイルが削除されました",
     "reportExecLabel": "要点まとめ",
     "reportExecMeta": "n={n} · 全件走査",
     "reportExecMetaPartial": "分析 {analyzed} / アップロード {uploaded} · 部分",
