@@ -49,6 +49,7 @@ const OPEN_FOR_NORMAL: ReadonlySet<CanvasWidgetKey> = new Set<CanvasWidgetKey>([
   'probing',
   'translate',
   'quotes', // 전사록
+  'interviews', // 인터뷰 결과 생성기 — GA 해제(card 676), 실기능 라이브
   'moderator_ai', // AI UT — placeholder 교체 후 실기능 활성(dimmed 제거 동반)
 ]);
 
