@@ -19,6 +19,14 @@ import {
   HeadingLevel,
   AlignmentType,
   BorderStyle,
+  Table,
+  TableRow,
+  TableCell,
+  TableBorders,
+  TableLayoutType,
+  WidthType,
+  ShadingType,
+  VerticalAlign,
   type FileChild,
 } from 'docx';
 import { parseInline, inlineToRuns, buildTable } from '@/lib/desk-docx';
@@ -36,6 +44,142 @@ export type ToplineDocxOptions = {
 };
 
 const NUMBERING_REF = 'topline-numbering';
+
+// 차트 팔레트 — 렌더러(topline-blocks/report-chart)의 TOPLINE_CHART_COLORS 와
+// 동일 색을 hex 로 고정한다(docx 는 CSS var 을 못 쓴다). amore=C6613F(인용 보더와
+// 동일), ink, mute, orange, purple.
+const CHART_PALETTE = ['C6613F', '1A1A1A', '6B7280', 'F97316', 'A855F7'];
+
+// 차트 막대 표의 본문 폭(desk-docx TABLE_CONTENT_WIDTH_DXA 와 동일). 라벨 칸 +
+// TICKS 개의 눈금 칸으로 나눠 gridSpan 으로 값 비례 막대를 그린다.
+const CHART_TABLE_WIDTH_DXA = 9026;
+const CHART_TICKS = 40;
+
+// 좌 amore accent 보더(인용/삽입 계열 공통) — 삽입 섹션이 본문과 시각 구분되게.
+const INSERTED_BORDER = {
+  left: { style: BorderStyle.SINGLE, size: 12, color: 'C6613F', space: 12 },
+} as const;
+
+// chart/pie 블록의 data → 값 비례 가로 막대 표. 서버 rasterizer(canvas/sharp)가
+// 없고 constraint 가 "경량 우선/번들 주의"라 이미지 대신 네이티브 Word 표로
+// 시각화한다 — 모든 Word/Google Docs 뷰어에서 렌더되고 의존성 0. 라벨(값/비율)은
+// 좌 칸 텍스트로, 막대는 팔레트 색 shading 으로 그린다. 데이터가 없으면 null.
+function chartBarsTable(block: {
+  type: string;
+  data?: { label: string; value: number }[];
+}): Table | null {
+  const data = (block.data ?? []).filter(
+    (d) => d && typeof d.value === 'number' && Number.isFinite(d.value),
+  );
+  if (data.length === 0) return null;
+
+  const isPie = block.type === 'pie';
+  const total = data.reduce((s, d) => s + (d.value > 0 ? d.value : 0), 0);
+  const max = data.reduce((m, d) => Math.max(m, d.value), 0);
+  // pie 는 전체 대비 비율로, bar/line 은 최댓값 대비로 막대 길이를 잡는다.
+  const denom = (isPie ? total : max) || 1;
+
+  const labelW = 3200;
+  const tickW = Math.floor((CHART_TABLE_WIDTH_DXA - labelW) / CHART_TICKS);
+  const columnWidths = [labelW, ...Array.from({ length: CHART_TICKS }, () => tickW)];
+
+  const rows = data.map((d, i) => {
+    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+    const v = d.value > 0 ? d.value : 0;
+    let filled = v <= 0 ? 0 : Math.max(1, Math.round((v / denom) * CHART_TICKS));
+    if (filled > CHART_TICKS) filled = CHART_TICKS;
+    const remaining = CHART_TICKS - filled;
+    const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+    const labelText = isPie
+      ? `${d.label} · ${d.value} (${pct}%)`
+      : `${d.label} · ${d.value}`;
+
+    const cells: TableCell[] = [
+      new TableCell({
+        width: { size: labelW, type: WidthType.DXA },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            spacing: { before: 20, after: 20 },
+            children: [new TextRun({ text: labelText, size: 18 })],
+          }),
+        ],
+      }),
+    ];
+    if (filled > 0) {
+      cells.push(
+        new TableCell({
+          columnSpan: filled,
+          width: { size: tickW * filled, type: WidthType.DXA },
+          shading: { fill: color, type: ShadingType.CLEAR, color: 'auto' },
+          children: [new Paragraph({ children: [new TextRun({ text: '', size: 18 })] })],
+        }),
+      );
+    }
+    if (remaining > 0) {
+      cells.push(
+        new TableCell({
+          columnSpan: remaining,
+          width: { size: tickW * remaining, type: WidthType.DXA },
+          children: [new Paragraph({ children: [new TextRun('')] })],
+        }),
+      );
+    }
+    return new TableRow({ children: cells });
+  });
+
+  return new Table({
+    width: { size: CHART_TABLE_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths,
+    layout: TableLayoutType.FIXED,
+    borders: TableBorders.NONE,
+    rows,
+  });
+}
+
+// inserted_section 본문 프로즈 → 좌 accent 보더 + 들여쓰기 문단(삽입 구분). 산문
+// proseParagraphs 와 같은 파싱이되 삽입 시각 표식을 얹는다.
+function insertedSectionProse(md: string, citedIds: Set<string>): Paragraph[] {
+  const clean = stripInlineCitations(md, citedIds);
+  const lines = clean.replace(/\r\n/g, '\n').split('\n');
+  const out: Paragraph[] = [];
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) continue;
+
+    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
+    if (bullet) {
+      out.push(
+        new Paragraph({
+          bullet: { level: 0 },
+          border: INSERTED_BORDER,
+          children: inlineToRuns(parseInline(bullet[1])),
+        }),
+      );
+      continue;
+    }
+    const num = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (num) {
+      out.push(
+        new Paragraph({
+          numbering: { reference: NUMBERING_REF, level: 0 },
+          border: INSERTED_BORDER,
+          children: inlineToRuns(parseInline(num[1])),
+        }),
+      );
+      continue;
+    }
+    out.push(
+      new Paragraph({
+        spacing: { after: 80 },
+        indent: { left: 360 },
+        border: INSERTED_BORDER,
+        children: inlineToRuns(parseInline(line)),
+      }),
+    );
+  }
+  return out;
+}
 
 // inline [chunk_id] 인용 토큰 제거 — markdown 링크 [label](url) 는 보존한다.
 // 이 블록의 citations 에 실제로 있는 id 만 지워서 일반 [대괄호] 산문은 남긴다.
@@ -178,8 +322,10 @@ function blockToChildren(
   }
 
   if (block.type === 'chart' || block.type === 'pie') {
-    // 차트 이미지 렌더는 export 워커 후속(#425 인계 노트) — 여기선 제목 + 데이터
-    // 항목을 불릿으로 텍스트화해 문서에 값이 남게 한다(blank 방지).
+    // 차트/파이 — 값 비례 가로 막대 표로 시각화(chartBarsTable). 데이터 불릿은
+    // 이미지(막대 표) 아래에 접근성 폴백으로 유지해 값이 항상 문서에 남게 한다
+    // (막대 미지원 뷰어/스크린리더 대비). 서버 rasterizer 부재로 네이티브 Word
+    // 표를 택함(경량 우선 constraint — PR 본문 명시).
     const children: FileChild[] = [];
     if (block.title) {
       children.push(
@@ -199,6 +345,9 @@ function blockToChildren(
         }),
       );
     }
+    const chartTable = chartBarsTable(block);
+    if (chartTable) children.push(chartTable);
+    // 데이터 폴백 불릿 — 막대 표와 동시 존재(값 보존).
     for (const d of block.data ?? []) {
       children.push(
         new Paragraph({
@@ -303,6 +452,46 @@ function blockToChildren(
       );
     }
     if (block.md) children.push(...proseParagraphs(block.md, citedIds));
+    const src = sourceLine(citations, sources);
+    if (src) children.push(src);
+    return children;
+  }
+
+  if (block.type === 'inserted_section') {
+    // 섹션 사이 삽입 UX 로 생성한 섹션 — 렌더러는 좌 amore 보더 + ✚ 칩으로
+    // "사용자 삽입"임을 표시한다. Word 에서도 동급으로: ✚ 라벨 + 좌 accent 보더 +
+    // 들여쓰기로 본문과 시각 구분(현 default 폴백 제거 — 11종 전수 커버).
+    const children: FileChild[] = [];
+    children.push(
+      new Paragraph({
+        spacing: { before: 160, after: 40 },
+        indent: { left: 360 },
+        border: INSERTED_BORDER,
+        children: [
+          // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+          new TextRun({ text: '✚ 삽입 섹션', bold: true, color: 'C6613F', size: 18 }),
+        ],
+      }),
+    );
+    if (block.prompt?.trim()) {
+      children.push(
+        new Paragraph({
+          spacing: { after: 40 },
+          indent: { left: 360 },
+          border: INSERTED_BORDER,
+          children: [
+            new TextRun({
+              // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+              text: `지시: “${block.prompt.trim()}”`,
+              italics: true,
+              color: '8A8A8A',
+              size: 18,
+            }),
+          ],
+        }),
+      );
+    }
+    children.push(...insertedSectionProse(block.md ?? '', citedIds));
     const src = sourceLine(citations, sources);
     if (src) children.push(src);
     return children;
