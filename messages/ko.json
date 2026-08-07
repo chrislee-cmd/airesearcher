@@ -1523,6 +1523,13 @@
       "stateError": "오류",
       "hideWidget": "위젯 숨기기",
       "showWidget": "위젯 보이기"
+    },
+    "publish": {
+      "publish": "기본 배치로 발행",
+      "publishing": "발행 중…",
+      "published": "발행됨",
+      "failed": "발행 실패",
+      "hint": "현재 배치를 일반 계정 기본 배치로 발행합니다"
     }
   },
   "Desk": {

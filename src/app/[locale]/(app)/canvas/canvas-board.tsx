@@ -52,6 +52,8 @@ import {
 } from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
 import { WidgetNavigator } from './widget-navigator';
+import { LayoutPublishControl } from './layout-publish-control';
+import type { CanvasCoords } from '@/lib/admin/canvas-layout';
 
 const GAP = 48;
 // CELL_W 654 — 슬롯 폭. 카드 자체는 widget-shell 고정 604 폭. 654 = 604 +
@@ -96,6 +98,10 @@ const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v5';
 // hide 는 렌더 필터일 뿐 positions 는 건드리지 않아 복원 시 원위치 재등장.
 // SSR-safe: 초기 빈 Set → mount 후 hydrate (probing use-hidden-defaults 패턴).
 const HIDDEN_STORAGE_KEY = 'canvas:hidden-widgets:v1';
+// 일반계정이 마지막으로 적용한 발행 배치 version. 서버 발행 version 이 이 값보다
+// 크면(=슈퍼어드민이 재발행) 발행 배치를 baseline 으로 재적용(+이 값 갱신).
+// 슈퍼어드민/unlimited(applyPublished=false)는 이 경로를 타지 않아 개인 배치 유지.
+const APPLIED_PUBLISH_VERSION_KEY = 'canvas:applied-publish-version:v1';
 const TRANSPARENT_GHOST_SRC =
   'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -234,6 +240,10 @@ export function CanvasBoard({
   lockedKeys,
   hiddenBadgeKeys,
   orgId,
+  publishedLayout,
+  publishedVersion,
+  canPublish,
+  applyPublished,
 }: {
   widgets: WidgetContent[];
   initialFocus?: string;
@@ -246,6 +256,15 @@ export function CanvasBoard({
   hiddenBadgeKeys?: string[];
   // vote 저장 컨텍스트 — 활성 org id (nullable).
   orgId?: string | null;
+  // 서버에서 로드한 발행 배치 + version (없으면 null → 종전 defaultPositions
+  // 폴백, 회귀 0). widgetKey → { col, row }.
+  publishedLayout?: Record<string, CanvasCoords> | null;
+  publishedVersion?: number | null;
+  // 슈퍼어드민이면 "기본 배치로 발행" 컨트롤 노출.
+  canPublish?: boolean;
+  // 일반계정(비-슈퍼어드민·비-unlimited)이면 발행 배치를 stale-version 체크로
+  // baseline 적용. 슈퍼어드민/unlimited 는 false → 개인 localStorage 만 사용.
+  applyPublished?: boolean;
 }) {
   const hiddenBadgeSet = useMemo(
     () => new Set(hiddenBadgeKeys ?? []),
@@ -293,10 +312,37 @@ export function CanvasBoard({
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
-      if (!raw) return;
-      const stored = JSON.parse(raw) as Record<string, Coords>;
-      if (typeof stored !== 'object' || stored === null) return;
+      // 배치 소스 선택: 일반계정(applyPublished)이고 서버 발행 version 이 마지막
+      // 적용값보다 크면(=재발행) 발행 배치를 baseline 으로 채택. 그 외엔 개인
+      // localStorage. 슈퍼어드민/unlimited 는 applyPublished=false → 항상
+      // localStorage(개인 배치 유지, 회귀 0).
+      let stored: Record<string, Coords> | null = null;
+      let adoptPublished = false;
+      if (
+        applyPublished &&
+        publishedLayout &&
+        typeof publishedVersion === 'number'
+      ) {
+        let applied = 0;
+        try {
+          const rawV = window.localStorage.getItem(APPLIED_PUBLISH_VERSION_KEY);
+          const n = rawV ? Number.parseInt(rawV, 10) : 0;
+          applied = Number.isFinite(n) ? n : 0;
+        } catch {
+          applied = 0;
+        }
+        if (applied < publishedVersion) {
+          stored = publishedLayout;
+          adoptPublished = true;
+        }
+      }
+      if (!stored) {
+        const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as Record<string, Coords>;
+        if (typeof parsed !== 'object' || parsed === null) return;
+        stored = parsed;
+      }
       const valid = new Set(widgets.map((w) => w.key));
       const merged: Record<string, Coords> = {};
       const occupied = new Set<string>();
@@ -369,10 +415,35 @@ export function CanvasBoard({
       });
       // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
       setPositions(merged);
+      // 발행 배치를 채택했으면 정규화된 merged 를 개인 localStorage 로 승격 +
+      // 적용 version 기록 → 다음 로드부터 이 배치가 개인 baseline 이 되고,
+      // 슈퍼어드민이 재발행(version++)하기 전엔 재적용하지 않는다(무한 덮어쓰기
+      // 방지). 이후 일반계정의 드래그는 종전대로 개인 localStorage 에 저장된다.
+      if (adoptPublished && typeof publishedVersion === 'number') {
+        try {
+          window.localStorage.setItem(
+            POSITIONS_STORAGE_KEY,
+            JSON.stringify(merged),
+          );
+          window.localStorage.setItem(
+            APPLIED_PUBLISH_VERSION_KEY,
+            String(publishedVersion),
+          );
+        } catch {
+          /* quota / private mode — 다음 로드에 다시 채택 시도 */
+        }
+      }
     } catch {
       /* localStorage 접근 실패 — default 유지 */
     }
-  }, [widgets, GRID_COLS, GRID_ROWS]);
+  }, [
+    widgets,
+    GRID_COLS,
+    GRID_ROWS,
+    applyPublished,
+    publishedLayout,
+    publishedVersion,
+  ]);
 
   const persist = useCallback((next: Record<string, Coords>) => {
     try {
@@ -1095,6 +1166,24 @@ export function CanvasBoard({
         hiddenKeys={hiddenWidgets}
         onToggleHidden={toggleHidden}
       />
+      {/* 슈퍼어드민 전용 "기본 배치로 발행" — 현재 배치(positions)를 그대로 전역
+          발행해 일반계정 baseline 으로 만든다. 발행 후 슈퍼어드민 자신의 적용
+          version 도 기록(재적용 루프 무해화). 일반계정엔 미렌더(canPublish). */}
+      {canPublish && (
+        <LayoutPublishControl
+          positions={positions}
+          onPublished={(version) => {
+            try {
+              window.localStorage.setItem(
+                APPLIED_PUBLISH_VERSION_KEY,
+                String(version),
+              );
+            } catch {
+              /* quota / private mode */
+            }
+          }}
+        />
+      )}
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
           data-canvas-surface
