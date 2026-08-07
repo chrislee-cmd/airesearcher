@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { IconButton } from '@/components/ui/icon-button';
+import { useToast } from '@/components/toast-provider';
 import {
   useInterviewUpload,
   type UploadBatch,
@@ -57,6 +58,7 @@ export function useHasInterviewUploadFor(projectId: string | null): boolean {
 function BatchProgressCard({ batch }: { batch: UploadBatch }) {
   const t = useTranslations('InterviewsV2');
   const { dismissBatch } = useInterviewUpload();
+  const { push } = useToast();
 
   const counts = useMemo(() => {
     const c: Record<Group, number> = {
@@ -86,6 +88,29 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
     return () => clearTimeout(id);
   }, [cleanComplete, batch.id, dismissBatch]);
 
+  // Completion breakdown — decompose the single "완료 N" mental model into
+  // total · new · duplicate · failed so a dedup-heavy batch doesn't read as data
+  // loss (증상 B). Total (attempts) is always shown; zero sub-counts are omitted.
+  const summaryLine = useMemo(() => {
+    const parts = [t('uploadSummaryTotal', { count: total })];
+    if (counts.done > 0)
+      parts.push(t('uploadSummaryNew', { count: counts.done }));
+    if (counts.duplicate > 0)
+      parts.push(t('uploadSummaryDuplicate', { count: counts.duplicate }));
+    if (counts.error > 0)
+      parts.push(t('uploadSummaryFailed', { count: counts.error }));
+    return parts.join(' · ');
+  }, [t, total, counts.done, counts.duplicate, counts.error]);
+
+  // Fire the breakdown once as a toast when the batch reaches its terminal
+  // state (replaces the old skipped-only toast — one message, full breakdown).
+  const toastedRef = useRef(false);
+  useEffect(() => {
+    if (!complete || toastedRef.current) return;
+    toastedRef.current = true;
+    push(summaryLine, { tone: hasError ? 'warn' : 'info' });
+  }, [complete, summaryLine, hasError, push]);
+
   const failedNames = useMemo(
     () => batch.files.filter((f) => f.status === 'error').map((f) => f.name),
     [batch.files],
@@ -98,14 +123,14 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
     chips.push({
       key: 'processing',
       label: `${t('statusConverting')} ${counts.processing}`,
-      cls: 'text-amore',
+      cls: 'text-lav-text',
     });
   }
   if (counts.indexing > 0) {
     chips.push({
       key: 'indexing',
       label: `${t('statusIndexing')} ${counts.indexing}`,
-      cls: 'text-amore',
+      cls: 'text-lav-text',
     });
   }
   if (counts.done > 0) {
@@ -131,12 +156,20 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
   }
 
   return (
-    <div className="w-full rounded-sm border border-line bg-paper px-4 py-3">
+    // Processing-signal frame (CD upload-modal-BUILD-SPEC §3): border-2 ink ·
+    // radius-card · violet processing shadow + tint while in flight. The old
+    // grey/amore look read ambiguously as "failed" — the paired visual half of
+    // 증상 A. Resolves to a neutral paper surface once complete.
+    <div
+      className={`w-full rounded-card border-2 border-ink px-4 py-3 ${
+        complete ? 'bg-paper' : 'bg-lav-bg shadow-memphis-md-processing'
+      }`}
+    >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             {!complete && (
-              <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amore" />
+              <span className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-processing" />
             )}
             <span className="truncate text-md font-semibold text-ink-2">
               {t('upload')}
@@ -147,8 +180,12 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
               </span>
             )}
           </div>
-          <div className="mt-0.5 text-xs text-mute-soft tabular-nums">
-            {cleanComplete ? t('uploadArtifactComplete') : `${resolved}/${total}`}
+          <div
+            className={`mt-0.5 text-xs tabular-nums ${
+              complete ? 'text-mute-soft' : 'text-lav-text'
+            }`}
+          >
+            {complete ? summaryLine : `${resolved}/${total}`}
           </div>
         </div>
         <IconButton
@@ -162,12 +199,13 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
         </IconButton>
       </div>
 
-      {/* Aggregate progress bar — fill turns warning-tinted if any file failed
-          so a partial failure reads at a glance. Radius/colour via tokens. */}
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line-soft">
+      {/* Aggregate progress bar — track ink/10, fill violet processing signal;
+          turns warning-tinted only when a file genuinely failed so a partial
+          failure reads at a glance. Radius/colour via tokens. */}
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
         <div
           className={`h-full rounded-full transition-[width] duration-[var(--dur-fast)] ${
-            hasError ? 'bg-warning' : 'bg-amore'
+            hasError ? 'bg-warning' : 'bg-processing'
           }`}
           style={{ width: `${pct}%` }}
         />

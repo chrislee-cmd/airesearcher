@@ -119,19 +119,30 @@ export function FileCard({
     };
   }, [open]);
 
+  // 청크 무결성 방어(범위 3): index_status='done' 인데 실제 임베드된 청크가
+  // 총량에 못 미치면(결손·0) "완료"가 아니라 "부분 실패 · 재시도 필요" 로 구분.
+  // total_chunks null(진행 표시 이전 문서) 은 판단 불가라 그대로 완료로 둔다.
+  const chunkDeficit =
+    file.index_status === 'done' &&
+    file.total_chunks != null &&
+    file.total_chunks > 0 &&
+    file.processed_chunks < file.total_chunks;
+
   // amore 하이라이트(테두리 + pulse) = 지금 능동 처리 중. 검색 "읽는 중" 또는
   // 탑라인 map "분석 중" frontier. reading(사용자 명시 검색) 이 우선.
   const active = reading || analyzing;
   // 상태 dot + 라벨 — 검색 sweep(읽는 중/읽음) · 탑라인 map(분석 중/분석됨) ·
-  // 그 외 인덱싱 상태 순으로 분기.
+  // 청크 결손(부분 실패) · 그 외 인덱싱 상태 순으로 분기.
   const dotClass =
     active || readDone || analyzed
       ? 'bg-amore'
-      : file.index_status === 'done'
-        ? 'bg-amore'
-        : file.index_status === 'error'
-          ? 'bg-warning'
-          : 'bg-mute';
+      : chunkDeficit
+        ? 'bg-warning'
+        : file.index_status === 'done'
+          ? 'bg-amore'
+          : file.index_status === 'error'
+            ? 'bg-warning'
+            : 'bg-mute';
   const statusLabel = reading
     ? '읽는 중'
     : readDone
@@ -140,7 +151,9 @@ export function FileCard({
         ? '분석 중'
         : analyzed
           ? '분석됨'
-          : t(STATUS_KEY[file.index_status]);
+          : chunkDeficit
+            ? t('statusPartial')
+            : t(STATUS_KEY[file.index_status]);
 
   // Chunk-level progress bar — only while this file is actively indexing and
   // the indexer has published a denominator (total_chunks). Older documents
@@ -236,7 +249,11 @@ export function FileCard({
                 {file.char_count.toLocaleString()}
               </dd>
               <dt className="text-mute">상태</dt>
-              <dd className="text-ink-2">{t(STATUS_KEY[file.index_status])}</dd>
+              <dd className="text-ink-2">
+                {chunkDeficit
+                  ? t('statusPartial')
+                  : t(STATUS_KEY[file.index_status])}
+              </dd>
               {file.total_chunks != null && file.total_chunks > 0 && (
                 <>
                   <dt className="text-mute">청크</dt>

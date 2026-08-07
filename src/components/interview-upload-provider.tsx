@@ -8,8 +8,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useTranslations } from 'next-intl';
-import { useToast } from '@/components/toast-provider';
 import {
   mapWithConcurrency,
   fetchWithRateLimitRetry,
@@ -198,8 +196,6 @@ export function InterviewUploadProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const t = useTranslations('InterviewsV2');
-  const { push } = useToast();
   const [batches, setBatches] = useState<UploadBatch[]>([]);
   const [uploadSignals, setUploadSignals] = useState<Record<string, number>>(
     {},
@@ -277,6 +273,75 @@ export function InterviewUploadProvider({
     setBatches((prev) => prev.filter((b) => b.id !== id));
   }, []);
 
+  // ── DB-driven convergence poll (shared by restore + live batches) ─────────
+  // Polls the project's documents and reflects each doc's index_status onto the
+  // batch's non-terminal files until everything is terminal (or the window
+  // expires). Two callers:
+  //   · restore (after a hard refresh) — the in-memory convert loop is gone, so
+  //     the persisted batch is driven entirely from the DB.
+  //   · live convergence (증상 A) — a client /index request that timed out or
+  //     errored does NOT mean the file failed: the server route runs to
+  //     maxDuration and may still be embedding. Instead of freezing those files
+  //     as 'error' (the false "인덱싱 실패" banner), we keep them 'indexing' and
+  //     let this poll converge them to the real server truth (done / error).
+  const startDocPoll = useCallback(
+    (batchId: string, projectId: string) => {
+      if (restoreTimers.current.has(batchId)) return;
+      const deadline = Date.now() + RESTORE_MAX_MS;
+
+      const tick = async () => {
+        try {
+          const res = await fetch(
+            `/api/interviews/v2/projects/${projectId}/documents`,
+          );
+          if (!res.ok) return;
+          const j = (await res.json()) as {
+            documents?: {
+              filename: string;
+              index_status: 'pending' | 'indexing' | 'done' | 'error';
+            }[];
+          };
+          const byName = new Map(
+            (j.documents ?? []).map((d) => [d.filename, d.index_status]),
+          );
+          let allTerminal = true;
+          setBatches((prev) =>
+            prev.map((b) => {
+              if (b.id !== batchId) return b;
+              const files = b.files.map((f) => {
+                // Files already terminal (done/duplicate at index time, or a
+                // convert-stage 'error') keep their status; otherwise take the
+                // DB truth if the doc exists.
+                if (TERMINAL.has(f.status)) return f;
+                const docStatus = byName.get(f.name);
+                const next = docStatus ? statusFromDoc(docStatus) : f.status;
+                if (!TERMINAL.has(next)) allTerminal = false;
+                return next === f.status ? f : { ...f, status: next };
+              });
+              return { ...b, files };
+            }),
+          );
+          bumpSignal(projectId);
+          if (allTerminal || Date.now() > deadline) {
+            const timer = restoreTimers.current.get(batchId);
+            if (timer) clearInterval(timer);
+            restoreTimers.current.delete(batchId);
+            setBatches((prev) =>
+              prev.map((b) => (b.id === batchId ? { ...b, done: true } : b)),
+            );
+          }
+        } catch {
+          // transient — keep polling until the deadline
+        }
+      };
+
+      void tick();
+      const timer = setInterval(() => void tick(), 2500);
+      restoreTimers.current.set(batchId, timer);
+    },
+    [bumpSignal],
+  );
+
   // ── Core pipeline (ported verbatim from useInterviewV2Upload.uploadMany) ──
   const runBatch = useCallback(
     async (
@@ -295,13 +360,12 @@ export function InterviewUploadProvider({
         seenKeys.add(key);
         return { file: f, duplicate };
       });
-      let skipped = plan.filter((p) => p.duplicate).length;
 
       if (plan.every((p) => p.duplicate)) {
+        // Reflect the dedup in per-file status so the completion breakdown reads
+        // "총 N · 중복 N" instead of leaving these files stuck at 'queued'.
+        setFilesWhere(batchId, () => true, 'duplicate');
         markBatchDone(batchId, projectId);
-        if (skipped > 0) {
-          push(t('uploadSkippedSummary', { count: skipped }), { tone: 'info' });
-        }
         return;
       }
 
@@ -310,7 +374,12 @@ export function InterviewUploadProvider({
         plan,
         CONVERT_CONCURRENCY,
         async ({ file, duplicate }, index): Promise<ConvertOutcome> => {
-          if (duplicate) return { kind: 'skip', index };
+          if (duplicate) {
+            // Client-side dedup: mark 'duplicate' (terminal) so the batch
+            // counts it as a duplicate, not a stuck 'queued'/processing file.
+            setFileStatus(batchId, index, 'duplicate');
+            return { kind: 'skip', index };
+          }
           if (file.size === 0) {
             setFileStatus(batchId, index, 'error');
             return { kind: 'fail', index, reason: 'empty_file' };
@@ -406,6 +475,11 @@ export function InterviewUploadProvider({
       setFilesWhere(batchId, (i) => ok.some((c) => c.index === i), 'indexing');
       bumpSignal(projectId);
 
+      // Set when a client /index request fails without proof of server failure
+      // (timeout / transient) — the batch then converges from the DB (증상 A)
+      // instead of being declared done with false 'error' files.
+      let needsDbConverge = false;
+
       try {
         // 2. Create the interview_job that owns this batch's index_status.
         const jobRes = await fetchWithRateLimitRetry('/api/interviews/jobs', {
@@ -471,7 +545,6 @@ export function InterviewUploadProvider({
               skipped_count?: number;
             };
             const serverSkipped = idxJson.skipped_count ?? 0;
-            skipped += serverSkipped;
             const allChunkSkipped = serverSkipped >= chunk.length;
 
             setFilesWhere(
@@ -482,7 +555,15 @@ export function InterviewUploadProvider({
             bumpSignal(projectId);
           } catch {
             lastIndexReason = chunkReason;
-            setFilesWhere(batchId, (i) => chunkSet.has(i), 'error');
+            // 증상 A: the client request failed, but /api/interviews/index runs
+            // to maxDuration=300s server-side and may still be embedding. Do NOT
+            // freeze these files as 'error' (that's the false "인덱싱 실패"
+            // banner). Keep them 'indexing' and let startDocPoll converge them to
+            // the real per-document index_status. A convert-stage failure (server
+            // never reached) is already 'error' from the convert loop above and
+            // is left untouched here.
+            setFilesWhere(batchId, (i) => chunkSet.has(i), 'indexing');
+            needsDbConverge = true;
             bumpSignal(projectId);
           }
         }
@@ -502,13 +583,16 @@ export function InterviewUploadProvider({
         // be indexed, so mark all the converted files 'error'.
         setFilesWhere(batchId, (i) => ok.some((c) => c.index === i), 'error');
       } finally {
-        markBatchDone(batchId, projectId);
-        if (skipped > 0) {
-          push(t('uploadSkippedSummary', { count: skipped }), { tone: 'info' });
+        if (needsDbConverge) {
+          // Some chunks timed out — converge the batch from the DB rather than
+          // declaring it done now (which would surface the false-fail files).
+          startDocPoll(batchId, projectId);
+        } else {
+          markBatchDone(batchId, projectId);
         }
       }
     },
-    [bumpSignal, markBatchDone, push, setFileStatus, setFilesWhere, t],
+    [bumpSignal, markBatchDone, setFileStatus, setFilesWhere, startDocPoll],
   );
 
   const startUpload = useCallback(
@@ -556,66 +640,6 @@ export function InterviewUploadProvider({
       // storage unavailable — persistence is best-effort
     }
   }, [batches]);
-
-  // ── Restore poller: for a rehydrated batch, poll the project's documents and
-  //    reflect index_status per filename until everything is terminal (or the
-  //    restore window expires). Only the indexing phase is DB-recoverable — the
-  //    client-side convert loop can't survive a reload, so any file that never
-  //    reached the server simply stays as its persisted status. ──────────────
-  const startRestorePoll = useCallback((batch: UploadBatch) => {
-    if (restoreTimers.current.has(batch.id)) return;
-    const projectId = batch.projectId;
-    const deadline = Date.now() + RESTORE_MAX_MS;
-
-    const tick = async () => {
-      try {
-        const res = await fetch(
-          `/api/interviews/v2/projects/${projectId}/documents`,
-        );
-        if (!res.ok) return;
-        const j = (await res.json()) as {
-          documents?: {
-            filename: string;
-            index_status: 'pending' | 'indexing' | 'done' | 'error';
-          }[];
-        };
-        const byName = new Map(
-          (j.documents ?? []).map((d) => [d.filename, d.index_status]),
-        );
-        let allTerminal = true;
-        setBatches((prev) =>
-          prev.map((b) => {
-            if (b.id !== batch.id) return b;
-            const files = b.files.map((f) => {
-              // Files that were already terminal at persist time keep their
-              // status; otherwise take the DB truth if the doc exists.
-              if (TERMINAL.has(f.status)) return f;
-              const docStatus = byName.get(f.name);
-              const next = docStatus ? statusFromDoc(docStatus) : f.status;
-              if (!TERMINAL.has(next)) allTerminal = false;
-              return next === f.status ? f : { ...f, status: next };
-            });
-            return { ...b, files };
-          }),
-        );
-        bumpSignal(projectId);
-        if (allTerminal || Date.now() > deadline) {
-          const timer = restoreTimers.current.get(batch.id);
-          if (timer) clearInterval(timer);
-          restoreTimers.current.delete(batch.id);
-          setBatches((prev) =>
-            prev.map((b) => (b.id === batch.id ? { ...b, done: true } : b)),
-          );
-        }
-      } catch {
-        // transient — keep polling until the deadline
-      }
-    };
-
-    void tick();
-    const timer = setInterval(() => void tick(), 2500);
-    restoreTimers.current.set(batch.id, timer);
-  }, [bumpSignal]);
 
   // Rehydrate persisted batches once on mount. Any batch that still has a
   // non-terminal file is re-surfaced as `restored` and polled from the DB.
@@ -667,8 +691,8 @@ export function InterviewUploadProvider({
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot post-mount localStorage rehydrate (same probe pattern as use-consent.ts)
     setBatches((prev) => [...prev, ...restored]);
-    for (const b of restored) startRestorePoll(b);
-  }, [startRestorePoll]);
+    for (const b of restored) startDocPoll(b.id, b.projectId);
+  }, [startDocPoll]);
 
   // Clean up any live pollers on unmount (the provider lives for the whole
   // app session, so this only fires on full teardown — but keep it tidy).
