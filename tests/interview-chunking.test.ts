@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   chunkMarkdown,
   CHUNK_VERSION,
+  MAX_EMBED_TOKENS,
+  conservativeTokenEstimate,
 } from '../src/lib/interview-chunking.ts';
 
 describe('chunkMarkdown — Q&A pair mode', () => {
@@ -100,6 +102,45 @@ describe('chunkMarkdown — contextual split of long answers', () => {
         `chunk too long: ${c.content.length}`,
       );
       assert.ok(c.metadata.token_estimate < 8191);
+    }
+  });
+});
+
+describe('chunkMarkdown — wide CSV token guard', () => {
+  it('splits a wide single-row CSV that has no blank-line boundaries', () => {
+    // A screener/crosstab CSV: hundreds of Korean columns on one line, no
+    // blank lines → previously landed as ONE giant chunk that blew the
+    // 8192-token embedding cap (400 error, whole file failed).
+    const header = Array.from(
+      { length: 400 },
+      (_, i) => `문항${i + 1}_응답`,
+    ).join(',');
+    const row = Array.from(
+      { length: 400 },
+      (_, i) => `응답자가 선택한 보기 ${i + 1}번 항목입니다`,
+    ).join(',');
+    const csv = `${header}\n${row}`;
+
+    const chunks = chunkMarkdown(csv, { filename: 'screener.csv' });
+    assert.ok(chunks.length > 1, 'expected the wide CSV to split');
+    for (const c of chunks) {
+      assert.ok(
+        conservativeTokenEstimate(c.content) <= MAX_EMBED_TOKENS,
+        `chunk over embed token cap: ~${conservativeTokenEstimate(c.content)}`,
+      );
+    }
+  });
+
+  it('caps a CJK-dense chunk the char/4 estimate would under-count', () => {
+    // ~6000 Hangul chars: char/4 ≈ 1500 "tokens" but cl100k counts far more.
+    // The conservative guard must still split this under the cap.
+    const dense = '가나다라마바사아자차카타파하'.repeat(500);
+    const chunks = chunkMarkdown(dense, { filename: 'dense.txt' });
+    for (const c of chunks) {
+      assert.ok(
+        conservativeTokenEstimate(c.content) <= MAX_EMBED_TOKENS,
+        `chunk over embed token cap: ~${conservativeTokenEstimate(c.content)}`,
+      );
     }
   });
 });

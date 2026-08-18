@@ -156,6 +156,130 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+// Hard per-chunk token ceiling for OpenAI embeddings. text-embedding-3-small
+// caps at 8191 tokens/input; we split well under that (safety margin for
+// estimate error) so a single wide CSV row can never fail the whole file's
+// indexing with `400 maximum input length is 8192 tokens`.
+export const MAX_EMBED_TOKENS = 7000;
+
+// True for CJK codepoints (Hangul, Kana, Han, and fullwidth forms). These
+// tokenize far denser than Latin text under OpenAI's cl100k_base.
+function isCjk(code: number): boolean {
+  return (
+    (code >= 0x1100 && code <= 0x11ff) || // Hangul Jamo
+    (code >= 0x3000 && code <= 0x30ff) || // CJK symbols/punct, Hiragana, Katakana
+    (code >= 0x3130 && code <= 0x318f) || // Hangul Compatibility Jamo
+    (code >= 0x3400 && code <= 0x4dbf) || // CJK Unified Ext A
+    (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
+    (code >= 0xa960 && code <= 0xa97f) || // Hangul Jamo Ext A
+    (code >= 0xac00 && code <= 0xd7a3) || // Hangul Syllables
+    (code >= 0xf900 && code <= 0xfaff) || // CJK Compatibility Ideographs
+    (code >= 0xff00 && code <= 0xffef) //   Halfwidth/Fullwidth forms
+  );
+}
+
+// Conservative token estimate for the embedding-cap guard. The cheap char/4
+// heuristic (estimateTokens) is tuned for Latin text and badly UNDER-counts
+// CJK: Korean/Japanese/Chinese routinely tokenize to ~1-2 tokens PER character
+// under cl100k_base. Wide Korean screener/crosstab CSVs are exactly what
+// tripped the 8192-token embedding cap. We weight CJK codepoints at 2 tokens
+// each and the rest at 1 token / 4 chars, deliberately over-estimating so we
+// never under-split and trigger a 400. (Spec: 토큰 추정은 보수적으로 — 과소추정 금지.)
+export function conservativeTokenEstimate(text: string): number {
+  let cjk = 0;
+  let total = 0;
+  for (const ch of text) {
+    total += 1;
+    if (isCjk(ch.codePointAt(0)!)) cjk += 1;
+  }
+  return Math.ceil(cjk * 2 + (total - cjk) / 4);
+}
+
+// Split text so every part is within `maxTokens` (conservative estimate).
+// Prefers breaking at a natural delimiter (newline, CSV comma/tab/pipe, or
+// space) in the back half of the window so a wide CSV row splits on column
+// boundaries rather than mid-value; falls back to a hard char cut when no
+// delimiter is near.
+export function splitToTokenCap(text: string, maxTokens: number): string[] {
+  if (conservativeTokenEstimate(text) <= maxTokens) return [text];
+  const parts: string[] = [];
+  let rest = text;
+  while (rest.length > 0) {
+    if (conservativeTokenEstimate(rest) <= maxTokens) {
+      parts.push(rest);
+      break;
+    }
+    // Largest prefix (by char length) that fits the token budget.
+    let lo = 1;
+    let hi = rest.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (conservativeTokenEstimate(rest.slice(0, mid)) <= maxTokens) lo = mid;
+      else hi = mid - 1;
+    }
+    let cut = lo;
+    // Prefer a delimiter in the back half of the window to keep columns whole.
+    const window = rest.slice(0, cut);
+    const delim = Math.max(
+      window.lastIndexOf('\n'),
+      window.lastIndexOf('\t'),
+      window.lastIndexOf(','),
+      window.lastIndexOf('|'),
+      window.lastIndexOf(' '),
+    );
+    if (delim >= cut * 0.5) cut = delim + 1;
+    parts.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  return parts.filter((p) => p.length > 0);
+}
+
+// Last-resort truncation to the token cap — returns the safe leading prefix.
+// Used by the embedding guard so a stray over-cap input degrades to a
+// truncated embedding instead of failing the batch (and the whole file).
+export function truncateToTokenCap(
+  text: string,
+  maxTokens: number = MAX_EMBED_TOKENS,
+): string {
+  const parts = splitToTokenCap(text, maxTokens);
+  return parts.length > 0 ? parts[0] : text;
+}
+
+// Final safety net: whichever mode produced a chunk, guarantee none exceeds
+// the embedding token cap. Over-cap chunks (a wide CSV row that landed as a
+// single paragraph, or CJK-dense content the char/4 estimate under-counted)
+// are split on column/char boundaries, with metadata char offsets and
+// token_estimate recomputed per part.
+function enforceTokenCap(chunks: InterviewChunk[]): InterviewChunk[] {
+  const out: InterviewChunk[] = [];
+  for (const chunk of chunks) {
+    if (conservativeTokenEstimate(chunk.content) <= MAX_EMBED_TOKENS) {
+      out.push(chunk);
+      continue;
+    }
+    const parts = splitToTokenCap(chunk.content, MAX_EMBED_TOKENS);
+    let offset = 0;
+    for (const part of parts) {
+      const content = part.trim();
+      if (content.length === 0) {
+        offset += part.length;
+        continue;
+      }
+      out.push({
+        content,
+        metadata: {
+          ...chunk.metadata,
+          char_start: chunk.metadata.char_start + offset,
+          char_end: chunk.metadata.char_start + offset + content.length,
+          token_estimate: estimateTokens(content),
+        },
+      });
+      offset += part.length;
+    }
+  }
+  return out;
+}
+
 function sectionOf(headingPath: string[]): string | null {
   return headingPath.length > 0 ? headingPath[headingPath.length - 1] : null;
 }
@@ -550,7 +674,11 @@ export function chunkMarkdown(
 
   if (!isQaDocument(pairs)) {
     // Free-form transcript — original heading/paragraph chunker, no regression.
-    return chunkLegacy(markdown, { filename: opts.filename, doc_id: docId });
+    // Token cap still applies: a wide CSV with no blank-line boundaries lands
+    // here as one giant paragraph, so the safety net splits it.
+    return enforceTokenCap(
+      chunkLegacy(markdown, { filename: opts.filename, doc_id: docId }),
+    );
   }
 
   const out: InterviewChunk[] = [];
@@ -585,5 +713,5 @@ export function chunkMarkdown(
     paraIdx = nextParaIdx;
   }
 
-  return out;
+  return enforceTokenCap(out);
 }
