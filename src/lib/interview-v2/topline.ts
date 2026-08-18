@@ -138,6 +138,25 @@ export type ToplineChunk = {
 };
 
 /**
+ * 문서 단위 "완주" 판정(백엔드) — 분석 대상 선정 SSOT.
+ *
+ * 진행 정보(total/processed)가 있으면 청크 완주(processed >= total)를, 없으면
+ * (레거시 · progress 마이그 이전) 청크 보유 여부를 기준으로 한다. 부분 배치에서
+ * interview_jobs.index_status 는 완료 파일과 반쪽 실패 파일을 모두 'done' 으로
+ * 뭉뚱그리므로(프론트 isInterviewDocReady 와 동일 원리), 분석 대상은 반드시 이
+ * 파일 단위 기준으로 골라 반쪽 파일(예: 570/1031)이 근거에 섞이지 않게 한다.
+ */
+function isDocFullyIndexed(
+  d: { total_chunks: number | null; processed_chunks: number | null },
+  hasChunks: boolean,
+): boolean {
+  if (d.total_chunks != null && d.total_chunks > 0) {
+    return (d.processed_chunks ?? 0) >= d.total_chunks;
+  }
+  return hasChunks;
+}
+
+/**
  * 프로젝트 문서 셋의 해시(캐시 키) + 문서/청크 카운트.
  *
  * content_hash = 각 interview_documents.content_hash 를 정렬·결합한 것의 해시.
@@ -160,7 +179,7 @@ export async function computeProjectCorpus(
 }> {
   const { data: docs, error: docErr } = await admin
     .from('interview_documents')
-    .select('id, content_hash')
+    .select('id, content_hash, total_chunks, processed_chunks')
     .eq('org_id', orgId)
     .eq('project_id', projectId);
   if (docErr) throw new Error(`computeProjectCorpus docs: ${docErr.message}`);
@@ -183,9 +202,10 @@ export async function computeProjectCorpus(
     .in('document_id', docIds);
   if (cntErr) throw new Error(`computeProjectCorpus chunks: ${cntErr.message}`);
 
-  // 청크를 가진 고유 문서 수 — id 아닌 document_id 컬럼만 로드해 Set 으로 센다
-  // (content 미로드라 가볍다; getProjectChunkIds 와 동일 부하 수준). 인덱싱 미완
-  // (청크 0) 문서는 여기 안 잡혀 docCount 와 벌어진다.
+  // 완주(fully-indexed) 문서 수 — 청크 완주(processed>=total, 레거시는 청크 보유)
+  // 기준. 인덱싱 미완(청크 0)뿐 아니라 **반쪽 파일(processed<total)** 도 미완으로
+  // 세어 docCount 와 벌어지게 한다 — 생성 게이트(route)가 이 차이로 무음 부분분석을
+  // 차단하고, 사용자에게 "① 완료 대기 ② 지금 M개로 생성" 선택을 띄운다(§제약).
   let indexedDocCount = 0;
   if ((count ?? 0) > 0) {
     const { data: chunkDocRows, error: cdErr } = await admin
@@ -197,7 +217,9 @@ export async function computeProjectCorpus(
     const withChunks = new Set(
       (chunkDocRows ?? []).map((r) => String(r.document_id)),
     );
-    indexedDocCount = withChunks.size;
+    indexedDocCount = (docs ?? []).filter((d) =>
+      isDocFullyIndexed(d, withChunks.has(String(d.id))),
+    ).length;
   }
 
   return { hash, docCount: hashes.length, chunkCount: count ?? 0, indexedDocCount };
@@ -217,7 +239,7 @@ export async function fetchDocumentsWithChunks(
 ): Promise<ToplineDocument[]> {
   const { data: docs, error: docErr } = await admin
     .from('interview_documents')
-    .select('id, filename, content_hash')
+    .select('id, filename, content_hash, total_chunks, processed_chunks')
     .eq('org_id', orgId)
     .eq('project_id', projectId)
     .order('filename', { ascending: true });
@@ -253,8 +275,11 @@ export async function fetchDocumentsWithChunks(
     const id = String(d.id);
     const filename = String(d.filename ?? '');
     const chunks = (chunksByDoc.get(id) ?? []).map((c) => ({ ...c, filename }));
-    // chunk 가 0 인 문서(인덱싱 지연 등)는 map 대상에서 제외 — 근거가 없다.
+    // chunk 가 0 인 문서(인덱싱 지연 등)는 물론, **완주하지 못한 반쪽 파일**
+    // (processed<total)도 map 대상에서 제외한다 — 잘린 transcript 가 근거에 섞이면
+    // 안 된다(§제약). 레거시(진행정보 없음)는 청크 보유 시 완주로 간주.
     if (chunks.length === 0) continue;
+    if (!isDocFullyIndexed(d, true)) continue;
     out.push({
       document_id: id,
       filename,
@@ -262,13 +287,13 @@ export async function fetchDocumentsWithChunks(
       chunks,
     });
   }
-  // 무음 제외 집계·표면화(카드 #681) — 청크 0 문서를 몇 개 뺐는지 로그로 남긴다.
-  // 생성 게이트(route)가 사전에 차단하므로 정상 흐름에선 0 이지만, allow_partial
-  // 로 명시 진행한 부분분석의 실제 제외 수를 관측 가능하게 한다.
+  // 무음 제외 집계·표면화(카드 #681) — 청크 0/반쪽(미완) 문서를 몇 개 뺐는지 로그로
+  // 남긴다. 생성 게이트(route)가 사전에 차단하므로 정상 흐름에선 0 이지만,
+  // allow_partial 로 명시 진행한 부분분석의 실제 제외 수를 관측 가능하게 한다.
   const excluded = docs.length - out.length;
   if (excluded > 0) {
     console.warn(
-      `[v2/topline] fetchDocumentsWithChunks excluded ${excluded} unindexed doc(s) (${out.length}/${docs.length} mapped)`,
+      `[v2/topline] fetchDocumentsWithChunks excluded ${excluded} unindexed/partial doc(s) (${out.length}/${docs.length} mapped)`,
     );
   }
   return out;

@@ -33,6 +33,24 @@ export type InterviewDocument = {
   processed_chunks: number;
 };
 
+// 파일 단위 "인덱싱 완료" 판정 — SSOT.
+//
+// index_status 는 문서별이 아니라 공유 interview_jobs.index_status 를 FK 조인해
+// 내려준 값이라, 배치가 "부분 성공"(일부 파일만 실패)일 때 완료 파일도 실패 파일도
+// 똑같이 'done' 으로 뭉뚱그려진다. 따라서 진행 정보(total/processed)가 있는 신규
+// 문서는 청크 완주(processed >= total)를 신뢰하고, 진행 정보가 없는 레거시 문서
+// (progress 마이그 이전, total_chunks=null — 백필 없음)만 index_status==='done' 로
+// 폴백한다. 이 판정이 "분석 시작" 게이트·파일 카드 표기·(백엔드) 분석 대상 선정의
+// 공통 기준이다.
+export function isInterviewDocReady(
+  d: Pick<InterviewDocument, 'index_status' | 'total_chunks' | 'processed_chunks'>,
+): boolean {
+  if (d.total_chunks != null && d.total_chunks > 0) {
+    return d.processed_chunks >= d.total_chunks;
+  }
+  return d.index_status === 'done';
+}
+
 export function useInterviewV2Documents(projectId: string | null) {
   const [documents, setDocuments] = useState<InterviewDocument[]>([]);
   const [error, setError] = useState<Error | null>(null);

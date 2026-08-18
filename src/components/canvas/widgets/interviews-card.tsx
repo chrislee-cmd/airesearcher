@@ -10,7 +10,10 @@ import {
   type DropdownItem,
 } from '@/components/ui/dropdown-menu';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
-import { useInterviewV2Documents } from '@/hooks/use-interview-v2-documents';
+import {
+  useInterviewV2Documents,
+  isInterviewDocReady,
+} from '@/hooks/use-interview-v2-documents';
 import { useInterviewToplineStatus } from '@/hooks/use-interview-topline';
 import { deriveToplineAbstract } from '@/lib/interview-v2/topline-abstract';
 import type { ToplineStatus } from '@/lib/interview-v2/types';
@@ -292,8 +295,10 @@ function ActiveBody({
     }
   }, [toplineStatus, toast, t]);
 
-  // 파생 상태 게이트.
-  const canAnalyze = documents.some((d) => d.index_status === 'done');
+  // 파생 상태 게이트. 완료 파일이 하나라도 있으면 활성 — 공유 job status 가 아니라
+  // 파일 단위 완료(processed>=total)로 판정하므로, 대용량 1파일이 실패해도 이미
+  // 100% 인덱싱된 파일들로 분석을 시작할 수 있다(인시던트 2026-08-18).
+  const canAnalyze = documents.some(isInterviewDocReady);
   const anyProcessing = documents.some(
     (d) => d.index_status === 'indexing' || d.index_status === 'pending',
   );
