@@ -58,6 +58,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCreditDeduction } from '@/components/credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
 import { createClient } from '@/lib/supabase/client';
+import {
+  useAudioVerificationGate,
+  type AudioGateState,
+} from '@/hooks/use-audio-verification-gate';
 
 export type TranscriptionStatus =
   | 'idle'
@@ -166,6 +170,16 @@ export type UseRealtimeTranscriptionResult = {
   slotError: Record<SourceSlot, string | null>;
   start: (opts?: StartOpts) => Promise<void>;
   stop: () => Promise<void>;
+  // 실측 오디오 게이트 — 캡처 직후 실제 신호가 확인돼야만 세션 연결로 넘어간다.
+  // audioGate 가 non-null 이면 소비 컴포넌트가 게이트 UI(AudioCheckStep)를 렌더하고,
+  // 통과/취소 시 resolveAudioGate 로 start() 의 await 를 해소한다.
+  audioGate: {
+    mic: MediaStream | null;
+    tab: MediaStream | null;
+    require: { mic?: boolean; tabAudio?: boolean };
+  } | null;
+  audioGateState: AudioGateState;
+  resolveAudioGate: (ok: boolean) => void;
 };
 
 // Unified Realtime GA SDP endpoint. 이전 `/v1/realtime?intent=transcription`
@@ -344,6 +358,39 @@ export function useRealtimeTranscription(opts?: {
   const supabase = createClient();
   const [recording, setRecording] =
     useState<SessionRecordingState>(IDLE_RECORDING);
+
+  // ── 실측 오디오 게이트 — 안내가 아니라 실제 신호를 측정해 통과. 캡처 직후 ~
+  //    세션 연결 전 사이에 start() 가 이 게이트를 await 한다. 게이트 UI 는 소비
+  //    컴포넌트(probing-card)가 audioGate/audioGateState 로 렌더한다. ──
+  const [audioGate, setAudioGate] = useState<{
+    mic: MediaStream | null;
+    tab: MediaStream | null;
+    require: { mic?: boolean; tabAudio?: boolean };
+  } | null>(null);
+  const audioGateResolveRef = useRef<((ok: boolean) => void) | null>(null);
+  const audioGateState = useAudioVerificationGate({
+    require: audioGate?.require ?? {},
+    micStream: audioGate?.mic ?? null,
+    tabStream: audioGate?.tab ?? null,
+  });
+  const awaitAudioGate = useCallback(
+    (cfg: {
+      mic: MediaStream | null;
+      tab: MediaStream | null;
+      require: { mic?: boolean; tabAudio?: boolean };
+    }): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        audioGateResolveRef.current = resolve;
+        setAudioGate(cfg);
+      }),
+    [],
+  );
+  const resolveAudioGate = useCallback((ok: boolean) => {
+    const r = audioGateResolveRef.current;
+    audioGateResolveRef.current = null;
+    setAudioGate(null);
+    r?.(ok);
+  }, []);
   // capture 스트림에 병렬로 붙는 MediaRecorder + in-memory chunk buffer.
   const recorderRef = useRef<MediaRecorder | null>(null);
   // recorder 전용 클론 스트림 — tab 모드 silence-injection(원본 트랙 enabled 토글)이
@@ -1354,6 +1401,26 @@ export function useRealtimeTranscription(opts?: {
         return;
       }
 
+      // 1-b) 실측 오디오 게이트 — 캡처는 됐지만(트랙 존재) 무음일 수 있어(탭 오디오
+      // 토글 꺼짐/네이티브 앱/마이크 음소거) length>0 ≠ 신호. 라이브 레벨을 측정해
+      // 확인돼야만 세션 연결로 넘어간다. 취소 시 획득 미디어 정리 후 idle.
+      // (connect watchdog 은 이 뒤 connectSlot 에서 arm 되므로 게이트 체류시간이
+      // 타임아웃을 안 건드린다.)
+      const gatePassed = await awaitAudioGate({
+        mic: acquired.includes('mic') ? captureStreamRef.current.mic : null,
+        tab: acquired.includes('tab') ? captureStreamRef.current.tab : null,
+        require: {
+          mic: acquired.includes('mic'),
+          tabAudio: acquired.includes('tab'),
+        },
+      });
+      if (!gatePassed) {
+        cleanup();
+        setStatus('idle');
+        startInFlightRef.current = false;
+        return;
+      }
+
       // 2) 서버 세션 — client_secret 발급 + start-lump credit 차감. both 라도
       // 세션 1개분만 과금: 첫 호출이 start-lump 를 차감하고 session_id 를 받고,
       // 둘째 슬롯은 그 session_id 를 재사용해 client_secret 만 추가 발급받는다
@@ -1573,6 +1640,7 @@ export function useRealtimeTranscription(opts?: {
     },
     [
       acquireSlot,
+      awaitAudioGate,
       buildRecordMixStream,
       cleanup,
       connectSlot,
@@ -1600,5 +1668,10 @@ export function useRealtimeTranscription(opts?: {
     slotError,
     start,
     stop,
+    // 실측 오디오 게이트 — audioGate 가 non-null 이면 소비 컴포넌트가 게이트 UI 를
+    // 렌더하고, 통과/취소 시 resolveAudioGate 로 start() 의 await 를 해소한다.
+    audioGate,
+    audioGateState,
+    resolveAudioGate,
   };
 }

@@ -44,8 +44,6 @@ import {
 import { AiutLiveMonitor } from '@/components/canvas/fullview/aiut/aiut-live-monitor';
 import { AiutReviewReport } from '@/components/canvas/fullview/aiut/aiut-review-report';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
-import { AudioCheckStep } from '@/components/media/audio-check-step';
-import { useAudioVerificationGate } from '@/hooks/use-audio-verification-gate';
 import { useProjectSelection } from '@/components/project-selection-provider';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useUtSession, normalizeTargetUrl } from './use-ut-session';
@@ -82,15 +80,6 @@ export function UtSessionBody() {
   const session = useUtSession();
   const remote = useUtRemoteSession();
   const { getSelection, setSelection } = useProjectSelection();
-
-  // 실측 오디오 게이트 — 로컬(host) 세션은 마이크 + 사이트(탭) 오디오 둘 다
-  // 요구(includeSiteAudio 고정 true). verifying 중에만 스트림이 non-null 이라
-  // 그 외 phase 에선 no-op. 신호가 확인돼야만 confirmStart CTA 가 열린다.
-  const audioGate = useAudioVerificationGate({
-    require: { mic: true, tabAudio: true },
-    micStream: session.micStream,
-    tabStream: session.tabStream,
-  });
 
   // 세팅 폼 상태 — 카드/전체보기가 공유하도록 부모 소유. 테스트방식 2-카드가
   // host/guest(=local/remote) 를 고르는 유일 배타 축.
@@ -173,9 +162,6 @@ export function UtSessionBody() {
       return;
     }
     switch (session.phase) {
-      case 'verifying':
-        setState({ kind: 'running', label: 'AUDIO CHECK' });
-        break;
       case 'live':
         setState({ kind: 'running', label: 'RECORDING' });
         break;
@@ -257,18 +243,6 @@ export function UtSessionBody() {
   // 현재 보이는 표면 — 프리뷰 <video> 를 여기에만 렌더(단일 스트림 부착).
   const activeSurface: 'card' | 'fullview' = isCurrent ? 'fullview' : 'card';
 
-  // 실측 게이트 패널 — 캡처 프리뷰 + AudioCheckStep(VU 미터/실패 CTA/시작 게이트).
-  const audioCheck = (
-    <AudioCheckStep
-      state={audioGate}
-      selectedMicId={session.selectedMicId}
-      onSelectDevice={(id) => void session.selectMicDevice(id)}
-      onRetryTab={() => void session.retryTab()}
-      onProceed={() => void session.confirmStart()}
-      onCancel={session.cancelVerify}
-    />
-  );
-
   const previewFor = (surface: 'card' | 'fullview') =>
     surface === activeSurface ? (
       <video
@@ -315,20 +289,6 @@ export function UtSessionBody() {
           onReset={session.reset}
           getPlaybackUrl={session.getPlaybackUrl}
         />
-      );
-    }
-
-    // 로컬 실측 오디오 게이트(verifying) — 프리뷰 + VU 미터, 통과해야 live.
-    if (localActive && session.phase === 'verifying') {
-      return (
-        <div className="flex h-full min-h-0 flex-col">
-          <ControlBoardPanel active gap="section">
-            <ControlBoardPanel.Region>
-              {previewFor(surface)}
-            </ControlBoardPanel.Region>
-            <ControlBoardPanel.Region>{audioCheck}</ControlBoardPanel.Region>
-          </ControlBoardPanel>
-        </div>
       );
     }
 
@@ -418,33 +378,6 @@ export function UtSessionBody() {
   // 공유대기는 링크 패널만 railCardSlot 로 override. 카드뷰는 불변(풀뷰 한정).
   const renderFullviewDefault = () => {
     const normalizedUrl = normalizeTargetUrl(targetUrl);
-
-    // 0) 로컬 실측 오디오 게이트(verifying) — 좌 모니터에 프리뷰 + VU 미터.
-    //    우 레일 = assigned task 카드(taskGoal). 통과해야 live 로.
-    if (localActive && session.phase === 'verifying') {
-      return (
-        <AiutLiveMonitor
-          variant="idle"
-          targetUrl={normalizedUrl}
-          taskGoal={taskGoal}
-          showThinkAloud={false}
-          monitorSlot={
-            <div className="flex h-full w-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
-              {activeSurface === 'fullview' ? (
-                <video
-                  ref={session.attachPreview}
-                  className="aspect-video w-full rounded-xs border border-line-soft bg-ink object-contain"
-                  muted
-                  autoPlay
-                  playsInline
-                />
-              ) : null}
-              {audioCheck}
-            </div>
-          }
-        />
-      );
-    }
 
     // 1) 로컬 라이브 녹화 — 셀프 프리뷰 + 활성 REC + 종료 CTA(위젯 본문 재노출 X).
     //    우 레일 = assigned task 카드(taskGoal, AiutLiveMonitor 기본 렌더).

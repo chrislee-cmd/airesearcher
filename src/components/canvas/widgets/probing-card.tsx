@@ -37,6 +37,7 @@ import {
   ShareGuidePopup,
   isShareGuideSuppressed,
 } from '@/components/share-guide-popup';
+import { AudioCheckStep } from '@/components/media/audio-check-step';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
@@ -370,6 +371,9 @@ function ExpandedBody() {
     slotError,
     start: startSession,
     stop: stopSession,
+    audioGate,
+    audioGateState,
+    resolveAudioGate,
   } = useRealtimeTranscription({ locale: 'ko' });
 
   // 기본 미선택('') — 사용자가 명시로 고르기 전엔 세션 시작 CTA 가 비활성
@@ -2732,6 +2736,21 @@ function ExpandedBody() {
         // both(진행자 mic + 응답자 tab 병렬)는 스피커 에코 위험 — 이어폰 안내 결합.
         note={source === 'both' ? t('card.bothEchoNote') : undefined}
       />
+
+      {/* 실측 오디오 게이트 — 캡처 직후 실제 신호가 확인돼야만 "시작"이 열린다.
+          ShareGuidePopup 은 사전 안내, 이 게이트가 진짜 관문. 취소 시 획득 미디어를
+          정리하고 idle 로 복귀(start() 의 await 가 false 로 해소). */}
+      <Modal
+        open={audioGate !== null}
+        onClose={() => resolveAudioGate(false)}
+        size="sm"
+      >
+        <AudioCheckStep
+          state={audioGateState}
+          onProceed={() => resolveAudioGate(true)}
+          onCancel={() => resolveAudioGate(false)}
+        />
+      </Modal>
 
       {exportConfirmOpen && (
         <Modal

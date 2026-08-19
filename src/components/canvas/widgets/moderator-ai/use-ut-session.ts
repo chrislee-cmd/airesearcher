@@ -30,7 +30,6 @@ import type { BehaviorMetrics } from '@/lib/ut-vision/metrics';
 
 export type UtPhase =
   | 'idle'
-  | 'verifying' // 스트림 취득 후 실측 오디오 게이트 통과 대기 (live 전)
   | 'live'
   | 'uploading'
   | 'transcribing'
@@ -112,14 +111,6 @@ export function normalizeTargetUrl(raw: string): string | null {
 const POLL_TRIES = 8;
 const POLL_INTERVAL_MS = 1500;
 
-// 사이트(탭) 오디오를 실측 게이트가 측정할 분석 전용 스트림. 오디오 트랙이
-// 없으면(탭 오디오 공유 미토글/네이티브 앱 회의) null → 게이트가 tabVerified 를
-// 못 주고 시작을 막는다(의도된 게이트).
-function deriveTabStream(screen: MediaStream): MediaStream | null {
-  const tracks = screen.getAudioTracks();
-  return tracks.length > 0 ? new MediaStream(tracks) : null;
-}
-
 // 비전 후처리(622)는 영상 업로드 + Gemini 처리라 전사보다 훨씬 오래 걸린다 —
 // analyze POST 를 fire-and-forget 로 던지고 GET 을 길게 폴링해 analysis_status
 // 가 terminal(done/error/skipped) 이 될 때까지 result 를 갱신한다.
@@ -139,11 +130,6 @@ export type UseUtSession = {
   isSupported: boolean;
   /** 라이브 화면 프리뷰 <video> 에 스트림을 붙이는 ref 콜백. */
   attachPreview: (el: HTMLVideoElement | null) => void;
-  /** 실측 오디오 게이트가 소비하는 마이크/탭(사이트) 오디오 스트림. verifying 중에만 non-null. */
-  micStream: MediaStream | null;
-  tabStream: MediaStream | null;
-  /** 게이트 드롭다운이 고른 마이크 deviceId(controlled 표시용). */
-  selectedMicId: string;
   start: (
     rawTargetUrl: string,
     opts?: {
@@ -152,14 +138,6 @@ export type UseUtSession = {
       taskGoal?: string;
     },
   ) => Promise<void>;
-  /** 게이트 통과("시작") — verifying 에서만 유효. 취득한 스트림으로 라이브 커밋. */
-  confirmStart: () => Promise<void>;
-  /** 게이트 취소 — 취득 스트림 정리 후 idle. */
-  cancelVerify: () => void;
-  /** 탭 무음 → 화면공유 픽커 재실행(다시 공유). verifying 에서만. */
-  retryTab: () => Promise<void>;
-  /** 다른 마이크로 교체 재취득. verifying 에서만. */
-  selectMicDevice: (deviceId: string) => Promise<void>;
   stop: () => void;
   retryUpload: () => void;
   reset: () => void;
@@ -176,11 +154,6 @@ export function useUtSession(): UseUtSession {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UtSessionResult | null>(null);
   const [isSupported, setIsSupported] = useState(false);
-  // 실측 게이트가 소비하는 스트림(verifying 중에만). 상태로 노출해 게이트 훅이
-  // 재렌더로 그래프를 붙일 수 있게 한다.
-  const [micStream, setMicStream] = useState<MediaStream | null>(null);
-  const [tabStream, setTabStream] = useState<MediaStream | null>(null);
-  const [selectedMicId, setSelectedMicId] = useState('');
 
   // 유저-facing 문자열은 messages(AiUt) — 흐름 함수들이 빈 deps 로 stable 하도록
   // t 도 ref 로 읽는다(다른 refs 와 동형).
@@ -214,13 +187,6 @@ export function useUtSession(): UseUtSession {
   const pendingStopRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoElRef = useRef<HTMLVideoElement | null>(null);
-  // verifying → confirmStart 로 넘길 세션 옵션(취득 시점에 캡처).
-  const pendingOptsRef = useRef<{
-    rawTargetUrl: string;
-    includeSiteAudio: boolean;
-    inputLanguage?: string;
-    taskGoal?: string;
-  } | null>(null);
   // 세션당 한 번만 비전 후처리(622)를 트리거하기 위한 가드.
   const analyzeStartedRef = useRef(false);
 
@@ -496,21 +462,6 @@ export function useUtSession(): UseUtSession {
     [],
   );
 
-  // 실측 게이트(verifying) 중 화면공유 트랙이 ended(사용자 "공유 중지")되면
-  // 현재 phase 에 맞게 처리 — verifying 이면 게이트 취소, live 면 세션 종료.
-  const cancelVerifyRef = useRef<() => void>(() => {});
-  const attachScreenEnded = useCallback((screen: MediaStream) => {
-    screen.getVideoTracks().forEach((tr) => {
-      tr.addEventListener('ended', () => {
-        if (phaseRef.current === 'verifying') cancelVerifyRef.current();
-        else stopRef.current();
-      });
-    });
-  }, []);
-
-  // ── start = 스트림 취득 후 실측 게이트(verifying) 진입. 실제 라이브 커밋은
-  //    게이트를 통과한 confirmStart 가 한다. 안내 모달을 "봤는지"가 아니라 실제
-  //    신호가 흐르는지를 측정해 게이트한다(스펙 SSOT). ──
   const start = useCallback(
     async (
       rawTargetUrl: string,
@@ -525,6 +476,9 @@ export function useUtSession(): UseUtSession {
       setResult(null);
 
       const includeSiteAudio = opts?.includeSiteAudio ?? false;
+      const inputLanguage = opts?.inputLanguage;
+      const taskGoal = opts?.taskGoal?.trim();
+      const targetUrl = normalizeTargetUrl(rawTargetUrl);
 
       // 1) 화면 공유 — 유저가 공유할 탭/창을 고른다. 취소하면 조용히 종료.
       //    사이트 소리 옵션이 켜지면 audio:true 로 요청 → Chrome 이 탭 공유 시
@@ -556,81 +510,40 @@ export function useUtSession(): UseUtSession {
         return;
       }
 
-      // 3) 취득 스트림을 stash + 실측 게이트에 노출. 아직 세션 row/레코더는
-      //    만들지 않는다 — 신호가 확인돼야만 confirmStart 가 커밋한다.
+      // 3) 세션 row 생성(서비스 롤) — 권한을 다 받은 뒤라 orphan row 를 안 만든다.
+      let id: string;
+      try {
+        const res = await fetchWithAuth('/api/ut/sessions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          // input_language is server-required; the caller guards the CTA so it's
+          // always set for new sessions, but keep it conditional to stay honest
+          // about the payload shape.
+          body: JSON.stringify({
+            ...(targetUrl ? { target_url: targetUrl } : {}),
+            ...(inputLanguage ? { input_language: inputLanguage } : {}),
+            ...(taskGoal ? { task_goal: taskGoal } : {}),
+          }),
+        });
+        if (!res.ok) throw new Error(`create_${res.status}`);
+        id = ((await res.json()) as { id: string }).id;
+      } catch {
+        screen.getTracks().forEach((t) => t.stop());
+        mic.getTracks().forEach((t) => t.stop());
+        setError(tRef.current('error.createSession'));
+        setPhase('idle');
+        return;
+      }
+
+      // 4) 대상 사이트를 유저 자기 브라우저 새 탭으로 — 로그인/결제 네이티브.
+      if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
+
+      // 5) 레코더 준비 (화면 + 마이크). mime 폴백 = qa 패턴.
       screenStreamRef.current = screen;
       micStreamRef.current = mic;
       if (videoElRef.current) videoElRef.current.srcObject = screen;
-      pendingOptsRef.current = {
-        rawTargetUrl,
-        includeSiteAudio,
-        inputLanguage: opts?.inputLanguage,
-        taskGoal: opts?.taskGoal,
-      };
-      attachScreenEnded(screen);
-      setMicStream(mic);
-      setTabStream(includeSiteAudio ? deriveTabStream(screen) : null);
-      setSelectedMicId(mic.getAudioTracks()[0]?.getSettings().deviceId ?? '');
-      setPhase('verifying');
-    },
-    [attachScreenEnded, handleMediaError],
-  );
 
-  // ── confirmStart = 게이트 통과 후 라이브 커밋. 취득한 스트림(screenStreamRef/
-  //    micStreamRef)을 재사용해 세션 row → window.open → 레코더 → live. ──
-  const confirmStart = useCallback(async () => {
-    if (phaseRef.current !== 'verifying') return;
-    const screen = screenStreamRef.current;
-    const mic = micStreamRef.current;
-    const opts = pendingOptsRef.current;
-    if (!screen || !mic || !opts) {
-      setPhase('idle');
-      return;
-    }
-    const includeSiteAudio = opts.includeSiteAudio;
-    const inputLanguage = opts.inputLanguage;
-    const taskGoal = opts.taskGoal?.trim();
-    const targetUrl = normalizeTargetUrl(opts.rawTargetUrl);
-
-    // 3) 세션 row 생성(서비스 롤) — 권한·게이트를 다 통과한 뒤라 orphan row 0.
-    let id: string;
-    try {
-      const res = await fetchWithAuth('/api/ut/sessions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        // input_language is server-required; the caller guards the CTA so it's
-        // always set for new sessions, but keep it conditional to stay honest
-        // about the payload shape.
-        body: JSON.stringify({
-          ...(targetUrl ? { target_url: targetUrl } : {}),
-          ...(inputLanguage ? { input_language: inputLanguage } : {}),
-          ...(taskGoal ? { task_goal: taskGoal } : {}),
-        }),
-      });
-      if (!res.ok) throw new Error(`create_${res.status}`);
-      id = ((await res.json()) as { id: string }).id;
-    } catch {
-      teardownStreams();
-      setMicStream(null);
-      setTabStream(null);
-      pendingOptsRef.current = null;
-      setError(tRef.current('error.createSession'));
-      setPhase('idle');
-      return;
-    }
-
-    // 4) 대상 사이트를 유저 자기 브라우저 새 탭으로 — 로그인/결제 네이티브.
-    if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
-
-    // 게이트가 참조하던 스트림 노출 해제(라이브로 승격) — 게이트 훅이 그래프를 정리.
-    setMicStream(null);
-    setTabStream(null);
-    pendingOptsRef.current = null;
-
-    // 5) 레코더 준비 (화면 + 마이크). mime 폴백 = qa 패턴.
-    if (videoElRef.current) videoElRef.current.srcObject = screen;
-
-    const video = pickVideo();
+      const video = pickVideo();
       videoMimeRef.current = video.mime || 'video/webm';
       videoExtRef.current = video.ext;
       // 영상에 실을 오디오 트랙을 만든다.
@@ -694,8 +607,10 @@ export function useUtSession(): UseUtSession {
       };
       audioRecorder.onstop = () => onRecorderStopped();
 
-      // 화면공유 "공유 중지" 는 start() 에서 이미 attachScreenEnded 로 구독 —
-      // live 에서는 그 디스패처가 stop() 을 부른다(재구독 불필요).
+      // 유저가 브라우저 크롬의 "공유 중지" 를 누르면 화면 트랙이 ended → 세션 종료.
+      screen.getVideoTracks().forEach((t) => {
+        t.addEventListener('ended', () => stopRef.current());
+      });
 
       screenRecorder.start();
       audioRecorder.start();
@@ -711,64 +626,9 @@ export function useUtSession(): UseUtSession {
       timerRef.current = setInterval(() => {
         if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current);
       }, 1000);
-  }, [clearTimer, onRecorderStopped, teardownStreams]);
-
-  // 게이트 취소 — 취득 스트림 정리 후 idle.
-  const cancelVerify = useCallback(() => {
-    if (phaseRef.current !== 'verifying') return;
-    teardownStreams();
-    setMicStream(null);
-    setTabStream(null);
-    setSelectedMicId('');
-    pendingOptsRef.current = null;
-    setPhase('idle');
-  }, [teardownStreams]);
-  useEffect(() => {
-    cancelVerifyRef.current = cancelVerify;
-  }, [cancelVerify]);
-
-  // 탭 무음 → 화면공유 픽커 재실행. 옛 화면 스트림만 교체(마이크 유지).
-  const retryTab = useCallback(async () => {
-    if (phaseRef.current !== 'verifying') return;
-    const includeSiteAudio = pendingOptsRef.current?.includeSiteAudio ?? true;
-    let screen: MediaStream;
-    try {
-      screen = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 30 },
-        audio: includeSiteAudio,
-      });
-    } catch {
-      // 픽커 취소 — 기존 상태 유지.
-      return;
-    }
-    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
-    screenStreamRef.current = screen;
-    if (videoElRef.current) videoElRef.current.srcObject = screen;
-    attachScreenEnded(screen);
-    setTabStream(includeSiteAudio ? deriveTabStream(screen) : null);
-  }, [attachScreenEnded]);
-
-  // 다른 마이크로 교체 재취득. 옛 마이크 스트림만 교체(화면 유지).
-  const selectMicDevice = useCallback(async (deviceId: string) => {
-    if (phaseRef.current !== 'verifying') return;
-    let mic: MediaStream;
-    try {
-      mic = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: { exact: deviceId },
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-    } catch {
-      return;
-    }
-    micStreamRef.current?.getTracks().forEach((t) => t.stop());
-    micStreamRef.current = mic;
-    setMicStream(mic);
-    setSelectedMicId(deviceId);
-  }, []);
+    },
+    [clearTimer, handleMediaError, onRecorderStopped],
+  );
 
   const retryUpload = useCallback(() => {
     if (phaseRef.current !== 'error') return;
@@ -784,10 +644,6 @@ export function useUtSession(): UseUtSession {
     startedAtRef.current = null;
     pendingStopRef.current = 0;
     analyzeStartedRef.current = false;
-    pendingOptsRef.current = null;
-    setMicStream(null);
-    setTabStream(null);
-    setSelectedMicId('');
     setSessionId(null);
     setElapsedMs(0);
     setError(null);
@@ -857,14 +713,7 @@ export function useUtSession(): UseUtSession {
     result,
     isSupported,
     attachPreview,
-    micStream,
-    tabStream,
-    selectedMicId,
     start,
-    confirmStart,
-    cancelVerify,
-    retryTab,
-    selectMicDevice,
     stop,
     retryUpload,
     reset,
