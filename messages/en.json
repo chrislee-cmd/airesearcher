@@ -2,6 +2,13 @@
   "AudioCheck": {
     "heading": "Audio signal check",
     "subtitle": "Confirm real sound is coming through before you start.",
+    "share": {
+      "subtitle": "Confirm the shared audio is actually coming through.",
+      "instruction": "Share the meeting tab and turn on “Also share tab audio” — otherwise the other person's voice won't be captured.",
+      "cta": "🔊 Share tab",
+      "sharing": "Opening share picker…",
+      "hint": "In the share window, be sure to turn on the “Also share tab / system audio” toggle."
+    },
     "mic": {
       "label": "Your microphone",
       "hint": "Say a few words — the meter should move.",

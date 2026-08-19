@@ -35,6 +35,18 @@ type Props = {
   onCancel?: () => void;
   /** 게이트를 감싼 상위가 이미 카드 프레임이면 여백만. */
   className?: string;
+  // ── 공유-주도 모드 (게이트가 화면공유까지 주도) ────────────────────────
+  // 탭 오디오는 OS 공유 피커에서 "탭 오디오 공유"를 켜야만 측정 가능하다. 이
+  // 모드에선 정적 안내 모달 대신 게이트가 "🔊 탭 공유" 버튼으로 피커를 띄우고,
+  // 공유된 스트림의 라이브 레벨을 측정한다. shared 전엔 공유 버튼, 후엔 미터.
+  /** true면 공유-주도 모드(공유 단계 → 미터 단계). */
+  shareMode?: boolean;
+  /** 공유(취득) 완료 여부 — false면 공유 버튼, true면 라이브 미터. */
+  shared?: boolean;
+  /** 공유(getDisplayMedia) 진행 중 — 버튼 busy. */
+  sharing?: boolean;
+  /** "🔊 탭 공유"/"다시 공유" → 호출부가 getDisplayMedia 를 (재)실행. */
+  onShareTab?: () => void;
 };
 
 // 라이브 VU 미터 한 줄 — track + level fill + 상태 뱃지.
@@ -93,6 +105,10 @@ export function AudioCheckStep({
   onProceed,
   onCancel,
   className,
+  shareMode = false,
+  shared = true,
+  sharing = false,
+  onShareTab,
 }: Props) {
   const t = useTranslations('AudioCheck');
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -169,6 +185,10 @@ export function AudioCheckStep({
   const micDenied = state.micActive && state.permissionState === 'denied';
   // 탭 무음 안내는 신호가 아직 확인 안 됐을 때만.
   const tabMuted = state.tabActive && !state.tabVerified;
+  // 공유-주도 모드에서 아직 공유(취득) 전이면 미터 대신 공유 버튼 단계.
+  const preShare = shareMode && !shared;
+  // 탭 "다시 공유"는 공유-주도 모드에선 onShareTab, 아니면 onRetryTab.
+  const retryTab = onShareTab ?? onRetryTab;
 
   return (
     <div className={`flex flex-col gap-4 ${className ?? ''}`}>
@@ -176,11 +196,29 @@ export function AudioCheckStep({
         <h3 className="text-md font-semibold tracking-[-0.01em] text-ink">
           {t('heading')}
         </h3>
-        <p className="text-sm leading-snug text-mute">{t('subtitle')}</p>
+        <p className="text-sm leading-snug text-mute">
+          {preShare ? t('share.subtitle') : t('subtitle')}
+        </p>
       </div>
 
+      {/* 공유-주도 모드 · 공유 전 — "🔊 탭 공유" 로 피커를 띄운다(정적 안내 대체). */}
+      {preShare && (
+        <div className="flex flex-col gap-3 rounded-sm border border-line bg-paper p-4">
+          <p className="text-sm leading-snug text-mute">{t('share.instruction')}</p>
+          <Button
+            variant="primary"
+            size="md"
+            disabled={sharing}
+            onClick={() => onShareTab?.()}
+          >
+            {sharing ? t('share.sharing') : t('share.cta')}
+          </Button>
+          <p className="text-xs leading-snug text-mute-soft">{t('share.hint')}</p>
+        </div>
+      )}
+
       {/* 마이크 소스 */}
-      {state.micActive && (
+      {!preShare && state.micActive && (
         <div className="flex flex-col gap-2 rounded-sm border border-line bg-paper p-3">
           <MeterRow
             label={t('mic.label')}
@@ -204,7 +242,7 @@ export function AudioCheckStep({
       )}
 
       {/* 탭·시스템 오디오 소스 */}
-      {state.tabActive && (
+      {!preShare && state.tabActive && (
         <div className="flex flex-col gap-2 rounded-sm border border-line bg-paper p-3">
           <MeterRow
             label={t('tab.label')}
@@ -216,9 +254,14 @@ export function AudioCheckStep({
             <Button variant="secondary" size="sm" onClick={playTestSound}>
               {t('tab.testSound')}
             </Button>
-            {tabMuted && onRetryTab && (
-              <Button variant="ghost" size="sm" onClick={onRetryTab}>
-                {t('tab.retry')}
+            {tabMuted && retryTab && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={sharing}
+                onClick={() => retryTab()}
+              >
+                {sharing ? t('share.sharing') : t('tab.retry')}
               </Button>
             )}
           </div>
