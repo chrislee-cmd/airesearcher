@@ -1575,6 +1575,7 @@ export async function runTopline(
     const rawEvidenceChunks = selectRawEvidenceWithinBudget(docs);
     const rawInjection =
       rawEvidenceChunks.length > 0
+        // i18n-allow-korean — 서버측 LLM reduce 프롬프트(유저 노출 아님, 이 파일의 다른 프롬프트 리터럴과 동종).
         ? `\n\n## 원문 보강 (핵심 근거 청크 원문 — 추출이 놓친 뉘앙스·구체 표현 확인용)\n아래는 위 추출의 근거가 된 **응답자 원문 청크**입니다(예산 내 발췌). 추출 요약을 넘어 **실제 표현·맥락·디테일**을 확인해 분석을 깊게 하고, 본문 인용은 이 원문에서 그대로 가져오세요. 단 **분포·집계 수치는 위 "사전집계 표"가 SSOT** 이며 원문을 눈대중으로 다시 세지 마세요(원문은 깊이·인용용, 카운트용 아님).\n${formatToplineEvidence(rawEvidenceChunks)}`
         : '';
     console.log(`${tag} reduce evidence assembled`, {
