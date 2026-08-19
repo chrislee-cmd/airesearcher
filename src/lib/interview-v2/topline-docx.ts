@@ -29,7 +29,7 @@ import {
   VerticalAlign,
   type FileChild,
 } from 'docx';
-import { parseInline, inlineToRuns, buildTable } from '@/lib/desk-docx';
+import { parseInline, inlineToRuns } from '@/lib/desk-docx';
 import type { ToplineBlock } from '@/lib/interview-v2/topline';
 
 export type CitationSource = { filename: string };
@@ -44,6 +44,9 @@ export type ToplineDocxOptions = {
 };
 
 const NUMBERING_REF = 'topline-numbering';
+// 말미 "근거 문서" 인덱스 전용 numbering — 본문 번호 리스트(NUMBERING_REF)와 카운터를
+// 분리해 인덱스가 항상 1..N 으로 시작하게 한다.
+const SOURCE_NUMBERING_REF = 'topline-source-index';
 
 // 차트 팔레트 — 렌더러(topline-blocks/report-chart)의 TOPLINE_CHART_COLORS 와
 // 동일 색을 hex 로 고정한다(docx 는 CSS var 을 못 쓴다). amore=C6613F(인용 보더와
@@ -211,7 +214,11 @@ function citedFilenames(
   return out;
 }
 
-// "근거: 파일1, 파일2" — 블록 끝 출처 표기(작은 회색 이탤릭). 출처가 없으면 null.
+// 블록 끝 근거 표기 — 파일명을 나열하지 않고 **"근거 N건"**(중복 제거한 출처
+// 문서 수)만 작고 옅은 회색으로 집약한다(§A 최우선 — 근거줄이 본문을 압도하지
+// 않게). 상세 파일명은 문서 말미 "근거 문서" 인덱스(sourceIndexSection)에 한 번만
+// 모아 추적성(감사)을 유지하되 기본 뷰에서는 접힌다. 출처가 없으면 null.
+// i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
 function sourceLine(
   citations: string[] | undefined,
   sources: Map<string, CitationSource>,
@@ -219,15 +226,171 @@ function sourceLine(
   const names = citedFilenames(citations, sources);
   if (names.length === 0) return null;
   return new Paragraph({
-    spacing: { before: 40, after: 160 },
+    spacing: { before: 20, after: 140 },
     children: [
       new TextRun({
-        text: `근거: ${names.join(', ')}`,
+        // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+        text: `근거 ${names.length}건`,
         italics: true,
-        color: '8A8A8A',
-        size: 18,
+        color: 'A0A0A0',
+        size: 16,
       }),
     ],
+  });
+}
+
+// 문서 전체 블록에서 인용된 출처 문서명을 첫 등장 순서로 중복 없이 모은다 —
+// 표지 메타(응답 문서 수)와 말미 "근거 문서" 인덱스가 공유한다.
+function collectAllFilenames(
+  blocks: ToplineBlock[],
+  sources: Map<string, CitationSource>,
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const b of blocks) {
+    const cits = 'citations' in b ? b.citations : undefined;
+    for (const name of citedFilenames(cits, sources)) {
+      if (!seen.has(name)) {
+        seen.add(name);
+        out.push(name);
+      }
+    }
+  }
+  return out;
+}
+
+// 문서 말미 "근거 문서" 인덱스 — 본문에서 접은 파일명을 한 번에 번호로 모아
+// 추적성(감사)을 유지한다. 전용 numbering(SOURCE_NUMBERING_REF)으로 1..N 부여.
+// i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+function sourceIndexSection(filenames: string[]): FileChild[] {
+  if (filenames.length === 0) return [];
+  const out: FileChild[] = [
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 400, after: 100 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'C6613F', space: 6 } },
+      // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+      children: [new TextRun({ text: '근거 문서', bold: true, size: 28, color: '1A1A1A' })],
+    }),
+    new Paragraph({
+      spacing: { after: 120 },
+      children: [
+        new TextRun({
+          // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+          text: '본문 각 블록의 "근거 N건" 은 아래 문서에서 추출한 것입니다.',
+          color: '8A8A8A',
+          size: 18,
+        }),
+      ],
+    }),
+  ];
+  for (const name of filenames) {
+    out.push(
+      new Paragraph({
+        numbering: { reference: SOURCE_NUMBERING_REF, level: 0 },
+        spacing: { after: 20 },
+        children: [new TextRun({ text: name, size: 20, color: '4A4A4A' })],
+      }),
+    );
+  }
+  return out;
+}
+
+// 헤딩용 런 — inline markdown(`**`, `*`, `` ` ``) 을 파싱해 raw 토큰 노출을 막고
+// (§D), 전 런에 볼드 + 지정 크기/색을 강제해 위계를 준다. 헤딩은 링크가 드물어
+// 링크 라벨도 볼드 텍스트로 평탄화한다.
+function headingRuns(
+  md: string,
+  citedIds: Set<string>,
+  opts: { size: number; color: string },
+): TextRun[] {
+  const clean = stripInlineCitations(md, citedIds);
+  return parseInline(clean).map((it) =>
+    it.kind === 'link'
+      ? new TextRun({ text: it.label, bold: true, size: opts.size, color: opts.color })
+      : new TextRun({
+          text: it.text,
+          bold: true,
+          italics: it.italic,
+          size: opts.size,
+          color: opts.color,
+        }),
+  );
+}
+
+// topline 전용 스타일 표 — 공유 buildTable(desk-docx)은 desk export 와 공용이라
+// 손대지 않고(웹/desk 회귀 방지), 여기서 헤더행 음영 + 본문 zebra(옅은 교대색) +
+// 얇은 보더로 가독성을 올린 표를 별도로 만든다(§C). 셀 inline 인용 토큰 제거는
+// 호출측 strip 클로저가 담당한다.
+const TABLE_WIDTH_DXA = 9026;
+const TABLE_HEADER_FILL = 'F3E9E4'; // accent(C6613F) 옅은 틴트 — 헤더행 구분.
+const TABLE_ZEBRA_FILL = 'F7F6F4'; // 본문 교대색(옅은 회색).
+const TABLE_BORDER = { style: BorderStyle.SINGLE, size: 2, color: 'E0DAD5' } as const;
+
+function styledTable(
+  headers: string[],
+  rows: string[][],
+  strip: (s: string) => string,
+): Table {
+  const colCount = Math.max(1, headers.length);
+  const colW = Math.floor(TABLE_WIDTH_DXA / colCount);
+  const columnWidths = Array.from({ length: colCount }, () => colW);
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: headers.map(
+      (h) =>
+        new TableCell({
+          width: { size: colW, type: WidthType.DXA },
+          shading: { fill: TABLE_HEADER_FILL, type: ShadingType.CLEAR, color: 'auto' },
+          verticalAlign: VerticalAlign.CENTER,
+          children: [
+            new Paragraph({
+              spacing: { before: 40, after: 40 },
+              children: [new TextRun({ text: strip(h), bold: true, color: '1A1A1A' })],
+            }),
+          ],
+        }),
+    ),
+  });
+
+  const bodyRows = rows.map((row, ri) => {
+    const padded = [...row];
+    while (padded.length < colCount) padded.push('');
+    padded.length = colCount;
+    const zebra = ri % 2 === 1;
+    return new TableRow({
+      children: padded.map(
+        (c) =>
+          new TableCell({
+            width: { size: colW, type: WidthType.DXA },
+            shading: zebra
+              ? { fill: TABLE_ZEBRA_FILL, type: ShadingType.CLEAR, color: 'auto' }
+              : undefined,
+            children: [
+              new Paragraph({
+                spacing: { before: 20, after: 20 },
+                children: inlineToRuns(parseInline(strip(c))),
+              }),
+            ],
+          }),
+      ),
+    });
+  });
+
+  return new Table({
+    width: { size: TABLE_WIDTH_DXA, type: WidthType.DXA },
+    columnWidths,
+    layout: TableLayoutType.FIXED,
+    rows: [headerRow, ...bodyRows],
+    borders: {
+      top: TABLE_BORDER,
+      bottom: TABLE_BORDER,
+      left: TABLE_BORDER,
+      right: TABLE_BORDER,
+      insideHorizontal: TABLE_BORDER,
+      insideVertical: TABLE_BORDER,
+    },
   });
 }
 
@@ -302,60 +465,59 @@ function blockToChildren(
   }
 
   if (block.type === 'heading') {
+    // H1(파트) — 큰 잉크색 + 하단 accent 구분선으로 섹션 경계를 뚜렷이(§C).
+    // inline md 토큰은 headingRuns 가 파싱 제거(§D).
     return [
       new Paragraph({
         heading: HeadingLevel.HEADING_1,
-        spacing: { before: 280, after: 120 },
-        children: [new TextRun({ text: block.md ?? '', bold: true })],
+        spacing: { before: 360, after: 140 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'C6613F', space: 6 } },
+        children: headingRuns(block.md ?? '', citedIds, { size: 28, color: '1A1A1A' }),
       }),
     ];
   }
 
   if (block.type === 'subheading') {
+    // H2(서브) — accent 색 + H1 보다 작게 차등해 2단 위계를 만든다(§C).
     return [
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: 180, after: 80 },
-        children: [new TextRun({ text: block.md ?? '', bold: true })],
+        spacing: { before: 220, after: 80 },
+        children: headingRuns(block.md ?? '', citedIds, { size: 24, color: 'C6613F' }),
       }),
     ];
   }
 
   if (block.type === 'chart' || block.type === 'pie') {
-    // 차트/파이 — 값 비례 가로 막대 표로 시각화(chartBarsTable). 데이터 불릿은
-    // 이미지(막대 표) 아래에 접근성 폴백으로 유지해 값이 항상 문서에 남게 한다
-    // (막대 미지원 뷰어/스크린리더 대비). 서버 rasterizer 부재로 네이티브 Word
-    // 표를 택함(경량 우선 constraint — PR 본문 명시).
+    // 차트/파이 — 값 비례 가로 막대 표로 시각화(chartBarsTable). 막대 표의 각 행
+    // 라벨 칸이 "라벨 · 값(·%)" 텍스트를 이미 담으므로 값이 문서에 항상 남는다
+    // → 별도 폴백 불릿 나열은 제거(§B 불릿 덤프 탈피 — 값 중복 노이즈 축소).
+    // 서버 rasterizer 부재로 네이티브 Word 표를 택함(경량 우선 constraint).
     const children: FileChild[] = [];
     if (block.title) {
       children.push(
         new Paragraph({
-          spacing: { before: 120, after: 40 },
-          children: [new TextRun({ text: block.title, bold: true })],
+          spacing: { before: 160, after: 40 },
+          children: headingRuns(block.title, citedIds, { size: 22, color: '1A1A1A' }),
         }),
       );
     }
     if (block.description) {
       children.push(
         new Paragraph({
-          spacing: { after: 40 },
+          spacing: { after: 60 },
           children: [
-            new TextRun({ text: block.description, color: '8A8A8A', size: 20 }),
+            new TextRun({
+              text: stripInlineCitations(block.description, citedIds).trim(),
+              color: '8A8A8A',
+              size: 20,
+            }),
           ],
         }),
       );
     }
     const chartTable = chartBarsTable(block);
     if (chartTable) children.push(chartTable);
-    // 데이터 폴백 불릿 — 막대 표와 동시 존재(값 보존).
-    for (const d of block.data ?? []) {
-      children.push(
-        new Paragraph({
-          bullet: { level: 0 },
-          children: [new TextRun({ text: `${d.label}: ${d.value}` })],
-        }),
-      );
-    }
     children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun('')] }));
     const src = sourceLine(citations, sources);
     if (src) children.push(src);
@@ -399,20 +561,20 @@ function blockToChildren(
   if (block.type === 'table' && block.table) {
     const children: FileChild[] = [];
     if (block.md) {
+      // 표 캡션 — inline md 토큰 파싱(§D) + 볼드 소제목 톤.
       children.push(
         new Paragraph({
-          spacing: { before: 120, after: 80 },
-          children: [new TextRun({ text: block.md, bold: true })],
+          spacing: { before: 160, after: 80 },
+          children: headingRuns(block.md, citedIds, { size: 22, color: '1A1A1A' }),
         }),
       );
     }
     // 셀 안의 inline 인용 토큰도 제거해 raw chunk_id 노출을 막는다.
     const strip = (s: string) => stripInlineCitations(s, citedIds);
     children.push(
-      buildTable(
-        block.table.headers.map(strip),
-        block.table.rows.map((row) => row.map(strip)),
-      ),
+      // 헤더 음영 + zebra 본문의 topline 전용 스타일 표(§C). 공유 buildTable 은
+      // desk export 와 공용이라 건드리지 않는다.
+      styledTable(block.table.headers, block.table.rows, strip),
     );
     children.push(new Paragraph({ spacing: { after: 80 }, children: [new TextRun('')] }));
     const src = sourceLine(citations, sources);
@@ -515,7 +677,17 @@ export async function toplineBlocksToDocx(
 ): Promise<Buffer> {
   const { projectName, generatedAt, sources } = opts;
   const dateStr = formatDate(generatedAt);
+  // 문서 전체 출처 문서 — 표지 메타(응답 문서 수)와 말미 근거 인덱스가 공유.
+  const allFilenames = collectAllFilenames(blocks, sources);
+  const metaText =
+    allFilenames.length > 0
+      // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+      ? `근거 문서 ${allFilenames.length}건 · 생성일 ${dateStr}`
+      // i18n-allow-korean -- docx 서버 렌더 라벨; 기존 문서 라벨(근거/생성일)과 동일 한국어 고정 패턴
+      : `생성일 ${dateStr}`;
 
+  // 표지 — 킥커 + 제목 + 메타(근거 문서 수·생성일) + 하단 구분선으로 리드를
+  // 정돈한다(§C). 메타에 응답 문서 수를 담아 문서 규모를 한눈에 보이게.
   const children: FileChild[] = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -537,16 +709,22 @@ export async function toplineBlocksToDocx(
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+      children: [new TextRun({ text: metaText, color: '8A8A8A', size: 20 })],
+    }),
+    new Paragraph({
       spacing: { after: 360 },
-      children: [
-        new TextRun({ text: `생성일 ${dateStr}`, color: '8A8A8A', size: 20 }),
-      ],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'E0DAD5', space: 8 } },
+      children: [new TextRun('')],
     }),
   ];
 
   for (const block of blocks) {
     children.push(...blockToChildren(block, sources));
   }
+
+  // 말미 "근거 문서" 인덱스 — 본문에서 접은 파일명을 한 번에 모아 추적성 유지(§A).
+  children.push(...sourceIndexSection(allFilenames));
 
   const doc = new Document({
     styles: {
@@ -565,6 +743,12 @@ export async function toplineBlocksToDocx(
       config: [
         {
           reference: NUMBERING_REF,
+          levels: [
+            { level: 0, format: 'decimal', text: '%1.', alignment: 'left' },
+          ],
+        },
+        {
+          reference: SOURCE_NUMBERING_REF,
           levels: [
             { level: 0, format: 'decimal', text: '%1.', alignment: 'left' },
           ],
