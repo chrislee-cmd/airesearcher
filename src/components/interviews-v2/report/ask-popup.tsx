@@ -56,6 +56,7 @@ export function AskLayer({
   enabled,
   askEnabled,
   onAsk,
+  onSelected,
 }: {
   containerRef: RefObject<HTMLElement | null>;
   // 편집 모드 + 보고서 done 일 때만 선택 감지 활성.
@@ -68,8 +69,17 @@ export function AskLayer({
     question: string,
     mode: AskMode,
   ) => void;
+  // 첫 유효 선택(=드래그 성공) 1회 통지 — 드래그 힌트 스트립 dismiss 용(§0.4c).
+  onSelected?: () => void;
 }) {
   const { selection, clear } = useToplineSelection(containerRef, enabled && askEnabled);
+  const notifiedRef = useRef(false);
+  useEffect(() => {
+    if (selection && !notifiedRef.current) {
+      notifiedRef.current = true;
+      onSelected?.();
+    }
+  }, [selection, onSelected]);
   if (!selection || typeof window === 'undefined') return null;
   return (
     <AskCard
