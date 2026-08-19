@@ -5,6 +5,10 @@ import { getActiveOrg } from '@/lib/org';
 import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { chunkMarkdown } from '@/lib/interview-chunking';
 import { embedInterviewChunks } from '@/lib/interview-embed';
+import {
+  insertInterviewChunks,
+  rowsPerInsertFor,
+} from '@/lib/interview-index-insert';
 
 // PR-2 — manual re-trigger for the corpus indexer.
 //
@@ -20,8 +24,6 @@ import { embedInterviewChunks } from '@/lib/interview-embed';
 // message. Follow-up PR: re-index pre-PR-1 jobs from extractions.
 
 export const maxDuration = 300;
-
-const ROWS_PER_INSERT = 100;
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -113,9 +115,17 @@ export async function POST(req: Request) {
         .update({ total_chunks: chunks.length, processed_chunks: 0 })
         .eq('id', doc.id);
 
+      // Adaptive batch size — larger files get smaller inserts so per-statement
+      // HNSW work stays under the (raised) statement_timeout. A full re-index
+      // wipes and rebuilds from scratch (delete above), so there's no resume
+      // here; the insert resilience is what keeps a large file's rebuild from
+      // timing out mid-flight (previously batch=100 with no retry — the 1031-
+      // chunk file failed here even harder than on upload).
+      const rowsPerInsert = rowsPerInsertFor(chunks.length);
+
       let processed = 0;
-      for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
-        const slice = chunks.slice(i, i + ROWS_PER_INSERT);
+      for (let i = 0; i < chunks.length; i += rowsPerInsert) {
+        const slice = chunks.slice(i, i + rowsPerInsert);
         const embedded = await embedInterviewChunks(slice);
         const rows = embedded.map((c) => ({
           org_id: org.org_id,
@@ -125,13 +135,8 @@ export async function POST(req: Request) {
           metadata: c.metadata,
           embedding: c.embedding_literal,
         }));
-        const { error: chunkErr } = await admin
-          .from('interview_chunks')
-          .insert(rows);
-        if (chunkErr) {
-          console.error('[interviews/index/run-now] chunk insert failed', chunkErr);
-          throw new Error('chunk_insert_failed');
-        }
+        // Insert via the RPC (raised statement_timeout) with retry/backoff.
+        await insertInterviewChunks(admin, rows);
         processed += embedded.length;
         await admin
           .from('interview_documents')

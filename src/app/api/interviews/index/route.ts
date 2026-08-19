@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import type { PostgrestError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -8,6 +7,10 @@ import { checkLlmRateLimit } from '@/lib/rate-limit';
 import { hashString } from '@/lib/cache';
 import { chunkMarkdown } from '@/lib/interview-chunking';
 import { embedInterviewChunks } from '@/lib/interview-embed';
+import {
+  insertInterviewChunks,
+  rowsPerInsertFor,
+} from '@/lib/interview-index-insert';
 import { logError } from '@/lib/observability/log-error';
 
 // PR-1 — background corpus indexing for interview jobs.
@@ -21,54 +24,18 @@ import { logError } from '@/lib/observability/log-error';
 // for a multi-file batch, so we bump maxDuration to the platform max.
 export const maxDuration = 300;
 
-// Chunk insert tolerance (prod incident 2026-07-13: `chunk_insert_failed` on a
-// 61-file re-upload, root cause = Postgres `canceling statement due to
-// statement timeout` on the chunk insert — each row is a 1536-d pgvector +
-// HNSW index update, so a 100-row batch under DB load/contention blows the
-// role's statement_timeout). We make the insert resilient instead of letting a
-// single transient timeout fail the whole job:
-//   1) smaller batches → less work per statement → lower timeout probability
-//   2) retry with exponential backoff → absorb transient timeouts/contention
-// The happy path is unchanged (same embed/dedup/progress logic) — only the
-// batch size shrinks and a retry wraps the insert.
-const ROWS_PER_INSERT = 30;
-const CHUNK_INSERT_MAX_ATTEMPTS = 3;
-const CHUNK_INSERT_BACKOFF_MS = [250, 500, 1000];
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Transient DB errors worth retrying — statement timeout (57014), plus a few
-// contention/availability classes that clear on a short backoff. Constraint
-// violations (23xxx) and the like are permanent, so we let them throw straight
-// away rather than burning three attempts on a guaranteed failure.
-const RETRYABLE_PG_CODES = new Set([
-  '57014', // statement_timeout / canceling statement
-  '40001', // serialization_failure
-  '40P01', // deadlock_detected
-  '53300', // too_many_connections
-  '08006', // connection_failure
-  '08003', // connection_does_not_exist
-  'XX000', // internal_error (seen on transient pooler blips)
-]);
-
-function isRetryablePgError(err: PostgrestError | null): boolean {
-  if (!err) return false;
-  if (err.code && RETRYABLE_PG_CODES.has(err.code)) return true;
-  // Some pooler/timeout surfaces arrive without a stable code — fall back to
-  // the message text for the statement-timeout signal specifically.
-  return /statement timeout|canceling statement/i.test(err.message ?? '');
-}
-
-// Compact, log-free-diagnosable error string: cause + real PG code/message so
-// interview_jobs.error_message (OBS-4) and the failure-alert email (#1008)
-// carry the actual reason instead of a bare `chunk_insert_failed`.
-function describePgError(prefix: string, err: PostgrestError): string {
-  const parts = [err.message];
-  if (err.code) parts.push(`(${err.code})`);
-  return `${prefix}: ${parts.filter(Boolean).join(' ')}`;
-}
+// Chunk insert resilience lives in @/lib/interview-index-insert (shared with the
+// manual re-index path, run-now). Prod incidents 2026-07-13 + 2026-08-18:
+// `chunk_insert_failed`, root cause = Postgres statement timeout (57014) on the
+// chunk insert (1536-d pgvector + HNSW). The 2026-08-18 case was a 1.43MB /
+// 1031-chunk file failing at 570/1031 every time (63 respondents dropped). Four
+// axes together fix it:
+//   1) adaptive batch size (rowsPerInsertFor) → smaller inserts on large files.
+//   2) raised statement_timeout via the insert_interview_chunks RPC.
+//   3) retry with exponential backoff (insertInterviewChunks).
+//   4) resume (here) → a partially-inserted file re-runs from the already-inserted
+//      prefix, so a large file completes in one or two re-runs instead of never.
+// The happy path is unchanged (same embed/dedup/progress logic).
 
 const DocumentBody = z.object({
   filename: z.string().min(1).max(255),
@@ -181,14 +148,21 @@ export async function POST(req: Request) {
         };
 
         let documentId: string;
+        // Whether this document row already existed (a re-run of a file that
+        // partially indexed, or a true duplicate). Existing rows are candidates
+        // for resume — we don't skip them outright anymore (incident 2026-08-18:
+        // a large file that timed out mid-insert would re-run, find its own
+        // document row, and skip → the missing chunks were never filled in).
+        let isExisting = false;
 
         if (resolvedProjectId) {
-          // Project-scoped dedupe (the fix). An atomic, race-safe insert-or-skip
-          // via interview_documents_project_hash_uq (project_id, content_hash):
+          // Project-scoped dedupe. An atomic, race-safe insert-or-skip via
+          // interview_documents_project_hash_uq (project_id, content_hash):
           // ON CONFLICT DO NOTHING. An empty result means an identical document
-          // already lives in this project — possibly from an earlier upload
-          // batch under a different interview_job — so skip re-chunk / re-embed
-          // entirely (no duplicate row, no wasted embedding cost).
+          // already lives in this project — either a fully-indexed duplicate or
+          // a file that timed out mid-insert on an earlier run. We resolve the
+          // existing row's id and decide skip-vs-resume below from its actual
+          // chunk count (no duplicate document row either way).
           const { data: insertedRows, error: insErr } = await admin
             .from('interview_documents')
             .upsert(row, {
@@ -201,17 +175,30 @@ export async function POST(req: Request) {
             throw new Error('document_insert_failed');
           }
           if (!insertedRows || insertedRows.length === 0) {
-            skippedDocs += 1;
-            continue;
+            const { data: existing } = await admin
+              .from('interview_documents')
+              .select('id')
+              .eq('project_id', resolvedProjectId)
+              .eq('content_hash', contentHash)
+              .maybeSingle();
+            if (!existing) {
+              // Conflict reported but the row can't be read back — treat as a
+              // skip rather than risk a duplicate insert.
+              skippedDocs += 1;
+              continue;
+            }
+            documentId = existing.id;
+            isExisting = true;
+          } else {
+            documentId = insertedRows[0].id;
+            totalDocs += 1;
           }
-          documentId = insertedRows[0].id;
-          totalDocs += 1;
         } else {
-          // Legacy project-less path — keep the original job-scoped dedupe
+          // Legacy project-less path — job-scoped dedupe
           // (interview_documents_job_hash_uq). Same file re-uploaded in the same
-          // job doesn't produce a duplicate row, and re-running the indexer is
-          // safe. Multiple NULL-project rows are allowed by the project index
-          // (NULLs are distinct), so job scope is the only guard here.
+          // job reuses the existing row (and resumes its chunks); multiple
+          // NULL-project rows are allowed by the project index (NULLs distinct),
+          // so job scope is the only guard here.
           const { data: existing } = await admin
             .from('interview_documents')
             .select('id')
@@ -219,20 +206,21 @@ export async function POST(req: Request) {
             .eq('content_hash', contentHash)
             .maybeSingle();
           if (existing) {
-            skippedDocs += 1;
-            continue;
+            documentId = existing.id;
+            isExisting = true;
+          } else {
+            const { data: inserted, error: insErr } = await admin
+              .from('interview_documents')
+              .insert(row)
+              .select('id')
+              .single();
+            if (insErr || !inserted) {
+              console.error('[interviews/index] document insert failed', insErr);
+              throw new Error('document_insert_failed');
+            }
+            documentId = inserted.id;
+            totalDocs += 1;
           }
-          const { data: inserted, error: insErr } = await admin
-            .from('interview_documents')
-            .insert(row)
-            .select('id')
-            .single();
-          if (insErr || !inserted) {
-            console.error('[interviews/index] document insert failed', insErr);
-            throw new Error('document_insert_failed');
-          }
-          documentId = inserted.id;
-          totalDocs += 1;
         }
 
         const chunks = chunkMarkdown(doc.markdown, {
@@ -241,22 +229,46 @@ export async function POST(req: Request) {
         });
         if (chunks.length === 0) continue;
 
-        // Publish the denominator before the first (slow) embed call so the
-        // file card flips from a bare "인덱싱 중…" to "0 / N chunks (0%)" the
-        // moment the client's 2s poll picks it up.
+        // Resume point. chunkMarkdown is deterministic (same markdown → same
+        // chunk list in the same order), and each batch insert is all-or-nothing
+        // (a timed-out statement is cancelled whole → zero rows), so the chunks
+        // already in the table are exactly the leading prefix chunks[0..N-1].
+        // Count them to know where to pick up. count(*) is authoritative here —
+        // processed_chunks is a best-effort progress tick that may lag a crash.
+        let resumeFrom = 0;
+        if (isExisting) {
+          const { count } = await admin
+            .from('interview_chunks')
+            .select('id', { count: 'exact', head: true })
+            .eq('document_id', documentId);
+          resumeFrom = count ?? 0;
+          if (resumeFrom >= chunks.length) {
+            // Fully indexed already — a true duplicate, nothing to resume.
+            skippedDocs += 1;
+            continue;
+          }
+        }
+
+        // Publish the denominator (and the resume offset) before the first
+        // (slow) embed call so the file card flips from a bare "인덱싱 중…" to
+        // "N / M chunks" the moment the client's 2s poll picks it up.
         await admin
           .from('interview_documents')
-          .update({ total_chunks: chunks.length, processed_chunks: 0 })
+          .update({ total_chunks: chunks.length, processed_chunks: resumeFrom })
           .eq('id', documentId);
 
-        // Embed + insert in ROWS_PER_INSERT batches — smaller batches keep each
-        // statement's HNSW/pgvector work below the role's statement_timeout, and
-        // the retry below absorbs the occasional transient timeout under load.
+        // Adaptive batch size for this file — larger files get smaller inserts
+        // so per-statement HNSW work stays under the (raised) statement_timeout.
+        const rowsPerInsert = rowsPerInsertFor(chunks.length);
+
+        // Embed + insert in adaptive batches, starting from the resume offset.
         // Embedding per-batch (rather than all-at-once up front) is what lets
-        // processed_chunks advance mid-file so the progress bar actually moves.
-        let processed = 0;
-        for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
-          const slice = chunks.slice(i, i + ROWS_PER_INSERT);
+        // processed_chunks advance mid-file so the progress bar actually moves;
+        // already-embedded chunks hit the content-addressed cache on re-run, so
+        // a resume is cheap.
+        let processed = resumeFrom;
+        for (let i = resumeFrom; i < chunks.length; i += rowsPerInsert) {
+          const slice = chunks.slice(i, i + rowsPerInsert);
           const embedded = await embedInterviewChunks(slice);
           const rows = embedded.map((c) => ({
             org_id: org.org_id,
@@ -267,32 +279,11 @@ export async function POST(req: Request) {
             // pgvector accepts the literal string and casts implicitly.
             embedding: c.embedding_literal,
           }));
-          // Retry with exponential backoff — a single transient statement
-          // timeout (57014) or contention blip must not fail the whole job. The
-          // insert is idempotent to retry: a failed statement lands zero rows (a
-          // timeout cancels the whole statement), so a retry can't double-insert.
-          let chunkErr: PostgrestError | null = null;
-          for (let attempt = 0; attempt < CHUNK_INSERT_MAX_ATTEMPTS; attempt++) {
-            const { error } = await admin.from('interview_chunks').insert(rows);
-            chunkErr = error;
-            if (!error) break;
-            const willRetry =
-              attempt < CHUNK_INSERT_MAX_ATTEMPTS - 1 &&
-              isRetryablePgError(error);
-            console.error(
-              `[interviews/index] chunk insert failed (attempt ${attempt + 1}/${CHUNK_INSERT_MAX_ATTEMPTS}, ${willRetry ? 'retrying' : 'giving up'})`,
-              error,
-            );
-            if (!willRetry) break;
-            await sleep(CHUNK_INSERT_BACKOFF_MS[attempt]);
-          }
-          if (chunkErr) {
-            // Carry the real PG code/message so DB-only diagnosis (and the #1008
-            // alert email) shows the actual cause, not a bare marker. The
-            // partially-inserted chunks stay (idempotent dedup on re-run), so a
-            // future retry can resume this file where it stopped.
-            throw new Error(describePgError('chunk_insert_failed', chunkErr));
-          }
+          // Insert via the RPC (raised statement_timeout) with retry/backoff.
+          // Throws `chunk_insert_failed: …` on give-up, carrying the real PG
+          // code/message; the partially-inserted chunks stay (deterministic
+          // prefix) so a re-run resumes this file exactly where it stopped.
+          await insertInterviewChunks(admin, rows);
           processed += embedded.length;
           // Progress tick — best-effort; the client polls interview_documents.
           await admin
@@ -300,7 +291,9 @@ export async function POST(req: Request) {
             .update({ processed_chunks: processed })
             .eq('id', documentId);
         }
-        totalChunks += processed;
+        // Count only the chunks inserted this run (resumeFrom were already in
+        // the table from an earlier partial run).
+        totalChunks += processed - resumeFrom;
       } catch (docErr) {
         // 이 파일만 실패로 기록하고 다음 파일로 — throw 하지 않는다. 부분 삽입된
         // 청크는 그대로 두어(dedup/idempotent — 위 주석) retry 재실행이 이어받게
