@@ -3051,20 +3051,26 @@ export function TranslateConsole({
     //    확인돼야만 세션 연결로 넘어간다. 취소 시 획득 미디어를 정리하고 idle.
     //    (watchdog 은 이 게이트 이후 무장하므로 사용자가 게이트에서 시간을 써도
     //    50s 타임아웃에 안 걸린다.)
-    const gatePassed = await awaitAudioGate({
-      mic: liveSlots.includes('mic') ? srcStreamRef.current.mic : null,
-      tab: liveSlots.includes('tab') ? srcStreamRef.current.tab : null,
-      require: {
-        mic: liveSlots.includes('mic'),
-        tabAudio: liveSlots.includes('tab'),
-      },
-    });
-    if (!gatePassed) {
-      // 사용자 취소(에러 아님) — 획득 미디어 정리 후 idle 로 복귀.
-      setStatus('idle');
-      cleanup('start_gate_cancelled');
-      startInFlightRef.current = false;
-      return;
+    //    ⚠ 게이트는 **탭 오디오를 잡는 온라인 경로에만** 건다 — "브라우저로 참여 ·
+    //    탭 오디오 공유" 문제는 tab 슬롯에서만 발생. mic-only(대면/오프라인
+    //    인터뷰)는 기기 마이크라 그 문제가 없어 게이트를 건너뛴다(ShareGuidePopup
+    //    이 tab/both 에서만 뜨는 것과 동일 정렬).
+    if (liveSlots.includes('tab')) {
+      const gatePassed = await awaitAudioGate({
+        mic: liveSlots.includes('mic') ? srcStreamRef.current.mic : null,
+        tab: srcStreamRef.current.tab,
+        require: {
+          mic: liveSlots.includes('mic'),
+          tabAudio: true,
+        },
+      });
+      if (!gatePassed) {
+        // 사용자 취소(에러 아님) — 획득 미디어 정리 후 idle 로 복귀.
+        setStatus('idle');
+        cleanup('start_gate_cancelled');
+        startInFlightRef.current = false;
+        return;
+      }
     }
 
     // 2) Widget concurrency gate — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가

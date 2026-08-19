@@ -1406,19 +1406,25 @@ export function useRealtimeTranscription(opts?: {
       // 확인돼야만 세션 연결로 넘어간다. 취소 시 획득 미디어 정리 후 idle.
       // (connect watchdog 은 이 뒤 connectSlot 에서 arm 되므로 게이트 체류시간이
       // 타임아웃을 안 건드린다.)
-      const gatePassed = await awaitAudioGate({
-        mic: acquired.includes('mic') ? captureStreamRef.current.mic : null,
-        tab: acquired.includes('tab') ? captureStreamRef.current.tab : null,
-        require: {
-          mic: acquired.includes('mic'),
-          tabAudio: acquired.includes('tab'),
-        },
-      });
-      if (!gatePassed) {
-        cleanup();
-        setStatus('idle');
-        startInFlightRef.current = false;
-        return;
+      // ⚠ 게이트는 **탭 오디오를 잡는 온라인 경로에만** 건다 — "브라우저로 참여 ·
+      // 탭 오디오 공유" 문제는 tab 슬롯(both=온라인 인터뷰 / tab=참관)에서만 발생.
+      // mic-only(대면/오프라인 인터뷰)는 기기 마이크라 그 문제가 없어 게이트를
+      // 건너뛴다(ShareGuidePopup 이 tab/both 에서만 뜨는 것과 동일 정렬).
+      if (acquired.includes('tab')) {
+        const gatePassed = await awaitAudioGate({
+          mic: acquired.includes('mic') ? captureStreamRef.current.mic : null,
+          tab: captureStreamRef.current.tab,
+          require: {
+            mic: acquired.includes('mic'),
+            tabAudio: true,
+          },
+        });
+        if (!gatePassed) {
+          cleanup();
+          setStatus('idle');
+          startInFlightRef.current = false;
+          return;
+        }
       }
 
       // 2) 서버 세션 — client_secret 발급 + start-lump credit 차감. both 라도
