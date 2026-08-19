@@ -200,6 +200,8 @@ export async function buildAggregateEvidence(
         await saveExtract(admin, orgId, doc, {
           themes: extract.themes,
           quotes: extract.quotes,
+          attributes: extract.attributes,
+          coded: extract.coded,
         });
         return extract;
       } catch (e) {
@@ -211,6 +213,8 @@ export async function buildAggregateEvidence(
         return {
           themes: [],
           quotes: [],
+          attributes: { race: null, gender: null, age: null, age_group: null },
+          coded: [],
           failed: true,
           document_id: doc.document_id,
           filename: doc.filename,
