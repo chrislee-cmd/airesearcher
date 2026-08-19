@@ -13,6 +13,11 @@ import OpenAI from 'openai';
 import { env } from '@/env';
 import { getCacheMany, hashString, setCacheMany } from './cache';
 import type { InterviewChunk } from './interview-chunking';
+import {
+  MAX_EMBED_TOKENS,
+  conservativeTokenEstimate,
+  truncateToTokenCap,
+} from './interview-chunking';
 
 const MODEL = 'text-embedding-3-small';
 const DIM = 1536;
@@ -86,7 +91,18 @@ export async function embedInterviewChunks(
   const fresh = new Map<number, number[]>();
   for (let i = 0; i < missContent.length; i += BATCH) {
     const sliceIdx = missIdx.slice(i, i + BATCH);
-    const sliceContent = missContent.slice(i, i + BATCH);
+    // Belt-and-suspenders guard: the chunker already caps chunk tokens, but a
+    // stray over-cap input (e.g. an under-counted CJK-dense row) must never
+    // reach OpenAI and fail the whole file with `400 maximum input length is
+    // 8192 tokens`. Truncate to the safe prefix and warn instead of failing.
+    const sliceContent = missContent.slice(i, i + BATCH).map((content) => {
+      const est = conservativeTokenEstimate(content);
+      if (est <= MAX_EMBED_TOKENS) return content;
+      console.warn(
+        `[interviews/embed] input ~${est} tokens exceeds cap ${MAX_EMBED_TOKENS} — truncating (len ${content.length})`,
+      );
+      return truncateToTokenCap(content);
+    });
     const res = await client().embeddings.create({
       model: MODEL,
       input: sliceContent,
