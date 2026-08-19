@@ -1,4 +1,30 @@
 {
+  "AudioCheck": {
+    "heading": "Audio signal check",
+    "subtitle": "Confirm real sound is coming through before you start.",
+    "mic": {
+      "label": "Your microphone",
+      "hint": "Say a few words — the meter should move.",
+      "denied": "Microphone permission is blocked. Open the lock icon in the address bar → site permissions, allow the microphone, then try again.",
+      "device": "Microphone",
+      "deviceFallback": "Microphone {n}"
+    },
+    "tab": {
+      "label": "Tab / system audio",
+      "hint": "The meter moves when the shared tab plays sound.",
+      "muted": "No tab audio detected. “Share tab audio” may be off, or the meeting was opened in a native app.",
+      "retry": "Share again",
+      "testSound": "🔊 Test sound"
+    },
+    "status": {
+      "waiting": "Waiting",
+      "detected": "Detected",
+      "noSignal": "No signal"
+    },
+    "start": "Start",
+    "cancel": "Cancel",
+    "verifying": "Waiting for signal…"
+  },
   "AiUt": {
     "behavior": {
       "title": "Behavior analytics (inferred)",
