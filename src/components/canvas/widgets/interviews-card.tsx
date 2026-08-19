@@ -54,7 +54,7 @@ const CARD_PROJECT_KEY = 'interview-v2-card-active-project';
 // 인라인 dropzone accept/최대 크기 — UploadModal 과 동일 규격 (SSOT 는 모달이
 // 최종 검증하지만, 카드 dropzone 도 같은 필터/한도를 걸어 UX 를 맞춘다).
 const UPLOAD_ACCEPT =
-  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,audio/*,video/*';
+  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,audio/*,video/*,.zip';
 const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 // 크레딧 차감 — features.ts SSOT(interviews cost 10) 미러 (푸터 "💎 N 차감" 표기용).
 const CARD_CREDIT_COST = 10;
