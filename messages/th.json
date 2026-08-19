@@ -2423,6 +2423,7 @@
     "fileMetaIndexingStart": "กำลังประมวลผล",
     "fileMetaQueue": "รอคิว",
     "fileMetaFail": "แยกวิเคราะห์ล้มเหลว · ลองใหม่",
+    "fileMetaIndexFail": "{done}/{total} chunks · จัดทำดัชนีล้มเหลว ลองใหม่",
     "fileMetaChunks": "{count} chunks",
     "toplineLangLabel": "ภาษาที่ใช้วิเคราะห์",
     "toplineRegenerate": "สร้างรายงานใหม่",

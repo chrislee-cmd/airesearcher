@@ -2,7 +2,10 @@
 
 import { useTranslations } from 'next-intl';
 import DuotoneIcon from '@/components/ui/icons/duotone-icon';
-import type { InterviewDocument } from '@/hooks/use-interview-v2-documents';
+import {
+  type InterviewDocument,
+  isInterviewDocReady,
+} from '@/hooks/use-interview-v2-documents';
 import { fileIconName } from './file-icon';
 
 const INK = 'var(--color-ink)';
@@ -84,6 +87,74 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
   const t = useTranslations('InterviewsV2');
   const icon = fileIconName(doc.mime, doc.filename);
   const hasProg = doc.total_chunks != null && doc.total_chunks > 0;
+  // 완료 판정은 공유 index_status 가 아니라 파일 단위(processed>=total)로 — 배치가
+  // 부분 성공(job='done')이면 완료 파일과 반쪽 실패 파일이 똑같이 'done' 으로
+  // 내려오므로, 청크 완주로 구분해야 반쪽 파일이 READY 로 오표기되지 않는다.
+  const isReady = isInterviewDocReady(doc);
+  // 완주하지 못했는데 더 이상 진행 중이 아닌 파일 = 인덱싱 실패(재시도 대상):
+  //   - index_status==='error'  → 전량 실패
+  //   - index_status==='done' 인데 processed<total → 부분 배치에서 이 파일만 실패
+  const isIndexFail =
+    !isReady &&
+    (doc.index_status === 'error' ||
+      (doc.index_status === 'done' && hasProg));
+
+  // READY — 파일 단위 완주(레거시 done 포함).
+  if (isReady) {
+    return (
+      <div
+        className="flex items-center gap-2.5 rounded-card bg-paper shadow-memphis-sm-faint"
+        style={{ padding: '11px 13px', border: `2px solid ${INK}` }}
+      >
+        <DuotoneIcon name={icon} size={17} />
+        <div className="min-w-0 flex-1">
+          <div
+            className="truncate font-bold text-ink"
+            style={{ fontSize: 12.5 }}
+            title={doc.filename}
+          >
+            {doc.filename}
+          </div>
+          <div className="font-mono-label text-faint" style={{ fontSize: 10, marginTop: 2 }}>
+            {hasProg
+              ? t('fileMetaReady', { count: doc.total_chunks ?? 0 })
+              : t('fileMetaReadyPlain')}
+          </div>
+        </div>
+        <StatusChip label={t('fileChipReady')} tone="ready" />
+      </div>
+    );
+  }
+
+  // FAIL — 전량 실패 또는 부분 배치에서 이 파일만 실패(반쪽 인덱싱). 재시도 대상.
+  if (isIndexFail) {
+    return (
+      <div
+        className="flex items-center gap-2.5 rounded-card bg-error-bg"
+        style={{ padding: '11px 13px', border: '1.5px solid var(--color-error-line)' }}
+      >
+        <DuotoneIcon name={icon} size={17} />
+        <div className="min-w-0 flex-1">
+          <div
+            className="truncate font-bold text-ink"
+            style={{ fontSize: 12.5 }}
+            title={doc.filename}
+          >
+            {doc.filename}
+          </div>
+          <div className="text-error-text" style={{ fontSize: 10.5, marginTop: 2 }}>
+            {hasProg
+              ? t('fileMetaIndexFail', {
+                  done: doc.processed_chunks,
+                  total: doc.total_chunks ?? 0,
+                })
+              : t('fileMetaFail')}
+          </div>
+        </div>
+        <StatusChip label={t('fileChipFail')} tone="fail" />
+      </div>
+    );
+  }
 
   if (doc.index_status === 'indexing') {
     return (
@@ -120,76 +191,28 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
     );
   }
 
-  if (doc.index_status === 'error') {
-    return (
-      <div
-        className="flex items-center gap-2.5 rounded-card bg-error-bg"
-        style={{ padding: '11px 13px', border: '1.5px solid var(--color-error-line)' }}
-      >
-        <DuotoneIcon name={icon} size={17} />
-        <div className="min-w-0 flex-1">
-          <div
-            className="truncate font-bold text-ink"
-            style={{ fontSize: 12.5 }}
-            title={doc.filename}
-          >
-            {doc.filename}
-          </div>
-          <div className="text-error-text" style={{ fontSize: 10.5, marginTop: 2 }}>
-            {t('fileMetaFail')}
-          </div>
-        </div>
-        <StatusChip label={t('fileChipFail')} tone="fail" />
-      </div>
-    );
-  }
-
-  if (doc.index_status === 'pending') {
-    return (
-      <div
-        className="flex items-center gap-2.5 rounded-card bg-paper opacity-75"
-        style={{ padding: '11px 13px', border: `1.5px solid var(--color-line)` }}
-      >
-        <DuotoneIcon name={icon} size={17} />
-        <div className="min-w-0 flex-1">
-          <div
-            className="truncate font-bold text-mute"
-            style={{ fontSize: 12.5 }}
-            title={doc.filename}
-          >
-            {doc.filename}
-          </div>
-          <div className="font-mono-label text-faint" style={{ fontSize: 10, marginTop: 2 }}>
-            {t('fileMetaQueue')}
-          </div>
-        </div>
-        <StatusChip label={t('fileChipQueue')} tone="queue" />
-      </div>
-    );
-  }
-
-  // done → READY
+  // pending 및 그 밖의 미완 상태 → QUEUE(대기). isReady/isIndexFail/indexing 이
+  // 위에서 모두 걸러지므로 여기 도달 = 아직 시작 전(또는 알 수 없는 상태) — 완료로
+  // 보이지 않게 보수적으로 대기 표기.
   return (
     <div
-      className="flex items-center gap-2.5 rounded-card bg-paper shadow-memphis-sm-faint"
-      style={{ padding: '11px 13px', border: `2px solid ${INK}` }}
+      className="flex items-center gap-2.5 rounded-card bg-paper opacity-75"
+      style={{ padding: '11px 13px', border: `1.5px solid var(--color-line)` }}
     >
       <DuotoneIcon name={icon} size={17} />
       <div className="min-w-0 flex-1">
         <div
-          className="truncate font-bold text-ink"
+          className="truncate font-bold text-mute"
           style={{ fontSize: 12.5 }}
           title={doc.filename}
         >
           {doc.filename}
         </div>
         <div className="font-mono-label text-faint" style={{ fontSize: 10, marginTop: 2 }}>
-          {hasProg
-            ? t('fileMetaReady', { count: doc.total_chunks ?? 0 })
-            : t('fileMetaReadyPlain')}
+          {t('fileMetaQueue')}
         </div>
       </div>
-      <StatusChip label={t('fileChipReady')} tone="ready" />
+      <StatusChip label={t('fileChipQueue')} tone="queue" />
     </div>
   );
 }

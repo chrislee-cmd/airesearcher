@@ -153,151 +153,213 @@ export async function POST(req: Request) {
     let totalDocs = 0;
     let totalChunks = 0;
     let skippedDocs = 0;
+    // 파일 단위 실패 격리 — 한 파일의 인덱싱 실패(청크 insert 재시도 소진 · 문서
+    // insert · 임베딩 실패)가 배치 전체 job 을 죽이지 않게, 실패 파일명+사유를
+    // 모아 두고 루프 밖에서 job status 를 한 번만 산정한다. (이전엔 첫 파일의
+    // throw 가 done 마킹 전에 바깥 catch 로 빠져 이미 100% 인덱싱된 나머지 파일까지
+    // index_status='error' 로 묻었다 — 인시던트 2026-08-18 root cause.)
+    const failed: { filename: string; reason: string }[] = [];
 
     for (const doc of documents) {
-      const contentHash = hashString(doc.markdown);
-      // The project this document lands in. content_hash is the hash of the
-      // normalized markdown, so an identical file always hashes the same — a
-      // true content match even across batches, jobs, or renamed files.
-      const resolvedProjectId =
-        project_id ?? jobRow.project_id ?? doc.project_id ?? null;
+      try {
+        const contentHash = hashString(doc.markdown);
+        // The project this document lands in. content_hash is the hash of the
+        // normalized markdown, so an identical file always hashes the same — a
+        // true content match even across batches, jobs, or renamed files.
+        const resolvedProjectId =
+          project_id ?? jobRow.project_id ?? doc.project_id ?? null;
 
-      const row = {
-        org_id: org.org_id,
-        project_id: resolvedProjectId,
-        interview_job_id,
-        filename: doc.filename,
-        mime: doc.mime ?? null,
-        markdown: doc.markdown,
-        content_hash: contentHash,
-        char_count: doc.markdown.length,
-      };
-
-      let documentId: string;
-
-      if (resolvedProjectId) {
-        // Project-scoped dedupe (the fix). An atomic, race-safe insert-or-skip
-        // via interview_documents_project_hash_uq (project_id, content_hash):
-        // ON CONFLICT DO NOTHING. An empty result means an identical document
-        // already lives in this project — possibly from an earlier upload
-        // batch under a different interview_job — so skip re-chunk / re-embed
-        // entirely (no duplicate row, no wasted embedding cost).
-        const { data: insertedRows, error: insErr } = await admin
-          .from('interview_documents')
-          .upsert(row, {
-            onConflict: 'project_id,content_hash',
-            ignoreDuplicates: true,
-          })
-          .select('id');
-        if (insErr) {
-          console.error('[interviews/index] document upsert failed', insErr);
-          throw new Error('document_insert_failed');
-        }
-        if (!insertedRows || insertedRows.length === 0) {
-          skippedDocs += 1;
-          continue;
-        }
-        documentId = insertedRows[0].id;
-        totalDocs += 1;
-      } else {
-        // Legacy project-less path — keep the original job-scoped dedupe
-        // (interview_documents_job_hash_uq). Same file re-uploaded in the same
-        // job doesn't produce a duplicate row, and re-running the indexer is
-        // safe. Multiple NULL-project rows are allowed by the project index
-        // (NULLs are distinct), so job scope is the only guard here.
-        const { data: existing } = await admin
-          .from('interview_documents')
-          .select('id')
-          .eq('interview_job_id', interview_job_id)
-          .eq('content_hash', contentHash)
-          .maybeSingle();
-        if (existing) {
-          skippedDocs += 1;
-          continue;
-        }
-        const { data: inserted, error: insErr } = await admin
-          .from('interview_documents')
-          .insert(row)
-          .select('id')
-          .single();
-        if (insErr || !inserted) {
-          console.error('[interviews/index] document insert failed', insErr);
-          throw new Error('document_insert_failed');
-        }
-        documentId = inserted.id;
-        totalDocs += 1;
-      }
-
-      const chunks = chunkMarkdown(doc.markdown, {
-        filename: doc.filename,
-        docId: documentId,
-      });
-      if (chunks.length === 0) continue;
-
-      // Publish the denominator before the first (slow) embed call so the
-      // file card flips from a bare "인덱싱 중…" to "0 / N chunks (0%)" the
-      // moment the client's 2s poll picks it up.
-      await admin
-        .from('interview_documents')
-        .update({ total_chunks: chunks.length, processed_chunks: 0 })
-        .eq('id', documentId);
-
-      // Embed + insert in ROWS_PER_INSERT batches — smaller batches keep each
-      // statement's HNSW/pgvector work below the role's statement_timeout, and
-      // the retry below absorbs the occasional transient timeout under load.
-      // Embedding per-batch (rather than all-at-once up front) is what lets
-      // processed_chunks advance mid-file so the progress bar actually moves.
-      let processed = 0;
-      for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
-        const slice = chunks.slice(i, i + ROWS_PER_INSERT);
-        const embedded = await embedInterviewChunks(slice);
-        const rows = embedded.map((c) => ({
+        const row = {
           org_id: org.org_id,
+          project_id: resolvedProjectId,
           interview_job_id,
-          document_id: documentId,
-          content: c.content,
-          metadata: c.metadata,
-          // pgvector accepts the literal string and casts implicitly.
-          embedding: c.embedding_literal,
-        }));
-        // Retry with exponential backoff — a single transient statement
-        // timeout (57014) or contention blip must not fail the whole job. The
-        // insert is idempotent to retry: a failed statement lands zero rows (a
-        // timeout cancels the whole statement), so a retry can't double-insert.
-        let chunkErr: PostgrestError | null = null;
-        for (let attempt = 0; attempt < CHUNK_INSERT_MAX_ATTEMPTS; attempt++) {
-          const { error } = await admin.from('interview_chunks').insert(rows);
-          chunkErr = error;
-          if (!error) break;
-          const willRetry =
-            attempt < CHUNK_INSERT_MAX_ATTEMPTS - 1 && isRetryablePgError(error);
-          console.error(
-            `[interviews/index] chunk insert failed (attempt ${attempt + 1}/${CHUNK_INSERT_MAX_ATTEMPTS}, ${willRetry ? 'retrying' : 'giving up'})`,
-            error,
-          );
-          if (!willRetry) break;
-          await sleep(CHUNK_INSERT_BACKOFF_MS[attempt]);
+          filename: doc.filename,
+          mime: doc.mime ?? null,
+          markdown: doc.markdown,
+          content_hash: contentHash,
+          char_count: doc.markdown.length,
+        };
+
+        let documentId: string;
+
+        if (resolvedProjectId) {
+          // Project-scoped dedupe (the fix). An atomic, race-safe insert-or-skip
+          // via interview_documents_project_hash_uq (project_id, content_hash):
+          // ON CONFLICT DO NOTHING. An empty result means an identical document
+          // already lives in this project — possibly from an earlier upload
+          // batch under a different interview_job — so skip re-chunk / re-embed
+          // entirely (no duplicate row, no wasted embedding cost).
+          const { data: insertedRows, error: insErr } = await admin
+            .from('interview_documents')
+            .upsert(row, {
+              onConflict: 'project_id,content_hash',
+              ignoreDuplicates: true,
+            })
+            .select('id');
+          if (insErr) {
+            console.error('[interviews/index] document upsert failed', insErr);
+            throw new Error('document_insert_failed');
+          }
+          if (!insertedRows || insertedRows.length === 0) {
+            skippedDocs += 1;
+            continue;
+          }
+          documentId = insertedRows[0].id;
+          totalDocs += 1;
+        } else {
+          // Legacy project-less path — keep the original job-scoped dedupe
+          // (interview_documents_job_hash_uq). Same file re-uploaded in the same
+          // job doesn't produce a duplicate row, and re-running the indexer is
+          // safe. Multiple NULL-project rows are allowed by the project index
+          // (NULLs are distinct), so job scope is the only guard here.
+          const { data: existing } = await admin
+            .from('interview_documents')
+            .select('id')
+            .eq('interview_job_id', interview_job_id)
+            .eq('content_hash', contentHash)
+            .maybeSingle();
+          if (existing) {
+            skippedDocs += 1;
+            continue;
+          }
+          const { data: inserted, error: insErr } = await admin
+            .from('interview_documents')
+            .insert(row)
+            .select('id')
+            .single();
+          if (insErr || !inserted) {
+            console.error('[interviews/index] document insert failed', insErr);
+            throw new Error('document_insert_failed');
+          }
+          documentId = inserted.id;
+          totalDocs += 1;
         }
-        if (chunkErr) {
-          // Carry the real PG code/message so DB-only diagnosis (and the #1008
-          // alert email) shows the actual cause, not a bare marker.
-          throw new Error(describePgError('chunk_insert_failed', chunkErr));
-        }
-        processed += embedded.length;
-        // Progress tick — best-effort; the client polls interview_documents.
+
+        const chunks = chunkMarkdown(doc.markdown, {
+          filename: doc.filename,
+          docId: documentId,
+        });
+        if (chunks.length === 0) continue;
+
+        // Publish the denominator before the first (slow) embed call so the
+        // file card flips from a bare "인덱싱 중…" to "0 / N chunks (0%)" the
+        // moment the client's 2s poll picks it up.
         await admin
           .from('interview_documents')
-          .update({ processed_chunks: processed })
+          .update({ total_chunks: chunks.length, processed_chunks: 0 })
           .eq('id', documentId);
+
+        // Embed + insert in ROWS_PER_INSERT batches — smaller batches keep each
+        // statement's HNSW/pgvector work below the role's statement_timeout, and
+        // the retry below absorbs the occasional transient timeout under load.
+        // Embedding per-batch (rather than all-at-once up front) is what lets
+        // processed_chunks advance mid-file so the progress bar actually moves.
+        let processed = 0;
+        for (let i = 0; i < chunks.length; i += ROWS_PER_INSERT) {
+          const slice = chunks.slice(i, i + ROWS_PER_INSERT);
+          const embedded = await embedInterviewChunks(slice);
+          const rows = embedded.map((c) => ({
+            org_id: org.org_id,
+            interview_job_id,
+            document_id: documentId,
+            content: c.content,
+            metadata: c.metadata,
+            // pgvector accepts the literal string and casts implicitly.
+            embedding: c.embedding_literal,
+          }));
+          // Retry with exponential backoff — a single transient statement
+          // timeout (57014) or contention blip must not fail the whole job. The
+          // insert is idempotent to retry: a failed statement lands zero rows (a
+          // timeout cancels the whole statement), so a retry can't double-insert.
+          let chunkErr: PostgrestError | null = null;
+          for (let attempt = 0; attempt < CHUNK_INSERT_MAX_ATTEMPTS; attempt++) {
+            const { error } = await admin.from('interview_chunks').insert(rows);
+            chunkErr = error;
+            if (!error) break;
+            const willRetry =
+              attempt < CHUNK_INSERT_MAX_ATTEMPTS - 1 &&
+              isRetryablePgError(error);
+            console.error(
+              `[interviews/index] chunk insert failed (attempt ${attempt + 1}/${CHUNK_INSERT_MAX_ATTEMPTS}, ${willRetry ? 'retrying' : 'giving up'})`,
+              error,
+            );
+            if (!willRetry) break;
+            await sleep(CHUNK_INSERT_BACKOFF_MS[attempt]);
+          }
+          if (chunkErr) {
+            // Carry the real PG code/message so DB-only diagnosis (and the #1008
+            // alert email) shows the actual cause, not a bare marker. The
+            // partially-inserted chunks stay (idempotent dedup on re-run), so a
+            // future retry can resume this file where it stopped.
+            throw new Error(describePgError('chunk_insert_failed', chunkErr));
+          }
+          processed += embedded.length;
+          // Progress tick — best-effort; the client polls interview_documents.
+          await admin
+            .from('interview_documents')
+            .update({ processed_chunks: processed })
+            .eq('id', documentId);
+        }
+        totalChunks += processed;
+      } catch (docErr) {
+        // 이 파일만 실패로 기록하고 다음 파일로 — throw 하지 않는다. 부분 삽입된
+        // 청크는 그대로 두어(dedup/idempotent — 위 주석) retry 재실행이 이어받게
+        // 하고, 실패 사유만 모은다.
+        const reason = docErr instanceof Error ? docErr.message : 'index_failed';
+        console.error('[interviews/index] document failed', {
+          filename: doc.filename,
+          reason,
+        });
+        failed.push({ filename: doc.filename, reason });
+        continue;
       }
-      totalChunks += processed;
     }
 
-    await admin
-      .from('interview_jobs')
-      .update({ index_status: 'done' })
-      .eq('id', interview_job_id)
-      .eq('org_id', org.org_id);
+    // 루프 밖에서 job status 를 failed[] 기준으로 한 번만 산정.
+    if (failed.length === documents.length) {
+      // 전부 실패 — 근거 0. error 로 마킹 + 중앙 관측 적재.
+      const detail = failed.map((f) => `${f.filename}: ${f.reason}`).join('; ');
+      await admin
+        .from('interview_jobs')
+        .update({ index_status: 'error', error_message: detail.slice(0, 500) })
+        .eq('id', interview_job_id)
+        .eq('org_id', org.org_id);
+      await logError({
+        feature: 'interview',
+        code: 'index_failed',
+        message: detail,
+        context: { interview_job_id, org_id: org.org_id },
+      });
+      return NextResponse.json(
+        { error: 'index_failed', failed_count: failed.length },
+        { status: 500 },
+      );
+    }
+
+    if (failed.length > 0) {
+      // 부분 성공 — 완료 파일은 즉시 사용 가능해야 하므로 job 은 'done' 으로 두고,
+      // 상세 실패만 error_message 에 기록한다("부분 성공은 done, 상세는
+      // error_message"). 완료 파일별 게이트는 프론트가 processed>=total 로 판정한다.
+      const detail = `partial: ${failed.length}/${documents.length} failed — ${failed
+        .map((f) => `${f.filename}: ${f.reason}`)
+        .join('; ')}`;
+      console.error('[interviews/index] partial batch', {
+        jobId: interview_job_id,
+        failed,
+      });
+      await admin
+        .from('interview_jobs')
+        .update({ index_status: 'done', error_message: detail.slice(0, 500) })
+        .eq('id', interview_job_id)
+        .eq('org_id', org.org_id);
+    } else {
+      // 전부 성공 — 이전 실패 흔적(error_message)이 남아 있으면 함께 지운다.
+      await admin
+        .from('interview_jobs')
+        .update({ index_status: 'done', error_message: null })
+        .eq('id', interview_job_id)
+        .eq('org_id', org.org_id);
+    }
 
     // 인덱싱은 문서·청크 적재까지만 — 탑라인 생성은 여기서 자동으로 kick 하지
     // 않는다(카드 #474). 업로드/인덱싱 후 탑라인 status 는 idle 로 남아, 사용자가
@@ -309,6 +371,7 @@ export async function POST(req: Request) {
       document_count: totalDocs,
       chunk_count: totalChunks,
       skipped_count: skippedDocs,
+      failed_count: failed.length,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'index_failed';

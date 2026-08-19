@@ -2423,6 +2423,7 @@
     "fileMetaIndexingStart": "처리 중",
     "fileMetaQueue": "대기 중",
     "fileMetaFail": "파싱 실패 · 다시 시도",
+    "fileMetaIndexFail": "{done}/{total} chunks · 인덱싱 실패, 다시 시도",
     "fileMetaChunks": "{count} chunks",
     "toplineLangLabel": "분석 언어",
     "toplineRegenerate": "보고서 다시 생성",

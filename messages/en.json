@@ -2423,6 +2423,7 @@
     "fileMetaIndexingStart": "Processing",
     "fileMetaQueue": "Waiting",
     "fileMetaFail": "Parse failed · retry",
+    "fileMetaIndexFail": "{done}/{total} chunks · indexing failed, retry",
     "fileMetaChunks": "{count} chunks",
     "toplineLangLabel": "Analysis language",
     "toplineRegenerate": "Regenerate report",

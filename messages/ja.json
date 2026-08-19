@@ -2423,6 +2423,7 @@
     "fileMetaIndexingStart": "処理中",
     "fileMetaQueue": "待機中",
     "fileMetaFail": "解析失敗 · 再試行",
+    "fileMetaIndexFail": "{done}/{total} chunks · インデックス失敗、再試行",
     "fileMetaChunks": "{count} chunks",
     "toplineLangLabel": "分析言語",
     "toplineRegenerate": "レポートを再生成する",
