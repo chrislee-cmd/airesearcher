@@ -20,6 +20,11 @@
       "label": "Tab / system audio",
       "hint": "The meter moves when the shared tab plays sound.",
       "muted": "No tab audio detected. “Share tab audio” may be off, or the meeting was opened in a native app.",
+      "troubleTitle": "No tab audio detected — check these two things",
+      "trouble1Title": "① Join in the browser, not the app",
+      "trouble1Body": "Zoom/Teams desktop apps have no tab audio. When opening the meeting link, choose “Continue in browser.”",
+      "trouble2Title": "② Turn on “Also share tab audio”",
+      "trouble2Body": "In the share window, turn on the “Also share tab audio (share system audio)” toggle at the bottom, then share again.",
       "retry": "Share again",
       "testSound": "🔊 Test sound"
     },

@@ -243,20 +243,60 @@ export function AudioCheckStep({
 
       {/* 탭·시스템 오디오 소스 */}
       {!preShare && state.tabActive && (
-        <div className="flex flex-col gap-2 rounded-sm border border-line bg-paper p-3">
+        <div className="flex flex-col gap-3 rounded-sm border border-line bg-paper p-3">
           <MeterRow
             label={t('tab.label')}
             level={state.tabLevel}
             verified={state.tabVerified}
             hint={tabMuted ? t('tab.muted') : t('tab.hint')}
           />
+
+          {/* 무음일 때 — 두 핵심 실패 원인을 시각적으로 강조(네이티브 앱 / 탭 오디오
+              토글). 정적 스크린샷 대신, 게이트 안에서 바로 고칠 수 있게 강조 안내. */}
+          {tabMuted && (
+            <div className="flex flex-col gap-2.5 rounded-xs border-2 border-warning bg-warning-bg p-3">
+              <p className="flex items-center gap-2 text-sm font-bold text-warning">
+                <span aria-hidden className="text-lg leading-none">
+                  ⚠️
+                </span>
+                {t('tab.troubleTitle')}
+              </p>
+              <div className="flex items-start gap-2.5 rounded-xs border border-warning-line bg-paper p-2.5">
+                <span aria-hidden className="shrink-0 text-xl leading-none">
+                  🌐
+                </span>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-sm font-bold text-ink">
+                    {t('tab.trouble1Title')}
+                  </p>
+                  <p className="text-xs leading-snug text-mute">
+                    {t('tab.trouble1Body')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2.5 rounded-xs border border-warning-line bg-paper p-2.5">
+                <span aria-hidden className="shrink-0 text-xl leading-none">
+                  🔊
+                </span>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-sm font-bold text-ink">
+                    {t('tab.trouble2Title')}
+                  </p>
+                  <p className="text-xs leading-snug text-mute">
+                    {t('tab.trouble2Body')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" onClick={playTestSound}>
               {t('tab.testSound')}
             </Button>
             {tabMuted && retryTab && (
               <Button
-                variant="ghost"
+                variant="primary"
                 size="sm"
                 disabled={sharing}
                 onClick={() => retryTab()}
