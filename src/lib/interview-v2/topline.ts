@@ -162,6 +162,38 @@ function isDocFullyIndexed(
   return hasChunks;
 }
 
+// PostgREST 는 요청당 기본 **최대 1000행**만 반환한다. `.in('document_id', docIds)`
+// 로 대량 청크를 한 번에 select 하면 앞 1000행만 오고 나머지가 **조용히 드롭**된다
+// (총 청크 1000 초과 = 문서 ~60개↑ 프로젝트에서 41% 유실 — 카드 606 근본원인:
+// 100명 업로드가 코퍼스 59개만 로드돼 N=59 로 축소 생성). 안정 정렬 위에서
+// `.range()` 로 마지막 페이지(page size 미만 반환)까지 수집해 **전수**를 보장한다.
+const CHUNK_FETCH_PAGE_SIZE = 1000;
+
+/**
+ * PostgREST 1000행 캡을 넘겨 전 페이지를 수집하는 페이지네이션 헬퍼. makePage 는
+ * (from, to) 를 받아 `.range(from, to)` 가 걸린 쿼리 빌더를 돌려준다 — 안정 정렬
+ * (예: document_id, id)이 페이지 경계를 확정하므로 호출측이 `.order()` 를 반드시
+ * 건다. page size 미만이 오면 마지막 페이지로 보고 종료(정확히 배수면 빈 페이지
+ * 1회 더 돈다). 에러는 label 로 감싸 던진다.
+ */
+async function fetchAllChunkPages<T>(
+  makePage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  label: string,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += CHUNK_FETCH_PAGE_SIZE) {
+    const { data, error } = await makePage(from, from + CHUNK_FETCH_PAGE_SIZE - 1);
+    if (error) throw new Error(`${label}: ${error.message}`);
+    const batch = data ?? [];
+    out.push(...batch);
+    if (batch.length < CHUNK_FETCH_PAGE_SIZE) break;
+  }
+  return out;
+}
+
 /**
  * 프로젝트 문서 셋의 해시(캐시 키) + 문서/청크 카운트.
  *
@@ -214,14 +246,23 @@ export async function computeProjectCorpus(
   // 차단하고, 사용자에게 "① 완료 대기 ② 지금 M개로 생성" 선택을 띄운다(§제약).
   let indexedDocCount = 0;
   if ((count ?? 0) > 0) {
-    const { data: chunkDocRows, error: cdErr } = await admin
-      .from('interview_chunks')
-      .select('document_id')
-      .eq('org_id', orgId)
-      .in('document_id', docIds);
-    if (cdErr) throw new Error(`computeProjectCorpus chunk docs: ${cdErr.message}`);
+    // 전수 페이지네이션 — 1000행 캡에 걸리면 뒷 문서들의 청크가 안 와서
+    // indexedDocCount 가 저평가되고, 생성 게이트(route)가 완전 인덱싱된 코퍼스를
+    // "부분"으로 오판한다. document_id, id 안정 정렬로 전 페이지를 모은다.
+    const chunkDocRows = await fetchAllChunkPages<{ document_id: string }>(
+      (from, to) =>
+        admin
+          .from('interview_chunks')
+          .select('document_id')
+          .eq('org_id', orgId)
+          .in('document_id', docIds)
+          .order('document_id', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      'computeProjectCorpus chunk docs',
+    );
     const withChunks = new Set(
-      (chunkDocRows ?? []).map((r) => String(r.document_id)),
+      chunkDocRows.map((r) => String(r.document_id)),
     );
     indexedDocCount = (docs ?? []).filter((d) =>
       isDocFullyIndexed(d, withChunks.has(String(d.id))),
@@ -253,17 +294,29 @@ export async function fetchDocumentsWithChunks(
   if (!docs || docs.length === 0) return [];
 
   const docIds = docs.map((d) => d.id);
-  const { data: rows, error: chunkErr } = await admin
-    .from('interview_chunks')
-    .select('id, document_id, content')
-    .eq('org_id', orgId)
-    .in('document_id', docIds)
-    .order('document_id', { ascending: true })
-    .order('id', { ascending: true });
-  if (chunkErr) throw new Error(`fetchDocumentsWithChunks chunks: ${chunkErr.message}`);
+  // 전수 페이지네이션 — 1000행 캡을 넘겨 **모든 청크**를 수집한다. 예전엔 앞
+  // 1000행(≈문서 59개분)만 와서 뒤 ~41% 문서가 chunksByDoc 에 안 들어와 아래
+  // `chunks.length === 0 → continue` 로 조용히 드롭됐다(카드 606 근본원인).
+  // document_id, id 안정 정렬로 페이지 경계를 확정한다.
+  const rows = await fetchAllChunkPages<{
+    id: string;
+    document_id: string;
+    content: string;
+  }>(
+    (from, to) =>
+      admin
+        .from('interview_chunks')
+        .select('id, document_id, content')
+        .eq('org_id', orgId)
+        .in('document_id', docIds)
+        .order('document_id', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'fetchDocumentsWithChunks chunks',
+  );
 
   const chunksByDoc = new Map<string, ToplineChunk[]>();
-  for (const r of rows ?? []) {
+  for (const r of rows) {
     const docId = String(r.document_id);
     const chunk: ToplineChunk = {
       chunk_id: String(r.id),
@@ -274,6 +327,19 @@ export async function fetchDocumentsWithChunks(
     const arr = chunksByDoc.get(docId);
     if (arr) arr.push(chunk);
     else chunksByDoc.set(docId, [chunk]);
+  }
+
+  // 부분 로드 감지(카드 606 방어) — 이미 청크를 산출한(processed_chunks>0) 문서는
+  // 반드시 chunksByDoc 에 나타나야 한다. 그런 문서가 통째로 빠졌다면 과거 1000행
+  // 캡 같은 **조용한 절단**의 신호다(페이지네이션으로 해소됐지만 재발 시 즉시 드러나게).
+  // processed_chunks 진행정보가 없는 레거시 문서는 오탐 방지를 위해 대조에서 제외.
+  const expectedWithChunks = docs.filter(
+    (d) => Number(d.processed_chunks ?? 0) > 0,
+  ).length;
+  if (chunksByDoc.size < expectedWithChunks) {
+    console.error(
+      `[v2/topline] fetchDocumentsWithChunks partial load — loaded chunks for ${chunksByDoc.size}/${expectedWithChunks} doc(s) known to have chunks; possible silent truncation (rows=${rows.length})`,
+    );
   }
 
   const out: ToplineDocument[] = [];
@@ -424,13 +490,20 @@ export async function getProjectChunkIds(
   const docIds = (docs ?? []).map((d) => d.id);
   if (docIds.length === 0) return new Set();
 
-  const { data: rows, error: chunkErr } = await admin
-    .from('interview_chunks')
-    .select('id')
-    .eq('org_id', orgId)
-    .in('document_id', docIds);
-  if (chunkErr) throw new Error(`getProjectChunkIds chunks: ${chunkErr.message}`);
-  return new Set((rows ?? []).map((r) => String(r.id)));
+  // 전수 페이지네이션 — 캡에 걸리면 뒷 문서 chunk_id 가 빠져 유효 citation 이
+  // 무효로 오판돼 drop 될 수 있다. id 안정 정렬로 전 페이지를 모은다.
+  const rows = await fetchAllChunkPages<{ id: string }>(
+    (from, to) =>
+      admin
+        .from('interview_chunks')
+        .select('id')
+        .eq('org_id', orgId)
+        .in('document_id', docIds)
+        .order('id', { ascending: true })
+        .range(from, to),
+    'getProjectChunkIds chunks',
+  );
+  return new Set(rows.map((r) => String(r.id)));
 }
 
 /**
@@ -547,13 +620,25 @@ export async function getCitationSources(
   const out = new Map<string, { filename: string; excerpt: string }>();
   if (ids.length === 0) return out;
 
-  const { data: chunks, error: chunkErr } = await admin
-    .from('interview_chunks')
-    .select('id, document_id, content')
-    .eq('org_id', orgId)
-    .in('id', ids);
-  if (chunkErr) throw new Error(`getCitationSources chunks: ${chunkErr.message}`);
-  if (!chunks || chunks.length === 0) return out;
+  // 전수 페이지네이션 — 대형 보고서는 인용 chunk_id 가 1000 초과일 수 있어, 캡에
+  // 걸리면 일부 출처가 해석 안 돼 export/공유에서 "근거: 문서명" 이 누락된다.
+  // id 안정 정렬로 전 페이지를 모은다.
+  const chunks = await fetchAllChunkPages<{
+    id: string;
+    document_id: string;
+    content: string;
+  }>(
+    (from, to) =>
+      admin
+        .from('interview_chunks')
+        .select('id, document_id, content')
+        .eq('org_id', orgId)
+        .in('id', ids)
+        .order('id', { ascending: true })
+        .range(from, to),
+    'getCitationSources chunks',
+  );
+  if (chunks.length === 0) return out;
 
   const docIds = Array.from(new Set(chunks.map((c) => String(c.document_id))));
   const { data: docs, error: docErr } = await admin
