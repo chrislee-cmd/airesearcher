@@ -91,6 +91,7 @@ function sourceLineMd(
 ): string | null {
   const names = citedFilenames(citations, sources);
   if (names.length === 0) return null;
+  // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
   return `_근거: ${names.join(', ')}_`;
 }
 
@@ -178,7 +179,9 @@ function blockToMarkdown(
   }
 
   if (block.type === 'inserted_section') {
+    // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
     const parts: string[] = ['**✚ 삽입 섹션**'];
+    // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
     if (block.prompt?.trim()) parts.push(`_지시: "${block.prompt.trim()}"_`);
     if (block.md?.trim()) parts.push(strip(block.md).trim());
     return withSrc(parts.join('\n\n'));
@@ -197,7 +200,9 @@ export function toplineBlocksToMarkdown(
   opts: ToplineTextOptions,
 ): string {
   const { projectName, generatedAt, sources } = opts;
+  // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
   const title = projectName?.trim() || '탑라인 보고서';
+  // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
   const head = `# ${title}\n\n_생성일 ${formatDate(generatedAt)}_`;
   const body = blocks
     .map((b) => blockToMarkdown(b, sources))
@@ -264,6 +269,7 @@ function blockToPlainText(
   const citedIds = new Set((citations ?? []).map((c) => String(c).trim()));
   const strip = (s: string) => stripInlineCitations(s, citedIds);
   const names = citedFilenames(citations, sources);
+  // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
   const srcLine = names.length ? `근거: ${names.join(', ')}` : null;
   const withSrc = (lines: string[]) =>
     (srcLine ? [...lines, '', srcLine] : lines).join('\n');
@@ -327,7 +333,9 @@ function blockToPlainText(
   }
 
   if (block.type === 'inserted_section') {
+    // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
     const lines: string[] = ['✚ 삽입 섹션'];
+    // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
     if (block.prompt?.trim()) lines.push(`지시: "${block.prompt.trim()}"`);
     if (block.md?.trim()) lines.push(...proseToPlain(strip(block.md)));
     return withSrc(lines);
@@ -346,7 +354,9 @@ export function toplineBlocksToPlainText(
   opts: ToplineTextOptions,
 ): string {
   const { projectName, generatedAt, sources } = opts;
+  // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
   const title = projectName?.trim() || '탑라인 보고서';
+  // i18n-allow-korean -- 탑라인 export 문서 렌더 라벨; topline-docx 와 동일 고정 한국어 패턴
   const head = `${title}\n${'='.repeat(Math.max(title.length, 1))}\n생성일 ${formatDate(generatedAt)}`;
   const body = blocks
     .map((b) => blockToPlainText(b, sources))
