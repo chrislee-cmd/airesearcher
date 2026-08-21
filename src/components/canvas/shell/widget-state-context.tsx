@@ -54,11 +54,7 @@ const WidgetStatesMapContext = createContext<WidgetStatesMapApi | null>(null);
 function statesShallowEqual(a: WidgetStateInfo, b: WidgetStateInfo): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'running' && b.kind === 'running') {
-    return (
-      a.progress === b.progress &&
-      a.label === b.label &&
-      a.overallProgress === b.overallProgress
-    );
+    return a.progress === b.progress && a.label === b.label;
   }
   if (a.kind === 'error' && b.kind === 'error') {
     return a.message === b.message;
