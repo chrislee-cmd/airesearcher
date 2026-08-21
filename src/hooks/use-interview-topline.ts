@@ -55,6 +55,9 @@ export type ToplineState = {
   // 산출물 출처 — 'uploaded'(편집전용 외부 보고서) | 'generated'/null(풀
   // 파이프라인). 재생성 덮어쓰기 경고를 업로드 보고서일 때만 노출하는 데 쓴다.
   source: string | null;
+  // 현재 프로젝트 분석 가이드라인 파일명 — 카드 배지. null = 가이드 없음,
+  // '' = 파일명 미상. 생성은 이 가이드를 최우선 기준으로 따른다.
+  guidelineFilename: string | null;
   // 초기 GET 로딩 중.
   loading: boolean;
   // GET/POST 자체가 실패(네트워크/서버).
@@ -420,6 +423,7 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
     savedLang: data?.output_lang ?? null,
     savedDirection: data?.user_direction ?? null,
     source: data?.source ?? null,
+    guidelineFilename: data?.guideline_filename ?? null,
     loading,
     fetchError,
     generating,

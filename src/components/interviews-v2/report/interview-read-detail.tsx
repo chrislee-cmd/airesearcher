@@ -33,7 +33,7 @@ import { FullviewProjectPill } from '@/components/canvas/fullview/fullview-heade
 import { DuotoneIcon, type DuotoneIconName } from '@/components/ui/icons/duotone-icon';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
-import { useToplineImport } from '@/hooks/use-topline-import';
+import { useToplineGuideline } from '@/hooks/use-topline-guideline';
 import { isToplineHardBillingMessage } from '@/lib/interview-v2/types';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { UploadModal } from '../upload-modal';
@@ -233,6 +233,7 @@ export function InterviewReadDetail({
     savedLang,
     savedDirection,
     source,
+    guidelineFilename,
     generatedAt,
     errorMessage,
     applyBlockMd,
@@ -332,26 +333,37 @@ export function InterviewReadDetail({
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [highlightDocId, collapsed]);
 
-  // 업로드(자체 보고서) — 편집전용 진입. 파일 피커 hidden input.
+  // 분석 가이드라인 업로드 — 업로드 문서를 **생성이 따라야 할 기준**으로 저장한다
+  // (결과물 아님). 파일 피커 hidden input 과 짝. 저장 후 refetch 로 배지/stale 갱신.
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const importReport = useToplineImport({
+  const guideline = useToplineGuideline({
     projectId,
-    onImported: async () => {
-      await refetch();
-      toast.push(t('toplineImported'), { tone: 'amore' });
-    },
+    onChanged: refetch,
     onError: (code) =>
       toast.push(
         code === 'empty_report'
-          ? t('toplineImportEmpty')
+          ? t('toplineGuidelineEmpty')
           : code === 'unsupported_file_type'
-            ? t('toplineImportUnsupported')
+            ? t('toplineGuidelineUnsupported')
             : code === 'file_too_large'
-              ? t('toplineImportTooLarge')
-              : `${t('toplineImportError')} (${code})`,
+              ? t('toplineGuidelineTooLarge')
+              : `${t('toplineGuidelineError')} (${code})`,
         { tone: 'warn' },
       ),
   });
+  const handleGuidelineFile = (file: File | undefined) => {
+    if (!file) return;
+    void (async () => {
+      const ok = await guideline.uploadFile(file);
+      if (ok) toast.push(t('toplineGuidelineSaved'), { tone: 'amore' });
+    })();
+  };
+  const handleDeleteGuideline = () => {
+    void (async () => {
+      const ok = await guideline.deleteGuideline();
+      if (ok) toast.push(t('toplineGuidelineDeleted'), { tone: 'amore' });
+    })();
+  };
 
   // Word 다운로드 — attachment GET(쿠키 포함 네비게이션). 즉시 다운로드라 busy
   // 없이 done 표시(4초 뒤 idle).
@@ -566,7 +578,11 @@ export function InterviewReadDetail({
         onLangChange={setOutputLang}
         onGenerate={() => void generate(false, outputLang)}
         onUpload={() => fileInputRef.current?.click()}
-        uploading={importReport.importing}
+        uploading={guideline.uploading}
+        guidelineFilename={guidelineFilename}
+        deletingGuideline={guideline.deleting}
+        onReplaceGuideline={() => fileInputRef.current?.click()}
+        onDeleteGuideline={handleDeleteGuideline}
         canGenerate={canGenerate}
         indexed={indexed}
         isError={status === 'error'}
@@ -582,7 +598,7 @@ export function InterviewReadDetail({
     <CitationResolveProvider projectId={projectId}>
       <CitationBackrefProvider value={backref}>
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* 숨은 파일 피커 — 자체 보고서 업로드(편집전용 진입). */}
+        {/* 숨은 파일 피커 — 분석 가이드라인 업로드(생성 기준 문서). */}
         {/* eslint-disable-next-line react/forbid-elements -- 숨은 파일 선택 input; 가시 컨트롤은 <Button>(ReportEmpty), 파일 피커 primitive 미존재(topline-view 선례) */}
         <input
           ref={fileInputRef}
@@ -590,8 +606,7 @@ export function InterviewReadDetail({
           accept=".md,.markdown,.txt,.docx,.pdf,.html,.htm,text/markdown,text/plain,text/html,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="hidden"
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void importReport.importFile(f);
+            handleGuidelineFile(e.target.files?.[0]);
             e.target.value = '';
           }}
         />

@@ -193,6 +193,10 @@ export type ToplineReadResult = {
   // 풀 파이프라인 생성물. 클라가 재생성 시 업로드 보고서 덮어쓰기 경고를 띄우는
   // 판단 근거. null = 레거시/미생성(생성으로 취급).
   source: string | null;
+  // 현재 프로젝트 분석 가이드라인 파일명 — 카드 배지("분석 가이드라인: <filename>").
+  // null = 가이드 없음. '' = 가이드 있으나 파일명 미상. 생성은 이 가이드를 최우선
+  // 기준으로 따른다(runTopline reduce 주입).
+  guideline_filename: string | null;
   // map-reduce 진행률(전 문서 순회) — generating 중 "N/M 문서 분석". map_total 이
   // null 이면 진행률 미노출(레거시 또는 아직 map 시작 전).
   map_total: number | null;

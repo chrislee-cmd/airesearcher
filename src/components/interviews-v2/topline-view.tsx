@@ -48,12 +48,13 @@ import {
   type PendingQa,
 } from '@/hooks/use-topline-drag-to-ask';
 import { useToplineEdit } from '@/hooks/use-topline-edit';
-import { useToplineImport } from '@/hooks/use-topline-import';
+import { useToplineGuideline } from '@/hooks/use-topline-guideline';
 import {
   useToplineSectionInsert,
   type PendingSection,
 } from '@/hooks/use-topline-section-insert';
 import { useToplineSelection, ToplineAskPopup } from './topline-selection';
+import { ToplineGuidelineBadge } from './topline-guideline-badge';
 
 // 인터뷰 탑라인 보고서 — 우측 패널 탭1. interview_toplines.blocks 를 보고서
 // 톤으로 렌더한다. 각 블록은 data-block-id 를 노출해 후속 drag-to-ask 가
@@ -458,6 +459,7 @@ export function ToplineView({ projectId }: { projectId: string }) {
     savedLang,
     savedDirection,
     source,
+    guidelineFilename,
     errorMessage,
   } = useInterviewTopline(projectId);
 
@@ -531,25 +533,22 @@ export function ToplineView({ projectId }: { projectId: string }) {
   // null = 열린 패널 없음.
   const [openGapKey, setOpenGapKey] = useState<string | null>(null);
 
-  // 편집전용 모드 — 외부 보고서(Markdown) 업로드 → md→blocks 파싱·저장 후 편집
-  // 모드로 진입. 진입 2버튼("자체 보고서 업로드")과 숨은 file input 이 짝을 이룬다.
+  // 분석 가이드라인 업로드 — 외부 문서(md/docx/pdf/html)를 **생성이 따라야 할 기준
+  // 문서**로 저장한다(blocks 파싱·표시 아님 — 결과물이 아니라 가이드). 저장 후
+  // refetch 로 배지/stale 을 갱신한다. 업로드 버튼/교체와 숨은 file input 이 짝.
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const importReport = useToplineImport({
+  const guideline = useToplineGuideline({
     projectId,
-    onImported: async () => {
-      // 저장된 보고서를 다시 읽어 편집 모드로 열고 성공을 알린다.
-      await refetch();
-      toast.push(t('toplineImported'), { tone: 'amore' });
-    },
+    onChanged: refetch,
     onError: (code) =>
       toast.push(
         code === 'empty_report'
-          ? t('toplineImportEmpty')
+          ? t('toplineGuidelineEmpty')
           : code === 'unsupported_file_type'
-            ? t('toplineImportUnsupported')
+            ? t('toplineGuidelineUnsupported')
             : code === 'file_too_large'
-              ? t('toplineImportTooLarge')
-              : `${t('toplineImportError')} (${code})`,
+              ? t('toplineGuidelineTooLarge')
+              : `${t('toplineGuidelineError')} (${code})`,
         { tone: 'warn' },
       ),
   });
@@ -557,9 +556,19 @@ export function ToplineView({ projectId }: { projectId: string }) {
   const handleReportFile = (file: File | undefined) => {
     if (!file) return;
     void (async () => {
-      await importReport.importFile(file);
+      // 성공 시에만 저장 토스트(실패는 hook onError 가 안내). 반환 boolean 으로 분기.
+      const ok = await guideline.uploadFile(file);
+      if (ok) toast.push(t('toplineGuidelineSaved'), { tone: 'amore' });
     })();
   };
+  const handleDeleteGuideline = () => {
+    void (async () => {
+      const ok = await guideline.deleteGuideline();
+      if (ok) toast.push(t('toplineGuidelineDeleted'), { tone: 'amore' });
+    })();
+  };
+  // 가이드 존재 여부 — null 이면 없음. 배지/CTA 분기에 쓴다.
+  const hasGuideline = guidelineFilename !== null;
 
   // 팝업 "편집" 액션 가용성 — 선택 블록이 텍스트 블록일 때만(table/chart/pie 제외).
   const selectionBlock = selection
@@ -776,6 +785,35 @@ export function ToplineView({ projectId }: { projectId: string }) {
         </div>
       )}
 
+      {/* 가이드라인 스트립 — 보고서가 있을 때 현재 분석 가이드(있으면 배지+교체/삭제,
+          없으면 업로드 CTA)를 노출한다. 생성은 이 가이드를 최우선 기준으로 따르므로
+          재생성 전에 여기서 가이드를 얹거나 바꿀 수 있다. */}
+      {hasBlocks && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line-soft px-6 py-2">
+          {hasGuideline ? (
+            <ToplineGuidelineBadge
+              filename={guidelineFilename ?? ''}
+              uploading={guideline.uploading}
+              deleting={guideline.deleting}
+              onReplace={openReportPicker}
+              onDelete={handleDeleteGuideline}
+            />
+          ) : (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={openReportPicker}
+              disabled={guideline.uploading}
+              title={t('toplineUploadCta')}
+            >
+              {guideline.uploading
+                ? `⏳ ${t('toplineGuidelineUploading')}`
+                : `⬆ ${t('toplineUploadCta')}`}
+            </Button>
+          )}
+        </div>
+      )}
+
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         {loading ? (
           <GeneratingSkeleton />
@@ -947,17 +985,29 @@ export function ToplineView({ projectId }: { projectId: string }) {
                   variant="secondary"
                   size="sm"
                   onClick={openReportPicker}
-                  disabled={importReport.importing}
+                  disabled={guideline.uploading}
                 >
-                  {importReport.importing
-                    ? `⏳ ${t('toplineImporting')}`
+                  {guideline.uploading
+                    ? `⏳ ${t('toplineGuidelineUploading')}`
                     : `⬆ ${t('toplineUploadCta')}`}
                 </Button>
               </div>
-              {/* 편집전용 모드 안내 — 업로드는 생성을 건너뛰고 편집만 함을 명시. */}
+              {/* 가이드 업로드 안내 — 업로드 문서가 생성 기준이 됨을 명시(결과물 아님). */}
               <p className="mx-auto mt-3 max-w-[380px] text-xs-soft text-mute-soft">
                 {t('toplineUploadModeHint')}
               </p>
+              {/* 가이드가 이미 있으면 배지 + 교체/삭제 — 생성이 이 기준을 따름을 표시. */}
+              {hasGuideline && (
+                <div className="mx-auto mt-4 max-w-[420px]">
+                  <ToplineGuidelineBadge
+                    filename={guidelineFilename ?? ''}
+                    uploading={guideline.uploading}
+                    deleting={guideline.deleting}
+                    onReplace={openReportPicker}
+                    onDelete={handleDeleteGuideline}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
