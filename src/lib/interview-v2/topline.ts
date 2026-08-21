@@ -53,6 +53,10 @@ import {
   formatTallyForReduce,
 } from '@/lib/interview-v2/topline-tally';
 import {
+  getProjectGuideline,
+  GUIDELINE_PROMPT_MAX_CHARS,
+} from '@/lib/interview-v2/topline-guideline';
+import {
   isEditableToplineBlockType,
   isToplineHardFaultMessage,
   type ToplineBlock as ClientToplineBlock,
@@ -87,6 +91,10 @@ export type InterviewToplineRow = {
   // 'uploaded' = 편집전용 외부 보고서 업로드(Opus 호출 없이 md→blocks 파싱).
   // 재생성 UI 가 업로드 보고서 덮어쓰기 경고를 띄우는 판단 근거.
   source: string | null;
+  // 이 보고서 생성 시 유효했던 분석 가이드라인의 해시. null = 가이드 없이 생성/
+  // 레거시. dedup(route POST)이 현재 가이드 해시와 비교해 다르면 재생성한다 —
+  // content_hash·output_lang·user_direction 과 함께 캐시 키를 이룬다.
+  guideline_hash: string | null;
   blocks: ToplineBlock[];
   // 'cancelled' = 사용자 강제종료(terminal). 재개 경로(resume/self-heal/cron)는
   // 'generating' 만 재kick 하므로 취소 후 되살아나지 않는다.
@@ -749,9 +757,13 @@ export async function upsertGenerating(
     hash: string;
     outputLang?: string;
     userDirection?: string;
+    // 이번 생성 시점의 가이드라인 해시(캐시 키). 가이드 없으면 null. dedup 이
+    // 현재 가이드 해시와 비교하도록 row 에 저장한다.
+    guidelineHash?: string | null;
   },
 ): Promise<string> {
-  const { orgId, projectId, hash, outputLang, userDirection } = opts;
+  const { orgId, projectId, hash, outputLang, userDirection, guidelineHash } =
+    opts;
   const { data, error } = await admin
     .from('interview_toplines')
     .upsert(
@@ -768,6 +780,8 @@ export async function upsertGenerating(
         // 생성 경로임을 명시 — 업로드(uploaded) 보고서를 재생성하면 이 upsert 를
         // 타므로 source 가 다시 'generated' 로 뒤집혀 마커가 정확히 유지된다.
         source: 'generated',
+        // 이번 생성이 따른 가이드라인 해시 — dedup 캐시 키. 가이드 없으면 null.
+        guideline_hash: guidelineHash ?? null,
         status: 'generating',
         error_message: null,
         model: TOPLINE_MODEL,
@@ -828,9 +842,10 @@ export async function upsertImported(
         // Opus 미호출 — 생성 모델 없음. 업로드 보고서임을 감사 로그에서 구분.
         model: null,
         generated_at: new Date().toISOString(),
-        // 생성 전용 필드 리셋 — 업로드는 언어/방향/map-reduce 진행률과 무관.
+        // 생성 전용 필드 리셋 — 업로드는 언어/방향/가이드/map-reduce 진행률과 무관.
         output_lang: null,
         user_direction: null,
+        guideline_hash: null,
         map_total: null,
         map_done: 0,
         phase: null,
@@ -1679,6 +1694,30 @@ export async function runTopline(
     const tallyEvidence = formatTallyForReduce(tally);
     const tallyInjection = `\n\n## 사전집계 표 (결정적 — 코드가 산출, 재계산 금지)\n아래 표의 수치는 서버가 전 응답자 추출을 **코드로 카운트**한 확정값입니다. 표를 만들 때 이 수치를 **그대로 인용**하세요 — 직접 다시 세거나 반올림·추정하지 마세요(눈대중 카운트 금지). 세그먼트 크로스탭·분모 n·소그룹 경고·비보조/보조·단일/복수 라벨을 그대로 보존해 정량 표 블록으로 옮기고, 앞뒤 서술로 "그래서 무엇을 뜻하는지"를 해석합니다.\n\n${tallyEvidence}`;
 
+    // ── 분석 가이드라인(있으면) — reduce system prompt 최우선 주입 ──
+    // 프로젝트에 지속되는 가이드 문서를 reduce 직전에 fresh 로 읽는다(초기·재개
+    // 홉 모두 여기서 조회 — resume route 는 row 만 복원하므로 가이드는 이 경로가
+    // SSOT). 대용량 가이드는 토큰 예산으로 절단하고 절단 시 생략을 고지한다.
+    // 가이드는 구조·관점만 조종하고 근거 밖 생성은 못 덮는다(clause 가 재확인).
+    let guidelineMd: string | undefined;
+    try {
+      const guideline = await getProjectGuideline(admin, orgId, projectId);
+      if (guideline?.guideline_md.trim()) {
+        const raw = guideline.guideline_md.trim();
+        guidelineMd =
+          raw.length > GUIDELINE_PROMPT_MAX_CHARS
+            ? `${raw.slice(0, GUIDELINE_PROMPT_MAX_CHARS)}\n\n[…가이드라인이 길어 이하 생략됨 — 위 내용까지만 반영…]`
+            : raw;
+        console.log(`${tag} guideline injected`, {
+          chars: guidelineMd.length,
+          truncated: raw.length > GUIDELINE_PROMPT_MAX_CHARS,
+        });
+      }
+    } catch (e) {
+      // 가이드 조회 실패는 치명적이지 않다 — 가이드 없이 생성 진행(회귀 안전).
+      console.warn(`${tag} guideline fetch failed — proceeding without`, e);
+    }
+
     // ── REDUCE abort 가드 (레버 2) — 300s 벽 앞에서 스스로 중단 ──
     // 이 fresh 홉의 하드 예산(HOP_HARD_BUDGET_MS)에서 SAFETY_MARGIN 만큼 앞서
     // abort → 이미 throttle flush 된 부분 블록을 남긴 채 다음 fresh 홉으로 재개.
@@ -1694,7 +1733,7 @@ export async function runTopline(
     const stream = streamObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
-      system: `${buildToplineSystem(outputLang, userDirection)}${TOPLINE_REDUCE_NOTICE}${tallyInjection}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}${rawInjection}`,
+      system: `${buildToplineSystem(outputLang, userDirection, guidelineMd)}${TOPLINE_REDUCE_NOTICE}${tallyInjection}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}${rawInjection}`,
       prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출 + 서버가 코드로 카운트한 **사전집계 표**입니다. 이를 종합해 **손으로 쓴 깊은 분석 보고서 수준의 분량·계층**을 갖춘 탑라인 보고서를 블록 배열로 작성하세요. **맨 첫 블록은 executive_summary(리치 요약 문단 4~6문장 + 핵심 포인트 3~5, 세그먼트가 둘 이상이면 세그먼트별 한 줄 테제 포함)** 로 시작하고, 이어서 응답자 프로필 → 핵심 요약 → **코퍼스에서 도출한 주제별 섹션들을 소비자 의사결정 여정(계기·발생 → 문제·고통 → 현재 행동 → 판단 근거 → 정보·신뢰 → 선택·가격 → 이상·트레이드오프) 순서로 근거가 허용하는 만큼 많이** → 교차분석 인사이트 → 시사점 순으로 전개합니다. 각 부(heading)는 절(subheading)을 여러 개 두어 3단 깊이로 파고들고, 각 절은 현황 분포 → 세그먼트 차 → 왜(이유) → 예외/반례 → 대표 인용 → 함의 한 줄로 다각도 전개하며, **절 제목은 핵심 수치를 박은 발견 문장**으로 답니다. 주장 뒤에 quote 를 문맥 중간에 삽입하고 table + chart/pie 를 유기적으로 배치합니다. **표의 집계 수치는 위 "사전집계 표"에서 그대로 인용**하고(직접 세거나 추정 금지), 사전집계에 없는 서술 수치는 만들지 마세요. 각 테마 섹션은 사전집계에 해당 데이터가 있으면 **정량 표를 1개 이상** 포함하고, 세그먼트 차이(%p)·"전체 평균의 함정"을 살리며, **수치를 낸 절은 반드시 "그래서 무엇을 뜻하나" 함의 한 줄로 닫습니다**(숫자만 있는 절 금지). 강제선택·양자택일 문항이 있으면 트레이드오프 종합 섹션을 별도로 둡니다. 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
       temperature: 0.3,
       // 긴 보고서(다수 섹션 + 서브헤더 + 사전집계 기반 표 다수)라 출력 예산을

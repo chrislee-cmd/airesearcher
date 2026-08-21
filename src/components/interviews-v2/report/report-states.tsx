@@ -24,6 +24,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { ToplineGuidelineBadge } from '@/components/interviews-v2/topline-guideline-badge';
 
 // ── 배너 ────────────────────────────────────────────────────────────
 
@@ -218,6 +219,10 @@ export function ReportEmpty({
   onGenerate,
   onUpload,
   uploading,
+  guidelineFilename,
+  deletingGuideline,
+  onReplaceGuideline,
+  onDeleteGuideline,
   canGenerate,
   indexed,
   isError,
@@ -229,6 +234,11 @@ export function ReportEmpty({
   onGenerate: () => void;
   onUpload: () => void;
   uploading: boolean;
+  // 현재 분석 가이드라인 파일명 — null = 없음, '' = 파일명 미상. 있으면 배지 노출.
+  guidelineFilename: string | null;
+  deletingGuideline: boolean;
+  onReplaceGuideline: () => void;
+  onDeleteGuideline: () => void;
   canGenerate: boolean;
   indexed: boolean;
   // error 종결 상태면 문구를 오류 안내로.
@@ -304,9 +314,21 @@ export function ReportEmpty({
                 disabled={uploading}
                 leftIcon={<DuotoneIcon name="download" size={15} />}
               >
-                {uploading ? t('toplineImporting') : t('toplineUploadCta')}
+                {uploading
+                  ? t('toplineGuidelineUploading')
+                  : t('toplineUploadCta')}
               </Button>
             </div>
+            {/* 가이드가 이미 있으면 배지 + 교체/삭제 — 생성이 이 기준을 따름을 표시. */}
+            {guidelineFilename !== null && (
+              <ToplineGuidelineBadge
+                filename={guidelineFilename}
+                uploading={uploading}
+                deleting={deletingGuideline}
+                onReplace={onReplaceGuideline}
+                onDelete={onDeleteGuideline}
+              />
+            )}
             <p className="text-sm leading-[1.55] text-mute-soft">
               {t('reportEmptyFootnote')}
             </p>

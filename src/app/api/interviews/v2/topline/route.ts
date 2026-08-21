@@ -17,6 +17,7 @@ import {
   TOPLINE_DEFAULT_LANG,
   TOPLINE_DIRECTION_MAX,
 } from '@/lib/interview-v2/topline-prompt';
+import { getProjectGuideline } from '@/lib/interview-v2/topline-guideline';
 import { isToplineGeneratingStale } from '@/lib/interview-v2/types';
 import { resolveOutputLang } from '@/lib/i18n/output-language';
 import { readRequestLocale } from '@/lib/i18n/request-locale';
@@ -108,6 +109,16 @@ export async function GET(req: Request) {
 
   const existing = await getTopline(admin, projectId);
 
+  // 프로젝트 분석 가이드라인(있으면) — 카드 배지 표시 + stale 판정(가이드가 바뀌면
+  // 저장 보고서를 재생성해야 함). 조회 실패는 치명적이지 않으므로 null 로 진행.
+  let guideline: Awaited<ReturnType<typeof getProjectGuideline>> = null;
+  try {
+    guideline = await getProjectGuideline(admin, org.org_id, projectId);
+  } catch (e) {
+    console.warn('[v2/topline] GET guideline fetch failed', e);
+  }
+  const currentGuidelineHash = guideline?.guideline_hash ?? null;
+
   // stuck 'generating' on-read 정리 (결정 C + 카드 #468) — maxDuration(300s)
   // 타임아웃/크래시나 self-kick 체인 단절로 백그라운드 함수가 죽으면 updated_at
   // 이 정체돼 status 가 영구 'generating' 에 갇힌다(재생성·추가질문 데드락).
@@ -133,9 +144,16 @@ export async function GET(req: Request) {
     // 정리된 값).
     status: readStatus,
     blocks: existing?.blocks ?? [],
-    // 저장 해시와 현재 문서 셋 해시가 다르면 파일이 바뀐 것 = stale.
+    // stale = 파일 셋 해시가 바뀌었거나(코퍼스 변경) **가이드라인이 바뀐 것**
+    // (저장 보고서가 현재 가이드를 안 따름). 둘 중 하나라도 어긋나면 재생성 배너.
     // row 가 없으면 stale 아님(그냥 미생성).
-    stale: existing ? existing.content_hash !== hash : false,
+    stale: existing
+      ? existing.content_hash !== hash ||
+        (existing.guideline_hash ?? null) !== currentGuidelineHash
+      : false,
+    // 현재 분석 가이드라인 파일명 — 카드 배지("분석 가이드라인: <filename>").
+    // null = 가이드 없음. filename 이 null 인 가이드(파일명 미상)면 빈 문자열.
+    guideline_filename: guideline ? guideline.filename ?? '' : null,
     // 마지막 생성에 쓰인 출력 언어 — UI 언어 선택기 초기값. null(레거시/미생성)
     // 이면 클라이언트가 기본(한국어)으로 표시.
     output_lang: existing?.output_lang ?? null,
@@ -224,16 +242,28 @@ export async function POST(req: Request) {
 
   const existing = await getTopline(admin, project_id);
 
-  // 캐시 히트 — 해시 동일 & **언어 동일** & **방향 동일** & 완료 & 강제재생성
-  // 아님 → LLM 0. 언어/방향이 다르면 문서셋이 같아도 재생성(옛 캐시 오반환 방지
-  // — 결정 3). 레거시 row(output_lang=null)는 기본 언어(한국어)로, 방향 없음 row
-  // (user_direction=null)는 null 로 취급 — 양쪽 다 null 이면 방향 없이 매칭.
+  // 프로젝트 분석 가이드라인 해시(있으면) — dedup 캐시 키의 일부. 가이드가 바뀌면
+  // 문서셋·언어·방향이 같아도 재생성한다. 조회 실패는 null(가이드 없음)로 진행.
+  let currentGuidelineHash: string | null = null;
+  try {
+    const guideline = await getProjectGuideline(admin, org.org_id, project_id);
+    currentGuidelineHash = guideline?.guideline_hash ?? null;
+  } catch (e) {
+    console.warn('[v2/topline] POST guideline fetch failed', e);
+  }
+
+  // 캐시 히트 — 해시 동일 & **언어 동일** & **방향 동일** & **가이드 동일** &
+  // 완료 & 강제재생성 아님 → LLM 0. 언어/방향/가이드가 다르면 문서셋이 같아도
+  // 재생성(옛 캐시 오반환 방지 — 결정 3). 레거시 row(output_lang=null)는 기본
+  // 언어(한국어)로, 방향 없음 row(user_direction=null)는 null 로, 가이드 없음
+  // (guideline_hash=null)는 null 로 취급 — 양쪽 null 이면 매칭.
   if (
     !force &&
     existing?.status === 'done' &&
     existing.content_hash === hash &&
     (existing.output_lang ?? TOPLINE_DEFAULT_LANG) === requestLang &&
-    (existing.user_direction ?? null) === requestDirection
+    (existing.user_direction ?? null) === requestDirection &&
+    (existing.guideline_hash ?? null) === currentGuidelineHash
   ) {
     return NextResponse.json({
       topline_id: existing.id,
@@ -297,6 +327,9 @@ export async function POST(req: Request) {
       hash,
       outputLang: requestLang,
       userDirection: requestDirection ?? undefined,
+      // 이번 생성이 따르는 가이드 해시 — dedup 캐시 키로 row 에 저장(가이드 없으면
+      // null). 실제 가이드 md 는 runTopline 이 reduce 직전에 fresh 로 읽는다.
+      guidelineHash: currentGuidelineHash,
     });
   } catch (e) {
     console.error('[v2/topline] upsert failed', e);
