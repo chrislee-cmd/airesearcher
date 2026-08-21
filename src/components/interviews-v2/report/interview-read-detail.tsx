@@ -266,7 +266,8 @@ export function InterviewReadDetail({
   const [regenOpen, setRegenOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   // 내보내기 3상태 — Word · PDF · Gdoc. done 은 4초 뒤 idle 자동 복귀(§S4c).
-  const [wordPhase, setWordPhase] = useState<ExportPhase>('idle');
+  const [txtPhase, setTxtPhase] = useState<ExportPhase>('idle');
+  const [mdPhase, setMdPhase] = useState<ExportPhase>('idle');
   const [pdfPhase, setPdfPhase] = useState<ExportPhase>('idle');
   const [gdocPhase, setGdocPhase] = useState<ExportPhase>('idle');
   const exportTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -365,20 +366,22 @@ export function InterviewReadDetail({
     })();
   };
 
-  // Word 다운로드 — attachment GET(쿠키 포함 네비게이션). 즉시 다운로드라 busy
-  // 없이 done 표시(4초 뒤 idle).
-  const downloadWord = () => {
-    if (wordPhase !== 'idle') return;
+  // txt/md 다운로드 — attachment GET(쿠키 포함 네비게이션). 즉시 다운로드라 busy
+  // 없이 done 표시(4초 뒤 idle). docx 는 공유 전용(카드 #609).
+  const download = (format: 'txt' | 'md') => {
+    const phase = format === 'txt' ? txtPhase : mdPhase;
+    const setPhase = format === 'txt' ? setTxtPhase : setMdPhase;
+    if (phase !== 'idle') return;
     const a = document.createElement('a');
     a.href = `/api/interviews/v2/topline/export?project_id=${encodeURIComponent(
       projectId,
-    )}&format=docx`;
+    )}&format=${format}`;
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setWordPhase('done');
-    exportTimers.current.push(setTimeout(() => setWordPhase('idle'), 4000));
+    setPhase('done');
+    exportTimers.current.push(setTimeout(() => setPhase('idle'), 4000));
   };
 
   // PDF 다운로드 — 클라이언트 렌더 DOM(읽기 본문)을 exportDomToPdf 로 캡처.
@@ -647,10 +650,17 @@ export function InterviewReadDetail({
             <div className="ml-auto flex items-center gap-2">
               <ActionIconButton
                 icon="download"
-                title={t('reportExportWord')}
-                onClick={downloadWord}
+                title={t('reportExportTxt')}
+                onClick={() => download('txt')}
                 disabled={actionsDisabled}
-                phase={actionsDisabled ? 'idle' : wordPhase}
+                phase={actionsDisabled ? 'idle' : txtPhase}
+              />
+              <ActionIconButton
+                icon="download"
+                title={t('reportExportMd')}
+                onClick={() => download('md')}
+                disabled={actionsDisabled}
+                phase={actionsDisabled ? 'idle' : mdPhase}
               />
               <ActionIconButton
                 icon="download"
