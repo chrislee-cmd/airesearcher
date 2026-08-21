@@ -38,6 +38,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/index-resume-sweep",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/ut-stale-live-sweep",
       "schedule": "*/5 * * * *"
     }
