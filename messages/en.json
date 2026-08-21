@@ -1,4 +1,42 @@
 {
+  "AudioCheck": {
+    "heading": "Audio signal check",
+    "subtitle": "Confirm real sound is coming through before you start.",
+    "share": {
+      "subtitle": "Confirm the shared audio is actually coming through.",
+      "instruction": "Share the meeting tab and turn on “Also share tab audio” — otherwise the other person's voice won't be captured.",
+      "cta": "🔊 Share tab",
+      "sharing": "Opening share picker…",
+      "hint": "In the share window, be sure to turn on the “Also share tab / system audio” toggle."
+    },
+    "mic": {
+      "label": "Your microphone",
+      "hint": "Say a few words — the meter should move.",
+      "denied": "Microphone permission is blocked. Open the lock icon in the address bar → site permissions, allow the microphone, then try again.",
+      "device": "Microphone",
+      "deviceFallback": "Microphone {n}"
+    },
+    "tab": {
+      "label": "Tab / system audio",
+      "hint": "The meter moves when the shared tab plays sound.",
+      "muted": "No tab audio detected. “Share tab audio” may be off, or the meeting was opened in a native app.",
+      "troubleTitle": "No tab audio detected — check these two things",
+      "trouble1Title": "① Join in the browser, not the app",
+      "trouble1Body": "Zoom/Teams desktop apps have no tab audio. When opening the meeting link, choose “Continue in browser.”",
+      "trouble2Title": "② Turn on “Also share tab audio”",
+      "trouble2Body": "In the share window, turn on the “Also share tab audio (share system audio)” toggle at the bottom, then share again.",
+      "retry": "Share again",
+      "testSound": "🔊 Test sound"
+    },
+    "status": {
+      "waiting": "Waiting",
+      "detected": "Detected",
+      "noSignal": "No signal"
+    },
+    "start": "Start",
+    "cancel": "Cancel",
+    "verifying": "Waiting for signal…"
+  },
   "AiUt": {
     "behavior": {
       "title": "Behavior analytics (inferred)",

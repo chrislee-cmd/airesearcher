@@ -33,10 +33,7 @@ import { ShareInviteButton } from '@/components/share/share-invite-button';
 import { fetchWithAuth } from '@/lib/api/fetch-with-auth';
 import { track as trackEvent } from '@/lib/analytics/events';
 import { Modal } from '@/components/ui/modal';
-import {
-  ShareGuidePopup,
-  isShareGuideSuppressed,
-} from '@/components/share-guide-popup';
+import { AudioCheckStep } from '@/components/media/audio-check-step';
 import { useToast } from '@/components/toast-provider';
 import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { buildPersonaFilename } from '@/lib/probing-persona-docx';
@@ -370,6 +367,10 @@ function ExpandedBody() {
     slotError,
     start: startSession,
     stop: stopSession,
+    audioGate,
+    audioGateState,
+    shareAudioGate,
+    resolveAudioGate,
   } = useRealtimeTranscription({ locale: 'ko' });
 
   // 기본 미선택('') — 사용자가 명시로 고르기 전엔 세션 시작 CTA 가 비활성
@@ -720,8 +721,6 @@ function ExpandedBody() {
   // 인터뷰 길이) 로 사용. 새 세션 시작 시 리셋.
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
-  // 브라우저 오디오 안내(blocking ack) — source='tab' 경로에서 시작 클릭 시 노출.
-  const [browserAudioNoticeOpen, setBrowserAudioNoticeOpen] = useState(false);
   // 좌 페르소나 grid DOM — PDF 캡쳐 대상 (PR: probing-pdf-export-persona-only).
   // 우패널 (질문 / 사고 흐름) · 서브헤더 · 모달 헤더는 캡쳐 범위 밖.
   const personaGridRef = useRef<HTMLDivElement | null>(null);
@@ -1540,25 +1539,13 @@ function ExpandedBody() {
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
   }, [gate, startSession, source, outputLang]);
-  // 시작 클릭 진입점 — 탭 오디오를 캡처하는 경로(source='tab' 또는 'both')는
-  // 캡처 직전 브라우저 오디오 안내를 blocking ack 로 띄운다(both 는 응답자 탭
-  // 캡처 + 에코 방지 이어폰 안내 필수 — 615 결합). mic(기기 마이크)은 브라우저
-  // 설정 무관이라 바로 진행. "다시 보지 않기"로 억제됐으면 바로 진행.
+  // 시작 클릭 진입점 — 정적 안내 모달은 제거. 온라인/참관(tab/both)은 실측
+  // 오디오 게이트가 화면공유까지 주도하므로(startSession 이 게이트를 연다) 바로
+  // 진행. mic(대면)은 게이트 없이 진행. (게이트 UI 는 아래 AudioCheckStep Modal.)
   const handleStartSession = useCallback(() => {
     if (!source || !outputLang) return;
-    if (
-      (source === 'tab' || source === 'both') &&
-      !isShareGuideSuppressed()
-    ) {
-      setBrowserAudioNoticeOpen(true);
-      return;
-    }
     void runStartSession();
   }, [source, outputLang, runStartSession]);
-  const handleShareGuideConfirm = useCallback(() => {
-    setBrowserAudioNoticeOpen(false);
-    void runStartSession();
-  }, [runStartSession]);
   const handleStopSession = useCallback(async () => {
     await stopSession();
   }, [stopSession]);
@@ -2724,14 +2711,24 @@ function ExpandedBody() {
         );
       })()}
 
-      <ShareGuidePopup
-        open={browserAudioNoticeOpen}
-        widget="probing"
-        onConfirm={handleShareGuideConfirm}
-        onCancel={() => setBrowserAudioNoticeOpen(false)}
-        // both(진행자 mic + 응답자 tab 병렬)는 스피커 에코 위험 — 이어폰 안내 결합.
-        note={source === 'both' ? t('card.bothEchoNote') : undefined}
-      />
+      {/* 실측 오디오 게이트(공유-주도) — 정적 안내 모달을 대체. "🔊 탭 공유" 로
+          화면공유 피커를 띄우고, 라이브 미터가 확인돼야만 "시작"이 열린다. 무음이면
+          "다시 공유". 취소 시 획득 미디어 정리 후 idle(start() 의 await 가 false 로 해소). */}
+      <Modal
+        open={audioGate !== null}
+        onClose={() => resolveAudioGate(false)}
+        size="sm"
+      >
+        <AudioCheckStep
+          state={audioGateState}
+          shareMode
+          shared={audioGate?.shared ?? false}
+          sharing={audioGate?.sharing ?? false}
+          onShareTab={shareAudioGate}
+          onProceed={() => resolveAudioGate(true)}
+          onCancel={() => resolveAudioGate(false)}
+        />
+      </Modal>
 
       {exportConfirmOpen && (
         <Modal

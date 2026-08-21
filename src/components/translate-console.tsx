@@ -49,6 +49,8 @@ import {
   ShareGuidePopup,
   isShareGuideSuppressed,
 } from './share-guide-popup';
+import { AudioCheckStep } from './media/audio-check-step';
+import { useAudioVerificationGate } from '@/hooks/use-audio-verification-gate';
 import { FileDropZone } from './ui/file-drop-zone';
 import {
   CaptureUseCaseCards,
@@ -139,6 +141,7 @@ type CleanupCaller =
   | 'start_error_livekit'
   | 'start_error_webrtc'
   | 'start_error_credits'
+  | 'start_gate_cancelled'
   | 'start_reentry_guard'
   | 'stop'
   | 'unmount';
@@ -821,6 +824,40 @@ export function TranslateConsole({
   ];
 
   const [status, setStatus] = useState<Status>('idle');
+
+  // ── 실측 오디오 게이트 — 안내 모달을 "봤는지"가 아니라 실제 신호가 흐르는지를
+  //    측정해 통과시킨다. 캡처(getUserMedia/getDisplayMedia) 직후 ~ 세션 연결 전
+  //    사이에 start() 가 이 게이트를 await 한다. 신호 확인("시작") → resolve(true),
+  //    취소 → resolve(false)(획득 미디어 정리 후 idle). ──
+  const [audioGate, setAudioGate] = useState<{
+    mic: MediaStream | null;
+    tab: MediaStream | null;
+    require: { mic?: boolean; tabAudio?: boolean };
+  } | null>(null);
+  const audioGateResolveRef = useRef<((ok: boolean) => void) | null>(null);
+  const audioGateState = useAudioVerificationGate({
+    require: audioGate?.require ?? {},
+    micStream: audioGate?.mic ?? null,
+    tabStream: audioGate?.tab ?? null,
+  });
+  const awaitAudioGate = useCallback(
+    (cfg: {
+      mic: MediaStream | null;
+      tab: MediaStream | null;
+      require: { mic?: boolean; tabAudio?: boolean };
+    }): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        audioGateResolveRef.current = resolve;
+        setAudioGate(cfg);
+      }),
+    [],
+  );
+  const resolveAudioGate = useCallback((ok: boolean) => {
+    const r = audioGateResolveRef.current;
+    audioGateResolveRef.current = null;
+    setAudioGate(null);
+    r?.(ok);
+  }, []);
 
   // 위젯별 동시사용 게이트 (#512) — 통역 세션 start 시 슬롯 획득, 종료 시 반납.
   // 캔버스 밖(/live 단독 페이지)에서는 provider 부재로 no-op(투명 통과).
@@ -3008,6 +3045,34 @@ export function TranslateConsole({
       return;
     }
 
+    // 1-b) 실측 오디오 게이트 — 안내 모달이 아니라 실제 신호가 흐르는지 측정해
+    //    통과. 캡처는 됐지만(트랙 존재) 무음일 수 있어(탭 오디오 토글 꺼짐/네이티브
+    //    앱 회의/마이크 음소거) length>0 ≠ 신호. 여기서 라이브 레벨을 확인하고,
+    //    확인돼야만 세션 연결로 넘어간다. 취소 시 획득 미디어를 정리하고 idle.
+    //    (watchdog 은 이 게이트 이후 무장하므로 사용자가 게이트에서 시간을 써도
+    //    50s 타임아웃에 안 걸린다.)
+    //    ⚠ 게이트는 **탭 오디오를 잡는 온라인 경로에만** 건다 — "브라우저로 참여 ·
+    //    탭 오디오 공유" 문제는 tab 슬롯에서만 발생. mic-only(대면/오프라인
+    //    인터뷰)는 기기 마이크라 그 문제가 없어 게이트를 건너뛴다(ShareGuidePopup
+    //    이 tab/both 에서만 뜨는 것과 동일 정렬).
+    if (liveSlots.includes('tab')) {
+      const gatePassed = await awaitAudioGate({
+        mic: liveSlots.includes('mic') ? srcStreamRef.current.mic : null,
+        tab: srcStreamRef.current.tab,
+        require: {
+          mic: liveSlots.includes('mic'),
+          tabAudio: true,
+        },
+      });
+      if (!gatePassed) {
+        // 사용자 취소(에러 아님) — 획득 미디어 정리 후 idle 로 복귀.
+        setStatus('idle');
+        cleanup('start_gate_cancelled');
+        startInFlightRef.current = false;
+        return;
+      }
+    }
+
     // 2) Widget concurrency gate — 슬롯 획득. 정원 초과면 카드에 국소 대기 UI 가
     //    뜨고 admitted 로 바뀔 때까지 보류된다(자동 진행). 취소 시 false. picker 를
     //    이미 통과했으므로 미승인/취소 시 방금 획득한 미디어(display+mic)를 정리해
@@ -4078,6 +4143,7 @@ export function TranslateConsole({
     transcriptPublisher,
     notifyDeduction,
     gate,
+    awaitAudioGate,
   ]);
 
   // 시작 클릭 진입점 — tab 슬롯(브라우저 오디오 캡처)이 포함된 모드(both /
@@ -5688,6 +5754,21 @@ export function TranslateConsole({
         onConfirm={handleShareGuideConfirm}
         onCancel={() => setBrowserAudioNoticeOpen(false)}
       />
+
+      {/* 실측 오디오 게이트 — 캡처 직후 실제 신호가 확인돼야만 "시작"이 열린다.
+          안내 모달(ShareGuidePopup)은 사전 안내, 이 게이트가 진짜 관문. 취소 시
+          획득 미디어를 정리하고 idle 로 복귀(start() 의 await 가 false 로 해소). */}
+      <Modal
+        open={audioGate !== null}
+        onClose={() => resolveAudioGate(false)}
+        size="sm"
+      >
+        <AudioCheckStep
+          state={audioGateState}
+          onProceed={() => resolveAudioGate(true)}
+          onCancel={() => resolveAudioGate(false)}
+        />
+      </Modal>
 
       {/* Per-slot monitor sinks — each slot's raw TTS stream is attached
           directly (see monitorAudioRefs). Hidden; audible unless the host

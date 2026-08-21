@@ -58,6 +58,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCreditDeduction } from '@/components/credit-deduction-provider';
 import { FEATURE_COSTS } from '@/lib/features';
 import { createClient } from '@/lib/supabase/client';
+import {
+  useAudioVerificationGate,
+  type AudioGateState,
+} from '@/hooks/use-audio-verification-gate';
 
 export type TranscriptionStatus =
   | 'idle'
@@ -166,6 +170,20 @@ export type UseRealtimeTranscriptionResult = {
   slotError: Record<SourceSlot, string | null>;
   start: (opts?: StartOpts) => Promise<void>;
   stop: () => Promise<void>;
+  // 실측 오디오 게이트(공유-주도) — 온라인/참관에서 실제 신호가 확인돼야만 세션
+  // 연결로 넘어간다. audioGate 가 non-null 이면 소비 컴포넌트가 게이트 UI
+  // (AudioCheckStep)를 렌더한다: shared 전엔 "탭 공유" 버튼(shareAudioGate), 후엔
+  // 라이브 미터. 통과/취소는 resolveAudioGate 로 start() 의 await 를 해소한다.
+  audioGate: {
+    require: { mic?: boolean; tabAudio?: boolean };
+    mic: MediaStream | null;
+    tab: MediaStream | null;
+    shared: boolean;
+    sharing: boolean;
+  } | null;
+  audioGateState: AudioGateState;
+  shareAudioGate: () => void;
+  resolveAudioGate: (ok: boolean) => void;
 };
 
 // Unified Realtime GA SDP endpoint. 이전 `/v1/realtime?intent=transcription`
@@ -344,6 +362,42 @@ export function useRealtimeTranscription(opts?: {
   const supabase = createClient();
   const [recording, setRecording] =
     useState<SessionRecordingState>(IDLE_RECORDING);
+
+  // ── 실측 오디오 게이트(공유-주도) — 안내가 아니라 실제 신호를 측정해 통과.
+  //    온라인/참관(tab/both)에서 start() 가 이 게이트를 await 하는 동안, 게이트
+  //    모달의 "🔊 탭 공유" 버튼이 shareAudioGate() 로 getDisplayMedia 를 (재)실행해
+  //    captureStreamRef 를 채우고 라이브 레벨을 측정한다. 게이트 UI 는 소비
+  //    컴포넌트(probing-card)가 audioGate/audioGateState 로 렌더한다. ──
+  const [audioGate, setAudioGate] = useState<{
+    require: { mic?: boolean; tabAudio?: boolean };
+    mic: MediaStream | null;
+    tab: MediaStream | null;
+    shared: boolean; // 공유(취득) 시도가 1회 이상 완료됨 → 미터 단계
+    sharing: boolean; // getDisplayMedia 진행 중
+  } | null>(null);
+  const audioGateResolveRef = useRef<((ok: boolean) => void) | null>(null);
+  // shareAudioGate 가 어떤 슬롯을 취득할지 — 상태 클로저 대신 ref 로 최신값 읽음.
+  const audioGateRequireRef = useRef<{ mic?: boolean; tabAudio?: boolean }>({});
+  const audioGateState = useAudioVerificationGate({
+    require: audioGate?.require ?? {},
+    micStream: audioGate?.mic ?? null,
+    tabStream: audioGate?.tab ?? null,
+  });
+  const awaitAudioGate = useCallback(
+    (require: { mic?: boolean; tabAudio?: boolean }): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        audioGateResolveRef.current = resolve;
+        audioGateRequireRef.current = require;
+        setAudioGate({ require, mic: null, tab: null, shared: false, sharing: false });
+      }),
+    [],
+  );
+  const resolveAudioGate = useCallback((ok: boolean) => {
+    const r = audioGateResolveRef.current;
+    audioGateResolveRef.current = null;
+    setAudioGate(null);
+    r?.(ok);
+  }, []);
   // capture 스트림에 병렬로 붙는 MediaRecorder + in-memory chunk buffer.
   const recorderRef = useRef<MediaRecorder | null>(null);
   // recorder 전용 클론 스트림 — tab 모드 silence-injection(원본 트랙 enabled 토글)이
@@ -1180,6 +1234,42 @@ export function useRealtimeTranscription(opts?: {
     [],
   );
 
+  // 게이트-주도 공유 — 게이트 모달의 "🔊 탭 공유"/"다시 공유" 가 호출. getDisplayMedia
+  // (+both 는 mic)를 실행해 captureStreamRef 를 채우고 게이트 스트림/상태를 갱신한다.
+  // 탭은 재취득 시 이전 스트림/사일런스 타이머를 먼저 정리(중복 방지). 실패(취소·탭
+  // 오디오 미토글)해도 shared=true 로 두어 "신호 없음 + 다시 공유" 를 노출한다.
+  const shareAudioGate = useCallback(async () => {
+    const req = audioGateRequireRef.current;
+    setAudioGate((p) => (p ? { ...p, sharing: true } : p));
+    try {
+      if (req.tabAudio) {
+        if (tabSilenceTimerRef.current) {
+          clearInterval(tabSilenceTimerRef.current);
+          tabSilenceTimerRef.current = null;
+        }
+        captureStreamRef.current.tab?.getTracks().forEach((tr) => tr.stop());
+        captureStreamRef.current.tab = null;
+        await acquireSlot('tab');
+      }
+      // 마이크는 아직 없을 때만 취득(탭 다시 공유 시 마이크 재프롬프트 방지).
+      if (req.mic && !captureStreamRef.current.mic) {
+        await acquireSlot('mic');
+      }
+    } finally {
+      setAudioGate((p) =>
+        p
+          ? {
+              ...p,
+              mic: captureStreamRef.current.mic,
+              tab: captureStreamRef.current.tab,
+              shared: true,
+              sharing: false,
+            }
+          : p,
+      );
+    }
+  }, [acquireSlot]);
+
   // 슬롯 connect — 이미 acquire 된 capture 스트림으로 PC/DC/SDP 교환. 성공 시
   // slotActive[slot]=true + renewal epoch 세팅. 실패 시 그 슬롯 리소스만 정리하고
   // slotError 를 남기고 false — 세션 전체를 무너뜨리지 않는다(graceful).
@@ -1324,18 +1414,31 @@ export function useRealtimeTranscription(opts?: {
       // start() 전체 경과의 기준점.
       const startedWallAt = Date.now();
 
-      // 1) capture — 슬롯별 media 획득을 서버 fetch 보다 먼저 한다. getDisplayMedia
-      // 는 유저 클릭 제스처의 transient activation 안에서 첫 await 로 호출돼야
-      // 콜드 fetch 지연에 제스처가 만료되지 않는다(UT use-ut-session 레퍼런스).
-      // 순서: tab 먼저(picker 가 먼저 뜨게), 그다음 mic. both 모드는 두 프롬프트가
-      // 원 Start 제스처 안에서 순차로. 사용자 조작 구간이라 watchdog 은 아직 정지.
-      // 부수효과: 유저가 picker 를 취소하면 서버 세션 row 자체가 안 생긴다(orphan 0).
+      // 1) capture — 대면(mic-only)은 게이트 없이 바로 마이크 취득. 온라인/참관
+      // (tab/both)은 **실측 오디오 게이트가 화면공유까지 주도**한다: 정적 안내
+      // 모달 대신 게이트 모달의 "🔊 탭 공유" 버튼이 getDisplayMedia 를 (재)실행하고
+      // (shareAudioGate), 라이브 레벨이 확인돼야만 "시작"이 열린다. 사용자가
+      // 게이트를 취소하면 idle. picker 는 모달 버튼 클릭(새 제스처) 안에서 호출돼
+      // transient activation 이 유효하다. watchdog 은 이후 connectSlot 에서 arm.
       const acquired: SourceSlot[] = [];
-      if (slots.includes('tab')) {
-        if (await acquireSlot('tab')) acquired.push('tab');
-      }
-      if (slots.includes('mic')) {
+      if (mode === 'mic') {
+        // 대면/오프라인 인터뷰 — 브라우저 오디오 문제 무관, 게이트 없음.
         if (await acquireSlot('mic')) acquired.push('mic');
+      } else {
+        // 온라인/참관 — 게이트-주도 취득(shareAudioGate 가 captureStreamRef 를 채움).
+        const gatePassed = await awaitAudioGate({
+          mic: slots.includes('mic'),
+          tabAudio: slots.includes('tab'),
+        });
+        if (!gatePassed) {
+          // 사용자 취소(에러 아님) — 획득 미디어 정리 후 idle.
+          cleanup();
+          setStatus('idle');
+          startInFlightRef.current = false;
+          return;
+        }
+        if (captureStreamRef.current.tab) acquired.push('tab');
+        if (captureStreamRef.current.mic) acquired.push('mic');
       }
       if (acquired.length === 0) {
         // 모든 슬롯 캡처 실패(권한 거부/취소/탭오디오 미공유). slotError 는
@@ -1573,6 +1676,7 @@ export function useRealtimeTranscription(opts?: {
     },
     [
       acquireSlot,
+      awaitAudioGate,
       buildRecordMixStream,
       cleanup,
       connectSlot,
@@ -1600,5 +1704,11 @@ export function useRealtimeTranscription(opts?: {
     slotError,
     start,
     stop,
+    // 실측 오디오 게이트 — audioGate 가 non-null 이면 소비 컴포넌트가 게이트 UI 를
+    // 렌더하고, 통과/취소 시 resolveAudioGate 로 start() 의 await 를 해소한다.
+    audioGate,
+    audioGateState,
+    shareAudioGate,
+    resolveAudioGate,
   };
 }
