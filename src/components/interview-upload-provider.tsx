@@ -12,6 +12,9 @@ import {
   mapWithConcurrency,
   fetchWithRateLimitRetry,
 } from '@/lib/upload-queue';
+// Type only — the runtime module is dynamically imported inside expandZips so
+// the non-ZIP upload path never pulls jszip into the bundle eagerly.
+import type JSZipInstance from 'jszip';
 
 // Interview V2 — background upload orchestration, lifted out of the upload
 // modal (pr-interview-upload-background-progress-artifact).
@@ -112,6 +115,170 @@ const INDEX_CHUNK_SIZE = 40;
 // Well under the server's per-user LLM cap (30/min) so a normal batch converts
 // near-instantly while a large one can't burst past the limit.
 const CONVERT_CONCURRENCY = 3;
+
+// ── ZIP auto-unpack (pr-iv-zip-upload) ────────────────────────────────────
+// A .zip dropped on the uploader is expanded IN THE BROWSER just before the
+// batch enters the convert queue: each supported inner file becomes a real
+// File and flows through the existing convert → index pipeline unchanged
+// (server/DB/index logic all untouched). JSZip is already a dependency and
+// loaded on demand so the non-ZIP path pays nothing.
+//
+// Supported inner extensions mirror the uploader's ACCEPT list + file-extract's
+// classifier (text / doc / pdf / audio / video). ZIP entries carry no MIME, so
+// the extension → MIME map below re-stamps each extracted File.type; that is
+// what the server's classifyFile() reads to route audio/video vs. document.
+const ZIP_INNER_MIME: Record<string, string> = {
+  txt: 'text/plain',
+  log: 'text/plain',
+  md: 'text/markdown',
+  markdown: 'text/markdown',
+  csv: 'text/csv',
+  json: 'application/json',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pdf: 'application/pdf',
+  // audio
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  wav: 'audio/wav',
+  aac: 'audio/aac',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  flac: 'audio/flac',
+  opus: 'audio/opus',
+  aiff: 'audio/aiff',
+  aif: 'audio/aiff',
+  weba: 'audio/webm',
+  // video
+  mp4: 'video/mp4',
+  m4v: 'video/x-m4v',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  mkv: 'video/x-matroska',
+  webm: 'video/webm',
+  mpeg: 'video/mpeg',
+  mpg: 'video/mpeg',
+};
+
+function extOf(name: string): string {
+  const i = name.lastIndexOf('.');
+  return i >= 0 ? name.slice(i + 1).toLowerCase() : '';
+}
+
+function guessMime(name: string): string {
+  return ZIP_INNER_MIME[extOf(name)] ?? '';
+}
+
+function isSupportedInner(name: string): boolean {
+  return extOf(name) in ZIP_INNER_MIME;
+}
+
+function baseName(path: string): string {
+  const parts = path.split('/');
+  return parts[parts.length - 1] || '';
+}
+
+// Mac/Windows archive cruft that must never become a document.
+function isArchiveNoise(path: string): boolean {
+  if (path.includes('__MACOSX/') || path.startsWith('__MACOSX')) return true;
+  const base = baseName(path);
+  if (!base) return true;
+  if (base === '.DS_Store' || base === 'Thumbs.db') return true;
+  if (base.startsWith('._')) return true; // AppleDouble
+  return false;
+}
+
+function isZipFile(f: File): boolean {
+  return (
+    f.type === 'application/zip' ||
+    f.type === 'application/x-zip-compressed' ||
+    f.name.toLowerCase().endsWith('.zip')
+  );
+}
+
+// Display-name uniquifier for extracted files: flattening `sub/a.txt` to
+// `a.txt` can collide, so a taken name gets a path hint → `a (sub).txt`.
+// Indexing re-dedupes by content_hash server-side; this only keeps the batch
+// UI rows distinct.
+function uniquifyName(base: string, used: Set<string>, dirHint: string): string {
+  if (!used.has(base)) return base;
+  const dot = base.lastIndexOf('.');
+  const stem = dot > 0 ? base.slice(0, dot) : base;
+  const ext = dot > 0 ? base.slice(dot) : '';
+  const hint = dirHint ? ` (${dirHint})` : '';
+  let candidate = `${stem}${hint}${ext}`;
+  let n = 2;
+  while (used.has(candidate)) {
+    candidate = `${stem}${hint} ${n}${ext}`;
+    n += 1;
+  }
+  return candidate;
+}
+
+// One flattened upload entry. `file: null` marks a synthetic error placeholder
+// (corrupt / empty ZIP) that surfaces as an 'error' batch row without a File.
+type PlanSource = {
+  file: File | null;
+  name: string;
+  error: string | null;
+  fromZip: boolean;
+};
+
+// Expand any ZIPs in `files` into their supported inner files, flattening the
+// list the convert pipeline sees. Extraction is per-file sequential
+// (`entry.async('blob')`) so a huge archive isn't fully materialised at once.
+// Nested ZIPs are not recursed (their `.zip` ext isn't supported → skipped),
+// guarding against zip-bomb recursion.
+async function expandZips(files: File[]): Promise<PlanSource[]> {
+  const out: PlanSource[] = [];
+  const used = new Set<string>();
+  for (const f of files) {
+    if (!isZipFile(f)) {
+      used.add(f.name);
+      out.push({ file: f, name: f.name, error: null, fromZip: false });
+      continue;
+    }
+    let zip: JSZipInstance;
+    try {
+      const JSZip = (await import('jszip')).default;
+      zip = await JSZip.loadAsync(f);
+    } catch {
+      // Corrupt / password-protected — surface as an item error, keep the batch.
+      out.push({ file: null, name: f.name, error: 'bad_zip', fromZip: true });
+      continue;
+    }
+    type ZipEntry = (typeof zip.files)[string];
+    const entries: { path: string; entry: ZipEntry }[] = [];
+    zip.forEach((relativePath, entry) => {
+      entries.push({ path: relativePath, entry });
+    });
+    let extracted = 0;
+    for (const { path, entry } of entries) {
+      if (entry.dir) continue;
+      if (isArchiveNoise(path)) continue;
+      const base = baseName(path);
+      if (!isSupportedInner(base)) continue; // unsupported_in_zip → skip silently
+      const blob = await entry.async('blob');
+      const dirHint = path
+        .slice(0, path.length - base.length)
+        .replace(/\/+$/, '');
+      const name = uniquifyName(base, used, dirHint);
+      used.add(name);
+      out.push({
+        file: new File([blob], name, { type: guessMime(base) }),
+        name,
+        error: null,
+        fromZip: true,
+      });
+      extracted += 1;
+    }
+    if (extracted === 0) {
+      // Empty ZIP or nothing indexable inside — item error, batch continues.
+      out.push({ file: null, name: f.name, error: 'empty_zip', fromZip: true });
+    }
+  }
+  return out;
+}
 
 // localStorage key holding the compact list of live batches, so a refresh can
 // re-surface in-flight indexing (DB-driven) instead of losing the artifact.
@@ -350,15 +517,43 @@ export function InterviewUploadProvider({
       projectId: string,
       existingFilenames: string[],
     ): Promise<void> => {
+      // Expand any ZIPs into their inner files FIRST, so the rest of the
+      // pipeline (dedupe, convert, index) is file-type agnostic. A ZIP row is
+      // replaced by its N extracted rows; a corrupt/empty ZIP becomes a single
+      // error row. Non-ZIP uploads pass through untouched.
+      const sources = await expandZips(files);
+      if (sources.length === 0) {
+        markBatchDone(batchId, projectId);
+        return;
+      }
+      // Reflect the (possibly expanded) file list onto the batch so the UI
+      // shows one row per inner file instead of the ZIP name.
+      setBatches((prev) =>
+        prev.map((b) =>
+          b.id === batchId
+            ? {
+                ...b,
+                files: sources.map((s) => ({
+                  name: s.name,
+                  status: 'queued' as const,
+                })),
+              }
+            : b,
+        ),
+      );
+
       // Client pre-filter (UX + convert cost). Indices stay aligned with the
       // batch file list so per-file status maps 1:1.
       const existing = new Set(existingFilenames);
       const seenKeys = new Set<string>();
-      const plan = files.map((f) => {
-        const key = `${f.name}::${f.size}::${f.lastModified}`;
-        const duplicate = existing.has(f.name) || seenKeys.has(key);
+      const plan = sources.map((s) => {
+        if (s.error || !s.file) {
+          return { ...s, duplicate: false };
+        }
+        const key = `${s.name}::${s.file.size}::${s.file.lastModified}`;
+        const duplicate = existing.has(s.name) || seenKeys.has(key);
         seenKeys.add(key);
-        return { file: f, duplicate };
+        return { ...s, duplicate };
       });
 
       if (plan.every((p) => p.duplicate)) {
@@ -373,7 +568,13 @@ export function InterviewUploadProvider({
       const converted = await mapWithConcurrency(
         plan,
         CONVERT_CONCURRENCY,
-        async ({ file, duplicate }, index): Promise<ConvertOutcome> => {
+        async ({ file, duplicate, error }, index): Promise<ConvertOutcome> => {
+          if (error || !file) {
+            // Synthetic error row (corrupt / empty ZIP). Terminal 'error' so the
+            // batch reflects it without a File to convert; the batch continues.
+            setFileStatus(batchId, index, 'error');
+            return { kind: 'fail', index, reason: error ?? 'zip_extract_failed' };
+          }
           if (duplicate) {
             // Client-side dedup: mark 'duplicate' (terminal) so the batch
             // counts it as a duplicate, not a stuck 'queued'/processing file.
@@ -449,7 +650,7 @@ export function InterviewUploadProvider({
                 project_id: null,
                 inputs: plan
                   .filter((p) => !p.duplicate)
-                  .map((p) => ({ filename: p.file.name })),
+                  .map((p) => ({ filename: p.name })),
                 extractions: {},
                 matrix: {},
               }),

@@ -42,10 +42,15 @@ import {
   MAP_RETRY_CAP_MS,
   MAX_MAP_INPUT_CHARS,
   TOPLINE_MAP_MODEL,
+  EXTRACT_SCHEMA_VERSION,
   type DocExtract,
   type DocExtractWithMeta,
   type MapErrorClass,
 } from '@/lib/interview-v2/topline-map';
+import {
+  buildToplineTally,
+  formatTallyForReduce,
+} from '@/lib/interview-v2/topline-tally';
 import {
   isEditableToplineBlockType,
   isToplineHardFaultMessage,
@@ -300,9 +305,20 @@ export async function fetchDocumentsWithChunks(
 }
 
 /**
- * 문서 단위 map 추출 캐시 조회 — (document_id, content_hash) 로 이미 뽑아둔
- * 추출을 가져온다(변하지 않은 파일은 map LLM 재호출 0 — 결정 #4). content_hash
- * 가 없는(레거시) 문서는 캐시하지 않는다. 반환은 document_id → DocExtract.
+ * map 추출 캐시 키 해시 — 문서 파일 content_hash 에 **추출 스키마 버전**을 섞어
+ * 낸다. 스키마 bump(EXTRACT_SCHEMA_VERSION↑) 시 옛 추출(구 스키마)이 자동으로
+ * stale 처리돼 재사용되지 않는다(카드 603 — attributes/coded 없는 v1 추출이
+ * tally 입력으로 새 나가는 것을 막음). 마이그 불필요: 값만 달라져 히트 미스가
+ * 나고 새 버전으로 재map·재저장된다.
+ */
+function extractCacheHash(contentHash: string): string {
+  return hashString(`v${EXTRACT_SCHEMA_VERSION}:${contentHash}`);
+}
+
+/**
+ * 문서 단위 map 추출 캐시 조회 — (document_id, versioned content_hash) 로 이미
+ * 뽑아둔 추출을 가져온다(변하지 않은 파일은 map LLM 재호출 0 — 결정 #4).
+ * content_hash 가 없는(레거시) 문서는 캐시하지 않는다. 반환은 document_id → DocExtract.
  */
 async function loadCachedExtracts(
   admin: AdminClient,
@@ -326,10 +342,13 @@ async function loadCachedExtracts(
     console.warn('[v2/topline] extract cache read failed', error.message);
     return out;
   }
-  const hashByDoc = new Map(hashable.map((d) => [d.document_id, d.content_hash]));
+  const hashByDoc = new Map(
+    hashable.map((d) => [d.document_id, extractCacheHash(d.content_hash)]),
+  );
   for (const row of data ?? []) {
     const docId = String(row.document_id);
-    // content_hash 가 현재와 같을 때만 히트(파일이 바뀌었으면 stale → 재map).
+    // 버전 포함 content_hash 가 현재와 같을 때만 히트(파일 변경 또는 스키마
+    // bump 면 stale → 재map).
     if (hashByDoc.get(docId) !== String(row.content_hash)) continue;
     const parsed = docExtractSchema.safeParse(row.extract);
     if (parsed.success) out.set(docId, parsed.data);
@@ -352,7 +371,8 @@ async function saveExtract(
     {
       org_id: orgId,
       document_id: doc.document_id,
-      content_hash: doc.content_hash,
+      // 스키마 버전을 섞은 캐시 키 — 옛 스키마 추출과 물리적으로 다른 row.
+      content_hash: extractCacheHash(doc.content_hash),
       extract: extract as unknown as object,
       model: TOPLINE_MAP_MODEL,
     },
@@ -1015,6 +1035,8 @@ function buildExtractsFromCache(
     return {
       themes: [],
       quotes: [],
+      attributes: { race: null, gender: null, age: null, age_group: null },
+      coded: [],
       document_id: d.document_id,
       filename: d.filename,
       failed: true,
@@ -1181,6 +1203,8 @@ export async function runTopline(
               await saveExtract(admin, orgId, doc, {
                 themes: extract.themes,
                 quotes: extract.quotes,
+                attributes: extract.attributes,
+                coded: extract.coded,
               });
               return;
             } catch (e) {
@@ -1238,6 +1262,8 @@ export async function runTopline(
                   await saveExtract(admin, orgId, doc, {
                     themes: [],
                     quotes: [],
+                    attributes: { race: null, gender: null, age: null, age_group: null },
+                    coded: [],
                     failed: true,
                   });
                   await logError({
@@ -1481,6 +1507,14 @@ export async function runTopline(
     // throttle 증분 upsert → realtime 이 부분 보고서를 push, 클라가 점진 렌더한다.
     const reduceEvidence = formatExtractsForReduce(extracts);
 
+    // ── 결정적 사전집계(tally) — 코드가 카운트한 실측 표를 reduce 에 주입 ──
+    // (카드 603) 수치의 SSOT 는 이 표다. reduce(Opus)는 눈대중으로 세지 말고
+    // 아래 표를 **그대로 인용**한다(재계산·추정 금지). 표가 없으면(닫힌 문항
+    // 근거 부족) formatTallyForReduce 가 그 사실을 정직하게 알려 지어내기를 막는다.
+    const tally = buildToplineTally(extracts);
+    const tallyEvidence = formatTallyForReduce(tally);
+    const tallyInjection = `\n\n## 사전집계 표 (결정적 — 코드가 산출, 재계산 금지)\n아래 표의 수치는 서버가 전 응답자 추출을 **코드로 카운트**한 확정값입니다. 표를 만들 때 이 수치를 **그대로 인용**하세요 — 직접 다시 세거나 반올림·추정하지 마세요(눈대중 카운트 금지). 세그먼트 크로스탭·분모 n·소그룹 경고·비보조/보조·단일/복수 라벨을 그대로 보존해 정량 표 블록으로 옮기고, 앞뒤 서술로 "그래서 무엇을 뜻하는지"를 해석합니다.\n\n${tallyEvidence}`;
+
     // ── REDUCE abort 가드 (레버 2) — 300s 벽 앞에서 스스로 중단 ──
     // 이 fresh 홉의 하드 예산(HOP_HARD_BUDGET_MS)에서 SAFETY_MARGIN 만큼 앞서
     // abort → 이미 throttle flush 된 부분 블록을 남긴 채 다음 fresh 홉으로 재개.
@@ -1496,12 +1530,16 @@ export async function runTopline(
     const stream = streamObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
-      system: `${buildToplineSystem(outputLang, userDirection)}${TOPLINE_REDUCE_NOTICE}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
-      prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출입니다. 이를 종합해 깊이 있는 탑라인 보고서를 블록 배열로 작성하세요. **맨 첫 블록은 executive_summary(리치 요약 문단 4~6문장 + 핵심 포인트 3~5)** 로 시작하고, 이어서 핵심 요약 → 코퍼스에서 도출한 주제별 섹션들 → 교차분석 인사이트 → 시사점 순으로, 각 섹션을 subheading + paragraph(불릿 병행) 로 2단 계층으로 전개하고, 주장 뒤에 quote 를 문맥 중간에 삽입하며, table + chart/pie 를 유기적으로 배치합니다. **집계 수치("N명 중 M명")는 위 ${docs.length}명 추출을 직접 세어** 산출하고(추정 금지), 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
+      system: `${buildToplineSystem(outputLang, userDirection)}${TOPLINE_REDUCE_NOTICE}${tallyInjection}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
+      prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출 + 서버가 코드로 카운트한 **사전집계 표**입니다. 이를 종합해 **손으로 쓴 깊은 분석 보고서 수준의 분량·계층**을 갖춘 탑라인 보고서를 블록 배열로 작성하세요. **맨 첫 블록은 executive_summary(리치 요약 문단 4~6문장 + 핵심 포인트 3~5, 세그먼트가 둘 이상이면 세그먼트별 한 줄 테제 포함)** 로 시작하고, 이어서 응답자 프로필 → 핵심 요약 → **코퍼스에서 도출한 주제별 섹션들을 소비자 의사결정 여정(계기·발생 → 문제·고통 → 현재 행동 → 판단 근거 → 정보·신뢰 → 선택·가격 → 이상·트레이드오프) 순서로 근거가 허용하는 만큼 많이** → 교차분석 인사이트 → 시사점 순으로 전개합니다. 각 부(heading)는 절(subheading)을 여러 개 두어 3단 깊이로 파고들고, 각 절은 현황 분포 → 세그먼트 차 → 왜(이유) → 예외/반례 → 대표 인용 → 함의 한 줄로 다각도 전개하며, **절 제목은 핵심 수치를 박은 발견 문장**으로 답니다. 주장 뒤에 quote 를 문맥 중간에 삽입하고 table + chart/pie 를 유기적으로 배치합니다. **표의 집계 수치는 위 "사전집계 표"에서 그대로 인용**하고(직접 세거나 추정 금지), 사전집계에 없는 서술 수치는 만들지 마세요. 각 테마 섹션은 사전집계에 해당 데이터가 있으면 **정량 표를 1개 이상** 포함하고, 세그먼트 차이(%p)·"전체 평균의 함정"을 살리며, **수치를 낸 절은 반드시 "그래서 무엇을 뜻하나" 함의 한 줄로 닫습니다**(숫자만 있는 절 금지). 강제선택·양자택일 문항이 있으면 트레이드오프 종합 섹션을 별도로 둡니다. 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
       temperature: 0.3,
-      // 긴 보고서(10 섹션 + 서브헤더 + 아티팩트)라 출력 예산을 대폭 상향해 잘림
-      // (finishReason='length')을 방지한다. Opus 4.8 는 큰 출력을 지원한다.
-      maxOutputTokens: 32_000,
+      // 긴 보고서(다수 섹션 + 서브헤더 + 사전집계 기반 표 다수)라 출력 예산을
+      // 대폭 상향해 잘림(finishReason='length')을 방지한다. Opus 4.8 는 큰 출력을
+      // 지원한다. 뎁스 상향(카드 603)으로 32k→40k, 구조 야심 상향(카드 604 —
+      // 부·절 다수 + 여정 아크 + 절마다 표/인용)으로 40k→48k 상향. 벽(300s) 도달
+      // 시엔 abort 가드가 부분 블록을 보존하고 다음 fresh 홉이 이어받으므로,
+      // 토큰 상향이 중간 끊김을 유발하지 않는다.
+      maxOutputTokens: 48_000,
       maxRetries: 1,
       providerOptions: ZERO_RETENTION,
       // 벽 도달 전 스스로 중단 — abort 시 부분 블록 보존 + 다음 fresh 홉 재개.

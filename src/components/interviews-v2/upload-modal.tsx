@@ -47,7 +47,7 @@ import { useInterviewUpload } from '@/components/interview-upload-provider';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const ACCEPT =
-  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,audio/*,video/*';
+  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,audio/*,video/*,.zip';
 // 총량 amber 임계 = 25MB 의 80% (BUILD-SPEC §6 · CD 제안). 근접 시 목록 헤더
 // 총량이 amber 로 전환해 업로드를 누르기 전에 제한을 알린다.
 const AMBER_THRESHOLD = 0.8 * MAX_BYTES;
