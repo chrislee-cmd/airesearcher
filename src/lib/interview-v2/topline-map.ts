@@ -181,8 +181,11 @@ export function mapRetryBackoffMs(attempt: number): number {
 // map 추출 스키마 버전 — 이 값이 바뀌면 (document_id, content_hash) 추출 캐시가
 // 무효화된다(topline.ts extractCacheHash 가 버전을 해시에 섞음). 구조화 필드
 // (attributes·coded)를 추가할 때마다 bump 해 옛 추출(구 스키마)이 재사용돼
-// tally 입력이 비는 것을 막는다. v1 = themes/quotes only, v2 = +attributes+coded.
-export const EXTRACT_SCHEMA_VERSION = 2;
+// tally 입력이 비는 것을 막는다. **밀도(리치닝)를 바꿀 때도 bump** 한다 — 안
+// 올리면 옛 압축 추출(얇은 statement·소수 quote)이 그대로 재사용돼 리치닝이
+// 무효가 되기 때문(카드 605). v1 = themes/quotes only, v2 = +attributes+coded,
+// v3 = 추출 밀도 리치닝(statement 발췌 밀도↑ · quote 확대 · maxOutput 상향).
+export const EXTRACT_SCHEMA_VERSION = 3;
 
 // 응답자 인구통계 속성 — **파일명 규칙**(예 `이름 - 인종 - 나이.txt`)과 발화 내
 // 명시 언급에서만 추출(추정 금지). 없으면 null(=unknown). tally 가 세그먼트
@@ -240,14 +243,20 @@ export const docExtractSchema = z.object({
         // 짧은 주제 라벨(예: "가격 민감도", "구매 채널"). reduce 가 문서 간
         // 같은 주제를 묶는 힌트 — 완벽히 정규화될 필요는 없다(reduce 가 의미로 묶음).
         label: z.string(),
-        // 이 응답자가 그 주제에 대해 말한 핵심(1~3문장, 근거 청크 기반 사실만).
+        // 이 응답자가 그 주제에 대해 말한 내용을 **발췌에 가까운 밀도**로(요약
+        // 아님) — 구체 디테일·맥락·수치·언급한 브랜드/제품·예외/조건을 근거 청크에
+        // 실재하는 사실만 충분히 담는다(카드 605 리치닝). 한 주제를 여러 각도로
+        // 말했으면 뭉개지 말고 다 남긴다. 근거 밖 추측·일반화는 여전히 금지.
         statement: z.string(),
         // 근거 chunk_id 들(제공된 청크 중에서만). reduce/검증이 재검증한다.
         chunk_ids: z.array(z.string()).default([]),
       }),
     )
     .default([]),
-  // 탑라인에 그대로 인용할 만한 대표 verbatim(요약/의역 금지 — 원문).
+  // 탑라인에 그대로 인용할 만한 대표 verbatim(요약/의역 금지 — 원문). reduce 가
+  // 실제로 본문에 인용할 수 있게 **넉넉히**(주제/페인포인트/결정 근거마다 대표
+  // 발언, 이 응답자가 인상적으로 말한 문장은 놓치지 말 것) 뽑는다. 잘라내지 말고
+  // 발언 단위로 온전한 원문을 담는다(카드 605 리치닝).
   quotes: z
     .array(
       z.object({
@@ -287,8 +296,8 @@ const MAP_SYSTEM = `당신은 정성 인터뷰 **한 명의 응답자 전사록 
 
 ## 목표
 - 이 응답자가 다룬 **모든 주제**를 빠짐없이 뽑습니다(themes). 탑라인은 전수 종합이므로, 사소해 보여도 응답자가 언급한 주제는 남깁니다.
-- 각 theme 는 { label(짧은 주제명), statement(이 응답자가 그 주제에 대해 말한 핵심 1~3문장), chunk_ids(근거) } 입니다.
-- 그대로 인용할 만한 대표 발언은 quotes 로 원문 그대로(요약·의역 금지) 뽑고 chunk_id 를 답니다.
+- 각 theme 는 { label(짧은 주제명), statement(근거), chunk_ids(근거) } 입니다. **statement 는 요약이 아니라 발췌에 가까운 밀도**로 씁니다 — 이 응답자가 그 주제에 대해 말한 **구체 디테일·맥락·수치·언급한 브랜드/제품·조건과 예외**를 근거 청크에 실재하는 사실만 충분히 담으세요. 이후 reduce(종합 애널리스트)는 **이 추출만 보고** 보고서를 쓰므로, 여기서 뭉개면 최종 보고서가 얕아집니다. 한 주제를 여러 각도로 말했으면 한 문장으로 압축하지 말고 다 남깁니다(1~3문장 상한을 두지 마세요).
+- 그대로 인용할 만한 대표 발언은 quotes 로 원문 그대로(요약·의역 금지) 뽑고 chunk_id 를 답니다. **넉넉히 뽑으세요** — 주제·페인포인트·결정 근거마다 대표 발언을, 이 응답자가 인상적/구체적으로 말한 문장은 놓치지 말고. 발언 단위로 온전한 원문을 담습니다(중간을 잘라내지 말 것).
 - **응답자 속성(attributes)** 을 뽑습니다 — 이후 서버가 세그먼트(그룹) 크로스탭을 코드로 집계하는 축입니다.
 - **닫힌(객관식) 문항 코딩(coded)** — 이후 서버가 이 코딩을 세어 실측 표를 만듭니다. 아래 규칙을 지키세요.
 
@@ -360,9 +369,11 @@ export async function mapDocument(
     prompt:
       '위 응답자 전사록에서 탑라인 종합에 쓸 themes·대표 quotes 와 함께, 응답자 속성(attributes)·닫힌 문항 코딩(coded)을 빠짐없이 구조화 추출하세요. 근거 청크에 실제로 있는 내용만, 각 항목에 chunk_id 를 답니다. 속성·코딩 근거가 없으면 null/빈 배열로 둡니다(추정 금지).',
     temperature: 0.2,
-    // themes/quotes 에 더해 속성·닫힌문항 코딩까지 담으므로 출력 예산을 상향
-    // (닫힌 문항이 많은 응답자는 coded 항목이 늘어남).
-    maxOutputTokens: 6_000,
+    // 출력 예산 — 리치닝(카드 605)으로 statement 발췌 밀도↑ · quote 확대 →
+    // 압축 재료(6k)로는 잘려서 얇게 나오던 걸 상향. Sonnet map 이라 저비용이고
+    // MAP_CONCURRENCY=6·maxDuration=300 안에서 안전한 폭. 입력 캡
+    // (MAX_MAP_INPUT_CHARS=48k)은 유지 — 재료가 안 잘리게 출력만 넓힌다.
+    maxOutputTokens: 14_000,
     maxRetries: 1,
     providerOptions: ZERO_RETENTION,
   });

@@ -26,6 +26,7 @@ import { logError } from '@/lib/observability/log-error';
 import {
   buildToplineSystem,
   TOPLINE_REDUCE_NOTICE,
+  formatToplineEvidence,
   toplineSchema,
   toplineBlockSchema,
   type ToplineBlockRaw,
@@ -1044,6 +1045,63 @@ function buildExtractsFromCache(
   });
 }
 
+// reduce 에 원문 청크를 얹을 때의 총 문자 예산(카드 605 하이브리드). map 압축
+// 추출은 뉘앙스·구체 표현을 놓치므로, reduce(Opus)가 **원문 verbatim** 에도
+// 닿게 예산 안에서 원문 청크를 함께 주입한다. Opus 컨텍스트(200k)에 추출+사전집계
+// 위에 얹어도 안전한 폭. 대량 코퍼스면 문서당 몫이 작아지므로(아래 라운드로빈),
+// 몫이 의미 없이 작아지는 지점에서는 원문 주입을 통째로 생략한다(추출만으로 완주).
+const REDUCE_RAW_EVIDENCE_CHAR_BUDGET = 120_000;
+// 문서당 원문 최소 확보 문자 — 이보다 작게밖에 못 주면(초대량 코퍼스) 잘린
+// 파편은 노이즈라 원문 주입 자체를 끈다. ~1 청크 미만이면 추출이 더 낫다.
+const REDUCE_RAW_MIN_PER_DOC_CHARS = 1_200;
+
+/**
+ * reduce 근거에 얹을 **원문 청크**를 총 문자 예산 안에서 고른다(카드 605). 모든
+ * 응답자가 최소 한 조각이라도 대표되도록 **문서 라운드로빈**으로 채운다(특정
+ * 문서만 원문이 실리고 나머지는 압축만 보이는 편향 방지). 예산이 문서 수에 비해
+ * 너무 작아 문서당 몫이 REDUCE_RAW_MIN_PER_DOC_CHARS 미만이면 빈 배열을 돌려
+ * 원문 주입을 생략한다(추출 재료만으로 reduce — 기존 동작). 반환 청크의 chunk_id
+ * 는 전부 validIds 에 이미 포함되므로 인용 재검증과 정합한다.
+ */
+function selectRawEvidenceWithinBudget(
+  docs: ToplineDocument[],
+  charBudget: number = REDUCE_RAW_EVIDENCE_CHAR_BUDGET,
+  minPerDoc: number = REDUCE_RAW_MIN_PER_DOC_CHARS,
+): ToplineChunk[] {
+  const withChunks = docs.filter((d) => d.chunks.length > 0);
+  if (withChunks.length === 0) return [];
+  // 문서당 예산 몫이 최소치 미만이면(초대량 코퍼스) 원문 주입 생략.
+  if (Math.floor(charBudget / withChunks.length) < minPerDoc) return [];
+
+  const selected: ToplineChunk[] = [];
+  const cursor = new Array<number>(withChunks.length).fill(0);
+  let used = 0;
+  let advanced = true;
+  // 라운드로빈 — 각 라운드마다 문서별로 다음 청크를 하나씩 담되, 예산을 넘기면
+  // 멈춘다. 첫 청크는 예산 계산과 무관하게 문서 순서를 보존하기 위해 큰 청크도
+  // 예산이 남아 있는 한 담는다(초과 직전까지).
+  while (advanced && used < charBudget) {
+    advanced = false;
+    for (let i = 0; i < withChunks.length; i++) {
+      const d = withChunks[i];
+      const idx = cursor[i];
+      if (idx >= d.chunks.length) continue;
+      const c = d.chunks[idx];
+      const cost = c.content.length + 80; // 렌더 헤더/펜스 오버헤드 근사.
+      if (selected.length > 0 && used + cost > charBudget) {
+        // 예산 소진 — 더 담지 않는다(라운드 종료).
+        advanced = false;
+        break;
+      }
+      selected.push(c);
+      used += cost;
+      cursor[i] = idx + 1;
+      advanced = true;
+    }
+  }
+  return selected;
+}
+
 /**
  * map-reduce 로 탑라인 blocks 를 생성 — **durable 재개형**(카드 #434). 한 함수
  * 호출의 300초 벽 안에서 처리 가능한 만큼만 map 하고, 남은 작업이 있으면 스스로
@@ -1507,6 +1565,27 @@ export async function runTopline(
     // throttle 증분 upsert → realtime 이 부분 보고서를 push, 클라가 점진 렌더한다.
     const reduceEvidence = formatExtractsForReduce(extracts);
 
+    // ── 원문 보강 (카드 605 하이브리드) — reduce 가 압축 추출뿐 아니라 **원문
+    // verbatim** 에도 닿게, 예산 안에서 원문 청크를 함께 얹는다. 예전엔 reduce
+    // 근거가 map 압축물(formatExtractsForReduce)뿐이라 뉘앙스·구체 표현이 소실돼
+    // 생성물이 얕았다(원문 렌더러 formatToplineEvidence 는 reduce 에서 dead 였음).
+    // selectRawEvidenceWithinBudget 이 문서 라운드로빈으로 예산 내에서만 고르고,
+    // 초대량 코퍼스면 빈 배열(원문 생략, 추출만으로 완주). chunk_id 는 전부
+    // validIds 에 있어 인용 재검증과 정합. 수치는 여전히 사전집계 표가 SSOT.
+    const rawEvidenceChunks = selectRawEvidenceWithinBudget(docs);
+    const rawInjection =
+      rawEvidenceChunks.length > 0
+        // i18n-allow-korean — 서버측 LLM reduce 프롬프트(유저 노출 아님, 이 파일의 다른 프롬프트 리터럴과 동종).
+        ? `\n\n## 원문 보강 (핵심 근거 청크 원문 — 추출이 놓친 뉘앙스·구체 표현 확인용)\n아래는 위 추출의 근거가 된 **응답자 원문 청크**입니다(예산 내 발췌). 추출 요약을 넘어 **실제 표현·맥락·디테일**을 확인해 분석을 깊게 하고, 본문 인용은 이 원문에서 그대로 가져오세요. 단 **분포·집계 수치는 위 "사전집계 표"가 SSOT** 이며 원문을 눈대중으로 다시 세지 마세요(원문은 깊이·인용용, 카운트용 아님).\n${formatToplineEvidence(rawEvidenceChunks)}`
+        : '';
+    console.log(`${tag} reduce evidence assembled`, {
+      docs: docs.length,
+      extract_chars: reduceEvidence.length,
+      raw_evidence_chunks: rawEvidenceChunks.length,
+      raw_evidence_chars: rawInjection.length,
+      raw_evidence_included: rawEvidenceChunks.length > 0,
+    });
+
     // ── 결정적 사전집계(tally) — 코드가 카운트한 실측 표를 reduce 에 주입 ──
     // (카드 603) 수치의 SSOT 는 이 표다. reduce(Opus)는 눈대중으로 세지 말고
     // 아래 표를 **그대로 인용**한다(재계산·추정 금지). 표가 없으면(닫힌 문항
@@ -1530,7 +1609,7 @@ export async function runTopline(
     const stream = streamObject({
       model: anthropic(TOPLINE_MODEL),
       schema: toplineSchema,
-      system: `${buildToplineSystem(outputLang, userDirection)}${TOPLINE_REDUCE_NOTICE}${tallyInjection}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}`,
+      system: `${buildToplineSystem(outputLang, userDirection)}${TOPLINE_REDUCE_NOTICE}${tallyInjection}\n\n## 근거 (전 응답자 ${docs.length}명 전수 추출)\n${reduceEvidence}${rawInjection}`,
       prompt: `위는 이 프로젝트의 응답자 ${docs.length}명을 한 명도 빠짐없이 순회해 뽑은 주제·인용 추출 + 서버가 코드로 카운트한 **사전집계 표**입니다. 이를 종합해 **손으로 쓴 깊은 분석 보고서 수준의 분량·계층**을 갖춘 탑라인 보고서를 블록 배열로 작성하세요. **맨 첫 블록은 executive_summary(리치 요약 문단 4~6문장 + 핵심 포인트 3~5, 세그먼트가 둘 이상이면 세그먼트별 한 줄 테제 포함)** 로 시작하고, 이어서 응답자 프로필 → 핵심 요약 → **코퍼스에서 도출한 주제별 섹션들을 소비자 의사결정 여정(계기·발생 → 문제·고통 → 현재 행동 → 판단 근거 → 정보·신뢰 → 선택·가격 → 이상·트레이드오프) 순서로 근거가 허용하는 만큼 많이** → 교차분석 인사이트 → 시사점 순으로 전개합니다. 각 부(heading)는 절(subheading)을 여러 개 두어 3단 깊이로 파고들고, 각 절은 현황 분포 → 세그먼트 차 → 왜(이유) → 예외/반례 → 대표 인용 → 함의 한 줄로 다각도 전개하며, **절 제목은 핵심 수치를 박은 발견 문장**으로 답니다. 주장 뒤에 quote 를 문맥 중간에 삽입하고 table + chart/pie 를 유기적으로 배치합니다. **표의 집계 수치는 위 "사전집계 표"에서 그대로 인용**하고(직접 세거나 추정 금지), 사전집계에 없는 서술 수치는 만들지 마세요. 각 테마 섹션은 사전집계에 해당 데이터가 있으면 **정량 표를 1개 이상** 포함하고, 세그먼트 차이(%p)·"전체 평균의 함정"을 살리며, **수치를 낸 절은 반드시 "그래서 무엇을 뜻하나" 함의 한 줄로 닫습니다**(숫자만 있는 절 금지). 강제선택·양자택일 문항이 있으면 트레이드오프 종합 섹션을 별도로 둡니다. 모든 사실 블록에 근거 chunk_id 를 답니다. 이전보다 훨씬 길고 상세하게.`,
       temperature: 0.3,
       // 긴 보고서(다수 섹션 + 서브헤더 + 사전집계 기반 표 다수)라 출력 예산을
