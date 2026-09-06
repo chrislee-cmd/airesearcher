@@ -970,7 +970,7 @@
     "quotes": "Transcript Generator",
     "transcripts": "Script Generator",
     "insights_analyzer": "Insights Analyzer",
-    "interviews": "Interview Result Generator",
+    "interviews": "Insight Analyzer",
     "reports": "Full Report Generator",
     "scheduler": "Participant Scheduler",
     "moderator": "AI Moderator",
@@ -1291,7 +1291,7 @@
       "cost": "30 credits"
     },
     "interviews": {
-      "title": "Interview Result Generator",
+      "title": "Insight Analyzer",
       "description": "Convert multiple interview files to .md, then build a table of summaries and VOC quotes against the shared question set.",
       "cost": "10 credits"
     },
@@ -2265,7 +2265,7 @@
     "reportStatusGenerating": "Generating",
     "reportStatusNone": "No report",
     "fullviewSidebarNote": "Switching widgets won't stop generation.",
-    "fullviewTitle": "Interview Result Generator (V2)",
+    "fullviewTitle": "Insight Analyzer (V2)",
     "fullviewSubtitle": "Create a project, gather interview files, and search across them.",
     "close": "Close",
     "newProject": "New project",

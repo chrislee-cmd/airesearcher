@@ -504,7 +504,7 @@ export const interviewsCard: WidgetContent = {
   key: 'interviews',
   meta: {
     // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
-    label: 'Interview Result Generator',
+    label: 'Insight Analyzer',
     labelKey: 'Features.interviews.title',
     accent: 'rose',
     cost: CARD_CREDIT_COST,
