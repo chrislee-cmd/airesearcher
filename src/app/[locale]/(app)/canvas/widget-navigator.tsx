@@ -28,7 +28,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useTranslations } from 'next-intl';
-import type { WidgetContent } from '@/components/canvas/widget-types';
+import { resolveWidgetLabel, type WidgetContent } from '@/components/canvas/widget-types';
 import { ACCENT_BG } from '@/components/canvas/shell/tokens';
 import { useWidgetStateOf } from '@/components/canvas/shell/widget-state-context';
 import { IconButton } from '@/components/ui/icon-button';
@@ -183,6 +183,11 @@ export function WidgetNavigator({
   onToggleHidden,
 }: Props) {
   const t = useTranslations('Canvas.navigator');
+  // 루트 스코프 translator — resolveWidgetLabel 이 쓰는 labelKey 가
+  // `Features.x.title` 전체 경로라 인자 없는 root translator 여야 한다
+  // (widget-shell.tsx 와 동일 패턴). 이게 없으면 navigator 만 raw label 로
+  // 오노출 (결함 B — /en 한글, /ko 영문 누출).
+  const tRoot = useTranslations();
   // default expanded — 위젯 9 개 내외라 list 가 짧고 Navigator 의 가치는
   // 시각적으로 보이는 list 자체. collapse 는 작은 viewport 배려용 옵션.
   const [open, setOpen] = useState(true);
@@ -414,7 +419,7 @@ export function WidgetNavigator({
                       accentCls
                     }
                   />
-                  <span className="min-w-0 flex-1 truncate">{w.meta.label}</span>
+                  <span className="min-w-0 flex-1 truncate">{resolveWidgetLabel(tRoot, w.meta)}</span>
                   {!isHidden ? <WidgetStateBadge widgetKey={w.key} /> : null}
                 </button>
                 <IconButton

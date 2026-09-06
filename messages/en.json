@@ -1145,6 +1145,9 @@
     }
   },
   "Features": {
+    "autocontents": {
+      "title": "AutoContents"
+    },
     "quotes": {
       "title": "Transcript Generator",
       "description": "Convert audio/video interviews into verbatim transcripts.",

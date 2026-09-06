@@ -17,7 +17,9 @@ function ExpandedBody() {
 export const moderatorCard: WidgetContent = {
   key: 'moderator',
   meta: {
-    label: 'AI 모더레이터',
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
+    label: 'AI Moderator',
+    labelKey: 'Features.moderator.title',
     accent: 'peach',
     cost: 1,
     thumbnail: '/thumbnail/interview.png',

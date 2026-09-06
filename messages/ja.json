@@ -1145,6 +1145,9 @@
     }
   },
   "Features": {
+    "autocontents": {
+      "title": "オートコンテンツ"
+    },
     "quotes": {
       "title": "文字起こし生成",
       "description": "音声・動画インタビューを忠実な文字起こしに変換します。",

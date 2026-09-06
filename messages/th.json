@@ -1145,6 +1145,9 @@
     }
   },
   "Features": {
+    "autocontents": {
+      "title": "AutoContents"
+    },
     "quotes": {
       "title": "เครื่องมือถอดเสียง",
       "description": "แปลงอินเทอร์วิวรูปแบบเสียง/วิดีโอเป็นทรานสคริปต์แบบคำต่อคำ",

@@ -9,7 +9,9 @@ import { ComingSoonBody } from './coming-soon-body';
 export const guidelineCard: WidgetContent = {
   key: 'guideline',
   meta: {
-    label: '가이드라인 생성기',
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
+    label: 'Guideline Generator',
+    labelKey: 'Features.guideline.title',
     accent: 'sun',
     cost: 0,
     description: '인터뷰 가이드라인을 자동 생성해요',

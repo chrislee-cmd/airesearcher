@@ -32,7 +32,9 @@ function ExpandedBody() {
 export const autocontentsCard: WidgetContent = {
   key: 'autocontents',
   meta: {
-    label: '오토컨텐츠',
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
+    label: 'AutoContents',
+    labelKey: 'Features.autocontents.title',
     // lav (라벤더) — 현재 8개 위젯이 sky/peach/mint/sun/rose 를 공유하는
     // 구조. lav 는 분석 톤과 구분되는 산출/배포 톤으로 단독 사용.
     accent: 'lav',

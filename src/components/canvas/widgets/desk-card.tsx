@@ -6,7 +6,9 @@ import { DeskCardBody } from './desk-card-body';
 export const deskCard: WidgetContent = {
   key: 'desk',
   meta: {
-    label: '데스크 리서치',
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
+    label: 'Desk Research',
+    labelKey: 'Features.desk.title',
     accent: 'cyan',
     cost: 75,
     thumbnail: '/thumbnail/deskresearch.png',
