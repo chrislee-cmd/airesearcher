@@ -970,7 +970,7 @@
     "quotes": "전사록 생성기",
     "transcripts": "스크립트 생성기",
     "insights_analyzer": "인사이트 분석기",
-    "interviews": "인터뷰 결과 생성기",
+    "interviews": "인사이트 분석기",
     "reports": "전체 리포트 생성기",
     "scheduler": "참석자 스케쥴러",
     "moderator": "AI 모더레이터",
@@ -1145,6 +1145,9 @@
     }
   },
   "Features": {
+    "autocontents": {
+      "title": "오토컨텐츠"
+    },
     "quotes": {
       "title": "전사록 생성기",
       "description": "오디오·영상 인터뷰를 정확한 전사록(Verbatim)으로 변환합니다.",
@@ -1288,7 +1291,7 @@
       "cost": "30크레딧"
     },
     "interviews": {
-      "title": "인터뷰 결과 생성기",
+      "title": "인사이트 분석기",
       "description": "여러 인터뷰 파일을 .md로 변환하고, 공통 문항별로 답변 요약과 VOC 인용구를 표로 정리합니다.",
       "cost": "10크레딧"
     },
@@ -2262,7 +2265,7 @@
     "reportStatusGenerating": "생성 중",
     "reportStatusNone": "보고서 없음",
     "fullviewSidebarNote": "위젯을 바꿔도 생성은 계속 돌아갑니다.",
-    "fullviewTitle": "인터뷰 결과 생성기 (V2)",
+    "fullviewTitle": "인사이트 분석기 (V2)",
     "fullviewSubtitle": "프로젝트를 만들고 인터뷰 파일을 모아 검색하세요.",
     "close": "닫기",
     "newProject": "새 프로젝트",

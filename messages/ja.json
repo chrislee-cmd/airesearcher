@@ -970,7 +970,7 @@
     "quotes": "文字起こし生成",
     "transcripts": "スクリプト生成",
     "insights_analyzer": "インサイトアナライザー",
-    "interviews": "インタビュー結果生成",
+    "interviews": "インサイトアナライザー",
     "reports": "リサーチレポート生成",
     "scheduler": "参加者スケジューラー",
     "moderator": "AIモデレーター",
@@ -1145,6 +1145,9 @@
     }
   },
   "Features": {
+    "autocontents": {
+      "title": "オートコンテンツ"
+    },
     "quotes": {
       "title": "文字起こし生成",
       "description": "音声・動画インタビューを忠実な文字起こしに変換します。",
@@ -1288,7 +1291,7 @@
       "cost": "30 クレジット"
     },
     "interviews": {
-      "title": "インタビュー結果生成",
+      "title": "インサイトアナライザー",
       "description": "複数のインタビューファイルを.mdに変換し、共通の質問セットに沿って要約とVOC引用の表を作成します。",
       "cost": "10クレジット"
     },
@@ -2262,7 +2265,7 @@
     "reportStatusGenerating": "生成中",
     "reportStatusNone": "レポートなし",
     "fullviewSidebarNote": "ウィジェットを切り替えても生成は続きます。",
-    "fullviewTitle": "インタビュー結果ジェネレーター（V2）",
+    "fullviewTitle": "インサイトアナライザー（V2）",
     "fullviewSubtitle": "プロジェクトを作成し、インタビューファイルを収集して、横断検索を行います。",
     "close": "閉じる",
     "newProject": "新規プロジェクト",

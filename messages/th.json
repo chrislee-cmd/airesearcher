@@ -970,7 +970,7 @@
     "quotes": "เครื่องมือถอดเสียง",
     "transcripts": "เครื่องมือสร้างสคริปต์",
     "insights_analyzer": "Insights Analyzer",
-    "interviews": "เครื่องมือสร้างผลอินเทอร์วิว",
+    "interviews": "เครื่องมือวิเคราะห์อินไซต์",
     "reports": "เครื่องมือสร้างรายงาน",
     "scheduler": "เครื่องมือนัดผู้เข้าร่วม",
     "moderator": "AI Moderator",
@@ -1145,6 +1145,9 @@
     }
   },
   "Features": {
+    "autocontents": {
+      "title": "AutoContents"
+    },
     "quotes": {
       "title": "เครื่องมือถอดเสียง",
       "description": "แปลงอินเทอร์วิวรูปแบบเสียง/วิดีโอเป็นทรานสคริปต์แบบคำต่อคำ",
@@ -1288,7 +1291,7 @@
       "cost": "30 เครดิต"
     },
     "interviews": {
-      "title": "เครื่องมือสร้างผลอินเทอร์วิว",
+      "title": "เครื่องมือวิเคราะห์อินไซต์",
       "description": "แปลงไฟล์อินเทอร์วิวหลายไฟล์เป็น .md จากนั้นสร้างตารางของสรุปและคำพูด VOC ตามชุดคำถามร่วม",
       "cost": "10 เครดิต"
     },
@@ -2262,7 +2265,7 @@
     "reportStatusGenerating": "กำลังสร้าง",
     "reportStatusNone": "ไม่มีรายงาน",
     "fullviewSidebarNote": "การสลับวิดเจ็ตจะไม่หยุดการสร้าง",
-    "fullviewTitle": "Interview Result Generator (V2)",
+    "fullviewTitle": "เครื่องมือวิเคราะห์อินไซต์ (V2)",
     "fullviewSubtitle": "สร้างโปรเจกต์ รวบรวมไฟล์สัมภาษณ์ และค้นหาข้อมูลในทุกไฟล์",
     "close": "ปิด",
     "newProject": "โปรเจกต์ใหม่",

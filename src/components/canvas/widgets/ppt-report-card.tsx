@@ -10,7 +10,10 @@ import { ComingSoonBody } from './coming-soon-body';
 export const pptReportCard: WidgetContent = {
   key: 'ppt_report',
   meta: {
-    label: '영상 분석기',
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
+    // Features.ppt_report(=key) 사용 — 유사 중복 Features.video 와 혼동 금지.
+    label: 'Video Analyzer',
+    labelKey: 'Features.ppt_report.title',
     accent: 'rose',
     cost: 0,
     description: '영상을 업로드하면 자동으로 분석해요',

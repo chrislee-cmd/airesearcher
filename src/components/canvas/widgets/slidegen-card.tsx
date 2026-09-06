@@ -18,7 +18,9 @@ function ExpandedBody() {
 export const slidegenCard: WidgetContent = {
   key: 'slidegen',
   meta: {
-    label: 'PPT 생성기',
+    // labelKey 미해석 시 폴백 (blank 원천 차단 — #1051). 영문 기본 라벨.
+    label: 'Slide Generator',
+    labelKey: 'Features.slidegen.title',
     accent: 'sun',
     cost: 0,
     description: '보고서 텍스트를 도식 슬라이드 덱으로 자동 변환',
