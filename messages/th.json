@@ -2249,8 +2249,6 @@
     "reportGenWaiting": "รอ",
     "reportGenKeepOpen": "ปิดหน้าต่างนี้ได้ การสร้างยังทำงานต่อ ดูความคืบหน้าได้ที่การ์ดวิดเจ็ต",
     "reportExportTxt": "TXT",
-    "reportExportMd": "Markdown",
-    "reportExportPdf": "PDF",
     "reportShareGdoc": "Google Docs",
     "reportEdit": "แก้ไข",
     "reportEditFull": "แก้ไขรายงาน",

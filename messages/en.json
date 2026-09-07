@@ -2249,8 +2249,6 @@
     "reportGenWaiting": "Waiting",
     "reportGenKeepOpen": "You can close this window; generation keeps running. Track progress on the widget card.",
     "reportExportTxt": "TXT",
-    "reportExportMd": "Markdown",
-    "reportExportPdf": "PDF",
     "reportShareGdoc": "Google Docs",
     "reportEdit": "Edit",
     "reportEditFull": "Edit report",

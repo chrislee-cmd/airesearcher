@@ -35,7 +35,6 @@ import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
 import { useToplineGuideline } from '@/hooks/use-topline-guideline';
 import { isToplineHardBillingMessage } from '@/lib/interview-v2/types';
-import { exportDomToPdf } from '@/lib/export/pdf-from-dom';
 import { UploadModal } from '../upload-modal';
 import { SearchChat } from '../search-chat';
 import {
@@ -265,10 +264,9 @@ export function InterviewReadDetail({
   // 재생성 방향 모달 · 공유 모달.
   const [regenOpen, setRegenOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  // 내보내기 3상태 — Word · PDF · Gdoc. done 은 4초 뒤 idle 자동 복귀(§S4c).
+  // 내보내기 2상태 — TXT · Gdoc(다운로드는 txt 하나만 — 사용자 2026-09-07,
+  // md/pdf 제거). done 은 4초 뒤 idle 자동 복귀(§S4c).
   const [txtPhase, setTxtPhase] = useState<ExportPhase>('idle');
-  const [mdPhase, setMdPhase] = useState<ExportPhase>('idle');
-  const [pdfPhase, setPdfPhase] = useState<ExportPhase>('idle');
   const [gdocPhase, setGdocPhase] = useState<ExportPhase>('idle');
   const exportTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(
@@ -366,52 +364,21 @@ export function InterviewReadDetail({
     })();
   };
 
-  // txt/md 다운로드 — attachment GET(쿠키 포함 네비게이션). 즉시 다운로드라 busy
-  // 없이 done 표시(4초 뒤 idle). docx 는 공유 전용(카드 #609).
-  const download = (format: 'txt' | 'md') => {
-    const phase = format === 'txt' ? txtPhase : mdPhase;
-    const setPhase = format === 'txt' ? setTxtPhase : setMdPhase;
-    if (phase !== 'idle') return;
+  // txt 다운로드 — attachment GET(쿠키 포함 네비게이션). 즉시 다운로드라 busy
+  // 없이 done 표시(4초 뒤 idle). 다운로드는 txt 하나만(md/pdf 제거 — 사용자
+  // 2026-09-07). docx 는 공유 전용(카드 #609).
+  const download = () => {
+    if (txtPhase !== 'idle') return;
     const a = document.createElement('a');
     a.href = `/api/interviews/v2/topline/export?project_id=${encodeURIComponent(
       projectId,
-    )}&format=${format}`;
+    )}&format=txt`;
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setPhase('done');
-    exportTimers.current.push(setTimeout(() => setPhase('idle'), 4000));
-  };
-
-  // PDF 다운로드 — 클라이언트 렌더 DOM(읽기 본문)을 exportDomToPdf 로 캡처.
-  // 서버 라우트가 아니라 클라 캡처인 이유: pdf-from-dom 은 html2canvas(브라우저
-  // DOM) 의존이라 서버에서 재사용 불가 + 이 경로가 recharts 차트를 canvas 로 자동
-  // 포함하고 한글 letter-spacing 우회를 그대로 태운다(스펙 §3 명시). busy 동안
-  // 재클릭 차단, done 은 4초 뒤 idle.
-  const downloadPdf = async () => {
-    if (pdfPhase !== 'idle') return;
-    const el = readBodyRef.current;
-    if (!el) return;
-    setPdfPhase('busy');
-    try {
-      const d = generatedAt ? new Date(generatedAt) : new Date();
-      const valid = !Number.isNaN(d.getTime()) ? d : new Date();
-      const dateStr = `${valid.getFullYear()}-${String(valid.getMonth() + 1).padStart(2, '0')}-${String(valid.getDate()).padStart(2, '0')}`;
-      const safe = (projectName || t('back')).replace(/[\\/:*?"<>|]/g, '').trim();
-      await exportDomToPdf(el, `${safe || 'topline'}_${dateStr}.pdf`, {
-        width: 764,
-        header: { title: projectName || t('back'), subtitle: metaRight },
-      });
-      setPdfPhase('done');
-      exportTimers.current.push(setTimeout(() => setPdfPhase('idle'), 4000));
-    } catch (e) {
-      toast.push(
-        `${t('reportExportPdf')} — ${e instanceof Error ? e.message : 'error'}`,
-        { tone: 'warn' },
-      );
-      setPdfPhase('idle');
-    }
+    setTxtPhase('done');
+    exportTimers.current.push(setTimeout(() => setTxtPhase('idle'), 4000));
   };
 
   // Google Docs 공유 — admin Drive 변환 → 링크 복사 + 새 탭.
@@ -494,8 +461,8 @@ export function InterviewReadDetail({
   // 편집 body 루트 ref — drag 선택 감지 스코프(보고서 본문). canvasRef(스크롤
   // 컨테이너)와 분리해 배너·목차가 선택 스코프에 안 들어가게 한다.
   const editBodyRef = useRef<HTMLDivElement>(null);
-  // 읽기 본문 루트 ref — PDF export(exportDomToPdf) 캡처 대상. 배너/목차 제외한
-  // 순수 보고서 본문만 캡처하도록 canvasRef 와 분리한다.
+  // 읽기 본문 루트 ref — drag-to-ask 선택 스코프(containerRef). 배너/목차 제외한
+  // 순수 보고서 본문만 선택 대상이 되도록 canvasRef 와 분리한다.
   const readBodyRef = useRef<HTMLElement>(null);
   const scrollToBlock = (id: string) => {
     const el = canvasRef.current?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
@@ -651,23 +618,9 @@ export function InterviewReadDetail({
               <ActionIconButton
                 icon="download"
                 title={t('reportExportTxt')}
-                onClick={() => download('txt')}
+                onClick={() => download()}
                 disabled={actionsDisabled}
                 phase={actionsDisabled ? 'idle' : txtPhase}
-              />
-              <ActionIconButton
-                icon="download"
-                title={t('reportExportMd')}
-                onClick={() => download('md')}
-                disabled={actionsDisabled}
-                phase={actionsDisabled ? 'idle' : mdPhase}
-              />
-              <ActionIconButton
-                icon="download"
-                title={t('reportExportPdf')}
-                onClick={() => void downloadPdf()}
-                disabled={actionsDisabled}
-                phase={actionsDisabled ? 'idle' : pdfPhase}
               />
               <ActionIconButton
                 icon="document"

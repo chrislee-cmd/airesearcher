@@ -2249,8 +2249,6 @@
     "reportGenWaiting": "待機",
     "reportGenKeepOpen": "このウィンドウを閉じても生成は続きます。ウィジェットカードで進行を確認できます。",
     "reportExportTxt": "TXT",
-    "reportExportMd": "Markdown",
-    "reportExportPdf": "PDF",
     "reportShareGdoc": "Google Docs",
     "reportEdit": "編集",
     "reportEditFull": "レポートを編集",
