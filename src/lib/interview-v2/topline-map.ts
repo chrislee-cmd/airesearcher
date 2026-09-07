@@ -284,6 +284,37 @@ export const docExtractSchema = z.object({
 
 export type DocExtract = z.infer<typeof docExtractSchema>;
 
+/**
+ * map 추출의 chunk_id 를 그 문서의 **실제 chunk_id 집합**으로 필터 — 캐시 저장
+ * 전에 Sonnet 이 지어낸 id 가 (document_id, content_hash) 추출 캐시에 영속되는
+ * 것을 막는다(스펙 범위 #3). reduce 의 verifyBlockCitations 는 프로젝트 전체
+ * chunk 집합에 대한 **최종 방어선**으로 그대로 유지되지만, map 캐시는 홉·재생성
+ * 간 영속되므로 여기서 한 번 걸러 지어낸 id 가 재유입되지 않게 한다(무해하나 낭비).
+ *
+ * - themes[].chunk_ids · coded[].chunk_ids : 유효 id 만 남기고 항목 자체는 유지
+ *   한다(statement·coded 라벨 텍스트는 근거로 여전히 유용 — 커버리지 보존).
+ * - quotes : chunk_id 가 유효하지 않으면 그 quote 를 드롭한다(출처를 특정할 수
+ *   없는 verbatim = 추적 불가한 지어낸 귀속이므로). 유효 id 를 가진 quote 만 보존.
+ * placeholder(failed) 추출은 배열이 비어 있어 무영향.
+ */
+export function filterExtractToValidChunkIds(
+  extract: DocExtract,
+  validIds: Set<string>,
+): DocExtract {
+  const clean = (ids: string[]): string[] =>
+    Array.from(new Set(ids.map((c) => String(c).trim()))).filter((c) =>
+      validIds.has(c),
+    );
+  return {
+    ...extract,
+    themes: extract.themes.map((t) => ({ ...t, chunk_ids: clean(t.chunk_ids) })),
+    quotes: extract.quotes.filter((q) =>
+      validIds.has(String(q.chunk_id).trim()),
+    ),
+    coded: extract.coded.map((c) => ({ ...c, chunk_ids: clean(c.chunk_ids) })),
+  };
+}
+
 // reduce 가 문서를 식별·집계할 수 있도록 추출에 문서 메타를 붙인 형태.
 export type DocExtractWithMeta = DocExtract & {
   document_id: string;
@@ -377,7 +408,13 @@ export async function mapDocument(
     maxRetries: 1,
     providerOptions: ZERO_RETENTION,
   });
-  return { ...object, document_id: doc.document_id, filename: doc.filename };
+  // 캐시 저장 전 chunk_id 검증(스펙 범위 #3) — 이 문서의 실제 chunk_id 집합으로
+  // 필터해 Sonnet 이 지어낸 id 가 추출 캐시(및 reduce 입력)로 새 나가지 않게 한다.
+  // 입력 캡(MAX_MAP_INPUT_CHARS)으로 생략된 뒤쪽 청크의 id 는 doc.chunks 에는 여전히
+  // 있으므로(생략은 프롬프트 렌더링 단계) 유효 집합에서 빠지지 않는다.
+  const validIds = new Set(doc.chunks.map((c) => String(c.chunk_id)));
+  const filtered = filterExtractToValidChunkIds(object, validIds);
+  return { ...filtered, document_id: doc.document_id, filename: doc.filename };
 }
 
 /**
