@@ -2528,7 +2528,6 @@
     "toplineSectionError": "Couldn't create the section",
     "toplineSectionNoContent": "Couldn't find interview evidence for that section.",
     "toplineExportTxt": "TXT",
-    "toplineExportMd": "Markdown",
     "toplineShareGdoc": "Share to Google Docs",
     "toplineSharing": "Sharing…",
     "toplineShareCopied": "Link copied — opening in a new tab.",

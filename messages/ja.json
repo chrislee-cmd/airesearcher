@@ -2528,7 +2528,6 @@
     "toplineSectionError": "セクションを作成できませんでした",
     "toplineSectionNoContent": "該当するセクションのインタビュー根拠が見つかりませんでした。",
     "toplineExportTxt": "TXT",
-    "toplineExportMd": "Markdown",
     "toplineShareGdoc": "Google Docsに共有",
     "toplineSharing": "共有中…",
     "toplineShareCopied": "リンクをコピーしました — 新しいタブで開いています。",

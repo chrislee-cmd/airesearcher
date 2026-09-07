@@ -621,12 +621,12 @@ export function ToplineView({ projectId }: { projectId: string }) {
   };
 
   // 다운로드 = attachment GET 으로 브라우저 다운로드(쿠키 포함 네비게이션).
-  // txt/md 만 지원(docx 는 공유 전용 — 카드 #609).
-  const download = (format: 'txt' | 'md') => {
+  // txt 만 지원(md/pdf 제거 — 사용자 2026-09-07; docx 는 공유 전용 — 카드 #609).
+  const download = () => {
     const a = document.createElement('a');
     a.href = `/api/interviews/v2/topline/export?project_id=${encodeURIComponent(
       projectId,
-    )}&format=${format}`;
+    )}&format=txt`;
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
@@ -734,23 +734,16 @@ export function ToplineView({ projectId }: { projectId: string }) {
           </span>
           <div className="flex items-center gap-3">
             {/* 내보내기 / 공유 — 전부 부 액션이라 한 묶음(quiet chrome 통일).
-                txt·md 다운로드 + Google Docs 공유 + 링크로 공유(#477, export 와
+                txt 다운로드 + Google Docs 공유 + 링크로 공유(#477, export 와
                 구분되는 초대 게이트 링크, toplineId 생성 후 활성화). 톤 일치 →
                 주 조작(재생성)과 시각 위계로 분리. */}
             <div className="flex items-center gap-1.5">
               <ChromeButton
                 size="sm"
-                onClick={() => download('txt')}
+                onClick={() => download()}
                 title={t('toplineExportTxt')}
               >
                 ⬇ {t('toplineExportTxt')}
-              </ChromeButton>
-              <ChromeButton
-                size="sm"
-                onClick={() => download('md')}
-                title={t('toplineExportMd')}
-              >
-                ⬇ {t('toplineExportMd')}
               </ChromeButton>
               <ChromeButton
                 size="sm"

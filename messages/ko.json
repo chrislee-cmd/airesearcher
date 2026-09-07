@@ -2528,7 +2528,6 @@
     "toplineSectionError": "섹션 생성에 실패했어요",
     "toplineSectionNoContent": "요청한 섹션을 뒷받침할 인터뷰 근거를 찾지 못했어요.",
     "toplineExportTxt": "TXT",
-    "toplineExportMd": "Markdown",
     "toplineShareGdoc": "Google Docs 공유",
     "toplineSharing": "공유 중…",
     "toplineShareCopied": "링크를 복사했어요 — 새 탭에서 열립니다.",

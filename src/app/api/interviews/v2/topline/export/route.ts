@@ -8,30 +8,26 @@ import {
   getCitationSources,
   collectCitationIds,
 } from '@/lib/interview-v2/topline';
-import {
-  toplineBlocksToMarkdown,
-  toplineBlocksToPlainText,
-} from '@/lib/interview-v2/topline-markdown';
+import { toplineBlocksToPlainText } from '@/lib/interview-v2/topline-markdown';
 
-// 인터뷰 탑라인 export — 저장된 보고서를 Markdown(.md) / plain-text(.txt) 로
-// 다운로드.
+// 인터뷰 탑라인 export — 저장된 보고서를 plain-text(.txt) 로 다운로드.
 //
-// GET ?project_id=<uuid>&format=md|txt:
+// GET ?project_id=<uuid>&format=txt:
 //   저장된 interview_toplines.blocks(유지된 inserted_qa 포함 = 최종 문서)를
-//   markdown / plain text 로 직렬화해 attachment 로 반환한다. 인용은 사람이 읽는
+//   plain text 로 직렬화해 attachment 로 반환한다. 인용은 사람이 읽는
 //   "근거: 문서명" 으로 변환하고 raw chunk_id 는 노출하지 않는다(사용자 결정 3).
 //   생성 트리거는 없다 — 이미 done 인 보고서만 내보낸다.
 //
-//   docx 다운로드는 제거됐다(다운로드는 txt/md 로만 — 카드 #609). docx 파이프라인
-//   (toplineBlocksToDocx / assembleToplineDocx)은 Google Docs 공유(share-gdoc)가
-//   계속 사용하므로 그대로 유지된다 — 이 라우트에서만 docx 노출을 뺀다.
+//   다운로드는 txt 로만 제공한다(사용자 2026-09-07 — md/pdf 제거, txt 하나만).
+//   docx 파이프라인(toplineBlocksToDocx / assembleToplineDocx)은 Google Docs
+//   공유(share-gdoc)가 계속 사용하므로 그대로 유지된다 — 이 라우트는 노출 안 함.
 //
 // 격리: 프로젝트가 이 org 소유가 아니면 not_found(정보 누출 방지). blocks 가
 // 없으면 409(topline_not_ready).
 
 export const maxDuration = 60;
 
-const FORMATS = { md: 'text/markdown', txt: 'text/plain' } as const;
+const FORMATS = { txt: 'text/plain' } as const;
 type ExportFormat = keyof typeof FORMATS;
 
 export async function GET(req: Request) {
@@ -52,8 +48,8 @@ export async function GET(req: Request) {
   if (!z.string().uuid().safeParse(projectId).success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
-  // 다운로드는 md / txt 만 지원. 미지정이면 md 로 간주, 그 외 포맷은 명시적 400.
-  const format = (url.searchParams.get('format') ?? 'md') as ExportFormat;
+  // 다운로드는 txt 만 지원. 미지정이면 txt 로 간주, 그 외 포맷은 명시적 400.
+  const format = (url.searchParams.get('format') ?? 'txt') as ExportFormat;
   if (!(format in FORMATS)) {
     return NextResponse.json({ error: 'unsupported_format' }, { status: 400 });
   }
@@ -89,9 +85,11 @@ export async function GET(req: Request) {
     );
     projectName = String(projectRow.name ?? '').trim() || '탑라인 보고서';
     generatedAt = topline.generated_at;
-    const serialize =
-      format === 'md' ? toplineBlocksToMarkdown : toplineBlocksToPlainText;
-    body = serialize(blocks, { projectName, generatedAt, sources });
+    body = toplineBlocksToPlainText(blocks, {
+      projectName,
+      generatedAt,
+      sources,
+    });
   } catch (e) {
     console.error('[v2/topline/export] failed', e);
     return NextResponse.json({ error: 'export_failed' }, { status: 500 });
@@ -114,7 +112,7 @@ export async function GET(req: Request) {
   });
 }
 
-// {프로젝트명}_탑라인_{YYYY-MM-DD}.{md|txt} — 파일시스템 금지문자만 제거.
+// {프로젝트명}_탑라인_{YYYY-MM-DD}.txt — 파일시스템 금지문자만 제거.
 function buildFilename(
   projectName: string,
   generatedAt: string | null,
