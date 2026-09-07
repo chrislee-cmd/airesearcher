@@ -536,8 +536,8 @@ export function ReportBody({
   blocks: ToplineBlock[];
   // executive_summary 우측 메타 = "n=N · 전수 순회 · 모델".
   metaRight: string;
-  // PDF export(exportDomToPdf) 캡처 대상 — 읽기 본문 루트. 클라 렌더 DOM 을
-  // 소스로 삼아 차트(recharts SVG)까지 canvas 캡처로 자동 포함된다.
+  // drag-to-ask 선택 스코프(useToplineSelection) 대상 — 읽기 본문 루트. 배너·목차
+  // 제외한 순수 보고서 본문만 선택 대상이 되도록 canvasRef 와 분리한다.
   containerRef?: Ref<HTMLElement>;
 }) {
   const t = useTranslations('InterviewsV2') as unknown as Tr;
