@@ -23,6 +23,12 @@ const Body = z.object({
   // a few seconds after the raw matrix. If absent, the client follows
   // up with PATCH /api/interviews/jobs/[id] once consolidated lands.
   consolidated: z.unknown().optional(),
+  // Back-compat: historically this endpoint only persisted successful
+  // snapshots and hardcoded 'done'. It has since been reused as a sink for
+  // fully-failed uploads too, which then surfaced as ghost "done" artifacts.
+  // Let a caller record the real terminal status; default stays 'done' so
+  // existing clients (which never send it) are unaffected.
+  status: z.enum(['queued', 'converting', 'analyzing', 'done', 'error']).optional(),
 });
 
 export async function POST(req: Request) {
@@ -42,7 +48,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
   }
-  const { project_id, inputs, extractions, matrix, consolidated } = parsed.data;
+  const { project_id, inputs, extractions, matrix, consolidated, status } = parsed.data;
 
   const { data, error } = await supabase
     .from('interview_jobs')
@@ -54,7 +60,7 @@ export async function POST(req: Request) {
       extractions,
       matrix,
       consolidated: consolidated ?? null,
-      status: 'done',
+      status: status ?? 'done',
     })
     .select('id')
     .single();
