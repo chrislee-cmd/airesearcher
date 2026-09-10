@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useWidgetGate } from '@/components/widget-gate-provider';
+import { useInterviewUploadSignal } from '@/components/interview-upload-provider';
 import {
   isToplineGeneratingStale,
   type ToplineBlock,
@@ -157,6 +158,22 @@ export function useInterviewTopline(projectId: string | null): ToplineState {
       if (aliveRef.current) setLoading(false);
     })();
   }, [projectId, refetch]);
+
+  // 업로드/인덱싱 시그널 구독 — `indexed`(청크 카운트 > 0)는 GET 응답에만 실려
+  // 오는데, 업로드/인덱싱은 interview_documents·chunks·jobs 만 건드리고 이 훅이
+  // 구독하는 interview_toplines 엔 아무것도 쓰지 않아 리얼타임 이벤트가 애초에
+  // 발생하지 않는다. 그래서 마운트 이후 indexed 가 영영 갱신 안 돼 "리프레시해야만
+  // 분석 버튼 활성"이 됐다. provider 가 배치 전이/완료마다 bump 하는 per-project
+  // 시그널을 구독해 silent refetch → 리프레시 없이 indexed 가 최신화된다.
+  // (use-interview-v2-documents.ts 의 "분석 시작" 게이트와 동일한 prevRef 패턴.
+  // 시그널 훅은 provider 밖에서 0 을 반환하므로 detail 페이지 등에서도 안전.)
+  const uploadSignal = useInterviewUploadSignal(projectId);
+  const prevUploadSignalRef = useRef(uploadSignal);
+  useEffect(() => {
+    if (prevUploadSignalRef.current === uploadSignal) return;
+    prevUploadSignalRef.current = uploadSignal;
+    void refetch();
+  }, [uploadSignal, refetch]);
 
   // Realtime — 이 프로젝트의 탑라인 row UPDATE/INSERT 구독. status/blocks 를
   // payload 로 즉시 반영하고, 안전하게 refetch 로 stale 재계산까지 맞춘다.
