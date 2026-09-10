@@ -59,10 +59,16 @@ export async function getDashboardCards(orgId: string): Promise<{
     .from('report_jobs')
     .select('project_id, status, updated_at')
     .eq('org_id', orgId);
+  // Exclude fully-failed uploads: status='done' is hardcoded at insert, so a
+  // 413/convert-all-fail job persists as 'done' with index_status='error'.
+  // Counting it inflates the project's interview tally. index_status is NOT
+  // NULL default 'pending', so .neq only drops 'error' (partial-fail keeps
+  // index_status='done').
   const interviewsP = supabase
     .from('interview_jobs')
-    .select('project_id, status, updated_at')
-    .eq('org_id', orgId);
+    .select('project_id, status, index_status, updated_at')
+    .eq('org_id', orgId)
+    .neq('index_status', 'error');
   const transcriptsP = supabase
     .from('transcript_jobs')
     .select('project_id, status, updated_at')
