@@ -47,6 +47,59 @@ function groupOf(status: UploadFileStatus): Group {
   }
 }
 
+// A file's completion fraction (0–1) for the byte-weighted aggregate bar. The
+// upload (converting/retrying) phase reads the real TUS byte progress, so a
+// single-file batch moves smoothly instead of jumping 0→100 on completion.
+// Once bytes are up we cap at 0.99 while server-side transcription/indexing
+// runs (no byte signal there), then terminal states read 1.
+function fractionOf(f: { status: UploadFileStatus; progress?: number }): number {
+  switch (f.status) {
+    case 'done':
+    case 'duplicate':
+    case 'error':
+    case 'indexing':
+      return 1;
+    case 'converting':
+    case 'retrying':
+      return Math.min(0.99, (f.progress ?? 0) / 100);
+    case 'queued':
+    default:
+      return 0;
+  }
+}
+
+// Map a failure reason code → an i18n key under InterviewsV2.uploadFailReason.
+// Unknown / dynamic codes (http_5xx, extractor messages) fall back to a
+// network/server or generic label so the user always sees plain language.
+const FAIL_REASON_KEYS: Record<string, string> = {
+  file_too_large: 'fileTooLarge',
+  unsupported_file_type: 'unsupported',
+  empty_file: 'emptyFile',
+  convert_empty: 'convertEmpty',
+  no_text_extracted: 'noText',
+  upload_failed: 'uploadFailed',
+  signed_url_failed: 'uploadFailed',
+  download_failed: 'uploadFailed',
+  no_storage_key: 'uploadFailed',
+  forbidden: 'uploadFailed',
+  network: 'network',
+  rate_limited: 'rateLimited',
+  insufficient: 'insufficient',
+  bad_zip: 'badZip',
+  empty_zip: 'emptyZip',
+  zip_extract_failed: 'badZip',
+  index_failed: 'indexFailed',
+};
+
+function reasonKey(reason?: string): string {
+  if (!reason) return 'generic';
+  if (FAIL_REASON_KEYS[reason]) return FAIL_REASON_KEYS[reason];
+  // Platform 413 / 41x = size/request-entity issues.
+  if (/^http_41/.test(reason)) return 'fileTooLarge';
+  if (/^http_/.test(reason)) return 'network';
+  return 'generic';
+}
+
 // Is there any (non-dismissed) upload batch for this project? The card uses
 // this to swap its dropzone for the inline progress while a batch runs.
 export function useHasInterviewUploadFor(projectId: string | null): boolean {
@@ -87,9 +140,23 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
   }, [batch.files]);
 
   const total = batch.files.length;
-  // Resolved = every terminal file (done + duplicate + error). Drives the bar.
+  // Resolved = every terminal file (done + duplicate + error). Shown as the
+  // N/M count.
   const resolved = counts.done + counts.duplicate + counts.error;
-  const pct = total === 0 ? 0 : Math.round((resolved / total) * 100);
+  // Byte-weighted aggregate progress: each file contributes its size × its
+  // completion fraction (equal weight when a size is unknown, e.g. a restored
+  // batch). This moves with real upload bytes instead of the old count-based
+  // 0→100 jump. Falls back to the count ratio when no sizes are present.
+  const pct = useMemo(() => {
+    let weightSum = 0;
+    let doneSum = 0;
+    for (const f of batch.files) {
+      const w = f.size && f.size > 0 ? f.size : 1;
+      weightSum += w;
+      doneSum += w * fractionOf(f);
+    }
+    return weightSum === 0 ? 0 : Math.round((doneSum / weightSum) * 100);
+  }, [batch.files]);
   const hasError = counts.error > 0;
   const complete = batch.done;
   const cleanComplete = complete && !hasError;
@@ -125,8 +192,11 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
     push(summaryLine, { tone: hasError ? 'warn' : 'info' });
   }, [complete, summaryLine, hasError, push]);
 
-  const failedNames = useMemo(
-    () => batch.files.filter((f) => f.status === 'error').map((f) => f.name),
+  const failedFiles = useMemo(
+    () =>
+      batch.files
+        .filter((f) => f.status === 'error')
+        .map((f) => ({ name: f.name, reason: f.reason })),
     [batch.files],
   );
 
@@ -199,7 +269,7 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
               complete ? 'text-mute-soft' : 'text-lav-text'
             }`}
           >
-            {complete ? summaryLine : `${resolved}/${total}`}
+            {complete ? summaryLine : `${resolved}/${total} · ${pct}%`}
           </div>
         </div>
         <IconButton
@@ -238,21 +308,25 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
         </div>
       )}
 
-      {complete && failedNames.length > 0 && (
+      {complete && failedFiles.length > 0 && (
         <div className="mt-2 border-t border-line-soft pt-2">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-warning">
             {t('uploadArtifactFailedTitle')}
           </div>
           <ul className="mt-1 space-y-0.5">
-            {failedNames.map((name, i) => (
-              <li
-                key={`${name}-${i}`}
-                className="truncate text-xs text-mute"
-                title={name}
-              >
-                {name}
-              </li>
-            ))}
+            {failedFiles.map((f, i) => {
+              const label = t(`uploadFailReason.${reasonKey(f.reason)}`);
+              return (
+                <li
+                  key={`${f.name}-${i}`}
+                  className="truncate text-xs text-mute"
+                  title={`${f.name} — ${label}`}
+                >
+                  <span className="text-ink-2">{f.name}</span>
+                  <span className="text-mute-soft"> — {label}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

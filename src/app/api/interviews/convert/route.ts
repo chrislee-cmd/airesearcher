@@ -21,6 +21,10 @@ import { logError } from '@/lib/observability/log-error';
 export const maxDuration = 300;
 
 const MAX_BYTES = 25 * 1024 * 1024;
+// Reused Storage bucket for direct browser uploads (same as transcripts). The
+// bytes land here via TUS before convert reads them back by key — see
+// /api/interviews/upload-url.
+const UPLOAD_BUCKET = 'audio-uploads';
 
 const SYSTEM = `당신은 인터뷰 텍스트를 깔끔한 Markdown 인터뷰 노트로 정리하는 작성자입니다.
 - 인터뷰어의 질문은 \`## Q. <원문 질문>\` 형태로 시작합니다.
@@ -65,20 +69,95 @@ export async function POST(request: Request) {
   // features. Abuse of the pure-extraction path stays bounded by the credit
   // spend (spendCredits) below.
 
-  const formData = await request.formData();
-  const file = formData.get('file');
-  if (!(file instanceof File)) {
-    logConvertFail({ name: 'unknown', stage: 'validate', reason: 'no_file', status: 400 });
-    return NextResponse.json({ error: 'no_file' }, { status: 400 });
+  // Two intake paths:
+  //  · JSON { storage_key, filename, mime } — the DIRECT-UPLOAD path
+  //    (pr-iv-upload-direct-storage). Bytes are already in Storage (browser →
+  //    TUS), so nothing here hit the Vercel 4.5MB body cap. We download the
+  //    object back and run the exact same pipeline on it.
+  //  · multipart/form-data { file } — the LEGACY path, still used by the
+  //    interview-job-provider convert loop and any pre-deploy client. Kept for
+  //    backward compat; small files (< 4.5MB) work through it unchanged.
+  const contentType = request.headers.get('content-type') ?? '';
+  let file: File;
+  let projectId: string | null = null;
+  // Object key to delete once convert fully succeeds (direct-upload scratch).
+  // Left in place on failure so a client 429-retry can re-download it.
+  let cleanupKey: string | null = null;
+
+  if (contentType.includes('application/json')) {
+    const body = (await request.json().catch(() => null)) as {
+      storage_key?: unknown;
+      filename?: unknown;
+      mime?: unknown;
+      project_id?: unknown;
+    } | null;
+    const storageKey =
+      typeof body?.storage_key === 'string' ? body.storage_key : '';
+    const filename =
+      typeof body?.filename === 'string' && body.filename
+        ? body.filename
+        : 'upload';
+    const mime = typeof body?.mime === 'string' ? body.mime : '';
+    if (!storageKey) {
+      logConvertFail({ name: filename, stage: 'validate', reason: 'no_storage_key', status: 400 });
+      return NextResponse.json({ error: 'no_storage_key' }, { status: 400 });
+    }
+    // The key must live under this user's prefix (mirrors the bucket RLS). A
+    // client can only ever have uploaded to `<userId>/…` via upload-url, so a
+    // mismatch means a forged/foreign key — refuse to read it.
+    if (!storageKey.startsWith(`${user.id}/`)) {
+      logConvertFail({ name: filename, stage: 'validate', reason: 'forbidden_key', status: 403 });
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+    projectId =
+      typeof body?.project_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.project_id)
+        ? body.project_id
+        : null;
+    const { data: blob, error: dlErr } = await supabase.storage
+      .from(UPLOAD_BUCKET)
+      .download(storageKey);
+    if (dlErr || !blob) {
+      logConvertFail({ name: filename, stage: 'download', reason: dlErr?.message ?? 'download_failed', status: 502 });
+      return NextResponse.json({ error: 'download_failed' }, { status: 502 });
+    }
+    cleanupKey = storageKey;
+    const buf = await blob.arrayBuffer();
+    file = new File([buf], filename, {
+      type: mime || blob.type || 'application/octet-stream',
+    });
+  } else {
+    const formData = await request.formData();
+    const f = formData.get('file');
+    if (!(f instanceof File)) {
+      logConvertFail({ name: 'unknown', stage: 'validate', reason: 'no_file', status: 400 });
+      return NextResponse.json({ error: 'no_file' }, { status: 400 });
+    }
+    file = f;
+    // Optional active project id from the client. Used so the resulting
+    // generations row joins the workspace panel's default 'active' scope.
+    // Ignored if not a valid uuid.
+    const projectIdRaw = formData.get('project_id');
+    projectId =
+      typeof projectIdRaw === 'string' && /^[0-9a-f-]{36}$/i.test(projectIdRaw)
+        ? projectIdRaw
+        : null;
   }
-  // Optional active project id from the client. Used so the resulting
-  // generations row joins the workspace panel's default 'active' scope.
-  // Ignored if not a valid uuid.
-  const projectIdRaw = formData.get('project_id');
-  const projectId =
-    typeof projectIdRaw === 'string' && /^[0-9a-f-]{36}$/i.test(projectIdRaw)
-      ? projectIdRaw
-      : null;
+
+  // Best-effort removal of the direct-upload scratch object once we're done
+  // with it. Called only on the success path (below) so retryable failures can
+  // re-download; a helper keeps the single call-site tidy.
+  const cleanupUpload = async () => {
+    if (!cleanupKey) return;
+    try {
+      await supabase.storage.from(UPLOAD_BUCKET).remove([cleanupKey]);
+    } catch {
+      // orphaned scratch object — harmless, storage lifecycle can reclaim it
+    }
+  };
+
+  // Server-side size validation now actually bites: with direct upload the
+  // 4.5–25MB dead-zone (announced-allowed but always edge-413'd) is gone, so
+  // this is the single real 25MB gate for both paths.
   if (file.size > MAX_BYTES) {
     logConvertFail({ name: file.name, stage: 'validate', reason: 'file_too_large', status: 413 });
     return NextResponse.json({ error: 'file_too_large' }, { status: 413 });
@@ -115,6 +194,7 @@ export async function POST(request: Request) {
     output_chars: number;
   }>(cacheKey);
   if (cached) {
+    await cleanupUpload();
     return NextResponse.json({
       ...cached,
       filename: file.name,
@@ -298,6 +378,10 @@ export async function POST(request: Request) {
     input_chars: rawText.length,
     output_chars: markdown.length,
   });
+
+  // Convert succeeded and the result is cached — drop the direct-upload scratch
+  // object (no-op for the legacy multipart path).
+  await cleanupUpload();
 
   return NextResponse.json({
     markdown,

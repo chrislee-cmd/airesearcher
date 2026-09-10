@@ -13,10 +13,19 @@ const TEXT_RE = /\.(txt|md|markdown|csv|json|log)$/i;
 const DOCX_RE = /\.(docx|doc)$/i;
 const PDF_RE = /\.pdf$/i;
 const XLSX_RE = /\.(xlsx|xls)$/i;
+// Extension fallback for audio/video. A `.m4a` recorded on iOS/macOS often
+// arrives with an empty or generic MIME (blob upload, some browsers), so
+// `file.type.startsWith('audio/')` alone misclassifies it as unsupported →
+// 415. Documents already have extension fallbacks (above); this gives AV the
+// same treatment. `.webm`/`.ogg` route to VIDEO/AUDIO by extension here, but
+// both kinds go through the identical transcription path in convert, so the
+// audio-vs-video split is cosmetic.
+const AUDIO_RE = /\.(m4a|mp3|wav|aac|ogg|oga|flac|opus|aiff|aif|weba|amr|wma)$/i;
+const VIDEO_RE = /\.(mp4|m4v|mov|avi|mkv|webm|mpeg|mpg|wmv|flv|3gp)$/i;
 
 export function classifyFile(file: File): FileKind {
-  if (file.type.startsWith('audio/')) return 'audio';
-  if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('audio/') || AUDIO_RE.test(file.name)) return 'audio';
+  if (file.type.startsWith('video/') || VIDEO_RE.test(file.name)) return 'video';
   if (file.type === 'application/pdf' || PDF_RE.test(file.name)) return 'pdf';
   if (
     file.type ===
