@@ -3,6 +3,7 @@ import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { spendCreditsAdmin } from '@/lib/credits';
+import { advanceChain } from '@/lib/chains/advance';
 import {
   elevenlabsToMarkdown,
   type ElevenLabsScribeResult,
@@ -210,6 +211,28 @@ export async function POST(
   } catch (e) {
     console.warn('[transcripts/poll] credit deduction failed', e);
   }
+
+  // ── 위젯 체인 advance (PR-B) ──────────────────────────────────────────────
+  // ⚠️ #1024 불변식: **활성 체인이 없으면 완전 no-op** 이다. 체인을 명시
+  // 생성하지 않은 전사 잡은 여기서 아무 일도 겪지 않는다(DB 쓰기 0 · 외부
+  // 호출 0 · 과금 0). 2026-07-13 #1024 가 제거한 "원치 않는 자동 kick/과금"
+  // 을 되살리는 유일한 조건은 "사용자가 체인을 만들고 모드를 골랐다" 뿐.
+  //
+  // after(): auto 모드의 다음 단계 kick 은 provider/convert 왕복을 포함할 수
+  // 있다. 응답 전에 await 하면 폴링 응답이 지연돼 전사 완료를 기다리는 클라이언트 UI
+  // 가 멈추므로(= 본 파이프라인 훼손) 응답 뒤로 미룬다 — maxDuration 안에서 플랫폼이 완료를
+  // 보장한다. 예외는 흡수: 체인 훅이 전사 파이프라인을 깨면 안 된다.
+  after(async () => {
+    try {
+      await advanceChain({
+        orgId: job.org_id,
+        sourceFeature: 'transcripts',
+        jobRef: job.id,
+      });
+    } catch (e) {
+      console.warn('[transcripts/poll] chain advance failed', e);
+    }
+  });
 
   // Post-completion passes run AFTER the response goes out. We've already
   // saved un-cleaned `markdown` and marked the job done — the client unblocks

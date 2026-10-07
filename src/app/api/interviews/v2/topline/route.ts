@@ -1,5 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
+import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
@@ -59,7 +60,56 @@ const Body = z.object({
   // "지금 M개 기준으로 생성" 을 명시 선택하면 클라가 이 값을 true 로 재요청 →
   // 게이트를 통과해 현재 인덱싱된 문서만으로 생성한다. 기본 false(대기 권장).
   allow_partial: z.boolean().optional().default(false),
+  // ── 내부(위젯 체인) 호출 식별자 ──
+  // 체인의 advance 훅(src/lib/chains/advance.ts)은 전사/인덱싱 완료 지점 같은
+  // **세션 없는 서버 지점**에서 탑라인을 kick 한다(쿠키 없음). 세션 대신
+  // CRON_SECRET Bearer 로 신뢰하고 행위자·테넌트를 body 로 명시 전달받는다 —
+  // /api/interviews/convert 가 PR-C 에서 이미 쓰는 동일 패턴. 체인이 자기
+  // 생성 경로를 따로 만들지 않고 이 라우트의 캐시·stale·완전성 게이트·
+  // rate-limit 을 전부 그대로 통과하게 하는 것이 목적이다.
+  //
+  // 세션 호출자가 이 값을 보내도 아무 일도 없다 — 아래 분기는 CRON_SECRET
+  // Bearer 가 일치할 때만 이 필드를 본다.
+  chain_user_id: z.string().uuid().optional(),
+  chain_org_id: z.string().uuid().optional(),
 });
+
+// 내부(체인) 경로의 로케일 폴백 — 쿠키가 없으므로 유저 프로필의 명시 선호를
+// 읽는다. 조회 실패/미설정은 null → resolveOutputLang 의 기본값으로 떨어진다.
+async function readProfileLocale(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const { data } = await admin
+      .from('profiles')
+      .select('locale')
+      .eq('id', userId)
+      .maybeSingle();
+    return (data?.locale as string | null) ?? null;
+  } catch (e) {
+    console.warn('[v2/topline] profile locale fetch failed', e);
+    return null;
+  }
+}
+
+// 내부(위젯 체인) 호출의 행위자·테넌트 추출. CRON_SECRET Bearer 가 일치한
+// 호출에서만 불린다. 둘 다 uuid 로 실려 있어야 내부 경로로 인정하고, 아니면
+// null → 일반 세션 경로로 떨어진다(내부 인증만으로 신원 없이 통과 금지).
+//
+// 신뢰 경계는 그대로다: 아래 본문은 여전히 orgId 로 프로젝트 소유를 검증하고,
+// 캐시·완전성 게이트·rate-limit 을 동일하게 통과한다. 체인은 게이트를
+// 우회하지 않는다 — 세션 쿠키만 대체한다.
+function readChainIdentity(
+  raw: unknown,
+): { userId: string; orgId: string } | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const body = raw as { chain_user_id?: unknown; chain_org_id?: unknown };
+  const uid = z.string().uuid().safeParse(body.chain_user_id);
+  const oid = z.string().uuid().safeParse(body.chain_org_id);
+  if (!uid.success || !oid.success) return null;
+  return { userId: uid.data, orgId: oid.data };
+}
 
 // GET ?project_id=<uuid> — 읽기 전용 조회. 2-tab UI 가 탭 열자마자 저장된
 // 탑라인을 **생성 트리거 없이** 읽는다 (POST 는 stale/미존재 시 Opus 를
@@ -180,41 +230,69 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-  const org = await getActiveOrg();
-  if (!org?.org_id) {
-    return NextResponse.json({ error: 'no_org' }, { status: 403 });
+  // body 를 **인증보다 먼저** 읽는다 — 내부(체인) 호출자가 신원을 body 로
+  // 싣고 오고, Request 본문은 한 번만 소비할 수 있기 때문이다. 단 검증 실패
+  // 응답(400)은 인증 분기 **뒤로** 미뤄 기존 응답 순서(401 → 403 → 400)를
+  // 그대로 보존한다(미인증 호출자에게 입력 형식을 노출하지 않음).
+  const raw = (await req.json().catch(() => null)) as unknown;
+  const internalAuth =
+    (req.headers.get('authorization') ?? '') === `Bearer ${env.CRON_SECRET}`;
+  const internalCreds = internalAuth ? readChainIdentity(raw) : null;
+
+  let userId: string;
+  let orgId: string;
+  if (internalCreds) {
+    userId = internalCreds.userId;
+    orgId = internalCreds.orgId;
+  } else {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    const org = await getActiveOrg();
+    if (!org?.org_id) {
+      return NextResponse.json({ error: 'no_org' }, { status: 403 });
+    }
+    userId = user.id;
+    orgId = org.org_id;
   }
 
-  const parsed = Body.safeParse(await req.json().catch(() => null));
+  const parsed = Body.safeParse(raw);
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
   const { project_id, force, output_lang, user_direction, allow_partial } =
     parsed.data;
-  // 요청 언어 정규화 — 위젯 명시 출력언어 선택 > 유저 로케일(NEXT_LOCALE) > en
-  // (i18n Phase 7 통일 규칙). 과거엔 미지정 시 한국어 고정이라 /en 유저 topline 이
-  // 한국어로 새어 나왔다. 캐시 비교/저장 모두 이 값 기준. resolveOutputLang 의
-  // 6-lang 집합은 TOPLINE_OUTPUT_LANGS 와 동일해 타입/값 드리프트 0.
-  const requestLang = resolveOutputLang(output_lang, await readRequestLocale());
   // 요청 방향 정규화 — trim 후 빈 문자열이면 null(방향 없음). 캐시 비교/저장
   // 모두 이 값 기준(레거시/방향 없음 row 의 user_direction 도 null 이라 정합).
   const requestDirection = user_direction?.trim() || null;
 
   const admin = createAdminClient();
 
+  // 요청 언어 정규화 — 위젯 명시 출력언어 선택 > 유저 로케일 > en (i18n Phase 7
+  // 통일 규칙). 과거엔 미지정 시 한국어 고정이라 /en 유저 topline 이 한국어로
+  // 새어 나왔다. 캐시 비교/저장 모두 이 값 기준. resolveOutputLang 의 6-lang
+  // 집합은 TOPLINE_OUTPUT_LANGS 와 동일해 타입/값 드리프트 0.
+  //
+  // 로케일 폴백 소스가 경로별로 다르다: 세션 경로는 NEXT_LOCALE 쿠키, 내부
+  // (체인) 경로는 쿠키가 없으므로 체인 생성자의 profiles.locale(#1038 — auth
+  // callback 이 그 값으로 쿠키를 세팅하므로 쿠키의 원본 SSOT)을 읽는다. 둘 다
+  // "유저의 명시 로케일 선호" 라는 같은 값을 가리킨다 — 체인이 kick 한 탑라인이
+  // CTA 로 누른 것과 다른 언어로 나오는 괴리를 막는다.
+  const localeFallback = internalCreds
+    ? await readProfileLocale(admin, userId)
+    : await readRequestLocale();
+  const requestLang = resolveOutputLang(output_lang, localeFallback);
+
   // 프로젝트가 이 org 소유인지 확인 — 아니면 not_found(정보 누출 방지).
   const { data: projectRow } = await admin
     .from('interview_projects')
     .select('id')
     .eq('id', project_id)
-    .eq('org_id', org.org_id)
+    .eq('org_id', orgId)
     .maybeSingle();
   if (!projectRow) {
     return NextResponse.json({ error: 'project_not_found' }, { status: 404 });
@@ -225,7 +303,7 @@ export async function POST(req: Request) {
   let docCount: number;
   let indexedDocCount: number;
   try {
-    const corpus = await computeProjectCorpus(admin, org.org_id, project_id);
+    const corpus = await computeProjectCorpus(admin, orgId, project_id);
     hash = corpus.hash;
     chunkCount = corpus.chunkCount;
     docCount = corpus.docCount;
@@ -246,7 +324,7 @@ export async function POST(req: Request) {
   // 문서셋·언어·방향이 같아도 재생성한다. 조회 실패는 null(가이드 없음)로 진행.
   let currentGuidelineHash: string | null = null;
   try {
-    const guideline = await getProjectGuideline(admin, org.org_id, project_id);
+    const guideline = await getProjectGuideline(admin, orgId, project_id);
     currentGuidelineHash = guideline?.guideline_hash ?? null;
   } catch (e) {
     console.warn('[v2/topline] POST guideline fetch failed', e);
@@ -316,13 +394,13 @@ export async function POST(req: Request) {
   }
 
   // LLM 호출을 태우므로 rate-limit 게이트(생성 경로에서만).
-  const limited = await checkLlmRateLimit(user.id, org.org_id);
+  const limited = await checkLlmRateLimit(userId, orgId);
   if (limited) return limited;
 
   let toplineId: string;
   try {
     toplineId = await upsertGenerating(admin, {
-      orgId: org.org_id,
+      orgId,
       projectId: project_id,
       hash,
       outputLang: requestLang,
@@ -341,7 +419,7 @@ export async function POST(req: Request) {
   after(() =>
     runTopline(admin, {
       toplineId,
-      orgId: org.org_id,
+      orgId,
       projectId: project_id,
       outputLang: requestLang,
       userDirection: requestDirection ?? undefined,
