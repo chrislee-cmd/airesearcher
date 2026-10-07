@@ -84,6 +84,11 @@ export type ChainStepInstance = {
   job_ref: string | null;
   // 생성 시점 비용 스냅샷(표시용). 가격이 나중에 바뀌어도 당시 고지값 보존.
   cost_at_creation: number;
+  // 이 단계가 실패한 사유. 인제스트 어댑터(C)가 실패 즉시 기록한다 — 체인이
+  // 조용히 멈춘 채 남는 "유령 전이"를 금지하기 위한 필드(#1319 교훈). 성공
+  // 경로에서는 없거나 null. optional 이라 기존 steps jsonb(이 필드 없는 A 시절
+  // 인스턴스)도 그대로 읽힌다.
+  error?: string | null;
 };
 
 // 템플릿을 인스턴스화 — startAt 인덱스부터의 suffix 를 pending 단계 배열로.
