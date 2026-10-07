@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { cookies } from 'next/headers';
+import { createHash } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { isShareExpired, recordShareView } from '@/lib/share/shared-views';
@@ -98,6 +99,12 @@ export default async function Page({
     );
   }
   if (isShareExpired(share.expires_at as string | null)) {
+    // 관측성 — 만료 렌더는 서버 로그 무흔적이었다(토큰 평문 미기록, 해시 prefix +
+    // 만료일만). Surface B 도 Surface A(/share/[token])와 동일한 사각지대.
+    console.warn('[share/view] expired link render', {
+      tokenHash: createHash('sha256').update(token).digest('hex').slice(0, 12),
+      expiresAt: share.expires_at,
+    });
     return (
       <ShareShell
         state="expired"

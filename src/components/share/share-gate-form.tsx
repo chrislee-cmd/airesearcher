@@ -24,6 +24,8 @@ const RESEND_COOLDOWN_SEC = 60;
 type SendResult =
   | { status: 'ok' }
   | { status: 'throttled'; retryAfter: number }
+  // 링크가 죽음(만료·폐기) — 코드 미발송, 실제 사유를 뷰어에 표시한다.
+  | { status: 'dead'; reason: 'expired' | 'revoked' }
   | { status: 'error' };
 
 export function ShareGateForm({
@@ -69,6 +71,16 @@ export function ShareGateForm({
           retryAfter: data?.retry_after ?? RESEND_COOLDOWN_SEC,
         };
       }
+      if (res.status === 403) {
+        // 만료·폐기 링크 — 서버가 사유를 돌려준다(그 외 403 은 generic).
+        const data = (await res.json().catch(() => null)) as {
+          reason?: string;
+        } | null;
+        if (data?.reason === 'expired' || data?.reason === 'revoked') {
+          return { status: 'dead', reason: data.reason };
+        }
+        return { status: 'error' };
+      }
       if (!res.ok) return { status: 'error' };
       return { status: 'ok' };
     },
@@ -85,6 +97,11 @@ export function ShareGateForm({
       if (result.status === 'throttled') {
         setCooldown(result.retryAfter);
         setError(t('gateThrottled'));
+        return;
+      }
+      if (result.status === 'dead') {
+        // 만료·폐기 링크 — 코드 단계로 넘어가지 않고 실제 사유를 보여준다.
+        setError(result.reason === 'revoked' ? t('revokedBody') : t('expiredBody'));
         return;
       }
       if (result.status === 'error') {
@@ -106,6 +123,10 @@ export function ShareGateForm({
       if (result.status === 'throttled') {
         setCooldown(result.retryAfter);
         setError(t('gateThrottled'));
+        return;
+      }
+      if (result.status === 'dead') {
+        setError(result.reason === 'revoked' ? t('revokedBody') : t('expiredBody'));
         return;
       }
       if (result.status === 'error') {
@@ -138,11 +159,17 @@ export function ShareGateForm({
       const data = (await res.json().catch(() => null)) as {
         error?: string;
       } | null;
-      // 미초대는 여기서만 드러난다(enumeration 보호) — §1 인라인 에러.
+      // 미초대는 여기서만 드러난다(enumeration 보호) — §1 인라인 에러. 만료·폐기는
+      // 코드 오류가 아니라 링크 상태이므로 사유별로 분기(코드 발급 후 레이스 포함).
+      const reason = data?.error;
       setError(
-        data?.error === 'not_invited'
+        reason === 'not_invited'
           ? t('gateNotOnList')
-          : t('gateInvalidCode'),
+          : reason === 'expired'
+            ? t('expiredBody')
+            : reason === 'revoked'
+              ? t('revokedBody')
+              : t('gateInvalidCode'),
       );
     });
   }

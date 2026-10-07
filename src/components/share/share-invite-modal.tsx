@@ -14,6 +14,7 @@ import { ChipField } from '@/components/ui/chip-field';
 import { SelectMenu } from '@/components/ui/select-menu';
 import { useToast } from '@/components/toast-provider';
 import { shareViewerUrl } from '@/lib/share/viewer-url';
+import { isShareExpired } from '@/lib/share/expiry';
 
 // 공유 + 초대 관리 모달 (#477) — 인터뷰 탑라인 / 프로빙 페르소나 전체보기에서
 // 재사용하는 단일 컴포넌트. #474 backend API(POST /api/share, invite add/remove,
@@ -80,7 +81,8 @@ export function ShareInviteModal({
   const locale = useLocale();
   const toast = useToast();
 
-  // 활성(미폐기) 공유 row — 없으면 생성 모드.
+  // 이 리소스의 기존(미폐기) 공유 row — 없으면 생성 모드. 만료된 row 일 수도
+  // 있으므로(아래 expired 파생), 활성/만료를 구분해 렌더한다.
   const [share, setShare] = useState<ShareRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -113,13 +115,21 @@ export function ShareInviteModal({
           | { shares?: ShareRow[] }
           | null;
         if (cancelled || !aliveRef.current) return;
-        const active = (json?.shares ?? []).find(
+        // 미폐기 링크를 찾는다 — 만료 여부는 여기서 거르지 않고(revoke 만 죽은
+        // 링크로 취급) expired 파생에서 활성/만료를 구분한다. revoke 만 보고
+        // 만료를 활성처럼 되살리던 버그를 이 분리가 고친다.
+        const existing = (json?.shares ?? []).find(
           (s) =>
             s.resource_type === resourceType &&
             s.resource_id === resourceId &&
             !s.revoked_at,
         );
-        setShare(active ?? null);
+        setShare(existing ?? null);
+        // 기존 링크가 만료됐으면, 새 링크 생성 폼에 기존 초대 이메일을 미리
+        // 채워 재입력 수고를 던다(사용자는 편집 가능).
+        if (existing && isShareExpired(existing.expires_at)) {
+          setDraftEmails(existing.invited_emails ?? []);
+        }
       } catch {
         // 조회 실패 — 생성 모드로 fallback (사용자가 링크를 새로 만들 수 있게).
       } finally {
@@ -258,6 +268,11 @@ export function ShareInviteModal({
 
   if (!open) return null;
 
+  // 기존 링크가 만료됐는지 — 만료면 관리 모드 대신 "만료 배지 + 새 링크 생성"
+  // 경로를 띄운다. 활성(관리 모드) = 링크 존재 && 미만료.
+  const expired = share ? isShareExpired(share.expires_at) : false;
+  const manageMode = !!share && !expired;
+
   const expiryOptions = EXPIRY_DAYS.map((d) => ({
     value: String(d),
     label: t('expiryDays', { days: d }),
@@ -281,8 +296,8 @@ export function ShareInviteModal({
           <p className="py-6 text-center text-sm text-mute-soft">
             {t('loading')}
           </p>
-        ) : share ? (
-          // ── 관리 모드 — 링크 존재 ──
+        ) : manageMode && share ? (
+          // ── 관리 모드 — 활성 링크 존재 ──
           <>
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
@@ -313,8 +328,24 @@ export function ShareInviteModal({
             />
           </>
         ) : (
-          // ── 생성 모드 — 링크 없음 ──
+          // ── 생성 모드 — 링크 없음, 또는 기존 링크가 만료됨 ──
           <>
+            {expired && share ? (
+              // 만료 배지 + 안내(경고 톤) — 만료 링크를 활성처럼 보여주지 않고
+              // 아래 폼으로 새 링크 생성을 유도한다.
+              <div className="flex flex-col gap-1 rounded-sm border border-warning-line bg-warning-bg px-3 py-2.5">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-warning">
+                  {t('expiredBadge')}
+                </span>
+                <p className="text-sm text-ink-2">
+                  {share.expires_at
+                    ? t('expiredNoticeDated', {
+                        date: new Date(share.expires_at).toLocaleDateString(),
+                      })
+                    : t('expiredNotice')}
+                </p>
+              </div>
+            ) : null}
             <EmailChips
               emails={draftEmails}
               onAdd={(e) =>
@@ -346,7 +377,7 @@ export function ShareInviteModal({
 
       {!loading ? (
         <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-line-soft px-6 py-3">
-          {share ? (
+          {manageMode ? (
             <Button
               variant="ghost"
               size="sm"
@@ -363,7 +394,8 @@ export function ShareInviteModal({
             <Button variant="ghost" size="sm" onClick={onClose}>
               {t('done')}
             </Button>
-            {!share ? (
+            {!manageMode ? (
+              // 링크 없음 또는 만료 → 새 링크 생성 버튼(만료 라벨은 기존과 동일).
               <Button
                 variant="primary"
                 size="sm"

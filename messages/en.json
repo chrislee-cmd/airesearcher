@@ -2934,7 +2934,10 @@
     "create": "Create link",
     "creating": "Creating…",
     "createSuccess": "Share link created.",
-    "createError": "Couldn't create the link."
+    "createError": "Couldn't create the link.",
+    "expiredBadge": "Expired",
+    "expiredNotice": "Your existing share link has expired. Create a new one below to share.",
+    "expiredNoticeDated": "Your existing share link expired on {date}. Create a new one below to share."
   },
   "AdminWidgetVisibility": {
     "title": "Widget visibility",
