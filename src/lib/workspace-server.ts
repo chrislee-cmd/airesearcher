@@ -280,11 +280,18 @@ export async function listWorkspaceArtifacts(
     filter,
   );
   const interviewQ = applyProjectFilter(
+    // status='done' is hardcoded at insert (see api/interviews/jobs/route.ts),
+    // so a fully-failed upload (nothing converted) still lands as 'done' with
+    // index_status='error' — it would otherwise show as a completed artifact
+    // that opens blank. Exclude those. index_status is NOT NULL default
+    // 'pending' (migration 20260624123016), so this only drops 'error'; normal
+    // ('done'), partial-fail ('done' + error_message), pending/indexing all stay.
     supabase
       .from('interview_jobs')
-      .select('id, project_id, folder_id, inputs, status, updated_at, created_at')
+      .select('id, project_id, folder_id, inputs, status, index_status, updated_at, created_at')
       .eq('org_id', orgId)
-      .eq('status', 'done'),
+      .eq('status', 'done')
+      .neq('index_status', 'error'),
     filter,
   );
   const reportQ = applyProjectFilter(
