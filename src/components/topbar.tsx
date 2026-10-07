@@ -5,12 +5,18 @@ import { TopbarTabs } from './topbar-tabs';
 import { TopbarAccount } from './topbar-account';
 import { SignInButton } from './sign-in-button';
 import { BackgroundJobPill } from './background-job-pill';
-import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
+// QA 피드백 클러스터(메모+보이스) 숨김 — 2026-09-06 사용자 요청(출시 전 기획
+// 미완성). 컴포넌트·제출 테이블·RLS·슈퍼어드민 /admin/qa-feedback 열람은 보존.
+// 복원 시 아래 import 와 렌더 주석 해제.
+// import { QaFeedbackCluster } from './qa/qa-feedback-cluster';
 // 뷰 모드 토글 (캔버스 ⇄ 리스트) — 2026-07-27 사용자 요청으로 숨김. 복원 시 아래 import 주석 해제.
 // import { ViewModeToggle } from './view-mode-toggle';
-import { CollabShareButton } from './scheduling/collab-share';
+// collaborator 모드 공유 버튼 숨김 — 2026-09-06 사용자 요청(출시 전 기획 미완성).
+// 라우트·초대 API·collab 로직은 전부 보존. 복원 시 아래 두 import 와 collab
+// fetch(아래 const collab …) + 렌더 주석을 한 세트로 해제.
+// import { CollabShareButton } from './scheduling/collab-share';
 import { getActiveOrg, getCurrentUserOrgs } from '@/lib/org';
-import { getCollabShareData } from '@/lib/collab-share-data';
+// import { getCollabShareData } from '@/lib/collab-share-data';
 
 // PR-D7: 사이드바 → 헤더 탭 구조 전환. 노랑 banner + 검정 3px 하단 border
 // + Outfit display logo. 좌측 로고 / 중앙 탭 row / 우측 user menu.
@@ -43,7 +49,10 @@ export async function Topbar({
   // account menu (Google-Docs share position) so it's reachable from the main
   // canvas and every other (app) page. Returns null (button hidden) unless the
   // account is an org owner/admin — same gate as members/invite.
-  const collab = isAuthed ? await getCollabShareData() : null;
+  // 2026-09-06 사용자 요청으로 숨김(출시 전 기획 미완성). fetch·import·렌더를
+  // 한 세트로 주석 처리 — collab 이 미사용이 되면 lint 가 깨지므로. 복원 시
+  // 위 import 와 아래 렌더 주석을 함께 해제.
+  // const collab = isAuthed ? await getCollabShareData() : null;
 
   const tabs = [
     { key: 'canvas', href: '/canvas', label: tTabs('canvas') },
@@ -99,11 +108,15 @@ export async function Topbar({
                 다시 제공하려면 위 import 와 아래 한 줄의 주석을 해제하면 된다. */}
             {/* <ViewModeToggle /> */}
             {/* QA feedback cluster (voice mic + text note + "피드백 남기기"
-                label) — shown to every signed-in account. */}
-            <QaFeedbackCluster />
-            {collab ? (
+                label) — shown to every signed-in account.
+                2026-09-06 사용자 요청으로 숨김(위 import 주석 참고). 복원 시
+                위 import 와 아래 한 줄 주석 해제. */}
+            {/* <QaFeedbackCluster /> */}
+            {/* collaborator 공유 버튼 — 2026-09-06 사용자 요청으로 숨김.
+                복원 시 위 import·collab fetch 와 아래 블록 주석 해제. */}
+            {/* {collab ? (
               <CollabShareButton orgId={collab.orgId} members={collab.members} />
-            ) : null}
+            ) : null} */}
             <TopbarAccount
               email={userEmail}
               credits={credits}
