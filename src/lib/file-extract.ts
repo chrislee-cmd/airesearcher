@@ -124,3 +124,87 @@ function csvEscape(v: string): string {
   if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
   return v;
 }
+
+// ── 확장자 → MIME 폴백 (서버측 MIME 보정) ──────────────────────────────────
+//
+// 브라우저가 올린 blob 은 MIME 이 비어 있거나 generic(`application/octet-stream`)
+// 으로 도착하는 일이 흔하다 — iOS/macOS 의 `.m4a` 가 대표적이고, 그게 바로
+// 2026-09-10 "인터뷰 분석이 녹음을 415 로 거절" 사고의 원인이었다(#1320 이
+// classifyFile 에 AUDIO_RE/VIDEO_RE 폴백을 넣어 분류는 고쳤다).
+//
+// classifyFile 은 "이 파일이 무슨 종류냐"까지만 답한다. 위젯 체인의 인제스트
+// 어댑터(src/lib/chains/adapters.ts)는 버킷 간 전달 시 object 의 content-type
+// 자체를 바로잡아야 하므로 **구체 MIME 문자열**이 필요하다 — 그래서 분류의
+// SSOT(위 regex)를 그대로 재사용해 확장자에서 MIME 을 복원한다. 매핑 테이블을
+// 따로 두되 판정은 항상 classifyFile 의 regex 를 거치므로, 확장자 목록이 한쪽만
+// 늘어나 갈라지는 일이 없다.
+
+const EXT_MIME: Record<string, string> = {
+  // audio
+  m4a: 'audio/mp4',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  aac: 'audio/aac',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  flac: 'audio/flac',
+  opus: 'audio/opus',
+  aiff: 'audio/aiff',
+  aif: 'audio/aiff',
+  weba: 'audio/webm',
+  amr: 'audio/amr',
+  wma: 'audio/x-ms-wma',
+  // video
+  mp4: 'video/mp4',
+  m4v: 'video/x-m4v',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  mkv: 'video/x-matroska',
+  webm: 'video/webm',
+  mpeg: 'video/mpeg',
+  mpg: 'video/mpeg',
+  wmv: 'video/x-ms-wmv',
+  flv: 'video/x-flv',
+  '3gp': 'video/3gpp',
+  // text / docs
+  txt: 'text/plain',
+  md: 'text/markdown',
+  markdown: 'text/markdown',
+  csv: 'text/csv',
+  json: 'application/json',
+  log: 'text/plain',
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+
+/**
+ * 파일명 확장자에서 MIME 을 복원한다. classifyFile 이 `unsupported` 로 보는
+ * 확장자는 null — 추측한 MIME 으로 거절돼야 할 파일을 통과시키지 않는다.
+ *
+ * 판정은 classifyFile 에 위임한다(빈 MIME 의 가상 File 로 질의) — 확장자
+ * regex 를 두 번 쓰지 않기 위한 의도적 재사용.
+ */
+export function mimeFromExtension(filename: string): string | null {
+  if (classifyFile(new File([], filename, { type: '' })) === 'unsupported') {
+    return null;
+  }
+  const dot = filename.lastIndexOf('.');
+  if (dot < 0) return null;
+  return EXT_MIME[filename.slice(dot + 1).toLowerCase()] ?? null;
+}
+
+/**
+ * 신뢰할 수 있는 MIME 을 고른다 — 선언된 MIME 이 비었거나 generic 이면 확장자
+ * 폴백으로 교체한다. 둘 다 없으면 null(호출측이 거절/보존 판단).
+ */
+export function resolveMime(
+  filename: string,
+  declared: string | null | undefined,
+): string | null {
+  const d = (declared ?? '').trim();
+  if (d && d !== 'application/octet-stream' && d !== 'binary/octet-stream') {
+    return d;
+  }
+  return mimeFromExtension(filename);
+}
