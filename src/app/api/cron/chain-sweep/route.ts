@@ -29,6 +29,7 @@ import { env } from '@/env';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { casChain, type ChainRow, type ChainStatus } from '@/lib/chains/state';
 import { logError } from '@/lib/observability/log-error';
+import { recordCronHeartbeat } from '@/lib/observability/cron-heartbeat';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -108,6 +109,14 @@ export async function GET(request: Request) {
       },
     });
   }
+
+  // 생존 신호(PR-E) — **성공 완주 시에도** 1행 기록. 이 cron 은 정상 상황에
+  // 아무것도 닫지 않으므로(candidates 0) error_events 에 흔적을 남기지 않는다.
+  // 그래서 "정상 가동" 과 "cron 미등록/미실행" 이 똑같은 무음이 된다. 여기서
+  // ran_at 을 찍어 어드민이 그 둘을 구분한다. 위 early-return(401/500) 경로는
+  // 의도적으로 기록하지 않는다 — 실패가 생존으로 위장하면 신호가 거짓이 된다.
+  // recordCronHeartbeat 는 절대 throw 하지 않아 이 응답을 깨지 않는다.
+  await recordCronHeartbeat('chain-sweep', { scanned: rows.length, acted: closed }, admin);
 
   return NextResponse.json({ ok: true, candidates: rows.length, closed });
 }
