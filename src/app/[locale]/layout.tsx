@@ -8,7 +8,10 @@ import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { CookieConsentBanner } from '@/components/cookie-consent-banner';
 import { DesignAuditToggle } from '@/components/design-audit-toggle';
-import { LocaleSuggestBanner } from '@/components/locale-suggest-banner';
+// "한국어로 보시겠어요?" 언어 제안 배너 숨김 — 2026-09-06 사용자 요청(출시 전
+// 기획 미완성). 컴포넌트 파일·수동 언어 전환 경로(markLocaleSuggestDismissed)는
+// 보존. 복원 시 아래 import 와 렌더 주석 해제.
+// import { LocaleSuggestBanner } from '@/components/locale-suggest-banner';
 import { createClient } from '@/lib/supabase/server';
 import '../globals.css';
 
@@ -69,8 +72,10 @@ export default async function LocaleLayout({
                 {children}
               </AuthProvider>
               {/* 영어 디폴트 진입 이탈 완충 — 한국어/일본어/태국어 브라우저
-                  첫 방문에 1회성 언어 제안 배너(client-only, /en 에서만). */}
-              <LocaleSuggestBanner />
+                  첫 방문에 1회성 언어 제안 배너(client-only, /en 에서만).
+                  2026-09-06 사용자 요청으로 숨김(위 import 주석 참고). 복원 시
+                  위 import 와 아래 한 줄 주석 해제. CookieConsentBanner 는 무관. */}
+              {/* <LocaleSuggestBanner /> */}
               <CookieConsentBanner />
               {/* 디자인 감사 테마 토글 — dev QA 전용. 프로덕션 배포에선
                   false && … 로 dead-code 라 유저 비노출. VERCEL_ENV 사용 —
