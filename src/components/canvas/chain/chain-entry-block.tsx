@@ -84,7 +84,11 @@ export function ChainEntryBlock({
           <DuotoneIcon name="link" size={17} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-xl font-extrabold text-ink">
+          {/* CD 14/800. DS 램프상 14 → text-xl(15) 이지만 canvas 안에서는
+              `.text-xl` 이 display 헤딩 훅([data-canvas-body] :is(…,.text-xl)
+              = 26px/800)이라 제목이 2배로 부푼다 — 한 스텝 아래 text-lg(13)로
+              내린다(이웃 셋업 아코디언 행이 text-sm 이라 위계도 유지). */}
+          <div className="text-lg font-extrabold leading-4 text-ink">
             {t('entry.title')}
           </div>
           <div className="mt-0.5 text-md leading-[1.55] text-mute">
@@ -95,6 +99,9 @@ export function ChainEntryBlock({
         {/* eslint-disable-next-line react/forbid-elements -- CD §1.5 토글 42×24(ink 트랙 + rose 노브)은 스위치 chrome 이다. 레포에 Switch primitive 가 없고 Button variant 로는 표현 불가 — 별도 primitive 는 별 PR(§3.2). */}
         <button
           type="button"
+          // data-canvas-action — [data-canvas-body] button:not([data-canvas-action])
+          // 이 memphis 보더/radius/padding/shadow 를 씌워 스위치 chrome 을 덮는다.
+          data-canvas-action
           role="switch"
           aria-checked={enabled}
           aria-label={t('entry.title')}
@@ -217,6 +224,9 @@ function ModeCell({
     // eslint-disable-next-line react/forbid-elements -- CD §1.5 모드 세그먼트 셀(SSOT §D3)은 보더/radius/shadow 를 부모 트랙이 소유하는 bare 셀이다. Button primitive 는 셀마다 자기 chrome 을 그려 세그먼트가 성립하지 않는다 — picker-trigger 의 grouped 셀과 같은 구조.
     <button
       type="button"
+      // data-canvas-action — 세그먼트 셀은 트랙이 chrome 을 소유한다. opt-out 이
+      // 없으면 canvas cascade 가 셀마다 memphis 박스를 그려 세그먼트가 깨진다.
+      data-canvas-action
       role="radio"
       aria-checked={selected}
       disabled={disabled}

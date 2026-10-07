@@ -152,12 +152,14 @@ function ChainNode({
         <span aria-hidden>{NODE_GLYPH[step.status]}</span>
       </div>
       <div
-        className={`text-center text-sm leading-tight ${NODE_LABEL_CLASS[step.status]}`}
+        // leading 1.3 · 비용행 16px = CD 노드 칸 실측(68.95px) 복원. 기본
+        // leading(tight/1.3333)로 두면 칸이 ~3px 낮아 바 전체 높이가 어긋난다.
+        className={`text-center text-sm leading-[1.3] ${NODE_LABEL_CLASS[step.status]}`}
       >
         {label}
       </div>
       <div
-        className={`font-mono text-xs font-bold ${dimCost ? 'text-faint' : 'text-mute-soft'}`}
+        className={`font-mono text-xs leading-4 font-bold ${dimCost ? 'text-faint' : 'text-mute-soft'}`}
       >
         {costLabel}
       </div>
