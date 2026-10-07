@@ -46,8 +46,14 @@ import { useInterviewUpload } from '@/components/interview-upload-provider';
 // 중복·미지원·되돌리기·트랜지션)는 발명하지 않고 기존 동작 유지.
 
 const MAX_BYTES = 25 * 1024 * 1024;
+// Explicit AV extensions in addition to the audio/*,video/* MIME globs: an
+// iOS/macOS `.m4a` (and other recorder exports) can arrive with an empty MIME
+// that the glob won't match, leaving the file unselectable. The extensions
+// keep them pickable; classifyFile's extension fallback then routes them.
 const ACCEPT =
-  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,audio/*,video/*,.zip';
+  '.txt,.md,.markdown,.csv,.json,.log,.doc,.docx,.pdf,' +
+  'audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.oga,.flac,.opus,.aiff,.aif,.weba,' +
+  '.mp4,.m4v,.mov,.avi,.mkv,.webm,.mpeg,.mpg,.zip';
 // 총량 amber 임계 = 25MB 의 80% (BUILD-SPEC §6 · CD 제안). 근접 시 목록 헤더
 // 총량이 amber 로 전환해 업로드를 누르기 전에 제한을 알린다.
 const AMBER_THRESHOLD = 0.8 * MAX_BYTES;

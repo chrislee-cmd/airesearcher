@@ -51,6 +51,14 @@ Vercel 함수에는 **메타데이터(JSON)만** 통과하므로 함수 body 한
 
 **우선순위:** ③ provider → ① Supabase → ② Vercel → ④ 아키텍처(코드).
 
+> **2026-09-10 (#611)** — **인터뷰 분석(interviews v2) 업로드도 이 직접 업로드
+> 구조로 전환**됐다. 이전엔 파일 바이트를 `POST /api/interviews/convert` 함수
+> body 로 통째로 보내 4.5MB 엣지 413 으로 구조적으로 실패했다(§2 가 금지한 직접
+> 업로드 회귀 패턴). 이제 `/api/interviews/upload-url`(signed URL) + TUS 직접
+> 업로드(`resumable-upload.ts` 재사용, 버킷 `audio-uploads`) → convert 는
+> storage key 로 다운로드해 처리한다. **interviews convert 경로에 파일 바이트를
+> 다시 태우지 말 것(회귀 금지).**
+
 ---
 
 ## 2. 레이어별 한도 표

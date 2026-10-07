@@ -12,6 +12,7 @@ import {
   mapWithConcurrency,
   fetchWithRateLimitRetry,
 } from '@/lib/upload-queue';
+import { uploadResumable } from '@/lib/transcripts/resumable-upload';
 // Type only — the runtime module is dynamically imported inside expandZips so
 // the non-ZIP upload path never pulls jszip into the bundle eagerly.
 import type JSZipInstance from 'jszip';
@@ -54,7 +55,21 @@ const TERMINAL: ReadonlySet<UploadFileStatus> = new Set([
   'duplicate',
 ]);
 
-export type UploadBatchFile = { name: string; status: UploadFileStatus };
+export type UploadBatchFile = {
+  name: string;
+  status: UploadFileStatus;
+  // Byte upload progress (0–100) during the direct-to-Storage TUS phase. Feeds
+  // the byte-weighted aggregate bar so a single-file upload actually moves
+  // instead of jumping 0→100 on completion.
+  progress?: number;
+  // File size in bytes — used as the weight in the aggregate progress bar and
+  // persisted so a restored batch can still weight correctly.
+  size?: number;
+  // Terminal-failure reason code (e.g. file_too_large, unsupported_file_type,
+  // network) surfaced to the user in the failed-files list. Undefined unless
+  // status === 'error'.
+  reason?: string;
+};
 
 export type UploadBatch = {
   id: string;
@@ -382,14 +397,46 @@ export function InterviewUploadProvider({
   // Update one batch's file at `index`, then bump the project signal so
   // subscribed document lists refetch.
   const setFileStatus = useCallback(
-    (batchId: string, index: number, status: UploadFileStatus) => {
+    (
+      batchId: string,
+      index: number,
+      status: UploadFileStatus,
+      reason?: string,
+    ) => {
       setBatches((prev) =>
         prev.map((b) =>
           b.id === batchId
             ? {
                 ...b,
                 files: b.files.map((f, i) =>
-                  i === index ? { ...f, status } : f,
+                  i === index
+                    ? {
+                        ...f,
+                        status,
+                        // Attach the reason only on error; clear it otherwise
+                        // so a retried file doesn't keep a stale reason.
+                        reason: status === 'error' ? reason ?? f.reason : undefined,
+                      }
+                    : f,
+                ),
+              }
+            : b,
+        ),
+      );
+    },
+    [],
+  );
+
+  // Per-file byte progress (0–100) during the direct-to-Storage upload phase.
+  const setFileProgress = useCallback(
+    (batchId: string, index: number, progress: number) => {
+      setBatches((prev) =>
+        prev.map((b) =>
+          b.id === batchId
+            ? {
+                ...b,
+                files: b.files.map((f, i) =>
+                  i === index ? { ...f, progress } : f,
                 ),
               }
             : b,
@@ -404,6 +451,7 @@ export function InterviewUploadProvider({
       batchId: string,
       pred: (index: number) => boolean,
       status: UploadFileStatus,
+      reason?: string,
     ) => {
       setBatches((prev) =>
         prev.map((b) =>
@@ -411,7 +459,14 @@ export function InterviewUploadProvider({
             ? {
                 ...b,
                 files: b.files.map((f, i) =>
-                  pred(i) ? { ...f, status } : f,
+                  pred(i)
+                    ? {
+                        ...f,
+                        status,
+                        reason:
+                          status === 'error' ? reason ?? f.reason : undefined,
+                      }
+                    : f,
                 ),
               }
             : b,
@@ -536,6 +591,7 @@ export function InterviewUploadProvider({
                 files: sources.map((s) => ({
                   name: s.name,
                   status: 'queued' as const,
+                  size: s.file?.size,
                 })),
               }
             : b,
@@ -572,8 +628,9 @@ export function InterviewUploadProvider({
           if (error || !file) {
             // Synthetic error row (corrupt / empty ZIP). Terminal 'error' so the
             // batch reflects it without a File to convert; the batch continues.
-            setFileStatus(batchId, index, 'error');
-            return { kind: 'fail', index, reason: error ?? 'zip_extract_failed' };
+            const reason = error ?? 'zip_extract_failed';
+            setFileStatus(batchId, index, 'error', reason);
+            return { kind: 'fail', index, reason };
           }
           if (duplicate) {
             // Client-side dedup: mark 'duplicate' (terminal) so the batch
@@ -582,26 +639,73 @@ export function InterviewUploadProvider({
             return { kind: 'skip', index };
           }
           if (file.size === 0) {
-            setFileStatus(batchId, index, 'error');
+            setFileStatus(batchId, index, 'error', 'empty_file');
             return { kind: 'fail', index, reason: 'empty_file' };
           }
           if (file.size > MAX_BYTES) {
-            setFileStatus(batchId, index, 'error');
+            setFileStatus(batchId, index, 'error', 'file_too_large');
             return { kind: 'fail', index, reason: 'file_too_large' };
           }
+          // MIME can be empty for iOS/macOS .m4a etc. — fall back to the
+          // extension→MIME map so classifyFile (server) routes it as audio and
+          // the stored object carries a sensible content-type.
+          const mime = file.type || guessMime(file.name);
           setFileStatus(batchId, index, 'converting');
+          setFileProgress(batchId, index, 0);
           bumpSignal(projectId);
           try {
-            const fd = new FormData();
-            fd.append('file', file);
+            // 1. Signed upload URL — an object key under this user's prefix.
+            const urlRes = await fetch('/api/interviews/upload-url', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ filename: file.name }),
+            });
+            if (!urlRes.ok) {
+              const reason = await readFailReason(urlRes);
+              setFileStatus(batchId, index, 'error', reason);
+              return { kind: 'fail', index, reason };
+            }
+            const { storage_key: storageKey } = (await urlRes.json()) as {
+              storage_key?: string;
+            };
+            if (!storageKey) {
+              setFileStatus(batchId, index, 'error', 'signed_url_failed');
+              return { kind: 'fail', index, reason: 'signed_url_failed' };
+            }
+            // 2. Upload the bytes straight to Supabase Storage (TUS, 6MB
+            //    chunks, resumable). This bypasses the Vercel 4.5MB function
+            //    body cap that edge-413'd interview m4a uploads. onProgress
+            //    drives the byte-level progress bar.
+            try {
+              await uploadResumable({
+                file,
+                objectKey: storageKey,
+                contentType: mime || undefined,
+                onProgress: (pct) => setFileProgress(batchId, index, pct),
+              });
+            } catch {
+              setFileStatus(batchId, index, 'error', 'upload_failed');
+              return { kind: 'fail', index, reason: 'upload_failed' };
+            }
+            setFileProgress(batchId, index, 100);
+            // 3. Convert reads the object from Storage by key — only metadata
+            //    (JSON) traverses the function, never the file bytes.
             const res = await fetchWithRateLimitRetry(
               '/api/interviews/convert',
-              { method: 'POST', body: fd },
+              {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  storage_key: storageKey,
+                  filename: file.name,
+                  mime,
+                }),
+              },
               { onRetry: () => setFileStatus(batchId, index, 'retrying') },
             );
             if (!res.ok) {
               const reason = await readFailReason(res);
-              setFileStatus(batchId, index, 'error');
+              setFileStatus(batchId, index, 'error', reason);
               return { kind: 'fail', index, reason };
             }
             const j = (await res.json()) as {
@@ -609,7 +713,7 @@ export function InterviewUploadProvider({
               filename?: string;
             };
             if (!j.markdown) {
-              setFileStatus(batchId, index, 'error');
+              setFileStatus(batchId, index, 'error', 'convert_empty');
               return { kind: 'fail', index, reason: 'convert_empty' };
             }
             return {
@@ -617,10 +721,10 @@ export function InterviewUploadProvider({
               index,
               filename: j.filename ?? file.name,
               markdown: j.markdown,
-              mime: file.type || null,
+              mime: mime || null,
             };
           } catch {
-            setFileStatus(batchId, index, 'error');
+            setFileStatus(batchId, index, 'error', 'network');
             return { kind: 'fail', index, reason: 'network' };
           }
         },
@@ -648,9 +752,16 @@ export function InterviewUploadProvider({
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({
                 project_id: null,
+                // Failure-path inputs carry mime + size (symmetry with the
+                // success path) so a job that indexed nothing still records
+                // what was attempted — diagnostic evidence, not just filenames.
                 inputs: plan
                   .filter((p) => !p.duplicate)
-                  .map((p) => ({ filename: p.name })),
+                  .map((p) => ({
+                    filename: p.name,
+                    mime: p.file ? p.file.type || guessMime(p.name) || null : null,
+                    size: p.file?.size ?? null,
+                  })),
                 extractions: {},
                 matrix: {},
               }),
@@ -782,7 +893,12 @@ export function InterviewUploadProvider({
       } catch {
         // Job creation (or something before the chunk loop) threw — none could
         // be indexed, so mark all the converted files 'error'.
-        setFilesWhere(batchId, (i) => ok.some((c) => c.index === i), 'error');
+        setFilesWhere(
+          batchId,
+          (i) => ok.some((c) => c.index === i),
+          'error',
+          'index_failed',
+        );
       } finally {
         if (needsDbConverge) {
           // Some chunks timed out — converge the batch from the DB rather than
@@ -793,7 +909,14 @@ export function InterviewUploadProvider({
         }
       }
     },
-    [bumpSignal, markBatchDone, setFileStatus, setFilesWhere, startDocPoll],
+    [
+      bumpSignal,
+      markBatchDone,
+      setFileStatus,
+      setFileProgress,
+      setFilesWhere,
+      startDocPoll,
+    ],
   );
 
   const startUpload = useCallback(
@@ -807,6 +930,7 @@ export function InterviewUploadProvider({
         files: files.map((f) => ({
           name: f.name,
           status: 'queued' as const,
+          size: f.size,
         })),
         createdAt: Date.now(),
         restored: false,
