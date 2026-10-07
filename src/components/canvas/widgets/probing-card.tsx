@@ -2406,8 +2406,15 @@ function ExpandedBody() {
             return (
               // gap="field" — 셋업 아코디언과 체인 진입점 블록 사이 리듬.
               // 간격 값은 ControlBoardPanel 의 열거형 SSOT 소유(임의 mt- 금지).
-              <ControlBoardPanel gap="field" fill>
-                <ControlBoardPanel.Region fill>
+              //
+              // fill 제거: fill 은 아코디언 Region 을 flex-1 min-h-0 으로 눌러
+              // 카드 바닥까지 늘린다 — 자식이 하나일 때는 맞지만, 아래에 체인
+              // 진입점 블록이 붙으면 아코디언 콘텐츠가 축소된 박스를 넘쳐
+              // (overflow visible) 블록 위로 겹쳐 그려진다(프리뷰 실측).
+              // fill 없이 두면 클러스터가 자연 높이가 되고 wrapper 의
+              // overflow-y-auto 가 스크롤을 맡아 겹침이 사라진다.
+              <ControlBoardPanel gap="field">
+                <ControlBoardPanel.Region>
                   <ProbingSetupAccordion
                     projectId={selectedProjectId}
                     onProjectChange={(id) => setSelection('probing', id)}
