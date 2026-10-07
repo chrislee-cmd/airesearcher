@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { cookies } from 'next/headers';
+import { createHash } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -44,6 +45,12 @@ export default async function Page({
   if (!share) return <ShareNotice variant="invalid" />;
   if (share.revoked_at) return <ShareNotice variant="revoked" />;
   if (isShareExpired(share.expires_at as string | null)) {
+    // 관측성 — 만료 렌더는 지금까지 서버 로그 무흔적. 토큰 평문은 남기지 않고
+    // 해시 prefix + 만료일만 남겨 "만료 링크가 얼마나 열리는가"를 추적한다.
+    console.warn('[share/view] expired link render', {
+      tokenHash: createHash('sha256').update(token).digest('hex').slice(0, 12),
+      expiresAt: share.expires_at,
+    });
     return <ShareNotice variant="expired" />;
   }
 

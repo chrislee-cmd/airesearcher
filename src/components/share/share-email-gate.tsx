@@ -26,6 +26,8 @@ const RESEND_COOLDOWN_SEC = 60;
 type SendResult =
   | { status: 'ok' }
   | { status: 'throttled'; retryAfter: number }
+  // 링크가 죽음(만료·폐기) — 코드 미발송, 실제 사유를 뷰어에 표시한다.
+  | { status: 'dead'; reason: 'expired' | 'revoked' }
   | { status: 'error' };
 
 export function ShareEmailGate({
@@ -76,6 +78,16 @@ export function ShareEmailGate({
           retryAfter: data?.retry_after ?? RESEND_COOLDOWN_SEC,
         };
       }
+      if (res.status === 403) {
+        // 만료·폐기 링크 — 서버가 사유를 돌려준다(그 외 403 은 generic).
+        const data = (await res.json().catch(() => null)) as {
+          reason?: string;
+        } | null;
+        if (data?.reason === 'expired' || data?.reason === 'revoked') {
+          return { status: 'dead', reason: data.reason };
+        }
+        return { status: 'error' };
+      }
       if (!res.ok) return { status: 'error' };
       return { status: 'ok' };
     },
@@ -92,6 +104,11 @@ export function ShareEmailGate({
       if (result.status === 'throttled') {
         setCooldown(result.retryAfter);
         setError(t('errorThrottled'));
+        return;
+      }
+      if (result.status === 'dead') {
+        // 만료·폐기 링크 — 코드 단계로 넘어가지 않고 실제 사유를 보여준다.
+        setError(result.reason === 'revoked' ? t('revokedBody') : t('expiredBody'));
         return;
       }
       if (result.status === 'error') {
@@ -114,6 +131,10 @@ export function ShareEmailGate({
       if (result.status === 'throttled') {
         setCooldown(result.retryAfter);
         setError(t('errorThrottled'));
+        return;
+      }
+      if (result.status === 'dead') {
+        setError(result.reason === 'revoked' ? t('revokedBody') : t('expiredBody'));
         return;
       }
       if (result.status === 'error') {
@@ -146,10 +167,17 @@ export function ShareEmailGate({
       const data = (await res.json().catch(() => null)) as {
         error?: string;
       } | null;
+      // verify 실패 사유별 문구 — 만료·폐기는 OTP 코드 오류가 아니라 링크 상태
+      // 이므로 그에 맞는 안내로 분기한다(코드 발급 후 링크가 죽은 레이스 포함).
+      const reason = data?.error;
       setError(
-        data?.error === 'not_invited'
+        reason === 'not_invited'
           ? t('notInvitedBody')
-          : t('errorInvalidCode'),
+          : reason === 'expired'
+            ? t('expiredBody')
+            : reason === 'revoked'
+              ? t('revokedBody')
+              : t('errorInvalidCode'),
       );
     });
   }
