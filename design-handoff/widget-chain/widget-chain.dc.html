@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}a{color:#c2334f;text-decoration:none;}a:hover{color:#9e2740;}</style>
+</helmet>
+
+<div style="min-height:100vh;width:max-content;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:56px;display:flex;flex-direction:column;align-items:flex-start;gap:60px;">
+
+  <div style="width:1900px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:inline-flex;align-items:center;align-self:flex-start;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:9px;padding:5px 14px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;letter-spacing:2px;box-shadow:3px 3px 0 rgba(29,27,32,.3);">WIDGET CHAIN · 파일럿</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:44px;font-weight:800;color:#1d1b20;letter-spacing:-1.3px;line-height:1.1;">위젯 사이의 새 레이어</div>
+    <div style="font-size:14.5px;color:#5b5965;line-height:1.85;max-width:1000px;">프로빙 → 전사 → 인터뷰 분석 → 탑라인. 위젯 셸은 그대로 두고, 위젯 <b style="color:#1d1b20;">사이</b>에 두 가지만 더합니다 — 캔버스 상단의 <b style="color:#1d1b20;">체인 바</b>(진행 + 승인)와 묶인 카드의 <b style="color:#1d1b20;">체인 칩</b>. 그 외의 위젯 화면은 바뀌지 않습니다.</div>
+  </div>
+
+  <!-- ═══ 결정 3건 ═══ -->
+  <div style="width:1900px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;">
+    <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="3">
+      <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#f7f7f5;border-bottom:2px solid #1d1b20;padding:10px 16px;display:flex;align-items:center;gap:9px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;background:#1d1b20;color:#fff;border-radius:5px;padding:2px 8px;">{{ d.id }}</span><span style="font-size:14px;font-weight:800;color:#1d1b20;">{{ d.q }}</span></div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px;">
+          <div style="font-size:14px;font-weight:800;color:#14713a;">→ {{ d.a }}</div>
+          <div style="font-size:12.5px;color:#2a262f;line-height:1.8;">{{ d.why }}</div>
+          <div style="border-top:1px solid rgba(29,27,32,.1);padding-top:9px;font-size:11.5px;color:#8a8693;line-height:1.7;"><b style="color:#5b5965;">기각:</b> {{ d.no }}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ═══ C0 · 캔버스 맥락 ═══ -->
+  <div id="C0" style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">C0</span><span style="font-size:16px;font-weight:800;color:#1d1b20;">캔버스 맥락 — 승인 대기 상태</span><span style="font-size:12.5px;color:#8a8693;">카드는 축소본 · 바는 실치수(1040)</span></div>
+    <div style="width:1900px;height:760px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;background-image:radial-gradient(#dcdedb 1.1px,transparent 1.1px);background-size:20px 20px;box-shadow:8px 8px 0 rgba(29,27,32,.28);position:relative;overflow:hidden;">
+      <div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);z-index:2;">
+        <sc-for list="{{ heroBar }}" as="b" hint-placeholder-count="1">
+          <div style="width:1040px;border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.2);overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:14px;padding:11px 16px;">
+              <div style="width:34px;height:34px;border:1.5px solid #1d1b20;border-radius:9px;background:{{ b.tileBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ b.tileFg }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></div>
+              <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;"><span style="font-size:13px;font-weight:800;color:#1d1b20;">체인</span><span style="display:inline-flex;align-items:center;border:1.5px solid #1d1b20;border-radius:999px;padding:0 7px;font-size:10px;font-weight:800;background:{{ b.modeBg }};color:{{ b.modeFg }};">{{ b.mode }}</span></div>
+              <div style="width:1.5px;height:30px;background:rgba(29,27,32,.12);flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;display:flex;align-items:flex-start;">
+                <sc-for list="{{ b.nodes }}" as="n" hint-placeholder-count="4">
+                  <div style="flex:1;min-width:0;display:flex;align-items:flex-start;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:118px;flex-shrink:0;">
+                      <div style="width:28px;height:28px;border-radius:50%;border:{{ n.bd }};background:{{ n.bg }};box-shadow:{{ n.ring }};display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:{{ n.fg }};">{{ n.glyph }}</div>
+                      <div style="font-size:11.5px;font-weight:{{ n.fw }};color:{{ n.lc }};text-align:center;line-height:1.3;text-decoration:{{ n.td }};">{{ n.label }}</div>
+                      <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:{{ n.cc }};font-weight:700;">{{ n.cost }}</div>
+                    </div>
+                    <sc-if value="{{ n.hasLine }}" hint-placeholder-val="{{ true }}"><div style="flex:1;min-width:16px;height:0;border-top:{{ n.line }};margin-top:14px;"></div></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:{{ b.stFg }};flex-shrink:0;text-align:right;">{{ b.status }}</div>
+            </div>
+            <div style="border-top:1.5px solid {{ b.rowLine }};background:{{ b.rowBg }};padding:11px 16px;display:flex;align-items:center;gap:12px;">
+              <div style="flex:1;min-width:0;font-size:13px;color:#2a262f;line-height:1.55;">{{ b.msgA }}<b style="color:#1d1b20;">{{ b.msgB }}</b>{{ b.msgC }}</div>
+              <span style="font-size:12.5px;font-weight:700;color:#5b5965;flex-shrink:0;">체인 종료</span>
+              <span style="display:inline-flex;align-items:center;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;padding:8px 16px;font-size:12.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 rgba(29,27,32,.12);flex-shrink:0;">건너뛰기</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;border:2px solid #1d1b20;border-radius:999px;background:#1d1b20;padding:8px 18px;font-size:13px;font-weight:800;color:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.28);flex-shrink:0;">진행 · 💎25 →</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position:absolute;left:0;right:0;top:220px;display:flex;justify-content:center;gap:26px;">
+        <sc-for list="{{ miniCards }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:9px;align-items:center;">
+            <div style="width:360px;height:470px;border:3px solid #1d1b20;border-radius:16px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;opacity:{{ c.op }};">
+              <div style="background:{{ c.tone }};border-bottom:2px solid #1d1b20;padding:13px 15px;display:flex;align-items:center;gap:8px;"><span style="font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;flex:1;">{{ c.ko }}</span><span style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;overflow:hidden;"><span style="padding:2px 6px;font-family:ui-monospace,Menlo,monospace;font-size:9px;">💎{{ c.credit }}</span><span style="width:1.5px;background:#1d1b20;"></span><span style="padding:2px 6px;font-family:ui-monospace,Menlo,monospace;font-size:9px;font-weight:800;">{{ c.pill }}</span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:18px;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:18px;"></span></span></div>
+              <div style="border-bottom:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;padding:7px 15px;display:flex;align-items:center;gap:7px;min-height:33px;">
+                <span style="display:inline-block;width:84px;height:16px;border-radius:999px;background:#fff;border:1.5px solid #1d1b20;"></span>
+                <sc-if value="{{ c.chained }}" hint-placeholder-val="{{ true }}">
+                  <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1.5px solid {{ c.chipLine }};background:{{ c.chipBg }};border-radius:999px;padding:2px 9px 2px 7px;font-size:10.5px;font-weight:800;color:{{ c.chipFg }};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ c.chipFg }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>{{ c.chip }}</span>
+                </sc-if>
+              </div>
+              <div style="flex:1;padding:14px 15px;display:flex;flex-direction:column;gap:9px;">
+                <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="4"><div style="height:{{ r.h }};border:{{ r.bd }};border-radius:9px;background:{{ r.bg }};"></div></sc-for>
+              </div>
+              <div style="border-top:1px solid rgba(29,27,32,.08);padding:11px 15px;display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#8a8693;">{{ c.foot }}</span><span style="margin-left:auto;display:inline-block;width:84px;height:26px;border-radius:999px;background:{{ c.cta }};"></span></div>
+            </div>
+            <div style="font-size:11.5px;color:#5b5965;font-weight:700;">{{ c.cap }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="width:1900px;border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 16px;font-size:12.5px;color:#2a262f;line-height:1.8;">바는 <b>캔버스 뷰포트 상단 16px 에 sticky</b> 로 붙습니다 — 캔버스를 가로로 스크롤해도 따라옵니다. 체인에 묶이지 않은 라이브 통역 카드는 칩이 없고 그 외에는 평소와 같습니다. 승인을 기다리는 동안 다음 카드(인터뷰 결과)는 <b>평소의 idle 화면 그대로</b>이고 칩만 "승인 대기"로 바뀝니다 — 카드 본문을 잠그지 않습니다.</div>
+  </div>
+
+  <!-- ═══ C1 · 진입점 ═══ -->
+  <div id="C1" style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">C1</span><span style="font-size:16px;font-weight:800;color:#1d1b20;">진입점 — 프로빙 셋업 카드 하단</span><span style="font-size:12.5px;color:#8a8693;">카드 604 폭 실치수 · 상단 아코디언은 접힌 상태로 생략</span></div>
+    <div style="display:flex;gap:28px;align-items:flex-start;">
+      <sc-for list="{{ entries }}" as="e" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="width:604px;border:3px solid #1d1b20;border-radius:20px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;">
+            <div style="background:#cfe6ff;border-bottom:2px solid #1d1b20;padding:14px 22px;display:flex;align-items:center;"><span style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.6px;">프로빙 어시스턴트</span><span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#5b5965;">… 헤더 생략</span></div>
+            <div style="padding:16px 22px;display:flex;flex-direction:column;gap:8px;">
+              <sc-for list="{{ doneSteps }}" as="s" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #cdeed8;background:#f4fbf6;border-radius:10px;padding:8px 12px;"><span style="width:22px;height:22px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;">✓</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">{{ s.t }}</span><span style="font-size:12.5px;color:#5b5965;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ s.v }}</span><span style="font-size:11.5px;font-weight:700;color:#8a8693;">변경</span></div>
+              </sc-for>
+              <div style="border:{{ e.boxBd }};border-radius:12px;background:#fff;box-shadow:{{ e.boxSh }};overflow:hidden;margin-top:6px;">
+                <div style="display:flex;align-items:center;gap:11px;padding:13px 15px;">
+                  <div style="width:34px;height:34px;border:1.5px solid #1d1b20;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5" ></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></div>
+                  <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:#1d1b20;">세션이 끝나면 이어서 진행</div><div style="font-size:12px;color:#5b5965;line-height:1.55;margin-top:2px;">전사 → 인터뷰 분석 → 탑라인 보고서까지</div></div>
+                  <div style="width:42px;height:24px;border:1.5px solid #1d1b20;border-radius:999px;background:{{ e.tgBg }};display:flex;align-items:center;justify-content:{{ e.tgJ }};padding:2px;flex-shrink:0;"><span style="width:17px;height:17px;border-radius:50%;background:{{ e.knob }};border:1.5px solid #1d1b20;"></span></div>
+                </div>
+                <sc-if value="{{ e.on }}" hint-placeholder-val="{{ false }}">
+                  <div style="border-top:1.5px solid rgba(29,27,32,.12);padding:13px 15px;display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:inline-flex;align-items:stretch;align-self:flex-start;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;background:#fff;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:7px 15px;font-size:12.5px;font-weight:800;background:{{ e.segABg }};color:{{ e.segAFg }};">단계별 승인</div><div style="width:1.5px;background:#1d1b20;"></div><div style="padding:7px 15px;font-size:12.5px;font-weight:800;background:{{ e.segBBg }};color:{{ e.segBFg }};">자동</div></div>
+                    <div style="font-size:12px;color:#5b5965;line-height:1.65;">{{ e.modeNote }}</div>
+                    <div style="border:1.5px solid rgba(29,27,32,.14);border-radius:10px;overflow:hidden;">
+                      <sc-for list="{{ preview }}" as="p" hint-placeholder-count="4">
+                        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(29,27,32,.07);background:{{ p.bg }};">
+                          <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#8a8693;width:14px;">{{ p.n }}</span>
+                          <span style="width:12px;height:12px;border-radius:50%;background:{{ p.tone }};border:1.5px solid #1d1b20;flex-shrink:0;"></span>
+                          <span style="font-size:12.5px;font-weight:700;color:#1d1b20;flex:1;">{{ p.label }}</span>
+                          <span style="font-size:11px;color:#8a8693;">{{ p.note }}</span>
+                          <span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;font-weight:800;color:#1d1b20;width:64px;text-align:right;">{{ p.cost }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f7f7f5;border-top:1.5px solid rgba(29,27,32,.12);"><span style="font-size:12px;font-weight:800;color:#1d1b20;flex:1;">세션 후 이어질 비용</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;font-weight:800;color:#1d1b20;">💎1 + 파일당 25</span></div>
+                    </div>
+                    <sc-if value="{{ e.auto }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;gap:9px;align-items:flex-start;border:1.5px solid #f0d78a;background:#fff1e6;border-radius:10px;padding:10px 12px;"><span style="width:8px;height:8px;border-radius:50%;background:#e0a83a;margin-top:6px;flex-shrink:0;"></span><span style="font-size:12px;color:#8a5a10;line-height:1.6;">단계마다 묻지 않고 크레딧이 차감됩니다. 잔액이 모자라면 그 단계에서 멈춥니다.</span></div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+            <div style="border-top:1px solid rgba(29,27,32,.08);padding:15px 22px;display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ e.foot }}</span><span style="margin-left:auto;display:inline-flex;align-items:center;background:#1d1b20;color:#fff;border-radius:999px;padding:11px 20px;font-size:14px;font-weight:800;box-shadow:2px 2px 0 rgba(29,27,32,.2);">{{ e.cta }}</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;background:#fff;border:1.5px solid #1d1b20;border-radius:5px;padding:1px 7px;">{{ e.id }}</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">{{ e.cap }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="width:1868px;border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 16px;font-size:12.5px;color:#2a262f;line-height:1.8;"><b>기본은 꺼짐</b>입니다. 켜면 기본 모드는 단계별 승인. 프로빙 25 는 세션 시작 시 이미 차감되므로 미리보기에서 <b>"시작 시 차감"으로 따로 표시</b>하고 합계에서 뺍니다. 인제스트 비용은 파일 수가 세션 뒤에 정해지므로 <b>"파일당 25"로만</b> 씁니다 — 금액을 추정해 넣지 않습니다. 탑라인은 계약대로 cost 0 → "포함".</div>
+  </div>
+
+  <!-- ═══ C2 · 체인 바 상태 ═══ -->
+  <div id="C2" style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">C2</span><span style="font-size:16px;font-weight:800;color:#1d1b20;">체인 바 — 상태 전수</span><span style="font-size:12.5px;color:#8a8693;">실치수 1040 · 모든 상태가 같은 골격, 아래 행만 바뀜</span></div>
+    <div style="display:grid;grid-template-columns:1040px 1040px;gap:34px 40px;">
+      <sc-for list="{{ bars }}" as="b" hint-placeholder-count="9">
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;background:#fff;border:1.5px solid #1d1b20;border-radius:5px;padding:1px 7px;">{{ b.id }}</span><span style="font-size:13.5px;font-weight:800;color:#1d1b20;">{{ b.cap }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;">{{ b.code }}</span></div>
+          <div style="width:1040px;border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.2);overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:14px;padding:11px 16px;">
+              <div style="width:34px;height:34px;border:1.5px solid #1d1b20;border-radius:9px;background:{{ b.tileBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ b.tileFg }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></div>
+              <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;"><span style="font-size:13px;font-weight:800;color:#1d1b20;">체인</span><span style="display:inline-flex;align-items:center;border:1.5px solid #1d1b20;border-radius:999px;padding:0 7px;font-size:10px;font-weight:800;background:{{ b.modeBg }};color:{{ b.modeFg }};">{{ b.mode }}</span></div>
+              <div style="width:1.5px;height:30px;background:rgba(29,27,32,.12);flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;display:flex;align-items:flex-start;">
+                <sc-for list="{{ b.nodes }}" as="n" hint-placeholder-count="4">
+                  <div style="flex:1;min-width:0;display:flex;align-items:flex-start;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:118px;flex-shrink:0;">
+                      <div style="width:28px;height:28px;border-radius:50%;border:{{ n.bd }};background:{{ n.bg }};box-shadow:{{ n.ring }};display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:{{ n.fg }};">{{ n.glyph }}</div>
+                      <div style="font-size:11.5px;font-weight:{{ n.fw }};color:{{ n.lc }};text-align:center;line-height:1.3;text-decoration:{{ n.td }};">{{ n.label }}</div>
+                      <div style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:{{ n.cc }};font-weight:700;">{{ n.cost }}</div>
+                    </div>
+                    <sc-if value="{{ n.hasLine }}" hint-placeholder-val="{{ true }}"><div style="flex:1;min-width:16px;height:0;border-top:{{ n.line }};margin-top:14px;"></div></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:{{ b.stFg }};flex-shrink:0;text-align:right;">{{ b.status }}</div>
+            </div>
+            <sc-if value="{{ b.hasRow }}" hint-placeholder-val="{{ true }}">
+              <div style="border-top:1.5px solid {{ b.rowLine }};background:{{ b.rowBg }};padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:300px;font-size:13px;color:#2a262f;line-height:1.55;">{{ b.msgA }}<b style="color:#1d1b20;">{{ b.msgB }}</b>{{ b.msgC }}</div>
+                <sc-if value="{{ b.hasPicker }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:inline-flex;align-items:center;gap:8px;width:230px;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;padding:7px 11px;box-shadow:2px 2px 0 #1d1b20;flex-shrink:0;"><span style="font-size:12.5px;font-weight:700;color:#8a8693;flex:1;">대상 프로젝트 선택</span><span style="font-size:8px;color:#1d1b20;">▼</span></div>
+                </sc-if>
+                <sc-if value="{{ b.hasEnd }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:700;color:#5b5965;flex-shrink:0;">체인 종료</span></sc-if>
+                <sc-if value="{{ b.hasSec }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;padding:8px 16px;font-size:12.5px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 rgba(29,27,32,.12);flex-shrink:0;">{{ b.sec }}</span></sc-if>
+                <sc-if value="{{ b.hasPri }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;border:2px solid {{ b.priBd }};border-radius:999px;background:{{ b.priBg }};padding:8px 18px;font-size:13px;font-weight:800;color:{{ b.priFg }};box-shadow:{{ b.priSh }};flex-shrink:0;">{{ b.pri }}</span></sc-if>
+              </div>
+            </sc-if>
+          </div>
+          <div style="font-size:12px;color:#5b5965;line-height:1.7;max-width:1040px;">{{ b.note }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ═══ C3 · 칩 + 노드 ═══ -->
+  <div id="C3" style="display:flex;gap:40px;align-items:flex-start;">
+    <div style="display:flex;flex-direction:column;gap:12px;width:930px;">
+      <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">C3</span><span style="font-size:16px;font-weight:800;color:#1d1b20;">카드 체인 칩</span><span style="font-size:12.5px;color:#8a8693;">카드 서브바 우측 · 셸 수정 없음</span></div>
+      <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);overflow:hidden;">
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid rgba(29,27,32,.08);">
+            <div style="width:300px;background:#f7f7f5;border:1.5px solid rgba(29,27,32,.1);border-radius:8px;padding:6px 10px;display:flex;align-items:center;flex-shrink:0;"><span style="display:inline-block;width:74px;height:15px;border-radius:999px;background:#fff;border:1.5px solid #1d1b20;"></span><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1.5px solid {{ c.line }};background:{{ c.bg }};border-radius:999px;padding:2px 9px 2px 7px;font-size:10.5px;font-weight:800;color:{{ c.fg }};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ c.fg }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>{{ c.label }}</span></div>
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:#8a8693;width:130px;flex-shrink:0;">{{ c.when }}</span>
+            <span style="font-size:12px;color:#5b5965;line-height:1.6;">{{ c.note }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;width:930px;">
+      <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">C4</span><span style="font-size:16px;font-weight:800;color:#1d1b20;">단계 노드 6종</span><span style="font-size:12.5px;color:#8a8693;">steps[].status 1:1</span></div>
+      <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);padding:18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;">
+        <sc-for list="{{ nodeKinds }}" as="n" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:12px;border:1.5px solid rgba(29,27,32,.1);border-radius:10px;padding:12px;">
+            <div style="width:28px;height:28px;border-radius:50%;border:{{ n.bd }};background:{{ n.bg }};box-shadow:{{ n.ring }};display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:{{ n.fg }};flex-shrink:0;">{{ n.glyph }}</div>
+            <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">{{ n.key }}</span><span style="font-size:11.5px;color:#5b5965;line-height:1.5;">{{ n.desc }}</span></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:12px 16px;font-size:12.5px;color:#2a262f;line-height:1.8;">채움은 <b>그 단계를 맡은 위젯의 톤</b>입니다(프로빙 sky · 전사 lav · 분석·탑라인 rose). 상태는 테두리와 링이 말합니다 — 진행 중만 <b>processing 보라 링</b>, 대기는 <b>amber 점선</b>. <b>펄스 애니메이션은 running 노드에만</b> 붙이고, 멈춤·실패·종료에는 절대 붙이지 않습니다(유령 상태 금지).</div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const TONE = { probing: '#cfe6ff', transcripts: '#e7defe', interview_ingest: '#ffd0e2', topline: '#ffd0e2' };
+const LABEL = { probing: '인터뷰 어시스턴트', transcripts: '전사', interview_ingest: '인터뷰 분석', topline: '탑라인 보고서' };
+const COST = { probing: 25, transcripts: 1, interview_ingest: 25, topline: 0 };
+
+function node(feature, st) {
+  const tone = TONE[feature];
+  const base = { label: LABEL[feature], cost: COST[feature] === 0 ? '포함' : '💎' + COST[feature], glyph: '', fg: '#1d1b20', fw: 700, lc: '#1d1b20', td: 'none', cc: '#8a8693', ring: 'none' };
+  switch (st) {
+    case 'done': return { ...base, bd: '2px solid #1d1b20', bg: tone, glyph: '✓' };
+    case 'running': return { ...base, bd: '2px solid #1d1b20', bg: tone, ring: '0 0 0 3px #fff, 0 0 0 5px #8b5cf6', fw: 800, lc: '#6b4aa0', glyph: '•' };
+    case 'awaiting': return { ...base, bd: '2px dashed #e0a83a', bg: '#fff1e6', fw: 800, lc: '#8a5a10', glyph: '?', fg: '#8a5a10' };
+    case 'skipped': return { ...base, bd: '1.5px solid rgba(29,27,32,.24)', bg: '#eceef1', glyph: '–', fg: '#8a8693', lc: '#8a8693', td: 'line-through', cc: '#a3a7ad' };
+    case 'error': return { ...base, bd: '2px solid #ef4444', bg: '#fdf0f0', glyph: '!', fg: '#b4443f', fw: 800, lc: '#b4443f' };
+    case 'paused': return { ...base, bd: '2px solid #e0a83a', bg: '#fff', glyph: 'Ⅱ', fg: '#8a5a10', fw: 800, lc: '#8a5a10' };
+    default: return { ...base, bd: '1.5px dashed #c9ccd2', bg: '#fff', lc: '#8a8693', cc: '#a3a7ad' };
+  }
+}
+
+const F = ['probing', 'transcripts', 'interview_ingest', 'topline'];
+function track(states) {
+  return states.map((st, i) => {
+    const n = node(F[i], st);
+    const next = states[i + 1];
+    return { ...n, hasLine: i < states.length - 1, line: st === 'done' || st === 'skipped' ? (next === 'pending' ? '2px solid #1d1b20' : '2px solid #1d1b20') : '2px dashed #c9ccd2' };
+  });
+}
+
+const MODE = {
+  approve: { mode: '단계별 승인', modeBg: '#fff', modeFg: '#1d1b20', tileBg: '#fff', tileFg: '#1d1b20' },
+  auto: { mode: '자동', modeBg: '#1d1b20', modeFg: '#fff', tileBg: '#1d1b20', tileFg: '#fff' },
+};
+const ROW = {
+  amber: { rowBg: '#fff1e6', rowLine: '#f0d78a' },
+  error: { rowBg: '#fdf0f0', rowLine: '#f0c0c0' },
+  success: { rowBg: '#f4fbf6', rowLine: '#cdeed8' },
+  neutral: { rowBg: '#f7f7f5', rowLine: 'rgba(29,27,32,.12)' },
+};
+const PRI = {
+  ink: { priBg: '#1d1b20', priFg: '#fff', priBd: '#1d1b20', priSh: '2px 2px 0 rgba(29,27,32,.28)' },
+  off: { priBg: '#eceef1', priFg: '#8a8693', priBd: 'rgba(29,27,32,.2)', priSh: 'none' },
+};
+
+function bar(o) {
+  return {
+    hasRow: false, hasPicker: false, hasEnd: false, hasSec: false, hasPri: false, sec: '', pri: '', msgA: '', msgB: '', msgC: '',
+    ...MODE[o.m], ...(o.row ? ROW[o.row] : {}), ...(o.p ? PRI[o.p] : PRI.ink),
+    ...o, nodes: track(o.s), hasRow: !!o.row,
+  };
+}
+
+const BARS = [
+  bar({ id: 'B1', cap: '진행 중 · 단계별 승인', code: "running · approve", m: 'approve', s: ['done', 'running', 'pending', 'pending'], status: '2/4 · 전사 중', stFg: '#6b4aa0',
+    note: '아래 행이 없는 접힌 상태가 기본입니다. 사용자가 할 일이 없을 때 바는 한 줄입니다.' }),
+  bar({ id: 'B2', cap: '승인 대기', code: 'awaiting_approval', m: 'approve', s: ['done', 'done', 'awaiting', 'pending'], status: '2/4 완료', stFg: '#8a5a10', row: 'amber', hasEnd: true, hasSec: true, sec: '건너뛰기', hasPri: true, pri: '진행 · 💎25 →',
+    msgA: '전사가 끝났습니다. 다음은 ', msgB: '인터뷰 분석', msgC: ' — 시작하면 바로 차감됩니다.',
+    note: '이 바에서 유일하게 큰 소리를 내는 상태입니다. 진행 버튼에 금액을 붙여 "누르면 돈이 나간다"를 버튼 자체가 말하게 합니다. 체인 종료는 텍스트 — 비가역이지만 데이터를 지우지 않으므로 붉은 채움 대상이 아닙니다(SSOT §D1).' }),
+  bar({ id: 'B3', cap: '승인 대기 · 프로젝트 필요', code: 'awaiting_approval · projectId=null', m: 'approve', s: ['done', 'done', 'awaiting', 'pending'], status: '2/4 완료', stFg: '#8a5a10', row: 'amber', hasPicker: true, hasEnd: true, hasPri: true, pri: '진행 · 💎25 →', p: 'off',
+    msgA: '인터뷰 분석은 ', msgB: '프로젝트에 저장', msgC: '됩니다. 어디에 넣을까요?',
+    note: '§2-5 의 프로젝트 선택을 승인 행 안에 합칩니다 — 별도 스텝·모달을 만들지 않습니다. 선택 전까지 진행 버튼은 잠금(SSOT §D1 잠김 형태), 건너뛰기는 숨김(프로젝트 없이 건너뛰면 다음 단계도 불가). 피커는 SSOT §D3 트리거 · 패널 첫 항목은 "+ 새 프로젝트".' }),
+  bar({ id: 'B4', cap: '진행 중 · 자동', code: 'running · auto', m: 'auto', s: ['done', 'done', 'running', 'pending'], status: '3/4 · 분석 중', stFg: '#6b4aa0',
+    note: '자동은 타일과 모드 배지를 ink 로 채워 구분합니다. 단계가 넘어가도 승인 행이 열리지 않습니다 — 차이는 이 두 요소뿐이고, 트랙은 승인 모드와 같습니다.' }),
+  bar({ id: 'B5', cap: '크레딧 부족 · 멈춤', code: 'paused_insufficient_credits', m: 'auto', s: ['done', 'done', 'paused', 'pending'], status: '멈춤', stFg: '#8a5a10', row: 'amber', hasEnd: true, hasSec: true, sec: '재개', hasPri: true, pri: '💎 충전하기',
+    msgA: '잔액 💎12 — 인터뷰 분석에 ', msgB: '💎25', msgC: '가 필요해 여기서 멈췄습니다.',
+    note: '멈춘 노드는 Ⅱ 글리프 + amber 실선(점선 아님 — 대기와 구분). 보라 링·펄스 없음. 상태 텍스트는 "멈춤" 한 단어. 충전이 주 행동, 재개는 보조 — 충전 없이 재개를 누르면 같은 멈춤으로 돌아옵니다(워커: resume() 이 다시 실패하면 이 상태 유지).' }),
+  bar({ id: 'B6', cap: '단계 실패', code: 'error', m: 'approve', s: ['done', 'done', 'error', 'pending'], status: '체인 종료됨', stFg: '#b4443f', row: 'error', hasSec: true, sec: '닫기', hasPri: true, pri: '인터뷰 결과 열기',
+    msgA: '인터뷰 분석이 실패해 체인이 끝났습니다 — ', msgB: '녹음에서 텍스트를 찾지 못함', msgC: '. 크레딧은 차감되지 않았습니다.',
+    note: '사유는 steps[i].error 를 그대로 씁니다. 실패 = 체인 종료이므로 재시도 버튼을 두지 않고, 그 위젯으로 보내 거기서 다시 하게 합니다. 남은 단계는 pending 회색으로 남아 "여기서 끊겼다"를 보여줍니다. "크레딧 미차감" 문장은 계약에 근거가 없으면 빼야 합니다 — §5 proposed-prop.' }),
+  bar({ id: 'B7', cap: '건너뛴 단계 포함 진행', code: 'running · skipped', m: 'approve', s: ['done', 'skipped', 'running', 'pending'], status: '3/4 · 분석 중', stFg: '#6b4aa0',
+    note: '건너뛴 노드는 회색 – + 취소선. 연결선은 실선을 유지합니다 — 체인이 끊긴 게 아니라 그 단계만 비웠기 때문입니다.' }),
+  bar({ id: 'B8', cap: '완료', code: 'done', m: 'approve', s: ['done', 'done', 'done', 'done'], status: '4/4 완료', stFg: '#14713a', row: 'success', hasSec: true, sec: '닫기', hasPri: true, pri: '보고서 열기 ⤢',
+    msgA: '', msgB: '탑라인 보고서가 준비됐습니다.', msgC: ' 인터뷰 결과 생성기 전체보기에서 엽니다.',
+    note: '닫으면 바가 사라집니다. 완료 바는 자동으로 사라지지 않습니다 — 사용자가 다른 위젯을 보는 동안 끝났을 수 있기 때문입니다.' }),
+  bar({ id: 'B9', cap: '종료됨', code: 'cancelled', m: 'approve', s: ['done', 'done', 'skipped', 'skipped'], status: '체인 종료됨', stFg: '#5b5965', row: 'neutral', hasSec: true, sec: '닫기',
+    msgA: '체인을 종료했습니다. ', msgB: '전사까지의 결과', msgC: '는 각 위젯에 그대로 있습니다.',
+    note: '종료 시 남은 단계는 skipped 로 표시합니다(계약이 pending 으로 남기면 워커가 표시만 skipped 로 매핑). 톤 없음 · 링 없음 · 회색 행 — 공유 링크 dead end 와 같은 규칙(SSOT §C4).' }),
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      decisions: [
+        { id: 'Q1', q: '승인 모먼트는 어디에', a: '캔버스 상단 체인 바의 아래 행', why: '체인 위젯들은 캔버스에서 서로 붙어 있지 않습니다(프로빙과 전사 사이에 통역이 있음). 완료 카드나 다음 카드에 띄우면 사용자가 그 카드를 보고 있어야만 알아챕니다. 바는 스크롤을 따라오는 한 자리이고, 리크루팅 브리지 바(N1)와 같은 "작업 위에 얹힌 바" 문법입니다.', no: '모달 — 다른 위젯 작업을 강제로 끊음 · 완료/다음 카드 인라인 — 화면 밖이면 놓침 · 토스트 — 크레딧 결정을 사라지는 UI 에 맡길 수 없음' },
+        { id: 'Q2', q: '"연결됨"의 시각 언어', a: '바의 단계 트랙 + 카드 서브바 칩', why: '카드끼리 물리적으로 잇는 선은 붙어 있지 않은 카드 사이를 가로질러 다른 카드를 덮습니다. 트랙이 순서를, 칩이 "이 카드가 그 순서 몇 번째인지"를 말합니다. 셸(헤더·툴바)은 건드리지 않고 서브바 우측 빈 자리만 씁니다.', no: '카드 간 커넥터 선 — 비인접 카드에서 성립 안 함 · 헤더밴드 착색 — 정체성 톤과 충돌 · Navigator 전용 — 캔버스에서 안 보임' },
+        { id: 'Q3', q: '자동 모드와의 차등', a: '타일·모드 배지만 ink 채움, 승인 행 없음', why: '두 모드의 트랙은 같아야 합니다 — 자동이라고 진행을 덜 보여줄 이유가 없습니다. 다른 것은 "사용자를 부르느냐"뿐이므로 차이도 거기에만 둡니다. 크레딧 부족이 오면 자동도 멈추고 같은 amber 행이 열립니다.', no: '자동은 바 숨김 — 크레딧이 조용히 나가는 걸 볼 방법이 없어짐 · 카운트다운 — 계약에 없음' },
+      ],
+      heroBar: [bar({ m: 'approve', s: ['done', 'done', 'awaiting', 'pending'], status: '2/4 완료', stFg: '#8a5a10', row: 'amber', msgA: '전사가 끝났습니다. 다음은 ', msgB: '인터뷰 분석', msgC: ' — 시작하면 바로 차감됩니다.' })],
+      miniCards: [
+        { ko: '프로빙 어시스턴트', tone: '#cfe6ff', credit: 25, pill: 'DONE', chained: true, chip: '체인 1/4 · 완료', chipBg: '#f4fbf6', chipLine: '#cdeed8', chipFg: '#14713a', op: 1, foot: '세션 42분', cta: '#1d1b20', cap: '① 완료',
+          rows: [{ h: '54px', bd: '1.5px solid #cdeed8', bg: '#f4fbf6' }, { h: '40px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }, { h: '40px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }] },
+        { ko: '라이브 통역', tone: '#cdebd9', credit: 50, pill: 'READY', chained: false, op: 1, foot: '💎50', cta: '#1d1b20', cap: '체인 밖 — 칩 없음',
+          rows: [{ h: '44px', bd: '1.5px solid #1d1b20', bg: '#fff' }, { h: '40px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }, { h: '40px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }] },
+        { ko: '전사록 생성기', tone: '#e7defe', credit: 1, pill: 'DONE', chained: true, chip: '체인 2/4 · 완료', chipBg: '#f4fbf6', chipLine: '#cdeed8', chipFg: '#14713a', op: 1, foot: '파일 1개', cta: '#1d1b20', cap: '② 완료',
+          rows: [{ h: '54px', bd: '1.5px solid #cdeed8', bg: '#f4fbf6' }, { h: '34px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }] },
+        { ko: '인터뷰 결과 생성기', tone: '#ffd0e2', credit: 10, pill: 'READY', chained: true, chip: '체인 3/4 · 승인 대기', chipBg: '#fff1e6', chipLine: '#f0d78a', chipFg: '#8a5a10', op: 1, foot: '💎10', cta: '#eceef1', cap: '③ 다음 — idle 그대로',
+          rows: [{ h: '30px', bd: 'none', bg: 'rgba(29,27,32,.07)' }, { h: '90px', bd: '1.5px dashed #c9ccd2', bg: '#fbfbf9' }, { h: '30px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }] },
+      ],
+      doneSteps: [{ t: '연구 목적', v: '결제 이탈 원인 탐색' }, { t: '대상', v: '20대 후반–30대 여성 · 최근 결제 이탈' }, { t: '방법', v: '반구조화 심층 인터뷰' }],
+      entries: [
+        { id: 'E1', cap: '꺼짐 (기본)', on: false, auto: false, tgBg: '#eceef1', tgJ: 'flex-start', knob: '#fff', boxBd: '1.5px solid rgba(29,27,32,.16)', boxSh: 'none', foot: '💎25', cta: '세션 시작' },
+        { id: 'E2', cap: '켜짐 · 단계별 승인', on: true, auto: false, tgBg: '#1d1b20', tgJ: 'flex-end', knob: '#ffd0e2', boxBd: '2px solid #1d1b20', boxSh: '3px 3px 0 rgba(29,27,32,.14)', segABg: '#1d1b20', segAFg: '#fff', segBBg: '#fff', segBFg: '#5b5965', modeNote: '단계가 끝날 때마다 다음 단계와 비용을 보여주고 물어봅니다.', foot: '💎25 · 이어서 3단계', cta: '세션 시작' },
+        { id: 'E3', cap: '켜짐 · 자동', on: true, auto: true, tgBg: '#1d1b20', tgJ: 'flex-end', knob: '#ffd0e2', boxBd: '2px solid #1d1b20', boxSh: '3px 3px 0 rgba(29,27,32,.14)', segABg: '#fff', segAFg: '#5b5965', segBBg: '#1d1b20', segBFg: '#fff', modeNote: '세 단계를 묻지 않고 이어서 돌립니다.', foot: '💎25 · 자동 3단계', cta: '세션 시작' },
+      ],
+      preview: [
+        { n: '1', tone: '#cfe6ff', label: '인터뷰 어시스턴트', note: '시작 시 차감', cost: '💎25', bg: '#fbfbf9' },
+        { n: '2', tone: '#e7defe', label: '전사', note: '완료 시', cost: '💎1', bg: '#fff' },
+        { n: '3', tone: '#ffd0e2', label: '인터뷰 분석', note: '파일당 · 선차감', cost: '💎25', bg: '#fff' },
+        { n: '4', tone: '#ffd0e2', label: '탑라인 보고서', note: '', cost: '포함', bg: '#fff' },
+      ],
+      bars: BARS,
+      chips: [
+        { label: '체인 2/4 · 진행 중', bg: '#f6f2ff', line: '#d6c7f5', fg: '#6b4aa0', when: 'running', note: '이 카드가 지금 돌고 있는 단계' },
+        { label: '체인 3/4 · 승인 대기', bg: '#fff1e6', line: '#f0d78a', fg: '#8a5a10', when: 'awaiting', note: '다음 차례 — 바에서 승인하면 시작' },
+        { label: '체인 4/4', bg: '#fff', line: 'rgba(29,27,32,.2)', fg: '#5b5965', when: 'pending', note: '아직 차례가 아님' },
+        { label: '체인 1/4 · 완료', bg: '#f4fbf6', line: '#cdeed8', fg: '#14713a', when: 'done', note: '이 카드의 단계는 끝남' },
+        { label: '체인 · 멈춤', bg: '#fff', line: '#e0a83a', fg: '#8a5a10', when: 'paused / error', note: '체인이 이 카드에서 섰음 — 펄스 없음' },
+        { label: '체인 · 건너뜀', bg: '#f2f2ef', line: 'rgba(29,27,32,.24)', fg: '#5b5965', when: 'skipped', note: '이 단계만 비움' },
+      ],
+      nodeKinds: [
+        { key: 'done', desc: '위젯 톤 채움 + ✓', ...node('transcripts', 'done') },
+        { key: 'running', desc: '톤 채움 + processing 링 · 펄스', ...node('transcripts', 'running') },
+        { key: 'awaiting', desc: 'amber 점선 · ?', ...node('transcripts', 'awaiting') },
+        { key: 'pending', desc: '회색 점선 · 빈 원', ...node('transcripts', 'pending') },
+        { key: 'skipped', desc: '회색 채움 · – · 라벨 취소선', ...node('transcripts', 'skipped') },
+        { key: 'error / paused', desc: '! 붉은 실선 · Ⅱ amber 실선', ...node('transcripts', 'error') },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
