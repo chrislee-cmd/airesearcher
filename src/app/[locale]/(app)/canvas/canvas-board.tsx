@@ -51,6 +51,9 @@ import {
   type WidgetContent,
 } from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
+import { ChainBarHost } from '@/components/canvas/chain/chain-bar-host';
+import { ChainChip } from '@/components/canvas/chain/chain-chip';
+import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
 import { WidgetNavigator } from './widget-navigator';
 import { LayoutPublishControl } from './layout-publish-control';
 import type { CanvasCoords } from '@/lib/admin/canvas-layout';
@@ -551,6 +554,10 @@ export function CanvasBoard({
     setCurrentWidgetKey(key);
     setFullviewOpen(true);
   }, []);
+
+  // 위젯 체인 — 카드 서브바 칩. 컨테이너(WidgetChainProvider)가 체인 전체 상태를
+  // 단일 소유하므로 카드마다 새 fetch 가 없다. 체인 밖 위젯은 null.
+  const { chipFor: chainChipFor } = useWidgetChain();
   const switchFullview = useCallback((key: string) => {
     setCurrentWidgetKey(key);
   }, []);
@@ -1166,6 +1173,9 @@ export function CanvasBoard({
         hiddenKeys={hiddenWidgets}
         onToggleHidden={toggleHidden}
       />
+      {/* 위젯 체인 바 — 변환되지 않는 뷰포트 레이어에 absolute(캔버스를 pan 해도
+          상단에 남는다). 체인이 없으면 null 이라 캔버스에 아무 흔적이 없다. */}
+      <ChainBarHost onOpenWidget={openFullview} />
       {/* 슈퍼어드민 전용 "기본 배치로 발행" — 현재 배치(positions)를 그대로 전역
           발행해 일반계정 baseline 으로 만든다. 발행 후 슈퍼어드민 자신의 적용
           version 도 기록(재적용 루프 무해화). 일반계정엔 미렌더(canPublish). */}
@@ -1285,6 +1295,12 @@ export function CanvasBoard({
                 <WidgetShell
                   content={w}
                   dashboardMode
+                  // 체인 칩 — 체인에 묶인 카드만 슬롯을 받는다(비체인 카드는
+                  // undefined → 서브바 행 자체가 안 그려진다).
+                  subbarEnd={(() => {
+                    const chip = chainChipFor(w.key);
+                    return chip ? <ChainChip {...chip} /> : undefined;
+                  })()}
                   onFullview={() => openFullview(w.key)}
                   hasGuide={widgetGuide(w.key) != null}
                   onGuide={openGuide}

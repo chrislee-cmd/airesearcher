@@ -1573,6 +1573,131 @@
       "hint": "현재 배치를 일반 계정 기본 배치로 발행합니다"
     }
   },
+  "Chain": {
+    "label": "체인",
+    "mode": {
+      "approve": "단계별 승인",
+      "auto": "자동"
+    },
+    "steps": {
+      "probing": "인터뷰 어시스턴트",
+      "transcripts": "전사",
+      "interview_ingest": "인터뷰 분석",
+      "topline": "탑라인 보고서"
+    },
+    "stepsShort": {
+      "probing": "세션",
+      "transcripts": "전사",
+      "interview_ingest": "분석",
+      "topline": "탑라인"
+    },
+    "widget": {
+      "probing": "인터뷰 어시스턴트",
+      "quotes": "전사록 생성기",
+      "interviews": "인사이트 분석기"
+    },
+    "cost": "💎{cost}",
+    "costIncluded": "포함",
+    "status": {
+      "running": "{n}/{total} · {step} 중",
+      "completedCount": "{done}/{total} 완료",
+      "paused": "멈춤",
+      "ended": "체인 종료됨"
+    },
+    "row": {
+      "awaiting": {
+        "msgAStart": "다음은 ",
+        "msgAFrom": {
+          "probing": "세션이 끝났습니다. 다음은 ",
+          "transcripts": "전사가 끝났습니다. 다음은 ",
+          "interview_ingest": "인터뷰 분석이 끝났습니다. 다음은 ",
+          "topline": "탑라인 보고서가 끝났습니다. 다음은 "
+        },
+        "msgC": " — 시작하면 바로 차감됩니다."
+      },
+      "project": {
+        "msgA": "인터뷰 분석은 ",
+        "msgB": "프로젝트에 저장",
+        "msgC": "됩니다. 어디에 넣을까요?"
+      },
+      "paused": {
+        "msgAWithBalance": "잔액 💎{balance} — {step}에 ",
+        "msgA": "{step}에 ",
+        "msgC": "가 필요해 여기서 멈췄습니다."
+      },
+      "error": {
+        "msgAFrom": {
+          "probing": "인터뷰 어시스턴트가 실패해 체인이 끝났습니다 — ",
+          "transcripts": "전사가 실패해 체인이 끝났습니다 — ",
+          "interview_ingest": "인터뷰 분석이 실패해 체인이 끝났습니다 — ",
+          "topline": "탑라인 보고서가 실패해 체인이 끝났습니다 — "
+        },
+        "msgAFromUnknown": "체인이 끝났습니다 — ",
+        "reasonUnknown": "사유를 알 수 없음",
+        "msgC": "."
+      },
+      "done": {
+        "msgB": "{step}가 준비됐습니다.",
+        "msgBGeneric": "체인이 끝까지 완료됐습니다.",
+        "msgC": " 인사이트 분석기 전체보기에서 엽니다."
+      },
+      "cancelled": {
+        "msgA": "체인을 종료했습니다. ",
+        "msgB": "{step}까지의 결과",
+        "msgBGeneric": "지금까지의 결과",
+        "msgC": "는 각 위젯에 그대로 있습니다."
+      }
+    },
+    "action": {
+      "proceed": "진행 →",
+      "proceedCost": "진행 · 💎{cost} →",
+      "skip": "건너뛰기",
+      "cancel": "체인 종료",
+      "resume": "재개",
+      "topUp": "💎 충전하기",
+      "close": "닫기",
+      "openWidget": "{widget} 열기",
+      "openReport": "보고서 열기 ⤢"
+    },
+    "chip": {
+      "withStep": "체인 {step}/{total}",
+      "withStepState": "체인 {step}/{total} · {state}",
+      "stateOnly": "체인 · {state}",
+      "state": {
+        "running": "진행 중",
+        "awaiting": "승인 대기",
+        "done": "완료",
+        "stopped": "멈춤",
+        "skipped": "건너뜀"
+      }
+    },
+    "picker": {
+      "placeholder": "대상 프로젝트 선택",
+      "sectionLabel": "대상 프로젝트",
+      "newProject": "＋ 새 프로젝트"
+    },
+    "entry": {
+      "title": "세션이 끝나면 이어서 진행",
+      "subtitle": "전사 → 인터뷰 분석 → 탑라인 보고서까지",
+      "modeGroup": "체인 진행 방식",
+      "noteApprove": "단계가 끝날 때마다 다음 단계와 비용을 보여주고 물어봅니다.",
+      "noteAuto": "세 단계를 묻지 않고 이어서 돌립니다.",
+      "autoWarning": "단계마다 묻지 않고 크레딧이 차감됩니다. 잔액이 모자라면 그 단계에서 멈춥니다.",
+      "note": {
+        "entry": "시작 시 차감",
+        "probing": "시작 시 차감",
+        "transcripts": "완료 시",
+        "interview_ingest": "파일당 · 선차감",
+        "topline": ""
+      },
+      "totalLabel": "세션 후 이어질 비용",
+      "totalFixedPerFile": "💎{fixed} + 파일당 {perFile}",
+      "totalFixed": "💎{fixed}",
+      "footSuffixApprove": " · 이어서 {count}단계",
+      "footSuffixAuto": " · 자동 {count}단계",
+      "createFailed": "체인을 만들지 못했습니다. 세션은 그대로 진행됩니다."
+    }
+  },
   "Desk": {
     "fv": {
       "sections": "섹션",

@@ -1573,6 +1573,131 @@
       "hint": "Publishes the current layout as the default for regular accounts"
     }
   },
+  "Chain": {
+    "label": "Chain",
+    "mode": {
+      "approve": "Step approval",
+      "auto": "Automatic"
+    },
+    "steps": {
+      "probing": "Interview Assistant",
+      "transcripts": "Transcription",
+      "interview_ingest": "Interview analysis",
+      "topline": "Topline report"
+    },
+    "stepsShort": {
+      "probing": "Session",
+      "transcripts": "Transcription",
+      "interview_ingest": "Analysis",
+      "topline": "Topline"
+    },
+    "widget": {
+      "probing": "Interview Assistant",
+      "quotes": "Transcript Generator",
+      "interviews": "Insight Analyzer"
+    },
+    "cost": "💎{cost}",
+    "costIncluded": "Included",
+    "status": {
+      "running": "{n}/{total} · {step} in progress",
+      "completedCount": "{done}/{total} done",
+      "paused": "Paused",
+      "ended": "Chain ended"
+    },
+    "row": {
+      "awaiting": {
+        "msgAStart": "Next up: ",
+        "msgAFrom": {
+          "probing": "The session is done. Next up: ",
+          "transcripts": "Transcription is done. Next up: ",
+          "interview_ingest": "Interview analysis is done. Next up: ",
+          "topline": "The topline report is done. Next up: "
+        },
+        "msgC": " — credits are deducted the moment it starts."
+      },
+      "project": {
+        "msgA": "Interview analysis is ",
+        "msgB": "saved into a project",
+        "msgC": ". Where should it go?"
+      },
+      "paused": {
+        "msgAWithBalance": "Balance 💎{balance} — {step} needs ",
+        "msgA": "{step} needs ",
+        "msgC": ", so the chain stopped here."
+      },
+      "error": {
+        "msgAFrom": {
+          "probing": "Interview Assistant failed, so the chain ended — ",
+          "transcripts": "Transcription failed, so the chain ended — ",
+          "interview_ingest": "Interview analysis failed, so the chain ended — ",
+          "topline": "The topline report failed, so the chain ended — "
+        },
+        "msgAFromUnknown": "The chain ended — ",
+        "reasonUnknown": "reason unknown",
+        "msgC": "."
+      },
+      "done": {
+        "msgB": "{step} is ready.",
+        "msgBGeneric": "The chain completed every step.",
+        "msgC": " It opens in the Insight Analyzer full view."
+      },
+      "cancelled": {
+        "msgA": "Chain ended. ",
+        "msgB": "Results up to {step}",
+        "msgBGeneric": "Results so far",
+        "msgC": " are still in each widget."
+      }
+    },
+    "action": {
+      "proceed": "Proceed →",
+      "proceedCost": "Proceed · 💎{cost} →",
+      "skip": "Skip",
+      "cancel": "End chain",
+      "resume": "Resume",
+      "topUp": "💎 Top up",
+      "close": "Close",
+      "openWidget": "Open {widget}",
+      "openReport": "Open report ⤢"
+    },
+    "chip": {
+      "withStep": "Chain {step}/{total}",
+      "withStepState": "Chain {step}/{total} · {state}",
+      "stateOnly": "Chain · {state}",
+      "state": {
+        "running": "running",
+        "awaiting": "awaiting approval",
+        "done": "done",
+        "stopped": "stopped",
+        "skipped": "skipped"
+      }
+    },
+    "picker": {
+      "placeholder": "Select target project",
+      "sectionLabel": "Target project",
+      "newProject": "＋ New project"
+    },
+    "entry": {
+      "title": "Continue after the session ends",
+      "subtitle": "Transcription → interview analysis → topline report",
+      "modeGroup": "Chain mode",
+      "noteApprove": "At the end of every step we show the next step and its cost, then ask.",
+      "noteAuto": "Runs the remaining steps without asking.",
+      "autoWarning": "Credits are deducted without asking at each step. If the balance runs short, the chain stops at that step.",
+      "note": {
+        "entry": "charged at start",
+        "probing": "charged at start",
+        "transcripts": "on completion",
+        "interview_ingest": "per file · prepaid",
+        "topline": ""
+      },
+      "totalLabel": "Cost after the session",
+      "totalFixedPerFile": "💎{fixed} + {perFile} per file",
+      "totalFixed": "💎{fixed}",
+      "footSuffixApprove": " · {count} steps to follow",
+      "footSuffixAuto": " · {count} steps automatic",
+      "createFailed": "Could not create the chain. The session continues as usual."
+    }
+  },
   "Desk": {
     "fv": {
       "sections": "Sections",

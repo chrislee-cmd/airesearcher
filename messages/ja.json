@@ -1573,6 +1573,131 @@
       "hint": "現在のレイアウトを一般アカウントの既定レイアウトとして公開します"
     }
   },
+  "Chain": {
+    "label": "チェーン",
+    "mode": {
+      "approve": "ステップごとに承認",
+      "auto": "自動"
+    },
+    "steps": {
+      "probing": "インタビューアシスタント",
+      "transcripts": "文字起こし",
+      "interview_ingest": "インタビュー分析",
+      "topline": "トップライン報告書"
+    },
+    "stepsShort": {
+      "probing": "セッション",
+      "transcripts": "文字起こし",
+      "interview_ingest": "分析",
+      "topline": "トップライン"
+    },
+    "widget": {
+      "probing": "インタビューアシスタント",
+      "quotes": "文字起こし生成",
+      "interviews": "インサイト分析"
+    },
+    "cost": "💎{cost}",
+    "costIncluded": "込み",
+    "status": {
+      "running": "{n}/{total} · {step}中",
+      "completedCount": "{done}/{total} 完了",
+      "paused": "停止",
+      "ended": "チェーン終了"
+    },
+    "row": {
+      "awaiting": {
+        "msgAStart": "次は ",
+        "msgAFrom": {
+          "probing": "セッションが終わりました。次は ",
+          "transcripts": "文字起こしが終わりました。次は ",
+          "interview_ingest": "インタビュー分析が終わりました。次は ",
+          "topline": "トップライン報告書が終わりました。次は "
+        },
+        "msgC": " — 開始するとすぐに差し引かれます。"
+      },
+      "project": {
+        "msgA": "インタビュー分析は ",
+        "msgB": "プロジェクトに保存",
+        "msgC": "されます。どこに入れますか？"
+      },
+      "paused": {
+        "msgAWithBalance": "残高 💎{balance} — {step}には ",
+        "msgA": "{step}には ",
+        "msgC": " が必要なためここで止まりました。"
+      },
+      "error": {
+        "msgAFrom": {
+          "probing": "インタビューアシスタントが失敗してチェーンが終了しました — ",
+          "transcripts": "文字起こしが失敗してチェーンが終了しました — ",
+          "interview_ingest": "インタビュー分析が失敗してチェーンが終了しました — ",
+          "topline": "トップライン報告書が失敗してチェーンが終了しました — "
+        },
+        "msgAFromUnknown": "チェーンが終了しました — ",
+        "reasonUnknown": "理由不明",
+        "msgC": "。"
+      },
+      "done": {
+        "msgB": "{step}の準備ができました。",
+        "msgBGeneric": "チェーンが最後まで完了しました。",
+        "msgC": " インサイト分析の全体表示で開きます。"
+      },
+      "cancelled": {
+        "msgA": "チェーンを終了しました。",
+        "msgB": "{step}までの結果",
+        "msgBGeneric": "これまでの結果",
+        "msgC": "は各ウィジェットにそのまま残っています。"
+      }
+    },
+    "action": {
+      "proceed": "進む →",
+      "proceedCost": "進む · 💎{cost} →",
+      "skip": "スキップ",
+      "cancel": "チェーン終了",
+      "resume": "再開",
+      "topUp": "💎 チャージ",
+      "close": "閉じる",
+      "openWidget": "{widget}を開く",
+      "openReport": "報告書を開く ⤢"
+    },
+    "chip": {
+      "withStep": "チェーン {step}/{total}",
+      "withStepState": "チェーン {step}/{total} · {state}",
+      "stateOnly": "チェーン · {state}",
+      "state": {
+        "running": "進行中",
+        "awaiting": "承認待ち",
+        "done": "完了",
+        "stopped": "停止",
+        "skipped": "スキップ"
+      }
+    },
+    "picker": {
+      "placeholder": "対象プロジェクトを選択",
+      "sectionLabel": "対象プロジェクト",
+      "newProject": "＋ 新規プロジェクト"
+    },
+    "entry": {
+      "title": "セッション終了後に続けて進める",
+      "subtitle": "文字起こし → インタビュー分析 → トップライン報告書まで",
+      "modeGroup": "チェーンの進め方",
+      "noteApprove": "各ステップが終わるたびに次のステップと費用を見せて確認します。",
+      "noteAuto": "残りのステップを確認せずに続けて実行します。",
+      "autoWarning": "ステップごとに確認せずクレジットが差し引かれます。残高が足りないとそのステップで止まります。",
+      "note": {
+        "entry": "開始時に差引",
+        "probing": "開始時に差引",
+        "transcripts": "完了時",
+        "interview_ingest": "ファイルごと · 前払い",
+        "topline": ""
+      },
+      "totalLabel": "セッション後にかかる費用",
+      "totalFixedPerFile": "💎{fixed} + ファイルごと {perFile}",
+      "totalFixed": "💎{fixed}",
+      "footSuffixApprove": " · 続けて{count}ステップ",
+      "footSuffixAuto": " · 自動{count}ステップ",
+      "createFailed": "チェーンを作成できませんでした。セッションはそのまま進みます。"
+    }
+  },
   "Desk": {
     "fv": {
       "sections": "セクション",
