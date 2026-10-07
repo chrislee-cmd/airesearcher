@@ -19,6 +19,7 @@ import { ChromeButton } from './ui/chrome-button';
 import { ChromeInput } from './ui/chrome-input';
 import { isComposingEnter } from './ui/chip-input';
 import { IconButton } from './ui/icon-button';
+import { CloseButton } from './ui/close-button';
 
 const MIME_SINGLE = 'application/x-workspace-artifact';
 const MIME_MANY = 'application/x-workspace-artifacts';
@@ -685,18 +686,16 @@ export function WorkspacePanel() {
                         >
                           +
                         </IconButton>
-                        <IconButton
-                          variant="ghost-danger"
+                        <CloseButton
+                          variant="row-remove"
                           onClick={() => {
                             if (window.confirm(t('confirmDeleteFolder', { name: folder.name }))) {
                               void deleteFolder(folder.id);
                             }
                           }}
                           aria-label={t('deleteFolder')}
-                          className="pr-2 text-md"
-                        >
-                          ×
-                        </IconButton>
+                          className="shrink-0"
+                        />
                       </div>
                       {creatingFolderParent === folder.id && (
                         <div
@@ -1125,13 +1124,12 @@ function ViewerOverlay({
           <div className="truncate text-lg font-semibold text-ink-2">
             {title}
           </div>
-          <IconButton
+          <CloseButton
+            variant="dialog-close"
             onClick={onClose}
             aria-label={t('closeViewer')}
-            className="text-2xl leading-none"
-          >
-            ×
-          </IconButton>
+            className="shrink-0"
+          />
         </header>
         <pre className="flex-1 overflow-auto whitespace-pre-wrap p-5 text-md leading-[1.7] text-ink-2">
           {content === null ? '…' : content}

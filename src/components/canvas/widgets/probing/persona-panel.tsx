@@ -17,7 +17,7 @@
 
 import { useTranslations } from 'next-intl';
 import type { ProbingPersonaSection } from '@/lib/probing-prompts';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 
 const panelStyle = {
   border: '2px solid var(--canvas-card-border)',
@@ -142,15 +142,14 @@ export function PersonaPanel({
           )}
           <ConfidenceDot confidence={confidence} />
           {onRemove && (
-            <IconButton
-              variant="ghost-danger"
+            <CloseButton
+              variant="row-remove"
               onClick={onRemove}
               aria-label={t('probingRemoveWidget', { title })}
               // 인터랙션 전용 — PDF 캡쳐 (페르소나 grid) 에서는 제외.
               data-export-hide
-            >
-              ×
-            </IconButton>
+              className="shrink-0"
+            />
           )}
         </div>
       </header>

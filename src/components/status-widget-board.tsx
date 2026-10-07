@@ -34,7 +34,7 @@ import {
 } from '@/lib/admin/dashboard-layout';
 import { WIDGET_REGISTRY } from './analytics-widgets';
 import { ChromeButton } from './ui/chrome-button';
-import { IconButton } from './ui/icon-button';
+import { CloseButton } from './ui/close-button';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -373,15 +373,13 @@ export function StatusWidgetBoard({ report, initialLayout, canEdit }: Props) {
                       </ChromeButton>
                     ))}
                   </div>
-                  <IconButton
-                    variant="ghost-danger"
-                    size="sm"
+                  <CloseButton
+                    variant="row-remove"
                     aria-label={t('removeWidget')}
                     title={t('remove')}
                     onClick={() => removeWidget(i)}
-                  >
-                    ×
-                  </IconButton>
+                    className="shrink-0"
+                  />
                 </div>
               )}
 

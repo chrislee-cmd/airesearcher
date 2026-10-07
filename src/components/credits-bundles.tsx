@@ -11,7 +11,7 @@ import { formatUsd } from '@/lib/currency';
 import type { PaymentCurrency } from '@/lib/billing';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { Input } from '@/components/ui/input';
 
 // Plain KRW formatter — used for the bank-transfer rail, since that's the
@@ -387,13 +387,12 @@ export function CreditsBundles() {
               >
                 {t('checkoutEyebrow')}
               </div>
-              <IconButton
+              <CloseButton
+                variant="dialog-close"
                 onClick={close}
                 aria-label={t('closeCheckout')}
-                className="text-2xl leading-none"
-              >
-                ×
-              </IconButton>
+                className="shrink-0"
+              />
             </header>
             <div className="max-h-[calc(100vh-120px)] overflow-y-auto px-5 py-5">
                   <h3
@@ -541,13 +540,12 @@ export function CreditsBundles() {
               >
                 {t('checkoutEyebrow')}
               </div>
-              <IconButton
+              <CloseButton
+                variant="dialog-close"
                 onClick={close}
                 aria-label={t('closeBankTransfer')}
-                className="text-2xl leading-none"
-              >
-                ×
-              </IconButton>
+                className="shrink-0"
+              />
             </header>
             <div className="px-5 py-5">
               <h3

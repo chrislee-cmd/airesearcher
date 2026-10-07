@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CloseButton } from '@/components/ui/close-button';
 import type { PopupQuestion } from '../../widgets/probing-types';
 
 const COUNTDOWN_SECONDS = 15;
@@ -115,18 +116,14 @@ export function ProbingSpotlight({
         onMouseLeave={() => setPaused(false)}
         className="relative w-full max-w-[720px] rounded-md border-[3px] border-amber bg-warning-bg p-8 shadow-[var(--fv-shadow-modal-amber)] sm:px-9"
       >
-        {/* 닫기 ✕ — top-right. */}
-        {/* eslint-disable-next-line react/forbid-elements -- CD §F4 spotlight close ✕ 는 30px·radius 9·memphis-sm 스퀘어 chrome 으로 IconButton 고정 radius variant 와 불일치(fullview-header 닫기와 동일 선례). */}
-        <button
-          type="button"
+        {/* 닫기 ✕ — top-right. 오버레이 전체를 접는 동작이라 BUILD-SPEC §1-B
+            dialog-close (주변 프레임과 별개로 스스로 보더를 갖는 유일 변종). */}
+        <CloseButton
+          variant="dialog-close"
           onClick={onDismiss}
           aria-label={t('popup.close')}
-          className="absolute right-4 top-4 flex h-[30px] w-[30px] items-center justify-center rounded-[var(--fv-radius-close)] border-2 border-ink bg-paper text-md font-bold text-ink shadow-memphis-sm"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
+          className="absolute right-4 top-4"
+        />
 
         {/* eyebrow — ●●● + "지금 던지세요" + technique pill + target pill. */}
         <div className="mb-[18px] flex flex-wrap items-center gap-[10px] pr-10">

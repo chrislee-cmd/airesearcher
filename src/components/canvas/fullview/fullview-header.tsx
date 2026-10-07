@@ -11,7 +11,8 @@
 
    band: border-b-2 ink · pad 13/24 · bg = per-widget 파스텔(tone prop).
    title: Outfit 800 · --fv-title-size(22) · ls -0.5 (29px 카드 타이틀 아님).
-   close ✕: 32px · fv-radius-close(9) · border 1.5 ink · memphis-sm.
+   close ✕: <CloseButton variant="dialog-close"> (32px · radius-icon(9) ·
+   border 1.5 ink · memphis-sm — CD 토큰과 1:1).
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
@@ -21,6 +22,7 @@ import { DropdownMenu, type DropdownItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { isComposingEnter } from '@/components/ui/chip-input';
 import { useToast } from '@/components/toast-provider';
 
@@ -90,27 +92,15 @@ export function FullviewHeader({
         {statusChip}
         {actions}
         {onClose ? (
-          // eslint-disable-next-line react/forbid-elements -- CD §F3 close ✕ 는 32px·fv-radius-close(9)·memphis-sm 스퀘어 chrome 으로 IconButton 의 고정 radius(rounded-xs/full) variant 와 맞지 않음(§7.11: className 으로 variant radius override 불가). 레거시 셸의 닫기 처리와 동일 선례.
-          <button
-            type="button"
+          // CD §F3 close ✕ = 32px · radius-icon(9, --fv-radius-close 과 동치) ·
+          // border 1.5 ink · memphis 하드 그림자 → <CloseButton variant="dialog-close">
+          // 의 토큰과 1:1. 셸이 자기 chrome 을 들고 있을 이유가 없어졌다.
+          <CloseButton
+            variant="dialog-close"
             onClick={onClose}
             aria-label={resolvedCloseLabel}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border-[1.5px] border-ink bg-paper text-xl font-bold text-ink shadow-memphis-sm"
-          >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M4 4l8 8M12 4l-8 8"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+            className="shrink-0"
+          />
         ) : null}
       </div>
       {tabs ? (

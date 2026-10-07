@@ -28,7 +28,7 @@ import { Field } from '@/components/canvas/shell/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { ProjectPicker } from '@/components/project-picker';
 import {
   CaptureUseCaseCards,
@@ -271,19 +271,16 @@ function UrlAddField({
           <span className="break-all" aria-label={ariaLabel}>
             {value}
           </span>
-          {/* CD kwChip 정합(제자리 교정): border-line→border-ink(먹색 아웃라인),
-              boxed ghost ✕ → 무박스 plain × + text-mute-soft 그레이(#a3a7ad
-              매핑). glossary 칩과 동일 토큰(형제 일관). */}
-          <IconButton
+          {/* CD kwChip 정합: border-line→border-ink(먹색 아웃라인) + 무박스 ✕.
+              그레이·hover crimson 은 <CloseButton variant="chip-clear"> 소유
+              (BUILD-SPEC §1-C) — glossary 칩과 동일 변종(형제 일관). */}
+          <CloseButton
+            variant="chip-clear"
             aria-label={`${removeLabel}: ${value}`}
-            size="sm"
-            variant="plain"
             disabled={disabled}
             onClick={() => onChange('')}
-            className="shrink-0 text-mute-soft"
-          >
-            <span aria-hidden>×</span>
-          </IconButton>
+            className="shrink-0"
+          />
         </li>
       </ul>
     );
