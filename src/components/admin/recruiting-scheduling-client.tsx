@@ -26,7 +26,11 @@ import {
 } from '@/components/admin/slot-editor-modal';
 import { SchedulingChatPanel } from '@/components/admin/scheduling-chat-panel';
 import {
-  CollabShareButton,
+  // collaborator 공유 버튼 숨김 — 2026-09-06 사용자 요청(출시 전 기획 미완성).
+  // 값 import·렌더·구조분해만 숨기고, CollabMember 타입은 Props 계약 유지를
+  // 위해 보존. 복원 시 CollabShareButton import + 아래 렌더 + collab 구조분해
+  // 주석 해제.
+  // CollabShareButton,
   type CollabMember,
 } from '@/components/scheduling/collab-share';
 import { useSchedUnread } from '@/hooks/use-sched-unread';
@@ -142,7 +146,10 @@ export function RecruitingSchedulingClient({
   groups,
   candidates,
   slots,
-  collab,
+  // collab prop 은 타입(Props.collab)·호출부 계약 유지를 위해 보존하되, 공유
+  // 버튼 숨김(2026-09-06 사용자 요청)으로 본문 미사용이 되어 구조분해에서만
+  // 제외한다. 복원 시 여기에 `collab,` 복원 + 아래 렌더 주석 해제.
+  // collab,
 }: Props) {
   const t = useTranslations('RecruitingScheduling');
   const router = useRouter();
@@ -1167,9 +1174,11 @@ export function RecruitingSchedulingClient({
           >
             {t('newProjectCta')}
           </Button>
-          {collab ? (
+          {/* collaborator 공유 버튼 — 2026-09-06 사용자 요청으로 숨김(위 import
+              주석 참고). 복원 시 import·collab 구조분해 복원 + 아래 블록 주석 해제. */}
+          {/* {collab ? (
             <CollabShareButton orgId={collab.orgId} members={collab.members} />
-          ) : null}
+          ) : null} */}
         </header>
 
         <div className="flex flex-col gap-5 p-[26px]">

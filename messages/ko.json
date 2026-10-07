@@ -2934,7 +2934,10 @@
     "create": "링크 생성",
     "creating": "생성 중…",
     "createSuccess": "공유 링크를 만들었어요.",
-    "createError": "링크 생성에 실패했어요."
+    "createError": "링크 생성에 실패했어요.",
+    "expiredBadge": "만료됨",
+    "expiredNotice": "기존 공유 링크가 만료되었어요. 아래에서 새 링크를 만들어 공유하세요.",
+    "expiredNoticeDated": "기존 공유 링크가 {date}에 만료되었어요. 아래에서 새 링크를 만들어 공유하세요."
   },
   "AdminWidgetVisibility": {
     "title": "위젯 노출 관리",

@@ -21,6 +21,7 @@ import {
   SHARE_RESOURCE_TYPES,
   type ShareResourceType,
 } from '@/lib/share/shared-views';
+import { deriveShareStatus } from '@/lib/share/expiry';
 import { shareViewerUrl } from '@/lib/share/viewer-url';
 import { routing } from '@/i18n/routing';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -44,16 +45,6 @@ type ShareRow = {
 /** 파일명 확장자 제거 — 전사록 제목(뷰어 셸 stripExt 와 동형). */
 function stripExt(name: string): string {
   return name.replace(/\.[^./\\]+$/, '');
-}
-
-/** revoked_at 우선 → expires_at 비교로 상태 파생. */
-function deriveStatus(
-  revokedAt: string | null,
-  expiresAt: string | null,
-): 'active' | 'expired' | 'revoked' {
-  if (revokedAt) return 'revoked';
-  if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) return 'expired';
-  return 'active';
 }
 
 export async function GET(req: Request) {
@@ -138,7 +129,7 @@ export async function GET(req: Request) {
         ? tLabel(rt)
         : s.resource_type,
       tone: RESOURCE_TONES[rt] ?? 'lav',
-      status: deriveStatus(s.revoked_at, s.expires_at),
+      status: deriveShareStatus(s.revoked_at, s.expires_at),
       url: shareViewerUrl(origin, locale, s.token, rt),
       view_count: s.view_count ?? 0,
       last_viewed_at: s.last_viewed_at,

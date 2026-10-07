@@ -77,6 +77,17 @@ export async function POST(req: Request) {
   // 초대·토큰 유효성을 먼저 확인 — 통과할 때만 실제로 코드를 발급/발송한다.
   const admin = createAdminClient();
   const gate = await assertInvitedViewer(admin, token, email);
+
+  // 링크 자체가 죽은 경우(만료·폐기)는 이메일별 비밀이 아니다 — 뷰어 페이지가
+  // 이미 이메일 입력 전에 만료/해제 안내를 노출하므로, 사유를 응답에 반영해도
+  // enumeration leak 이 없다. "코드를 보냈습니다"(허위)를 제거하고 실제 사유를
+  // 돌려줘 뷰어가 오지 않을 코드를 기다리지 않게 한다. (초대/존재 여부가 비밀인
+  // not_invited·not_found 는 아래에서 그대로 {ok:true} 로 흡수 — 보호 유지.)
+  if (!gate.ok && (gate.reason === 'expired' || gate.reason === 'revoked')) {
+    console.warn('[share/otp] dead link otp request', { reason: gate.reason });
+    return NextResponse.json({ ok: false, reason: gate.reason }, { status: 403 });
+  }
+
   if (gate.ok) {
     const sharedViewId = gate.share.id;
     const code = generateOtpCode();

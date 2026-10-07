@@ -2934,7 +2934,10 @@
     "create": "リンクを作成",
     "creating": "作成中…",
     "createSuccess": "共有リンクを作成しました。",
-    "createError": "リンクの作成に失敗しました。"
+    "createError": "リンクの作成に失敗しました。",
+    "expiredBadge": "期限切れ",
+    "expiredNotice": "既存の共有リンクは期限切れです。下で新しいリンクを作成して共有してください。",
+    "expiredNoticeDated": "既存の共有リンクは {date} に期限切れになりました。下で新しいリンクを作成して共有してください。"
   },
   "AdminWidgetVisibility": {
     "title": "ウィジェット表示管理",

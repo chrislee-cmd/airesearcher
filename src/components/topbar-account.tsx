@@ -9,7 +9,10 @@ import { formatTrialRemaining, usePaywall } from '@/components/paywall-provider'
 import { track } from '@/components/mixpanel-provider';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/icon-button';
-import { Badge } from '@/components/ui/badge';
+// Badge 는 아래 org 스위처 + viewingOtherOrg 배지에서만 쓰였는데, 둘 다
+// 2026-09-06 사용자 요청으로 숨김(collaborator 모드 미완성)이라 미사용이 되어
+// 함께 주석 처리. 복원 시 이 import 와 아래 스위처/배지 블록 주석 해제.
+// import { Badge } from '@/components/ui/badge';
 import { useCreditDeductionEvent } from '@/components/credit-deduction-provider';
 import { routing } from '@/i18n/routing';
 import { markLocaleSuggestDismissed } from '@/lib/i18n/locale-preference';
@@ -34,12 +37,14 @@ type Props = {
 
 // role → i18n key (Sidebar namespace). Static map so next-intl can statically
 // see every key.
-const ROLE_LABEL_KEY: Record<OrgMembership['role'], string> = {
-  owner: 'roleOwner',
-  admin: 'roleAdmin',
-  member: 'roleMember',
-  viewer: 'roleViewer',
-};
+// org 스위처 숨김(2026-09-06 사용자 요청, collaborator 모드 미완성)으로 미사용이
+// 되어 주석 처리. 번역 키(roleOwner 등)는 messages 에 보존. 복원 시 해제.
+// const ROLE_LABEL_KEY: Record<OrgMembership['role'], string> = {
+//   owner: 'roleOwner',
+//   admin: 'roleAdmin',
+//   member: 'roleMember',
+//   viewer: 'roleViewer',
+// };
 
 // 계정 패널 언어 스위처의 표시 순서 — 글로벌 디폴트가 영어라 EN 우선, 그다음
 // KO / JA / TH. routing.locales(협상/staticParams 순서)와 분리해 UI 순서만 제어.
@@ -58,8 +63,11 @@ export function TopbarAccount({
   email,
   credits,
   isSuperAdmin,
-  orgs = [],
-  activeOrgId = null,
+  // orgs·activeOrgId prop 은 타입(Props)·호출부(topbar) 계약 유지를 위해
+  // 보존하되, org 스위처/배지 숨김(2026-09-06 사용자 요청)으로 본문 미사용이
+  // 되어 구조분해에서만 제외. 복원 시 아래 두 줄 복원 + 스위처/배지 주석 해제.
+  // orgs = [],
+  // activeOrgId = null,
 }: Props) {
   const t = useTranslations('Sidebar');
   const tCommon = useTranslations('Common');
@@ -182,32 +190,36 @@ export function TopbarAccount({
   // membership (oldest = the org handle_new_user auto-created at signup); when
   // the active org differs, the user is viewing someone else's shared
   // workspace, which we surface with a header badge.
-  const showSwitcher = orgs.length > 1;
-  const homeOrgId = orgs[0]?.org_id ?? null;
-  const activeOrg = orgs.find((o) => o.org_id === activeOrgId) ?? orgs[0] ?? null;
-  const viewingOtherOrg =
-    showSwitcher && !!activeOrg && !!homeOrgId && activeOrg.org_id !== homeOrgId;
+  // 2026-09-06 사용자 요청으로 숨김(collaborator 모드 미완성). 아래 switcher/
+  // 배지 렌더가 숨겨지면 이 computed 값들·switchOrg 가 전부 미사용이 되므로 한
+  // 세트로 주석 처리한다. switchOrg 의 /api/account/active-org POST·active_org
+  // 쿠키 로직은 보존(복원 시 이 블록과 렌더 주석을 함께 해제).
+  // const showSwitcher = orgs.length > 1;
+  // const homeOrgId = orgs[0]?.org_id ?? null;
+  // const activeOrg = orgs.find((o) => o.org_id === activeOrgId) ?? orgs[0] ?? null;
+  // const viewingOtherOrg =
+  //   showSwitcher && !!activeOrg && !!homeOrgId && activeOrg.org_id !== homeOrgId;
 
-  async function switchOrg(orgId: string) {
-    if (orgId === activeOrgId) {
-      setOpen(false);
-      return;
-    }
-    track('org_switch_click', { to: orgId });
-    try {
-      await fetch('/api/account/active-org', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ org_id: orgId }),
-      });
-    } catch {
-      // Best-effort — router.refresh below re-reads server truth either way.
-    }
-    setOpen(false);
-    // Server re-resolves getActiveOrg from the new cookie → whole (app) tree
-    // (credits, projects, members…) follows the switched org.
-    router.refresh();
-  }
+  // async function switchOrg(orgId: string) {
+  //   if (orgId === activeOrgId) {
+  //     setOpen(false);
+  //     return;
+  //   }
+  //   track('org_switch_click', { to: orgId });
+  //   try {
+  //     await fetch('/api/account/active-org', {
+  //       method: 'POST',
+  //       headers: { 'content-type': 'application/json' },
+  //       body: JSON.stringify({ org_id: orgId }),
+  //     });
+  //   } catch {
+  //     // Best-effort — router.refresh below re-reads server truth either way.
+  //   }
+  //   setOpen(false);
+  //   // Server re-resolves getActiveOrg from the new cookie → whole (app) tree
+  //   // (credits, projects, members…) follows the switched org.
+  //   router.refresh();
+  // }
 
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
   const displayName = email ? email.split('@')[0] : '';
@@ -216,12 +228,14 @@ export function TopbarAccount({
   return (
     <div className="relative flex items-center gap-2" ref={popRef}>
       {/* When the active org isn't the user's own, show which workspace they're
-          currently in (spec §범위 3 — 최소 표시). Hidden for single-org users. */}
-      {viewingOtherOrg && activeOrg && (
+          currently in (spec §범위 3 — 최소 표시). Hidden for single-org users.
+          2026-09-06 사용자 요청으로 숨김 — collaborator 모드가 사라져 다른 org
+          진입 경로가 없어진 유령 UI. 복원 시 위 computed 블록과 함께 해제. */}
+      {/* {viewingOtherOrg && activeOrg && (
         <Badge variant="amore" size="sm" className="hidden max-w-[140px] sm:inline-flex">
           {activeOrg.org_name}
         </Badge>
-      )}
+      )} */}
       <div className="flex items-center gap-2 rounded-full bg-ink/10 px-2 py-1.5">
         <div
           className="flex shrink-0 items-center justify-center rounded-full bg-paper text-ink"
@@ -376,7 +390,11 @@ export function TopbarAccount({
           >
             {t('buyCredits')}
           </PopoverLink>
-          {showSwitcher && (
+          {/* 프로필 메뉴 「워크스페이스」 org 스위처 — 2026-09-06 사용자 요청으로
+              숨김(collaborator 모드 미완성). 번역 키(workspaces·role*)·org 데이터
+              배선은 보존. 복원 시 위 computed 블록·switchOrg·Badge import·orgs/
+              activeOrgId 구조분해를 함께 해제. */}
+          {/* {showSwitcher && (
             <>
               <div className="my-1 h-px bg-line-soft" />
               <div className="px-3 pt-1.5 pb-1">
@@ -411,7 +429,7 @@ export function TopbarAccount({
                 );
               })}
             </>
-          )}
+          )} */}
           {isSuperAdmin && (
             <>
               <div className="my-1 h-px bg-line-soft" />

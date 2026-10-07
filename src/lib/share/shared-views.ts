@@ -97,11 +97,9 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/** 만료 판정 — expires_at 이 현재 이후면 만료. (컴포넌트 렌더에서 Date.now()
- *  직접 호출을 피하려 lib 로 추출: react-hooks/purity.) */
-export function isShareExpired(expiresAt: string | null): boolean {
-  return !!expiresAt && new Date(expiresAt).getTime() <= Date.now();
-}
+// 만료 판정은 클라이언트 안전 모듈(./expiry)로 분리 — 공유 모달(client)이
+// node:crypto 의존 없이 재사용한다. 기존 import 경로 호환을 위해 재노출.
+export { isShareExpired } from './expiry';
 
 export type ResolveShareableResult =
   | { ok: true; orgId: string }
