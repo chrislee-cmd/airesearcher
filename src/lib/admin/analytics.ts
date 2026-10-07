@@ -495,7 +495,7 @@ async function computeInterviewFunnel(
 
   const [projects, jobs, queries] = await Promise.all([
     fetchRows(db, 'interview_projects', 'user_id', cutoff),
-    fetchRows(db, 'interview_jobs', 'user_id, status', cutoff),
+    fetchRows(db, 'interview_jobs', 'user_id, status, index_status', cutoff),
     fetchRows(db, 'interview_search_queries', 'user_id', cutoff),
   ]);
 
@@ -517,7 +517,15 @@ async function computeInterviewFunnel(
   };
 
   const s1 = stage('created', '생성', projects);
-  const s2 = stage('analyzed', '분석 완료', jobs, (r) => r.status === 'done');
+  // status='done' is hardcoded at insert, so a fully-failed upload
+  // (index_status='error') would count as "analyzed" and inflate success.
+  // Only count jobs that actually indexed something (index_status !== 'error').
+  const s2 = stage(
+    'analyzed',
+    '분석 완료',
+    jobs,
+    (r) => r.status === 'done' && r.index_status !== 'error',
+  );
   const s3 = stage('queried', '추가 질문', queries);
 
   const withConv = (
