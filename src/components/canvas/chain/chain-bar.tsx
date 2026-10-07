@@ -137,6 +137,8 @@ function ChainNode({
   const dimCost = step.status === 'pending' || step.status === 'skipped';
   return (
     <div
+      data-chain-node={step.status}
+      data-chain-node-feature={step.feature}
       className="flex shrink-0 flex-col items-center gap-[5px]"
       style={{ width: NODE_CELL_WIDTH }}
     >
@@ -346,6 +348,11 @@ export function ChainBar({
   return (
     <section
       aria-label={t('label')}
+      // data-chain-* = conformance 오라클(규칙 2d) 훅. 픽셀 diff·상태 도달 검증이
+      // 클래스 문자열에 의존하지 않게 상태를 DOM 에 명시한다(스타일 영향 0).
+      data-chain="bar"
+      data-chain-status={view.status}
+      data-chain-mode={view.mode}
       className="max-w-full overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-popover"
       style={{ width: BAR_WIDTH }}
     >
@@ -407,6 +414,7 @@ export function ChainBar({
         </div>
         <div
           role="status"
+          data-chain-el="status"
           className={`shrink-0 text-right font-mono text-sm font-extrabold ${STATUS_TONE_CLASS[statusTone]}`}
         >
           {statusText}
@@ -416,6 +424,8 @@ export function ChainBar({
       {/* 아래 행 — 조건부. 없는 상태(running)가 기본이고 그때 바는 한 줄이다. */}
       {row && (
         <div
+          data-chain-el="row"
+          data-chain-row-tone={row.tone}
           className={`flex flex-wrap items-center gap-3 border-t-[1.5px] px-4 py-[11px] ${ROW_TONE_CLASS[row.tone]}`}
         >
           <div className="min-w-[300px] flex-1 text-lg leading-[1.55] text-ink-2">
@@ -440,6 +450,7 @@ export function ChainBar({
             // eslint-disable-next-line react/forbid-elements -- CD B2 note: "체인 종료" 는 패딩·보더·밑줄 없는 bare 텍스트 액션(12.5/700 mute)이다. Button variant="link" 는 size padding + hover 밑줄 decoration 을 강제하고, className 으로 되돌리면 §7.11(컴파일 CSS 소스 순서) 때문에 primitive BASE 가 이길 수 있다. fullview-header 의 CD 전용 chrome 선례와 동일.
             <button
               type="button"
+              data-chain-action="cancel"
               onClick={onCancel}
               disabled={busy}
               className="shrink-0 text-md font-bold text-mute transition-colors hover:text-ink disabled:opacity-40"
@@ -528,6 +539,7 @@ function SecondaryPill({
     // eslint-disable-next-line react/forbid-elements -- CD §1.1 아래 행 보조 pill 은 border 1.5 ink · radius-pill · shadow 2px2px0 ink/12 전용 chrome. Button variant="secondary" 는 border-2.5 · rounded-sm · shadow-memphis-md 고정이라 형태가 다르고, className override 는 §7.11 소스 순서 때문에 불확정. CD 가 DS 기본값 상위 권위(규칙 2c AUTHORITY).
     <button
       type="button"
+      data-chain-action="secondary"
       onClick={onClick}
       disabled={busy}
       className="inline-flex shrink-0 items-center rounded-pill border-[1.5px] border-ink bg-paper px-4 py-2 text-md font-bold text-ink shadow-memphis-sm-faint transition-colors hover:bg-paper-soft disabled:opacity-40"
@@ -554,6 +566,8 @@ function PrimaryPill({
     // eslint-disable-next-line react/forbid-elements -- CD §1.1 주 버튼은 border 2 ink · radius-pill · shadow 2px2px0 ink/28(shadow-memphis-sm-mid) 전용 chrome + "잠김" 상태(surface-disabled·faint·그림자 없음, SSOT §D1)를 가진다. Button primitive 에 없는 형태·상태라 native. 보조 pill 과 동일 선례.
     <button
       type="button"
+      data-chain-action="primary"
+      data-chain-locked={locked ? 'true' : 'false'}
       onClick={onClick}
       disabled={locked || busy}
       className={
@@ -599,7 +613,7 @@ function ProjectPicker({
   ];
 
   return (
-    <div ref={triggerRef} className="shrink-0">
+    <div ref={triggerRef} data-chain-el="picker" className="shrink-0">
       <PickerTrigger
         ref={triggerButtonRef}
         open={open}

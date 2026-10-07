@@ -87,6 +87,8 @@ export function ChainChip({ step, total, status }: ChainChipProps) {
 
   return (
     <span
+      data-chain="chip"
+      data-chain-chip={status}
       className={`inline-flex shrink-0 items-center gap-[5px] rounded-pill border-[1.5px] py-0.5 pl-[7px] pr-[9px] text-xs-soft font-extrabold ${CHIP_CLASS[status]}`}
     >
       <DuotoneIcon name="link" size={12} stroke="currentColor" />

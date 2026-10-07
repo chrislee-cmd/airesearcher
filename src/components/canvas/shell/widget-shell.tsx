@@ -481,7 +481,10 @@ function WidgetShellInner({
         {/* 서브바 — 헤더밴드와 바디 사이의 얇은 행. subbarEnd 슬롯이 있을 때만
             렌더(= 체인에 묶인 카드만). 슬롯은 우측 정렬(ml-auto)이다. */}
         {subbarEnd && (
-          <div className="flex min-h-[33px] shrink-0 items-center gap-[7px] border-b-[1.5px] border-ink/[0.1] bg-paper-soft px-[15px] py-[7px]">
+          <div
+            data-widget-subbar
+            className="flex min-h-[33px] shrink-0 items-center gap-[7px] border-b-[1.5px] border-ink/[0.1] bg-paper-soft px-[15px] py-[7px]"
+          >
             <span className="ml-auto inline-flex items-center">{subbarEnd}</span>
           </div>
         )}

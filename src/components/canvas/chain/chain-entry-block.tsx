@@ -69,6 +69,9 @@ export function ChainEntryBlock({
 
   return (
     <div
+      data-chain="entry"
+      data-chain-entry-on={enabled ? 'true' : 'false'}
+      data-chain-entry-mode={mode}
       className={`overflow-hidden rounded-panel bg-paper ${
         enabled
           ? 'border-2 border-ink shadow-memphis-md-faint'
