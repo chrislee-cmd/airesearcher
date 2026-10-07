@@ -351,9 +351,15 @@ function formatDocEvidence(
   return out;
 }
 
+// map 1회 호출의 토큰 실측(미터링 — 과금 책정 선행). generateObject 결과의
+// usage(inputTokens/outputTokens)를 호출측이 run 단위로 누적한다. AI SDK v6 는
+// 토큰 필드를 number | undefined 로 주므로 호출측이 ?? 0 으로 보정한다.
+export type MapCallUsage = { inputTokens: number; outputTokens: number };
+
 /**
  * 문서 1개를 map — 전문을 넣어 구조화 추출. 실패 시 예외를 던진다(호출측이
- * 재시도/빈 추출 대체를 결정). 반환은 문서 메타가 붙은 추출.
+ * 재시도/빈 추출 대체를 결정). 반환은 문서 메타가 붙은 추출 + 이 호출의 토큰
+ * 실측(usage) — 비용 미터링 전용(호출측이 누적, 차감과 무관).
  */
 export async function mapDocument(
   anthropic: Anthropic,
@@ -361,8 +367,8 @@ export async function mapDocument(
   // 입력 문자 상한 override — 파싱실패 재시도 시 더 작은 캡으로 재호출해
   // context/출력 truncate 로 인한 파싱실패를 줄인다(카드 #481). 미지정 시 기본 캡.
   opts?: { inputCharCap?: number },
-): Promise<DocExtractWithMeta> {
-  const { object } = await generateObject({
+): Promise<DocExtractWithMeta & { usage: MapCallUsage }> {
+  const { object, usage } = await generateObject({
     model: anthropic(TOPLINE_MAP_MODEL),
     schema: docExtractSchema,
     system: `${MAP_SYSTEM}\n\n## 근거 청크 (응답자: ${doc.filename})\n${formatDocEvidence(doc.chunks, opts?.inputCharCap)}`,
@@ -377,7 +383,15 @@ export async function mapDocument(
     maxRetries: 1,
     providerOptions: ZERO_RETENTION,
   });
-  return { ...object, document_id: doc.document_id, filename: doc.filename };
+  return {
+    ...object,
+    document_id: doc.document_id,
+    filename: doc.filename,
+    usage: {
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
+    },
+  };
 }
 
 /**
