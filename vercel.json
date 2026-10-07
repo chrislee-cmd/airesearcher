@@ -44,6 +44,10 @@
     {
       "path": "/api/cron/ut-stale-live-sweep",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/chain-sweep",
+      "schedule": "0 * * * *"
     }
   ]
 }

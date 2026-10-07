@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
@@ -13,6 +13,7 @@ import {
   rowsPerInsertFor,
 } from '@/lib/interview-index-insert';
 import { logError } from '@/lib/observability/log-error';
+import { advanceChain } from '@/lib/chains/advance';
 
 // PR-1 — background corpus indexing for interview jobs.
 //
@@ -372,8 +373,44 @@ async function finalize(
       .eq('org_id', ctx.orgId);
   }
 
-  // 인덱싱은 문서·청크 적재까지만 — 탑라인 생성은 여기서 자동으로 kick 하지 않는다
-  // (카드 #474). 사용자가 명시적으로 "탑라인 생성" CTA 를 누를 때까지 Opus 를 안 돌린다.
+  // ── 위젯 체인 advance (PR-B) ──────────────────────────────────────────────
+  // 인덱싱은 문서·청크 적재까지만 — 탑라인 생성은 여기서 **무조건** kick 하지
+  // 않는다(카드 #474 / #1024). 사용자가 명시적으로 "탑라인 생성" CTA 를 누를
+  // 때까지 Opus 를 안 돌린다는 그 규칙은 그대로다.
+  //
+  // 바뀐 것: **체인이 명시 생성된 경우에만** advance 가 topline 단계를 올린다.
+  // 체인 생성 = 사용자가 단계 목록과 비용을 보고 모드(approve/auto)를 고른
+  // 행위이므로, #1024 가 금지한 "사용자 모르게 자동 진입·과금" 과는 다르다.
+  // approve 모드(기본)는 여기서 awaiting_approval 로만 올라가고 실제 Opus 는
+  // 사용자가 승인 모달을 누를 때 돈다 — CTA 를 누르는 것과 동일한 명시 행위.
+  //
+  // ⚠️ #1024 불변식: **활성 체인이 없으면 완전 no-op** (DB 쓰기 0 · LLM 0).
+  // 체인을 만들지 않은 인덱싱 잡은 예전과 완전히 동일하게 끝난다.
+  //
+  // after(): 체인 조회/전이는 응답을 지연시킬 이유가 없고, auto 모드의 topline
+  // kick 은 왕복을 포함하므로 응답 뒤로 미룬다. 예외는 흡수 — 체인 훅이
+  // 인덱싱 완료 응답을 깨면 안 된다.
+  after(async () => {
+    try {
+      // 체인 매칭 정확도를 위해 프로젝트 스코프를 함께 넘긴다(동일 org 에
+      // interview_ingest 단계 체인이 둘 이상일 때 오전진 방지).
+      const { data: jobRow } = await admin
+        .from('interview_jobs')
+        .select('project_id')
+        .eq('id', ctx.jobId)
+        .eq('org_id', ctx.orgId)
+        .maybeSingle();
+      await advanceChain({
+        orgId: ctx.orgId,
+        projectId: (jobRow?.project_id as string | null) ?? null,
+        sourceFeature: 'interview_ingest',
+        jobRef: ctx.jobId,
+      });
+    } catch (e) {
+      console.warn('[interviews/index] chain advance failed', e);
+    }
+  });
+
   return NextResponse.json({
     ok: true,
     document_count: totalDocs,

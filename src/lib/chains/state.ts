@@ -52,6 +52,13 @@ export type CasResult =
 // CAS 코어 — status 가 expected 인 동안에만 patch 를 적용. 적용되면 갱신된
 // 행을 돌려준다. 0 행 매칭(status 가 이미 다름)이면 applied:false('conflict').
 // patch 에는 다음 status / current_step / steps / error_message 등을 담는다.
+//
+// expectedCurrentStep (선택) — status 만으로는 가를 수 없는 전이를 위한 2차
+// 비교 대상. auto 모드의 단계 진행은 `running → running` 이라 status 가 변하지
+// 않으므로, status 만 비교하면 동시 done 이벤트(webhook+poll 경합) 둘 다
+// 통과해 커서를 두 칸 밀어버린다. 커서를 CAS 술어에 넣으면 선승 1회만
+// 통과한다(리스크 R1). 생략하면 status-only CAS — A 의 사용자 액션 전이
+// (approve/skip/cancel)는 status 가 반드시 바뀌므로 그대로 안전하다.
 export async function casChain(
   admin: SupabaseClient,
   id: string,
@@ -59,14 +66,17 @@ export async function casChain(
   patch: Partial<
     Pick<ChainRow, 'status' | 'current_step' | 'steps' | 'error_message'>
   >,
+  expectedCurrentStep?: number,
 ): Promise<CasResult> {
-  const { data, error } = await admin
+  let query = admin
     .from(CHAINS_TABLE)
     .update(patch)
     .eq('id', id)
-    .eq('status', expected)
-    .select()
-    .maybeSingle();
+    .eq('status', expected);
+  if (expectedCurrentStep !== undefined) {
+    query = query.eq('current_step', expectedCurrentStep);
+  }
+  const { data, error } = await query.select().maybeSingle();
 
   if (error) throw error;
   if (!data) return { applied: false, reason: 'conflict' };
