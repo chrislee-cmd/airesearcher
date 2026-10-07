@@ -61,10 +61,105 @@ import {
   isToplineHardFaultMessage,
   type ToplineBlock as ClientToplineBlock,
 } from '@/lib/interview-v2/types';
+import {
+  estRunCostUsd,
+  type LlmCallUsage,
+} from '@/lib/chains/llm-pricing';
 
 export const TOPLINE_MODEL = 'claude-opus-4-8';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/**
+ * 생성 1회당 토큰/비용 실측(미터링 — 과금 책정 선행). interview_toplines.usage
+ * jsonb 에 run 단위로 누적 영속된다. map(문서별 Sonnet 추출)·reduce(Opus 종합)를
+ * 단계별로 가르고, resume hop 간에는 read-modify-write 로 합산한다. est_cost_usd
+ * 는 서버가 모델 단가 상수로 계산(단일 계산 경로 — 어드민은 이 값을 집계만).
+ * 측정 전용 — 차감(spendCredits)과 무관하다. NULL = 측정 없음(레거시).
+ */
+export type ToplineRunUsage = {
+  map: LlmCallUsage;
+  reduce: LlmCallUsage;
+  // 이 run 이 순회한 문서(응답자) 수 — 어드민 카드의 "문서 수 분포" 축.
+  doc_count: number;
+  est_cost_usd: number;
+  measured_at: string;
+};
+
+const emptyCallUsage = (model: string): LlmCallUsage => ({
+  calls: 0,
+  input_tokens: 0,
+  output_tokens: 0,
+  model,
+});
+
+/** 기존 단계 누적치에 이번 홉의 델타를 더한다(model 은 현재 상수로 고정). */
+function addCallUsage(
+  prev: LlmCallUsage | undefined,
+  model: string,
+  delta?: { calls: number; inputTokens: number; outputTokens: number },
+): LlmCallUsage {
+  const base = prev ?? emptyCallUsage(model);
+  if (!delta) return { ...base, model };
+  return {
+    calls: base.calls + delta.calls,
+    input_tokens: base.input_tokens + delta.inputTokens,
+    output_tokens: base.output_tokens + delta.outputTokens,
+    model,
+  };
+}
+
+/**
+ * 이번 홉의 토큰 실측 델타를 interview_toplines.usage 에 누적 merge(미터링).
+ * read-modify-write — resume hop 간 합산이 핵심이라 기존 usage 를 읽어 더한다.
+ * est_cost_usd 를 재계산하고 measured_at 을 갱신한다. **best-effort** —
+ * 미터링은 측정 부가물이라 실패해도 생성을 깨뜨리지 않는다(try/catch, 조용히
+ * 경고만). status='generating' 가드로 취소/완료된 row 를 되살리지 않는다.
+ */
+async function persistUsageDelta(
+  admin: AdminClient,
+  toplineId: string,
+  tag: string,
+  delta: {
+    map?: { calls: number; inputTokens: number; outputTokens: number };
+    reduce?: { calls: number; inputTokens: number; outputTokens: number };
+    docCount?: number;
+  },
+): Promise<void> {
+  try {
+    const { data, error } = await admin
+      .from('interview_toplines')
+      .select('usage')
+      .eq('id', toplineId)
+      .maybeSingle();
+    if (error) {
+      console.warn(`${tag} usage read failed`, error.message);
+      return;
+    }
+    const prev = (data?.usage ?? null) as ToplineRunUsage | null;
+    const map = addCallUsage(prev?.map, TOPLINE_MAP_MODEL, delta.map);
+    const reduce = addCallUsage(prev?.reduce, TOPLINE_MODEL, delta.reduce);
+    const usage: ToplineRunUsage = {
+      map,
+      reduce,
+      doc_count: delta.docCount ?? prev?.doc_count ?? 0,
+      est_cost_usd: estRunCostUsd(map, reduce),
+      measured_at: new Date().toISOString(),
+    };
+    const { error: wErr } = await admin
+      .from('interview_toplines')
+      .update({ usage: usage as unknown as object })
+      .eq('id', toplineId)
+      .eq('status', 'generating');
+    if (wErr) console.warn(`${tag} usage write failed`, wErr.message);
+  } catch (e) {
+    // 미터링 실패가 생성을 깨면 안 됨(§제약) — 조용히 삼킨다.
+    console.warn(
+      `${tag} usage persist failed`,
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
 
 /** map-reduce 에서 한 문서(응답자) = 파일명 + content_hash + 전문 chunk. */
 export type ToplineDocument = {
@@ -796,6 +891,11 @@ export async function upsertGenerating(
         phase: 'map',
         map_cursor: 0,
         resume_count: 0,
+        // 토큰/비용 실측 리셋 — 새 run 은 측정을 처음부터 누적한다. resume hop 은
+        // upsertGenerating 을 안 타므로(/resume 가 runTopline 직접 호출) hop 간
+        // 누적은 보존되고, force 재생성/언어·방향 변경만 여기서 0 으로 되돌린다.
+        // 캐시 재사용(재map 0) 재생성이면 map usage 는 0 으로 남고 reduce 만 계상.
+        usage: null,
       },
       { onConflict: 'project_id' },
     )
@@ -851,6 +951,9 @@ export async function upsertImported(
         phase: null,
         map_cursor: 0,
         resume_count: 0,
+        // 업로드(편집전용)는 Opus/Sonnet 미호출 — 측정할 토큰이 없다. 재생성으로
+        // 뒤집히는 경우를 대비해 명시적으로 null 로 리셋.
+        usage: null,
       },
       { onConflict: 'project_id' },
     )
@@ -1315,6 +1418,11 @@ export async function runTopline(
 
     const pending = docs.filter((d) => !cached.has(d.document_id));
     let mapFailures = 0;
+    // 이번 홉의 map 토큰 실측 누적(미터링). 성공한 map 호출만 집계한다 — 실패
+    // 재시도분은 usage 를 못 받으므로(예외) 계상하지 않는다(소폭 과소계상 허용,
+    // 측정 전용). 풀 완료 후 persistUsageDelta 로 row 에 누적 merge 한다. JS
+    // 단일 스레드라 동시 핸들러의 += 가 await 사이에서 안전하다.
+    const hopMapUsage = { calls: 0, inputTokens: 0, outputTokens: 0 };
     // 이번 홉의 장애 상태 — 프로퍼티 홀더로 두어 클로저(핸들러/shouldStop) 안팎의
     // 읽기가 선언 타입을 유지하게 한다. hard = 하드 장애(크레딧/인증) 감지 시 세팅
     // → 새 문서 인출 중단(shouldStop) + 즉시 error 종결. last = 마지막으로 본 실패
@@ -1364,6 +1472,10 @@ export async function runTopline(
                 attributes: extract.attributes,
                 coded: extract.coded,
               });
+              // 성공한 map 호출의 토큰 실측 누적(미터링 — 과금 책정 선행).
+              hopMapUsage.calls += 1;
+              hopMapUsage.inputTokens += extract.usage.inputTokens;
+              hopMapUsage.outputTokens += extract.usage.outputTokens;
               return;
             } catch (e) {
               const cls = classifyMapError(e);
@@ -1488,6 +1600,17 @@ export async function runTopline(
         map_done: cached.size,
         map_cursor: cached.size,
       });
+
+      // 이번 홉의 map 토큰 실측을 row.usage 에 누적 merge(미터링). 아래 모든
+      // 분기 return(하드장애/no-progress/홉 defer/상한) 전에 두어, map 이 중단된
+      // 홉에서도 이번 홉이 실제로 쓴 토큰이 보존된다. calls=0(전부 캐시 재사용)
+      // 이면 skip — 캐시 히트는 토큰 0.
+      if (hopMapUsage.calls > 0) {
+        await persistUsageDelta(admin, toplineId, tag, {
+          map: hopMapUsage,
+          docCount: docs.length,
+        });
+      }
 
       if (stillPending.length > 0) {
         const progress = `${cached.size}/${docs.length}`;
@@ -1798,6 +1921,26 @@ export async function runTopline(
       // 스트림 종료 — 검증된 최종 객체 + finishReason 확보.
       finalObject = await stream.object;
       finishReason = await stream.finishReason;
+      // reduce(Opus) 토큰 실측을 row.usage 에 누적 merge(미터링). 스트림이 끝까지
+      // 소비됐을 때만 usage 가 확정되므로 여기서 집계한다 — abort/실패로 끊긴
+      // reduce 는 계상하지 않는다(소폭 과소계상 허용, 측정 전용). 자체 try 로 감싸
+      // 미터링 실패가 아래 reduce-fault 분류/재개 로직에 섞이지 않게 한다.
+      try {
+        const reduceUsage = await stream.usage;
+        await persistUsageDelta(admin, toplineId, tag, {
+          reduce: {
+            calls: 1,
+            inputTokens: reduceUsage.inputTokens ?? 0,
+            outputTokens: reduceUsage.outputTokens ?? 0,
+          },
+          docCount: docs.length,
+        });
+      } catch (usageErr) {
+        console.warn(
+          `${tag} reduce usage capture failed`,
+          usageErr instanceof Error ? usageErr.message : usageErr,
+        );
+      }
     } catch (e) {
       // reduce(Opus)도 map 과 동일한 hard 장애(크레딧 402/인증 401)를 맞을 수
       // 있다 — 이때 재개는 순수 크레딧 소각이므로 **abort-defer 판정보다 먼저**
