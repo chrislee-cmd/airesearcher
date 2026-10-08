@@ -1209,6 +1209,37 @@ export function CanvasBoard({
     [dragKey, laneDrag, setLaneDrag, stepOfWidget, positions, dockCard, dockedKeys],
   );
 
+  // 레인 **안의 카드 위**에 떨어뜨린 드롭 — portal 때문에 레인까지 못 간다.
+  // React 의 합성 이벤트는 **DOM 트리가 아니라 컴포넌트 트리**를 타고 올라가므로,
+  // 레인 슬롯에 portal 된 카드에서 발생한 drop 은 레인 행(onLaneDrop)이 아니라
+  // 그 카드의 **그리드 래퍼**(onCellDrop)로 간다. 그래서 레인이 2장 이상이 되면
+  // 오른쪽 끝이 카드에 덮여 세 번째 카드를 받을 수 없었다(실측: 슬롯은 valid
+  // 인데 드롭이 무시됨). 도킹 카드에 레인과 같은 판정을 달아 그 구멍을 막는다.
+  const onDockedCardDragOver = useCallback(
+    (e: ReactDragEvent<HTMLElement>) => {
+      onLaneDragOver(e);
+    },
+    [onLaneDragOver],
+  );
+
+  const onDockedCardDrop = useCallback(
+    (e: ReactDragEvent<HTMLElement>) => {
+      // 그리드 래퍼(onCellDrop)까지 올라가면 **언도킹**으로 오해된다 — 레인 안에
+      // 떨어뜨린 것은 언도킹이 아니다. 여기서 끊는다.
+      e.stopPropagation();
+      const key = e.dataTransfer.getData('text/plain') || dragKey;
+      if (key && dockedKeys.has(key)) {
+        // 이미 레인에 있는 카드를 레인 안에 놓았다 — 아무 일도 없다.
+        e.preventDefault();
+        setLaneDrag(null);
+        setDragKey(null);
+        return;
+      }
+      onLaneDrop(e);
+    },
+    [dragKey, dockedKeys, onLaneDrop, setLaneDrag],
+  );
+
   const onCellDragOver = useCallback(
     (col: number, row: number) =>
       (e: ReactDragEvent<HTMLElement>) => {
@@ -1775,6 +1806,12 @@ export function CanvasBoard({
                     <div
                       data-widget-node={w.key}
                       data-chain-lifted={lifted?.key === w.key ? 'true' : undefined}
+                      {...(dockFeature
+                        ? {
+                            onDragOver: onDockedCardDragOver,
+                            onDrop: onDockedCardDrop,
+                          }
+                        : null)}
                       tabIndex={0}
                       aria-label={tRoot(`Sidebar.${w.key}`)}
                       onKeyDown={onCardKeyDown(w.key)}
