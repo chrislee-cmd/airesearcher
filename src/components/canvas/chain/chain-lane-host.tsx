@@ -15,7 +15,7 @@
    쓴다 — 순수 함수라 체인 구성이 자유로워져도 유효하다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { josa } from '@/lib/korean-particle';
 import { usePaywall } from '@/components/paywall-provider';
@@ -74,23 +74,21 @@ export function ChainLaneHost({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  // 포털 타깃 ref — **단계마다 같은 함수**를 돌려줘야 한다. 매 렌더 새 콜백을
-  // 주면 React 가 ref 를 detach(null) → attach(el) 하고, 그 두 번이 전부
-  // registerDockTarget → setDockTargets 로 이어져 렌더 루프가 된다
-  // (실측: 도킹 드롭 순간 React #185 "Maximum update depth exceeded" 로 캔버스
-  // 트리 전체가 죽었다). registerDockTarget 은 의존성 없는 useCallback 이라
-  // 캐시한 콜백이 계속 유효하다.
-  const refCache = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
-  const dockRef = useCallback(
-    (feature: string) => {
-      const cached = refCache.current.get(feature);
-      if (cached) return cached;
-      const fn = (el: HTMLDivElement | null) => registerDockTarget(feature, el);
-      refCache.current.set(feature, fn);
-      return fn;
-    },
-    [registerDockTarget],
-  );
+  // 포털 타깃 ref — **단계마다 같은 함수**여야 한다. 매 렌더 새 콜백을 주면
+  // React 가 ref 를 detach(null) → attach(el) 하고, 그 두 번이 전부
+  // registerDockTarget → setDockTargets 로 이어져 렌더 루프가 된다 (실측:
+  // 도킹 드롭 순간 React #185 "Maximum update depth exceeded" 로 캔버스 트리
+  // 전체가 사라졌다). 구성이 바뀔 때만 새로 만든다 — 그때의 detach/attach 한
+  // 번은 정상 경로다. (ref 를 렌더 중에 읽어 캐시하는 방식은 금지 —
+  // react-hooks 의 "Cannot access refs during render".)
+  const laneCards = lane?.cards;
+  const dockRefs = useMemo(() => {
+    const m: Record<string, (el: HTMLDivElement | null) => void> = {};
+    (laneCards ?? []).forEach((f) => {
+      m[f] = (el) => registerDockTarget(f, el);
+    });
+    return m;
+  }, [laneCards, registerDockTarget]);
 
   if (!lane) return null;
 
@@ -158,7 +156,7 @@ export function ChainLaneHost({
     items.push(
       <div
         key={`dock-${f}`}
-        ref={dockRef(f)}
+        ref={dockRefs[f]}
         data-chain="dock-target"
         data-chain-dock={f}
         data-chain-undock={undockReject ? 'rejected' : undefined}
