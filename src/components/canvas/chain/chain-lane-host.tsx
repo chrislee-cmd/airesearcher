@@ -15,7 +15,7 @@
    쓴다 — 순수 함수라 체인 구성이 자유로워져도 유효하다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { josa } from '@/lib/korean-particle';
 import { usePaywall } from '@/components/paywall-provider';
@@ -74,9 +74,21 @@ export function ChainLaneHost({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  // 포털 타깃 ref — **단계마다 같은 함수**를 돌려줘야 한다. 매 렌더 새 콜백을
+  // 주면 React 가 ref 를 detach(null) → attach(el) 하고, 그 두 번이 전부
+  // registerDockTarget → setDockTargets 로 이어져 렌더 루프가 된다
+  // (실측: 도킹 드롭 순간 React #185 "Maximum update depth exceeded" 로 캔버스
+  // 트리 전체가 죽었다). registerDockTarget 은 의존성 없는 useCallback 이라
+  // 캐시한 콜백이 계속 유효하다.
+  const refCache = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
   const dockRef = useCallback(
-    (feature: string) => (el: HTMLDivElement | null) =>
-      registerDockTarget(feature, el),
+    (feature: string) => {
+      const cached = refCache.current.get(feature);
+      if (cached) return cached;
+      const fn = (el: HTMLDivElement | null) => registerDockTarget(feature, el);
+      refCache.current.set(feature, fn);
+      return fn;
+    },
     [registerDockTarget],
   );
 
