@@ -3,18 +3,25 @@
 /* ────────────────────────────────────────────────────────────────────
    WidgetChainProvider — 체인 UI 의 **컨테이너** (데이터 전부).
 
-   프레젠테이션 3종(ChainBar · ChainChip · ChainEntryBlock)은 typed props 와
-   콜백만 받는다 — 페칭·구독·액션 호출은 전부 여기 모인다(CD HANDOFF §2 경계).
+   프레젠테이션(v2 커넥터 오버레이)은 전부 typed props 와 콜백만 받는다 —
+   페칭·구독·액션 호출은 여기 모인다. 소비자:
+     · `ChainChip`               — 카드 서브바 우측 칩 (v1 에서 그대로 유지)
+     · `chain-overlay`           — 측정·배치 호스트. 그 아래로
+       `chain-edge-layer`(SVG 엣지) · `chain-port` · `chain-capsule` ·
+       `chain-report-node` · `chain-entry-popover`
+     · `chain-summary-host`      — 좌상단 요약 pill (변환 레이어 밖)
+   (v1 의 ChainBar · ChainEntryBlock 은 제거됐다 — 진입은 출력 포트 팝오버,
+   전역 바는 요약 pill 로 대체. v2 README R4·R5.)
 
-   한 캔버스에 체인 바는 **하나**다(CD §0 Q1). 그래서 조회도 전역 1건:
+   한 캔버스에 체인은 **하나**다. 그래서 조회도 전역 1건:
    `GET /api/chains`(project_id 생략 = org 최근 활성 1건). 프로빙 진입 체인은
    project_id 가 null 이라 프로젝트 키로는 찾을 수 없다(R8).
 
    realtime: `widget_chains` row 를 id 로 구독한다(A 의 마이그가 publication 에
    등록 + RLS select = org viewer). 새 체인 생성은 이 클라이언트가 유일한 출처라
-   (진입점 블록) 생성 직후 refresh 로 발견한다 — 폴링을 새로 들이지 않는다.
+   (진입 팝오버) 생성 직후 refresh 로 발견한다 — 폴링을 새로 들이지 않는다.
 
-   크레딧: 잔액(B5 "잔액 💎N")과 충전 진입(onTopUp)은 **기존 전역 경로 재사용** —
+   크레딧: 잔액(S4 "잔액 💎N")과 충전 진입(onTopUp)은 **기존 전역 경로 재사용** —
    `usePaywall()` 의 status.balance + showPaywall(). 새 fetch 를 만들지 않는다.
    ──────────────────────────────────────────────────────────────────── */
 
