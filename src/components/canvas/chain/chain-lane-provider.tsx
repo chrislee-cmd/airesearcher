@@ -323,8 +323,12 @@ function isEditable(view: {
   if (view.currentStep !== 0) return false;
   if (view.steps.length === 0) return false;
   return view.steps.every((s, i) =>
+    // 단계 상태는 **뷰 어휘**다 — toChainView 가 행의 `awaiting_approval` 을
+    // `awaiting` 으로 바꿔 담는다. 서버 술어를 그대로 베껴 'awaiting_approval'
+    // 만 보면 **항상 false** 가 되어 조립이 즉시 잠긴다(프리뷰 실측: 2단계를
+    // 넣자마자 레인이 "실행 중에는 구성을 바꿀 수 없어요" 로 바뀌었다).
     i === 0
-      ? s.status === 'awaiting_approval' || s.status === 'pending'
+      ? s.status === 'awaiting' || s.status === 'pending'
       : s.status === 'pending',
   );
 }
