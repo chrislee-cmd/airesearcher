@@ -17,6 +17,12 @@
    진입 팝오버 8)는 **DOM 순서**로 표현한다. 이 숫자들은 앱 전역 z 티어가 아니라
    오버레이 안의 지역 순서라, `z-[N]` 하드코드(DS 가드가 차단) 대신 렌더 순서로
    같은 결과를 낸다 — 산출물 노드만 카드 층(2)이라 가장 먼저 그린다.
+
+   단, **조작 가능한 층(포트·라벨·캡슐·팝오버)은 `z-overlay`** 를 쓴다. 캔버스는
+   줌이 FOCUS_THRESHOLD 아래면 카드마다 click-to-focus 오버레이(z-overlay)를
+   깔아 포인터를 가로채는데, 체인의 결정 표면이 거기 묻히면 **줌아웃 상태에서
+   승인을 누를 수 없다**(프리뷰 실측). 체인 오버레이는 카드보다 뒤에 그려지므로
+   같은 z 에서 DOM 순서로 이긴다 — 새 z 티어를 만들지 않고 해소된다.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -271,7 +277,7 @@ export function ChainOverlay({
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 z-overlay">
         {showEntryHandle && entryBox && (
           <span className="pointer-events-auto">
             <ChainPort
@@ -336,7 +342,7 @@ export function ChainOverlay({
       )}
 
       {entryOpen && entryBox && !view && (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 z-overlay">
           <ChainEntryPopover
             mode={entryMode}
             onModeChange={setEntryMode}
@@ -437,7 +443,7 @@ function ChainMarkers({
   const breakRoute = breakIdx < 0 ? null : chain.routes[breakIdx];
 
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <div className="pointer-events-none absolute inset-0 z-overlay">
       {runRoute && (
         <span
           data-chain-el="run-label"
@@ -653,7 +659,7 @@ function ChainCapsuleSlot({
       {...focusHandlers}
       // 아래쪽(엣지에 붙는 쪽) 고정 — 내용이 늘면 위로 자란다.
       style={{ left: route.anchor.x, top: route.anchor.y }}
-      className="absolute -translate-x-1/2 -translate-y-full"
+      className="absolute z-overlay -translate-x-1/2 -translate-y-full"
     >
       <ChainCapsule {...props} />
     </div>
