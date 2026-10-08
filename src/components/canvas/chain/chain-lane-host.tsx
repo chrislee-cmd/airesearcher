@@ -133,15 +133,41 @@ export function ChainLaneHost({
       );
     }
     // 도킹 카드 자리 — 빈 portal 타깃(카드는 board 가 여기로 portal 한다).
+    // 언도킹이 거절된 카드(가운데)는 **자기 자리 위에** 사유를 띄운다(CD
+    // Interactions). 카드 DOM 은 portal 로 뒤에 붙으므로 겹침 순서를 z 토큰으로
+    // 정한다 — 새 층을 만들지 않고 기존 `z-overlay` 를 쓴다(LEARNINGS §4).
+    const undockReject =
+      drag?.feature === f && drag.undocking && !drag.undocking.ok
+        ? drag.undocking
+        : null;
     items.push(
       <div
         key={`dock-${f}`}
         ref={dockRef(f)}
         data-chain="dock-target"
         data-chain-dock={f}
+        data-chain-undock={undockReject ? 'rejected' : undefined}
         style={{ width: LANE_CARD_W, height: LANE_CARD_H }}
         className="relative shrink-0"
-      />,
+      >
+        {undockReject && (
+          <div
+            data-chain="undock-reject"
+            aria-live="polite"
+            style={{ borderRadius: 'var(--widget-card-frame-radius)' }}
+            className="pointer-events-none absolute inset-0 z-overlay flex flex-col items-center justify-center gap-5 border-[3px] border-dashed border-error bg-error-bg/90"
+          >
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-[2.5px] border-error text-display font-extrabold text-error-text">
+              <span aria-hidden>✕</span>
+            </div>
+            <div className="px-10 text-center text-3xl font-extrabold text-error-text">
+              {t(
+                `dock.${undockReject.error === 'locked' ? 'locked' : 'middleUndock'}`,
+              )}
+            </div>
+          </div>
+        )}
+      </div>,
     );
   });
 

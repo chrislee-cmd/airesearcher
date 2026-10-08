@@ -69,7 +69,17 @@ export type DragState = {
   over: DockPosition | null;
   valid: boolean;
   verdict: DockVerdict | null;
+  /**
+   * 이미 도킹된 카드를 끌고 있는가(= 언도킹 시도). 도킹 판정과 반대 방향이라
+   * `verdict` 를 공유하지 않고 별도 사유(`undock`)를 둔다.
+   */
+  undocking?: UndockVerdict | null;
 };
+
+/** 언도킹 판정 — CD: 양 끝 카드만, 실행 중에는 불가. */
+export type UndockVerdict =
+  | { ok: true }
+  | { ok: false; error: 'middle_undock' | 'locked' | 'not_docked' };
 
 type LaneApi = {
   lane: LaneState | null;
@@ -80,6 +90,8 @@ type LaneApi = {
   dissolveLane: () => void;
   /** 도킹 가능 판정 — 호스트/보드가 좌표 판정 후 이것으로 사유를 얻는다. */
   evaluate: (feature: string, position: DockPosition) => DockVerdict;
+  /** 언도킹 가능 판정 — 끌기 시작 시점에 한 번 보고 드래그 내내 들고 간다. */
+  evaluateUndock: (feature: string) => UndockVerdict;
   setDrag: (next: DragState | null) => void;
   dock: (feature: ChainStepFeature, position: DockPosition, origin: LaneCoords) => void;
   undock: (feature: ChainStepFeature) => void;
@@ -162,6 +174,21 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
     [lane],
   );
 
+  // 양 끝만 뺄 수 있다(CD Interactions). 가운데를 빼면 남은 순서가 호환
+  // 그래프를 위반할 수 있어서다 — 거절 사유를 UI 가 그대로 읽는다.
+  const evaluateUndock = useCallback(
+    (feature: string): UndockVerdict => {
+      const cards = lane?.cards ?? [];
+      const i = cards.indexOf(feature as ChainStepFeature);
+      if (i < 0) return { ok: false, error: 'not_docked' };
+      if (locked) return { ok: false, error: 'locked' };
+      return i === 0 || i === cards.length - 1
+        ? { ok: true }
+        : { ok: false, error: 'middle_undock' };
+    },
+    [lane, locked],
+  );
+
   const dock = useCallback(
     (feature: ChainStepFeature, position: DockPosition, origin: LaneCoords) => {
       setLane((prev) => {
@@ -184,6 +211,9 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
 
   const undock = useCallback(
     (feature: ChainStepFeature) => {
+      // 판정은 여기서도 한 번 — 호출부(드롭 핸들러)가 빠뜨려도 가운데가 빠지지
+      // 않게 한다. 판정 소유자는 evaluateUndock 하나다.
+      if (!evaluateUndock(feature).ok) return;
       setLane((prev) => {
         if (!prev) return prev;
         const cards = prev.cards.filter((f) => f !== feature);
@@ -195,7 +225,7 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       setRestored([feature]);
       setTimeout(() => setRestored([]), RESTORE_BADGE_MS);
     },
-    [syncComposition],
+    [syncComposition, evaluateUndock],
   );
 
   const registerDockTarget = useCallback(
@@ -215,6 +245,7 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       createLane,
       dissolveLane,
       evaluate,
+      evaluateUndock,
       setDrag,
       dock,
       undock,
@@ -230,6 +261,7 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       createLane,
       dissolveLane,
       evaluate,
+      evaluateUndock,
       dock,
       undock,
       restored,
@@ -282,6 +314,7 @@ const INERT: LaneApi = {
   createLane: () => {},
   dissolveLane: () => {},
   evaluate: () => ({ ok: false, error: 'unknown_step' }),
+  evaluateUndock: () => ({ ok: false, error: 'not_docked' }),
   setDrag: () => {},
   dock: () => {},
   undock: () => {},

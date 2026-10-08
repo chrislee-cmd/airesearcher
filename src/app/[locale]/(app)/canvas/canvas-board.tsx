@@ -555,6 +555,7 @@ export function CanvasBoard({
   const { mode: viewMode } = useViewMode();
   const isList = viewMode === 'list';
   const tRoot = useTranslations();
+  const tChain = useTranslations('Chain');
   // 리스트 상세 pane(우측) DOM — 리스트 모드에서 위젯 본문이 portal 될 대상.
   const [listSlotEl, setListSlotEl] = useState<HTMLElement | null>(null);
 
@@ -572,7 +573,9 @@ export function CanvasBoard({
     drag: laneDrag,
     setDrag: setLaneDrag,
     evaluate: evaluateDock,
+    evaluateUndock,
     dock: dockCard,
+    undock: undockCard,
     dockTargets,
     laneBodyRef,
   } = useChainLane();
@@ -720,9 +723,14 @@ export function CanvasBoard({
 
   // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용. multi-row 위젯은
   // cols × rows footprint 의 모든 셀이 점유로 표시됨.
+  // 점유 맵은 **화면에 보이는 배치**(gridPositions)를 따른다 — 레인이 있으면
+  // 남은 카드가 재압축돼 발행 배치(positions)와 어긋나므로, 발행값으로 그리면
+  // 빈 셀 힌트와 드롭 타깃이 실제 카드 위치와 틀어진다. 도킹된 카드는 그리드에
+  // 없으니 점유도 하지 않는다(그 자리에 언도킹 드롭을 받을 수 있어야 한다).
   const occupiedCells = useMemo(() => {
     const occ = new Map<string, string>(); // "c,r" → widget key
-    Object.entries(positions).forEach(([k, p]) => {
+    Object.entries(gridPositions).forEach(([k, p]) => {
+      if (dockedKeys.has(k)) return;
       const { cols, rows } = spanOf(widgetByKey[k]);
       for (let dc = 0; dc < cols; dc += 1) {
         for (let dr = 0; dr < rows; dr += 1) {
@@ -731,7 +739,7 @@ export function CanvasBoard({
       }
     });
     return occ;
-  }, [positions, widgetByKey]);
+  }, [gridPositions, widgetByKey, dockedKeys]);
 
   // pan / zoom
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -759,6 +767,52 @@ export function CanvasBoard({
     img.src = TRANSPARENT_GHOST_SRC;
     ghostRef.current = img;
   }, []);
+
+  // 드래그 라벨 pill 위치 — CD 는 커서 옆에 "체인 n단계" / "놓을 수 없음" 을
+  // 띄운다. HTML5 drag 이벤트만 좌표를 주므로(마우스 이벤트는 드래그 중 안 옴)
+  // window `dragover` 로 받는다. 레포의 카드 고스트는 투명 이미지 + 원본 0.4
+  // 디밍이 기존 제스처 언어라 그대로 두고, **체인 정보를 나르는 라벨만** 더한다.
+  const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!dragKey) return;
+    const onOver = (e: globalThis.DragEvent) => {
+      setDragPoint({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('dragover', onOver);
+    return () => {
+      window.removeEventListener('dragover', onOver);
+      setDragPoint(null);
+    };
+  }, [dragKey]);
+
+  // ── 드래그 피드백 파생값 (CD Geometry: 고스트 라벨 · 원래 자리 윤곽) ──
+  // 라벨은 **체인 정보**만 말한다: 받을 수 있으면 몇 단계로 들어가는지, 없으면
+  // "놓을 수 없음". 레인과 무관한 평소 카드 이동에는 라벨이 없다.
+  const dragLabel = useMemo((): { text: string; valid: boolean } | null => {
+    if (!laneDrag) return null;
+    if (laneDrag.undocking) {
+      return laneDrag.undocking.ok
+        ? null // 뺄 수 있는 카드 — 평소 카드 이동과 같게 둔다.
+        : { text: tChain('dock.ghostInvalid'), valid: false };
+    }
+    if (laneDrag.over === null) return null;
+    if (!laneDrag.valid) {
+      return { text: tChain('dock.ghostInvalid'), valid: false };
+    }
+    const n =
+      laneDrag.over === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
+    return { text: tChain('dock.ghostValid', { n }), valid: true };
+  }, [laneDrag, lane, tChain]);
+
+  // 끌고 있는 도킹 카드가 해체 때 돌아갈 자리.
+  const originOutline = useMemo((): Coords | null => {
+    if (!dragKey || !lane) return null;
+    const feature = dockedKeys.get(dragKey);
+    if (!feature) return null;
+    return lane.originIndex[feature] ?? null;
+  }, [dragKey, lane, dockedKeys]);
 
   // 스페이스바 hold → pan 모드. input/textarea/contenteditable 안에서는 무시.
   useEffect(() => {
@@ -895,14 +949,19 @@ export function CanvasBoard({
       e.dataTransfer.effectAllowed = 'move';
       setDragKey(key);
       // 레인 드래그 상태 시작 — 판정은 레인 위 좌표에서만 한다(아래 onLaneDragOver).
+      // 이미 도킹된 카드라면 방향이 반대다(언도킹): 판정을 **끌기 시작 시점에**
+      // 한 번 내고 드래그 내내 들고 간다 — 가운데 카드는 어디에 놓아도 거절이고,
+      // 그 사유를 자기 슬롯 위에 바로 띄워야 하기 때문이다(CD Interactions).
+      const docked = dockedKeys.get(key) ?? null;
       setLaneDrag({
         feature: stepOfWidget.get(key) ?? key,
         over: null,
         valid: false,
         verdict: null,
+        undocking: docked ? evaluateUndock(docked) : null,
       });
     },
-    [setLaneDrag, stepOfWidget],
+    [setLaneDrag, stepOfWidget, dockedKeys, evaluateUndock],
   );
 
   // ── 레인 도킹 — **좌표 판정** ─────────────────────────────────────
@@ -912,6 +971,9 @@ export function CanvasBoard({
   const onLaneDragOver = useCallback(
     (e: ReactDragEvent<HTMLElement>) => {
       if (!dragKey || !lane || laneLocked) return;
+      // 이미 레인 안에 있는 카드를 레인 위에서 끌고 있을 뿐이다 — 재도킹 판정
+      // (duplicate_step)을 띄우면 "이미 체인에 있어요" 가 거절처럼 보인다.
+      if (dockedKeys.has(dragKey)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       const body = laneBodyRef.current;
@@ -927,7 +989,16 @@ export function CanvasBoard({
       const verdict = evaluateDock(feature, position);
       setLaneDrag({ feature, over: position, valid: verdict.ok, verdict });
     },
-    [dragKey, lane, laneLocked, laneBodyRef, stepOfWidget, evaluateDock, setLaneDrag],
+    [
+      dragKey,
+      lane,
+      laneLocked,
+      laneBodyRef,
+      stepOfWidget,
+      evaluateDock,
+      setLaneDrag,
+      dockedKeys,
+    ],
   );
 
   const onLaneDrop = useCallback(
@@ -938,13 +1009,14 @@ export function CanvasBoard({
       const current = laneDrag;
       setLaneDrag(null);
       setDragKey(null);
-      if (!key || !current?.valid || !current.over) return;
+      if (!key || dockedKeys.has(key)) return;
+      if (!current?.valid || !current.over) return;
       const feature = stepOfWidget.get(key);
       const origin = positions[key];
       if (!feature || !origin) return;
       dockCard(feature, current.over, origin);
     },
-    [dragKey, laneDrag, setLaneDrag, stepOfWidget, positions, dockCard],
+    [dragKey, laneDrag, setLaneDrag, stepOfWidget, positions, dockCard, dockedKeys],
   );
 
   const onCellDragOver = useCallback(
@@ -973,9 +1045,22 @@ export function CanvasBoard({
       const sourceKey = e.dataTransfer.getData('text/plain') || dragKey;
       setDragKey(null);
       setHoverCell(null);
+      setLaneDrag(null);
       if (!sourceKey) return;
       const sourceWidget = widgetByKey[sourceKey];
       if (!sourceWidget) return;
+      // 레인 안 카드를 캔버스에 놓으면 **언도킹**이다. 양 끝만 되고, 거절이면
+      // 카드는 레인에 그대로 남는다(판정 소유자 = evaluateUndock).
+      const dockedFeature = dockedKeys.get(sourceKey);
+      if (dockedFeature) {
+        if (evaluateUndock(dockedFeature).ok) undockCard(dockedFeature);
+        return;
+      }
+      // 레인이 있는 동안 남은 카드의 배치는 **파생값**이다(재압축). 그때의 자리
+      // 변경을 발행 배치에 쓰면 해체 때 되돌릴 기준이 오염된다 — 그래서 레인이
+      // 있는 동안 비도킹 카드의 셀 이동은 받지 않는다(드래그 자체는 도킹용으로
+      // 계속 동작). 해체하면 평소 자리 변경이 그대로 돌아온다.
+      if (lane) return;
       const sourceSpan = spanOf(sourceWidget);
       // span 이 grid 끝 초과하지 않게 col/row clamp.
       const targetCol = Math.max(
@@ -1023,14 +1108,26 @@ export function CanvasBoard({
         return next;
       });
     },
-    [dragKey, persist, widgetByKey, occupiedCells, GRID_COLS, GRID_ROWS],
+    [
+      dragKey,
+      persist,
+      widgetByKey,
+      occupiedCells,
+      GRID_COLS,
+      GRID_ROWS,
+      dockedKeys,
+      evaluateUndock,
+      undockCard,
+      setLaneDrag,
+      lane,
+    ],
   );
 
   const onHandleDragEnd = useCallback(() => {
     setLaneDrag(null);
     setDragKey(null);
     setHoverCell(null);
-  }, []);
+  }, [setLaneDrag]);
 
   // ── focus (Navigator click / ?focus= query / 자동 갱신) ─────────────
   // focusedKey: 현재 시각적 중심에 있는 위젯 (Navigator highlight 용).
@@ -1313,6 +1410,20 @@ export function CanvasBoard({
       {/* 체인 툴바 — 변환 레이어 **밖**(캔버스를 pan/zoom 해도 화면에 남는다).
           진입점은 이 버튼 하나다(CD 결정 2). */}
       <ChainToolbarHost onFocusLane={() => setPan((prev) => ({ ...prev, y: 0 }))} />
+      {/* 드래그 라벨 pill — 커서 옆. 변환 레이어 밖 + fixed 라 줌/팬과 무관하게
+          실제 커서를 따라간다(CD Geometry "커서 옆 라벨 pill"). */}
+      {dragLabel && dragPoint && (
+        <div
+          data-chain="drag-label"
+          aria-live="polite"
+          style={{ left: dragPoint.x + 18, top: dragPoint.y + 18 }}
+          className={`pointer-events-none fixed z-overlay inline-flex items-center rounded-pill border-2 border-ink px-4 py-2 text-2xl font-extrabold shadow-memphis-sm-faint ${
+            dragLabel.valid ? 'bg-ink text-paper' : 'bg-error-bg text-error-text'
+          }`}
+        >
+          {dragLabel.text}
+        </div>
+      )}
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
           data-canvas-surface
@@ -1342,6 +1453,25 @@ export function CanvasBoard({
               onDrop={onLaneDrop}
             >
               <ChainLaneHost onOpenWidget={openFullview} />
+            </div>
+          )}
+          {/* 원래 자리 윤곽 — 도킹된 카드를 끌 때만. 그 카드는 그리드에서
+              빠져 있어(portal) 어디로 돌아갈지 화면에 단서가 없기 때문이다.
+              비도킹 카드는 원본이 그 자리에 0.4 로 남아 있어 윤곽이 중복된다. */}
+          {originOutline && (
+            <div
+              data-chain="origin-outline"
+              className="absolute flex items-center justify-center rounded-md border-[2.5px] border-dashed border-line-empty"
+              style={{
+                left: originOutline.col * (CELL_W + GAP),
+                top: originOutline.row * (CELL_H + GAP) + laneOffsetY,
+                width: CELL_W,
+                height: CELL_H,
+              }}
+            >
+              <span className="text-2xl font-bold text-faint">
+                {tChain('dock.originSlot')}
+              </span>
             </div>
           )}
           {/* 빈 셀 — 드래그 중일 때만 시각화. 모든 cell 을 drop target 으로

@@ -1715,6 +1715,7 @@
       "too_short": "チェーンには2ステップ以上が必要です",
       "invalid_start": "この位置ではチェーンを開始できません",
       "middleUndock": "途中のステップは外せません — 端から外してください",
+      "locked": "実行中は構成を変更できません",
       "ghostValid": "チェーン {n}ステップ目",
       "ghostInvalid": "ここには置けません",
       "originSlot": "元の位置"

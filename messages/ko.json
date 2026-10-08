@@ -1715,6 +1715,7 @@
       "too_short": "체인은 단계 2개 이상이 필요해요",
       "invalid_start": "이 위치에서는 체인을 시작할 수 없어요",
       "middleUndock": "가운데 단계는 뺄 수 없어요 — 끝에서부터 빼세요",
+      "locked": "실행 중에는 구성을 바꿀 수 없어요",
       "ghostValid": "체인 {n}단계",
       "ghostInvalid": "놓을 수 없음",
       "originSlot": "원래 자리"

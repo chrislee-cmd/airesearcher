@@ -1715,6 +1715,7 @@
       "too_short": "A chain needs at least two steps",
       "invalid_start": "A chain cannot start here",
       "middleUndock": "Middle steps cannot be removed — take them off the ends",
+      "locked": "The chain cannot be rearranged while it runs",
       "ghostValid": "Chain step {n}",
       "ghostInvalid": "Cannot drop here",
       "originSlot": "Its place"
