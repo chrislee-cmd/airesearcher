@@ -47,6 +47,14 @@ export type ChainPortProps = {
   toneClass?: string;
   onClick?: () => void;
   label?: string;
+  /**
+   * 진입 핸들 전용 — 숨김 상태. **unmount 하지 않고 투명도로만** 숨긴다:
+   * 핸들은 카드의 자식이 아니라 포트 레이어에 있어서, 보일 때만 mount 하면
+   * 포인터가 핸들에 닿는 순간 카드 mouseleave → unmount → 재진입 → … 로
+   * flicker 루프가 생긴다(사용자 프리뷰 실사고). 상시 mount 는 **키보드
+   * 접근성에도 필요**하다 — hover 로만 mount 하면 Tab 으로 영영 못 닿는다.
+   */
+  hidden?: boolean;
 };
 
 export function ChainPort({
@@ -56,6 +64,7 @@ export function ChainPort({
   toneClass,
   onClick,
   label,
+  hidden = false,
 }: ChainPortProps) {
   const size = SIZE[kind];
   const style: CSSProperties = {
@@ -78,7 +87,10 @@ export function ChainPort({
         aria-label={label}
         onClick={onClick}
         style={style}
-        className={`${cls} text-sm font-extrabold leading-none focus-visible:outline-none focus-visible:shadow-focus-ring`}
+        data-chain-handle-visible={hidden ? 'false' : 'true'}
+        className={`${cls} text-sm font-extrabold leading-none transition-opacity duration-150 focus-visible:outline-none focus-visible:shadow-focus-ring ${
+          hidden ? 'opacity-0' : 'opacity-100'
+        }`}
       >
         <span aria-hidden>+</span>
       </button>

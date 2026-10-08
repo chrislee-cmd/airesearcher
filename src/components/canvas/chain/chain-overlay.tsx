@@ -312,11 +312,14 @@ export function ChainOverlay({
       )}
 
       <div className="pointer-events-none absolute inset-0 z-overlay">
-        {showEntryHandle && entryBox && (
+        {!view && entryBox && (
+          // 핸들은 **상시 mount** 하고 투명도로만 숨긴다(ChainPort.hidden 주석).
           // 핸들 자신의 hover/focus 도 노출 조건에 넣는다 — 포인터가 카드를 떠나
-          // 핸들로 올라와도 사라지지 않아야 클릭이 성립한다.
+          // 핸들로 올라와도 사라지지 않아야 클릭이 성립한다. 숨김 상태에서는
+          // pointer-events 를 끊어 "안 보이는데 눌리는" 상태를 막되, Tab 포커스는
+          // 살려 둔다(focus 가 곧 노출 조건).
           <span
-            className="pointer-events-auto"
+            className={showEntryHandle ? 'pointer-events-auto' : 'pointer-events-none'}
             onMouseEnter={() => {
               cancelHide();
               setHandleHover(true);
@@ -333,6 +336,7 @@ export function ChainOverlay({
               x={outPortX(entryBox)}
               cardTop={entryBox.top}
               label={t('entry.handleLabel')}
+              hidden={!showEntryHandle}
               onClick={() => setEntryOpen((v) => !v)}
             />
           </span>
