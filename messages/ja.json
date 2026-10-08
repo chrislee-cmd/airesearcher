@@ -1683,22 +1683,41 @@
       "waiting": "待機"
     },
     "entry": {
-      "title": "セッション終了後に続けて進める",
-      "subtitle": "プロビングの成果物を次のウィジェットに渡します",
       "modeGroup": "チェーンの進め方",
-      "handleLabel": "続けて進めるウィジェットを接続",
-      "autoWarning": "ステップごとに確認せずクレジットが差し引かれます。残高が足りないとそのステップで止まります。",
-      "note": {
-        "probing": "開始時に差引",
-        "transcripts": "完了時",
-        "interview_ingest": "ファイルごと",
-        "topline": ""
-      },
-      "totalLabel": "セッション後にかかる費用",
       "totalFixedPerFile": "💎{fixed} + ファイルごと {perFile}",
-      "totalFixed": "💎{fixed}",
-      "cancel": "キャンセル",
-      "connect": "接続する"
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "チェーン 1",
+      "slotEmptyTitle": "ウィジェットをドラッグしてください",
+      "slotEmptySub": "ここに入れられるウィジェット",
+      "slotValidTitle": "置くと{n}ステップ目に入ります",
+      "slotValidSub": "手を離すとカードがこの位置に入ります",
+      "slotInvalidSub": "チェーンに入れられる順序",
+      "lockNote": "実行中は構成を変更できません",
+      "dissolve": "解体",
+      "statusEmpty": "空",
+      "statusSteps": "{n}ステップ",
+      "statusReady": "準備完了 · セッション終了後に開始",
+      "costNote": "セッション後 💎{fixed} + ファイルごと {perFile}",
+      "costNoteFixed": "セッション後 💎{fixed}",
+      "restored": "↩ 元の位置へ"
+    },
+    "toolbar": {
+      "newChain": "+ 新しいチェーン",
+      "newChainLocked": "チェーンは1つだけ作成できます"
+    },
+    "dock": {
+      "unknown_step": "{widget}はまだチェーンに入れられません{josa}",
+      "incompatible_steps": "{to}は{from}の次にのみ置けます{josa}",
+      "incompatible_start": "{widget}ではチェーンを開始できません{josa}",
+      "duplicate_step": "{widget}はすでにチェーンにあります{josa}",
+      "too_short": "チェーンには2ステップ以上が必要です",
+      "invalid_start": "この位置ではチェーンを開始できません",
+      "middleUndock": "途中のステップは外せません — 端から外してください",
+      "ghostValid": "チェーン {n}ステップ目",
+      "ghostInvalid": "ここには置けません",
+      "originSlot": "元の位置"
     }
   },
   "Desk": {

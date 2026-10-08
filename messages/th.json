@@ -1683,22 +1683,41 @@
       "waiting": "รอดำเนินการ"
     },
     "entry": {
-      "title": "ทำต่อเมื่อเซสชันจบ",
-      "subtitle": "ส่งผลลัพธ์จากโพรบบิงไปยังวิดเจ็ตถัดไป",
       "modeGroup": "รูปแบบการทำงานของเชน",
-      "handleLabel": "เชื่อมวิดเจ็ตที่จะทำต่อ",
-      "autoWarning": "เครดิตจะถูกหักโดยไม่ถามในแต่ละขั้น หากยอดคงเหลือไม่พอ เชนจะหยุดที่ขั้นนั้น",
-      "note": {
-        "probing": "หักเมื่อเริ่ม",
-        "transcripts": "เมื่อเสร็จ",
-        "interview_ingest": "ต่อไฟล์",
-        "topline": ""
-      },
-      "totalLabel": "ค่าใช้จ่ายหลังเซสชัน",
       "totalFixedPerFile": "💎{fixed} + {perFile} ต่อไฟล์",
-      "totalFixed": "💎{fixed}",
-      "cancel": "ยกเลิก",
-      "connect": "เชื่อมต่อ"
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "เชน 1",
+      "slotEmptyTitle": "ลากวิดเจ็ตมาวางที่นี่",
+      "slotEmptySub": "วิดเจ็ตที่วางตรงนี้ได้",
+      "slotValidTitle": "วางเพื่อให้เป็นขั้นที่ {n}",
+      "slotValidSub": "ปล่อยแล้วการ์ดจะเข้ามาอยู่ตรงนี้",
+      "slotInvalidSub": "ลำดับที่เชนรับได้",
+      "lockNote": "ระหว่างทำงานไม่สามารถแก้โครงสร้างได้",
+      "dissolve": "รื้อเชน",
+      "statusEmpty": "ว่าง",
+      "statusSteps": "{n} ขั้น",
+      "statusReady": "พร้อมแล้ว · เริ่มเมื่อเซสชันจบ",
+      "costNote": "หลังเซสชัน 💎{fixed} + {perFile} ต่อไฟล์",
+      "costNoteFixed": "หลังเซสชัน 💎{fixed}",
+      "restored": "↩ กลับที่เดิม"
+    },
+    "toolbar": {
+      "newChain": "+ เชนใหม่",
+      "newChainLocked": "สร้างเชนได้ครั้งละหนึ่งอันเท่านั้น"
+    },
+    "dock": {
+      "unknown_step": "{widget} ยังใส่ในเชนไม่ได้{josa}",
+      "incompatible_steps": "{to} ต้องอยู่ถัดจาก {from} เท่านั้น{josa}",
+      "incompatible_start": "{widget} เริ่มเชนไม่ได้{josa}",
+      "duplicate_step": "{widget} อยู่ในเชนแล้ว{josa}",
+      "too_short": "เชนต้องมีอย่างน้อย 2 ขั้น",
+      "invalid_start": "เริ่มเชนที่ตำแหน่งนี้ไม่ได้",
+      "middleUndock": "ขั้นตรงกลางเอาออกไม่ได้ — เอาออกจากปลายก่อน",
+      "ghostValid": "เชนขั้นที่ {n}",
+      "ghostInvalid": "วางตรงนี้ไม่ได้",
+      "originSlot": "ตำแหน่งเดิม"
     }
   },
   "Desk": {

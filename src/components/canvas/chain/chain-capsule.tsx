@@ -77,6 +77,11 @@ export type ChainCapsuleProps = {
   msgA: string;
   msgB: string;
   msgC: string;
+  /**
+   * v3 — eyebrow 앞 24px 원 글리프(? / Ⅱ / ✕ / ✓). CD v3 Geometry.
+   * 미지정이면 v2 의 8px 도트를 그린다.
+   */
+  glyph?: string | null;
   /** 체인 종료 텍스트 버튼 노출. */
   onCancel?: () => void;
   /** 보조 pill (건너뛰기 / 재개 / 닫기). */
@@ -101,6 +106,7 @@ export function ChainCapsule({
   msgA,
   msgB,
   msgC,
+  glyph,
   onCancel,
   secondary,
   primary,
@@ -122,10 +128,19 @@ export function ChainCapsule({
         className={`w-[400px] overflow-hidden rounded-panel border-2 bg-paper shadow-popover ${c.frame}`}
       >
         <div className="flex items-center gap-2 px-[13px] pt-[9px]">
-          <span
-            aria-hidden
-            className={`h-2 w-2 shrink-0 rounded-full ${c.dot}`}
-          />
+          {glyph ? (
+            <span
+              aria-hidden
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-sm font-extrabold ${c.frame} ${c.row} ${c.eyebrow}`}
+            >
+              {glyph}
+            </span>
+          ) : (
+            <span
+              aria-hidden
+              className={`h-2 w-2 shrink-0 rounded-full ${c.dot}`}
+            />
+          )}
           <span
             className={`font-mono text-xs font-extrabold tracking-[0.1em] uppercase ${c.eyebrow}`}
           >

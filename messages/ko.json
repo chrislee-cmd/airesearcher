@@ -1683,22 +1683,41 @@
       "waiting": "대기"
     },
     "entry": {
-      "title": "세션이 끝나면 이어서 진행",
-      "subtitle": "프로빙의 산출물을 다음 위젯으로 넘깁니다",
       "modeGroup": "체인 진행 방식",
-      "handleLabel": "이어서 진행할 위젯 연결",
-      "autoWarning": "단계마다 묻지 않고 크레딧이 차감됩니다. 잔액이 모자라면 그 단계에서 멈춥니다.",
-      "note": {
-        "probing": "시작 시 차감",
-        "transcripts": "완료 시",
-        "interview_ingest": "파일당",
-        "topline": ""
-      },
-      "totalLabel": "세션 후 이어질 비용",
       "totalFixedPerFile": "💎{fixed} + 파일당 {perFile}",
-      "totalFixed": "💎{fixed}",
-      "cancel": "취소",
-      "connect": "연결하기"
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "체인 1",
+      "slotEmptyTitle": "위젯을 끌어다 놓으세요",
+      "slotEmptySub": "여기에 올 수 있는 위젯",
+      "slotValidTitle": "놓으면 {n}단계로 들어갑니다",
+      "slotValidSub": "손을 떼면 카드가 이 자리로 들어옵니다",
+      "slotInvalidSub": "체인에 넣을 수 있는 순서",
+      "lockNote": "실행 중에는 구성을 바꿀 수 없어요",
+      "dissolve": "해체",
+      "statusEmpty": "비어 있음",
+      "statusSteps": "{n}단계",
+      "statusReady": "준비됨 · 세션이 끝나면 시작",
+      "costNote": "세션 후 💎{fixed} + 파일당 {perFile}",
+      "costNoteFixed": "세션 후 💎{fixed}",
+      "restored": "↩ 원래 자리로"
+    },
+    "toolbar": {
+      "newChain": "+ 새 체인",
+      "newChainLocked": "체인은 하나만 만들 수 있어요"
+    },
+    "dock": {
+      "unknown_step": "{widget}{josa} 아직 체인에 넣을 수 없어요",
+      "incompatible_steps": "{to}{josa} {from} 다음에만 올 수 있어요",
+      "incompatible_start": "{widget}{josa} 체인을 시작할 수 없어요",
+      "duplicate_step": "{widget}{josa} 이미 체인에 있어요",
+      "too_short": "체인은 단계 2개 이상이 필요해요",
+      "invalid_start": "이 위치에서는 체인을 시작할 수 없어요",
+      "middleUndock": "가운데 단계는 뺄 수 없어요 — 끝에서부터 빼세요",
+      "ghostValid": "체인 {n}단계",
+      "ghostInvalid": "놓을 수 없음",
+      "originSlot": "원래 자리"
     }
   },
   "Desk": {

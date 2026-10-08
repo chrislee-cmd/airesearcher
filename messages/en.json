@@ -1683,22 +1683,41 @@
       "waiting": "Waiting"
     },
     "entry": {
-      "title": "Continue after the session ends",
-      "subtitle": "Hands the probing output to the next widget",
       "modeGroup": "Chain mode",
-      "handleLabel": "Connect the next widget",
-      "autoWarning": "Credits are deducted without asking at each step. If the balance runs short, the chain stops at that step.",
-      "note": {
-        "probing": "charged at start",
-        "transcripts": "on completion",
-        "interview_ingest": "per file",
-        "topline": ""
-      },
-      "totalLabel": "Cost after the session",
       "totalFixedPerFile": "💎{fixed} + {perFile} per file",
-      "totalFixed": "💎{fixed}",
-      "cancel": "Cancel",
-      "connect": "Connect"
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "Chain 1",
+      "slotEmptyTitle": "Drag a widget here",
+      "slotEmptySub": "Widgets that can go here",
+      "slotValidTitle": "Drop to make this step {n}",
+      "slotValidSub": "Release and the card moves into this spot",
+      "slotInvalidSub": "Order the chain accepts",
+      "lockNote": "The chain cannot be rearranged while it runs",
+      "dissolve": "Dissolve",
+      "statusEmpty": "Empty",
+      "statusSteps": "{n} steps",
+      "statusReady": "Ready · starts when the session ends",
+      "costNote": "After the session 💎{fixed} + {perFile} per file",
+      "costNoteFixed": "After the session 💎{fixed}",
+      "restored": "↩ Back to its place"
+    },
+    "toolbar": {
+      "newChain": "+ New chain",
+      "newChainLocked": "Only one chain at a time"
+    },
+    "dock": {
+      "unknown_step": "{widget} cannot go into a chain yet{josa}",
+      "incompatible_steps": "{to} can only come after {from}{josa}",
+      "incompatible_start": "{widget} cannot start a chain{josa}",
+      "duplicate_step": "{widget} is already in the chain{josa}",
+      "too_short": "A chain needs at least two steps",
+      "invalid_start": "A chain cannot start here",
+      "middleUndock": "Middle steps cannot be removed — take them off the ends",
+      "ghostValid": "Chain step {n}",
+      "ghostInvalid": "Cannot drop here",
+      "originSlot": "Its place"
     }
   },
   "Desk": {
