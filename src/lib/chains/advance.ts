@@ -10,7 +10,7 @@ import {
   type AdapterResult,
 } from './adapters';
 import { casChain, type ChainRow } from './state';
-import type { ChainStepInstance } from './registry';
+import type { ChainStepInstance, ChainStepKey } from './registry';
 
 // 위젯 연쇄 체인 — advance 훅 (PR-B).
 //
@@ -53,12 +53,12 @@ const CHAINS_TABLE = 'widget_chains';
 // 사이드 인덱스 매칭이 불가 — current_step 번째 원소를 봐야 한다).
 const CANDIDATE_LIMIT = 20;
 
-/** 레지스트리 단계 key — 훅 호출부가 오타로 엉뚱한 feature 를 넘기지 못하게. */
-export type ChainSourceFeature =
-  | 'probing'
-  | 'transcripts'
-  | 'interview_ingest'
-  | 'topline';
+/**
+ * 레지스트리 단계 key — 훅 호출부가 오타로 엉뚱한 feature 를 넘기지 못하게.
+ * 레지스트리(CHAIN_STEPS)에서 파생한다 — 손으로 베낀 union 은 노드가 추가될 때
+ * 조용히 어긋난다(노드 집합의 SSOT 는 registry 하나).
+ */
+export type ChainSourceFeature = ChainStepKey;
 
 /**
  * kick 결과 요약.
