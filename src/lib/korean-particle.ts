@@ -27,16 +27,26 @@ export function hasFinalConsonant(word: string): boolean {
   return (code - HANGUL_START) % 28 !== 0;
 }
 
+// 조사 자체가 데이터다 — UI 카피가 아니라 한국어 문법 테이블이라
+// messages/*.json 으로 옮길 수 없다(ko 문구의 `{josa}` 자리를 채우는 값이고,
+// en/ja/th 문구에는 그 자리가 아예 없다).
+// i18n-allow-korean -- 문법 테이블(조사)
 export type JosaPair = '은는' | '이가' | '을를' | '와과';
 
+// i18n-allow-korean -- 위와 같은 이유(문법 테이블).
 const PAIRS: Record<JosaPair, [withFinal: string, withoutFinal: string]> = {
+  // i18n-allow-korean -- 문법 테이블
   은는: ['은', '는'],
+  // i18n-allow-korean -- 문법 테이블
   이가: ['이', '가'],
+  // i18n-allow-korean -- 문법 테이블
   을를: ['을', '를'],
+  // i18n-allow-korean -- 문법 테이블
   와과: ['과', '와'],
 };
 
 /** 단어 뒤에 붙일 조사. 한글이 아닌 끝은 받침 없음으로 본다. */
+// i18n-allow-korean -- 문법 테이블(조사) 기본값
 export function josa(word: string, pair: JosaPair = '은는'): string {
   const [withFinal, withoutFinal] = PAIRS[pair];
   return hasFinalConsonant(word) ? withFinal : withoutFinal;
