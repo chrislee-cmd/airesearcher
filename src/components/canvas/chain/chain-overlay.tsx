@@ -197,10 +197,9 @@ export function ChainOverlay({
   // 카드 → 재노출 → … 초당 수 회 깜빡임). 포인터 좌표 하나로 판정하면 DOM 포함
   // 관계도, 이벤트 순서도, 타이머도 개입하지 않는다.
   useEffect(() => {
-    if (view || !surfaceEl) {
-      setPointerNear(false);
-      return;
-    }
+    // 체인이 생기면 핸들 자체가 렌더되지 않으므로(아래 showEntryHandle) 남은
+    // pointerNear 값은 무해하다 — 리스너만 떼면 된다.
+    if (view || !surfaceEl) return;
     let raf = 0;
     let last: { x: number; y: number } | null = null;
     const evaluate = () => {
@@ -213,10 +212,7 @@ export function ChainOverlay({
       const frame =
         card?.querySelector<HTMLElement>(':scope > div > [aria-expanded]') ??
         card;
-      if (!frame) {
-        setPointerNear(false);
-        return;
-      }
+      if (!frame) return;
       const r = frame.getBoundingClientRect();
       // 캔버스 줌만큼 히트 영역도 같이 줄어든다.
       const scale = r.width / (frame.offsetWidth || r.width) || 1;
