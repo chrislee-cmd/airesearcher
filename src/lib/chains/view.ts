@@ -20,14 +20,17 @@
    ──────────────────────────────────────────────────────────────────── */
 
 import {
-  CHAIN_TEMPLATES,
-  stepCost,
+  CHAIN_STEP_KEYS,
+  CHAIN_COMPAT_EDGES,
+  stepCostByKey,
+  nextCompatSteps,
+  validateSteps,
   type ChainStepInstance,
-  type ChainTemplateKey,
+  type ValidateStepsResult,
 } from './registry';
 import type { ChainRow, ChainStatus } from './state';
 
-// 파일럿 체인의 단계 key. 레지스트리(interview_pipeline)의 steps[].key 와 1:1.
+// 체인 단계 key. 레지스트리(CHAIN_STEPS)의 key 와 1:1.
 export type ChainStepFeature =
   | 'probing'
   | 'transcripts'
@@ -194,29 +197,29 @@ export function currentStepOf(view: ChainView): ChainStepView | null {
 export type ChainPreviewRow = {
   feature: ChainStepFeature;
   cost: number;
-  /** 템플릿 기준 1-based 단계 번호(진입 단계를 빼고 보여줘도 번호는 보존). */
+  /** 1-based 단계 번호(체인 안 순서). */
   index: number;
-  /** 체인 시작 전 이미 차감된 진입 단계 — 합계 제외. */
+  /** 이미 차감된 진입 단계 — 비용 합계에서 제외. */
   entryStep: boolean;
 };
 
 /**
- * 진입점 블록의 미리보기 행 — 템플릿 suffix(startAt..) 를 그대로 나열한다.
- * 비용은 레지스트리(FEATURE_COSTS)에서 읽어 가격 SSOT 를 유지한다(하드코딩 0).
+ * 조립된 feature 시퀀스의 비용 미리보기 행.
+ *
+ * A′(#1330) 이후 체인은 **고정 템플릿이 아니라 사용자가 조립한 경로**다. 그래서
+ * 템플릿 key 가 아니라 **시퀀스 자체**를 받는다. 비용은 레지스트리에서 읽는다
+ * (가격 SSOT = features.ts · 하드코딩 금지).
  */
 export function chainPreviewRows(
-  template: ChainTemplateKey,
-  startAt: number,
+  features: readonly string[],
 ): ChainPreviewRow[] {
-  const defs = CHAIN_TEMPLATES[template].steps;
-  const start = Math.max(0, Math.min(startAt, defs.length - 1));
-  return defs.slice(start).flatMap((def, i) =>
-    isChainStepFeature(def.key)
+  return features.flatMap((f, i) =>
+    isChainStepFeature(f)
       ? [
           {
-            feature: def.key,
-            cost: stepCost(def),
-            index: start + i + 1,
+            feature: f,
+            cost: stepCostByKey(f),
+            index: i + 1,
             entryStep: i === 0,
           },
         ]
@@ -328,4 +331,107 @@ export function lastEdgeTargetsReport(view: ChainView): boolean {
 /** 체인이 화면에 흔적을 남기는 상태인가(포트·엣지·칩 렌더 여부). */
 export function isChainVisible(view: ChainView | null): view is ChainView {
   return !!view && view.steps.length > 1;
+}
+
+// ── v3 도킹 레인 파생 (CD v3 README "State" · Interactions) ───────────────
+//
+// 체인은 더 이상 고정 템플릿이 아니다 — 사용자가 카드를 끌어넣어 조립한다.
+// 조립 가능 여부의 **유일한 판정자는 A′ 의 `validateSteps`** 다(같은 모듈을
+// 서버 POST 도 쓴다). 프론트가 규칙을 복제하거나 detail 문구를 파싱하면 두
+// 판정이 갈라진다 — 코드(`error`)와 구조화 필드(`from`/`to`)로만 분기한다.
+
+/** 도킹 위치 — 호환 그래프가 일직선이라 끝/처음 둘뿐이다(순서 바꾸기 없음). */
+export type DockPosition = 'append' | 'prepend';
+
+export type DockVerdict =
+  | { ok: true }
+  | {
+      ok: false;
+      /** i18n 키로 그대로 쓴다(A′ ChainStepsError 상위집합). */
+      error: 'unknown_step' | 'duplicate_step' | 'incompatible_steps';
+      /** incompatible_steps 일 때 막힌 쌍 — L2b 문구 조립용. */
+      from?: string;
+      to?: string;
+    };
+
+/**
+ * `feature` 를 레인의 `position` 에 도킹할 수 있는가.
+ *
+ * 길이 1(빈 레인에 첫 카드)은 `validateSteps` 가 `too_short` 로 거절하지만,
+ * 그건 "아직 체인이 아니다" 일 뿐 사용자에게 보여줄 거절 사유가 아니다. 그래서
+ * 길이 1 은 **레지스트리 소속 + 이어붙일 데가 있는가**(나가는 엣지)만 본다.
+ */
+export function canDock(
+  lane: readonly string[],
+  feature: string,
+  position: DockPosition,
+): DockVerdict {
+  if (!CHAIN_STEP_KEYS.includes(feature as never)) {
+    return { ok: false, error: 'unknown_step' };
+  }
+  if (lane.includes(feature)) {
+    return { ok: false, error: 'duplicate_step' };
+  }
+  const next =
+    position === 'append' ? [...lane, feature] : [feature, ...lane];
+
+  if (next.length < 2) {
+    // 혼자서는 체인이 될 수 없는 단계(나가는 엣지 0 — 산출물성 단계)는 첫 칸에
+    // 둬도 영원히 길이 1 이라 거절한다.
+    return nextCompatSteps(feature).length > 0
+      ? { ok: true }
+      : { ok: false, error: 'incompatible_steps', from: feature };
+  }
+
+  const res: ValidateStepsResult = validateSteps(next);
+  if (res.ok) return { ok: true };
+  if (res.error === 'too_short') return { ok: true };
+  return { ok: false, error: res.error, from: res.from, to: res.to };
+}
+
+/**
+ * 지금 레인이 받을 수 있는 단계 목록 — 빈 슬롯의 "여기에 올 수 있는 위젯" 칩.
+ * `CHAIN_COMPAT_EDGES` 파생이므로 하드코딩이 없다(WRITER-ANSWERS-V3 추가 확정).
+ */
+export function acceptableSteps(lane: readonly string[]): ChainStepFeature[] {
+  const out = CHAIN_STEP_KEYS.filter((k) => {
+    if (lane.includes(k)) return false;
+    return (
+      canDock(lane, k, 'append').ok || canDock(lane, k, 'prepend').ok
+    );
+  });
+  return out.filter(isChainStepFeature);
+}
+
+/**
+ * 레인에서 **카드로 그려지는** 단계만 (산출물 노드는 카드가 아니다).
+ * 칩 번호를 카드 기준 n/m 으로 세기 위한 것 — v3 는 3카드 + 산출물 노드다.
+ */
+export function laneCardSteps(
+  lane: readonly string[],
+): ChainStepFeature[] {
+  return lane.filter(
+    (f): f is ChainStepFeature =>
+      isChainStepFeature(f) && nextCompatSteps(f).length > 0,
+  );
+}
+
+/** 레인 끝에 산출물 노드가 붙는가 — 마지막 카드 뒤에 더 이을 단계가 없을 때. */
+export function laneHasReportNode(lane: readonly string[]): boolean {
+  const last = lane[lane.length - 1];
+  return !!last && isChainStepFeature(last) && nextCompatSteps(last).length === 0;
+}
+
+/** 호환 그래프 전체 순서 — 거절 슬롯의 "넣을 수 있는 순서" 칩 행. */
+export function compatOrder(): ChainStepFeature[] {
+  const froms = CHAIN_COMPAT_EDGES.map((e) => e.from as string);
+  const tos = CHAIN_COMPAT_EDGES.map((e) => e.to as string);
+  const start = froms.find((f) => !tos.includes(f));
+  const out: ChainStepFeature[] = [];
+  let cur = start;
+  while (cur && isChainStepFeature(cur) && !out.includes(cur)) {
+    out.push(cur);
+    cur = nextCompatSteps(cur)[0];
+  }
+  return out;
 }

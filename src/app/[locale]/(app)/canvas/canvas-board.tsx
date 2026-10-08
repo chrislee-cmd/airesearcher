@@ -52,11 +52,7 @@ import {
 } from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
 import { ChainChip } from '@/components/canvas/chain/chain-chip';
-import { ChainOverlay } from '@/components/canvas/chain/chain-overlay';
-import { ChainSummaryHost } from '@/components/canvas/chain/chain-summary-host';
 import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
-import { CHAIN_GUTTER } from '@/components/canvas/chain/chain-geometry';
-import { CHAIN_STEP_WIDGET_KEY } from '@/lib/chains/view';
 import { WidgetNavigator } from './widget-navigator';
 import { LayoutPublishControl } from './layout-publish-control';
 import type { CanvasCoords } from '@/lib/admin/canvas-layout';
@@ -558,30 +554,9 @@ export function CanvasBoard({
     setFullviewOpen(true);
   }, []);
 
-  // 위젯 체인 v2 — 카드 서브바 칩 + 커넥터 오버레이. 컨테이너
-  // (WidgetChainProvider)가 체인 전체 상태를 단일 소유하므로 카드마다 새 fetch 가
-  // 없다. 체인 밖 위젯은 chipFor 가 null 을 준다.
-  const { chipFor: chainChipFor, view: chainView } = useWidgetChain();
-  // 체인에 묶인 카드 — S3b 포커스 시 **비체인** 카드만 흐린다.
-  const chainWidgetKeys = useMemo(
-    () =>
-      new Set(
-        (chainView?.steps ?? []).map((s) => CHAIN_STEP_WIDGET_KEY[s.feature]),
-      ),
-    [chainView],
-  );
-  const [chainFocused, setChainFocused] = useState(false);
-  // surface(변환 레이어) 엘리먼트 — 오버레이가 카드 rect 를 여기 기준으로 잰다.
-  const [surfaceEl, setSurfaceEl] = useState<HTMLDivElement | null>(null);
-  // 카드 배치가 바뀌면(드래그·발행 적용·숨김) 오버레이가 다시 측정한다.
-  const chainLayoutKey = useMemo(
-    () => `${JSON.stringify(positions)}|${widgets.length}|${hiddenWidgets.size}`,
-    [positions, widgets.length, hiddenWidgets],
-  );
-  // 체인이 활성이면 체인 행 위에 캡슐+레인(186px)이 들어갈 공간을 확보한다.
-  // **발행 배치 좌표(positions)는 건드리지 않는다** — surface 컨테이너의 top
-  // padding 만 늘리는 렌더 오프셋이다(WRITER-ANSWERS-V2 §2).
-  const surfacePt = 32 + (chainView ? CHAIN_GUTTER : 0);
+  // 위젯 체인 — 카드 서브바 칩. 컨테이너(WidgetChainProvider)가 체인 전체 상태를
+  // 단일 소유하므로 카드마다 새 fetch 가 없다. 체인 밖 위젯은 null.
+  const { chipFor: chainChipFor } = useWidgetChain();
   const switchFullview = useCallback((key: string) => {
     setCurrentWidgetKey(key);
   }, []);
@@ -981,7 +956,7 @@ export function CanvasBoard({
       // 숨긴 위젯은 grid 미렌더 → focus 대상 아님 (deep-link 방어).
       if (!center || !widget || !container || hiddenWidgets.has(key)) return;
       const rect = container.getBoundingClientRect();
-      const SURFACE_PT = surfacePt; // 기본 pt-8(32) + 체인 거터(활성 시)
+      const SURFACE_PT = 32; // pt-8 = 32px (surface 컨테이너의 top offset)
 
       // 위젯이 surface 안에서 차지하는 실제 픽셀 크기. widgetCenter 와 동일한
       // spanOf + CELL/GAP 좌표계 — 스펙 예시의 widget.width/height 는 이 코드엔
@@ -1098,7 +1073,7 @@ export function CanvasBoard({
       const boxCenterY = minRow * (CELL_H + GAP) + boxHeight / 2;
 
       const PADDING = 64; // 양옆/위아래 여백
-      const SURFACE_PT = surfacePt; // 기본 pt-8(32) + 체인 거터(활성 시)
+      const SURFACE_PT = 32; // pt-8 (surface 컨테이너 top offset)
       const scaleX = (rect.width - PADDING * 2) / boxWidth;
       const scaleY = (rect.height - PADDING * 2) / boxHeight;
       const fitZoom = Math.max(
@@ -1127,7 +1102,7 @@ export function CanvasBoard({
     const container = containerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const SURFACE_PT = surfacePt;
+    const SURFACE_PT = 32;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     let bestKey: string | null = null;
@@ -1197,24 +1172,6 @@ export function CanvasBoard({
         hiddenKeys={hiddenWidgets}
         onToggleHidden={toggleHidden}
       />
-      {/* 체인 요약 pill (R5) — 변환되지 않는 뷰포트 레이어 좌상단에 고정한다.
-          캔버스를 pan/zoom 해도 화면에 남는다. 승인 버튼은 두지 않는다 —
-          결정은 캡슐에서만(R3). 체인이 없으면 null 이라 흔적 0. */}
-      <div className="pointer-events-none absolute top-[18px] left-5 z-fab">
-        <span className="pointer-events-auto">
-          <ChainSummaryHost
-            onFocusChain={() => {
-              const first = chainView?.steps[0];
-              if (first) focusWidget(CHAIN_STEP_WIDGET_KEY[first.feature]);
-              setChainFocused(true);
-            }}
-            onHoverChange={setChainFocused}
-          />
-        </span>
-      </div>
-      {/* 슈퍼어드민 전용 "기본 배치로 발행" — 현재 배치(positions)를 그대로 전역
-          발행해 일반계정 baseline 으로 만든다. 발행 후 슈퍼어드민 자신의 적용
-          version 도 기록(재적용 루프 무해화). 일반계정엔 미렌더(canPublish). */}
       {canPublish && (
         <LayoutPublishControl
           positions={positions}
@@ -1230,14 +1187,8 @@ export function CanvasBoard({
           }}
         />
       )}
-      {/* 체인 거터 — 활성 중에는 surface 를 아래로 밀어 카드 위 레인·캡슐 공간을
-          확보한다. 카드 좌표는 그대로다(렌더 오프셋만). */}
-      <div
-        className="absolute inset-0 flex items-start justify-center"
-        style={{ paddingTop: surfacePt }}
-      >
+      <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
-          ref={setSurfaceEl}
           data-canvas-surface
           // shrink-0 필수 — surface 의 자식(위젯 카드·빈 셀)이 전부 absolute
           // 라 min-content 폭이 0. flex-shrink 기본 1 이면 컨테이너가 SURFACE_W
@@ -1333,19 +1284,7 @@ export function CanvasBoard({
                     — 헤더의 "전체 보기" 로 기능 소개 hero (ComingSoonBody)
                     진입이 가능해야 하므로. wrapper 만 감싸므로 카드가
                     활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
-                {/* S3b — 체인에 포커스(엣지·캡슐·pill·칩 hover/focus)가 가면
-                    **비체인 카드만** opacity .32 로 흐린다. 평소에는 흐리지
-                    않는다: 체인이 도는 동안에도 다른 카드를 평소대로 쓴다(S3). */}
-                <div
-                  className={`h-full transition-opacity duration-150 ease-out ${
-                    w.dimmed ? 'opacity-50' : ''
-                  }`}
-                  style={
-                    chainFocused && !chainWidgetKeys.has(w.key)
-                      ? { opacity: 0.32 }
-                      : undefined
-                  }
-                >
+                <div className={w.dimmed ? 'h-full opacity-50' : 'h-full'}>
                 <WidgetShell
                   content={w}
                   dashboardMode
@@ -1419,14 +1358,6 @@ export function CanvasBoard({
               </div>
             );
           })}
-          {/* 체인 커넥터 오버레이 — 카드와 **같은 transform 레이어** 안.
-              엣지·포트·캡슐·마크·산출물 노드가 카드 rect 를 따라간다(R1). */}
-          <ChainOverlay
-            surfaceEl={surfaceEl}
-            layoutKey={chainLayoutKey}
-            onOpenWidget={openFullview}
-            onFocusChange={setChainFocused}
-          />
         </div>
       </div>
     </div>
