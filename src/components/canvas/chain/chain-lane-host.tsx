@@ -95,7 +95,9 @@ export function ChainLaneHost({
   const cards = lane.cards;
   const kinds: ChainEdgeKind[] = view ? deriveEdgeKinds(view) : [];
   const capsuleIdx = view ? capsuleEdgeIndex(view) : null;
-  const showReport = laneHasReportNode(view?.steps.map((s) => s.feature) ?? cards);
+  // 산출물 노드 판정은 **도킹된 카드** 기준이다 — 서버 steps 에는 탑라인이
+  // 이미 들어 있어 둘 다 참이지만, 체인 생성 전(1장)에도 같은 규칙이 돈다.
+  const showReport = laneHasReportNode(cards);
 
   // ── 헤더 ─────────────────────────────────────────────────────────
   const { statusText, statusTone } = laneStatus(view, cards.length, t);
@@ -185,14 +187,14 @@ export function ChainLaneHost({
   });
 
   // 마지막: 산출물 노드(더 이을 단계 없음) 또는 빈/드롭 슬롯.
-  if (showReport && view) {
-    const last = view.steps[view.steps.length - 1];
+  if (showReport) {
+    const last = view?.steps[view.steps.length - 1];
     items.push(
       <ChainSegment
         key="seg-report"
         kind={kinds[kinds.length - 1] ?? 'pending'}
         capsule={
-          capsuleIdx === kinds.length - 1 && view
+          view && capsuleIdx === kinds.length - 1
             ? buildCapsule(view, {
                 t,
                 projects: [],

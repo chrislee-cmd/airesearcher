@@ -101,6 +101,9 @@ const ZOOM_FACTOR = 1.03;
 // 줌인 (click-to-focus). scale 이 이 값 이상이면 "작업 모드": 오버레이 제거 →
 // 내부 인터랙션 정상. hysteresis 없이 클릭 시점 zoom 1회 판정 (spec 결정).
 const FOCUS_THRESHOLD = 0.55;
+/** 체인 레인의 캔버스 내 위치(CD 장면 좌표). */
+const LANE_TOP = 152;
+const LANE_LEFT = 32;
 // 클릭 vs pan 드래그 구분 — pointerdown→pointerup 이동거리가 이 픽셀 미만일
 // 때만 클릭(=focus)으로 판정. 이보다 크면 드래그 pan 으로 보고 focus 안 함.
 const CLICK_MOVE_THRESHOLD = 5;
@@ -608,7 +611,10 @@ export function CanvasBoard({
     ro.observe(laneEl);
     return () => ro.disconnect();
   }, [laneEl]);
-  const laneOffsetY = lane ? laneH + GAP : 0;
+  // CD 장면 좌표: 레인은 캔버스 안에서 left 32 · top 152 에 놓인다. 0,0 에
+  // 두면 화면 고정 툴바("+ 새 체인" · 요약 pill)가 레인 헤더를 덮는다
+  // (프리뷰 실측 — 헤더의 상태·비용·해체가 전부 가려졌다).
+  const laneOffsetY = lane ? LANE_TOP + laneH + GAP : 0;
   // 위젯 key → 체인 단계 key 역매핑. 체인 미지원 위젯은 undefined 라
   // canDock 이 `unknown_step` 으로 거절하고 슬롯이 사유를 보여준다(CD 결정 4).
   const stepOfWidget = useMemo(() => {
@@ -1637,7 +1643,8 @@ export function CanvasBoard({
             <div
               ref={setLaneEl}
               data-chain="lane-row"
-              className="absolute top-0 left-0"
+              className="absolute"
+              style={{ top: LANE_TOP, left: LANE_LEFT }}
               onDragOver={onLaneDragOver}
               onDrop={onLaneDrop}
             >

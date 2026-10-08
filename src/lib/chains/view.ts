@@ -396,11 +396,40 @@ export function canDock(
 export function acceptableSteps(lane: readonly string[]): ChainStepFeature[] {
   const out = CHAIN_STEP_KEYS.filter((k) => {
     if (lane.includes(k)) return false;
+    if (!isCardStep(k)) return false; // 카드가 없는 단계는 끌어올 수 없다.
     return (
       canDock(lane, k, 'append').ok || canDock(lane, k, 'prepend').ok
     );
   });
   return out.filter(isChainStepFeature);
+}
+
+/* ── 카드 없는 단계(탑라인) ──────────────────────────────────────────────
+   CD: "탑라인은 카드가 아닙니다. interview_ingest 카드 다음의 산출물 노드로
+   그립니다." 즉 **단계이긴 하지만 끌어다 놓을 카드가 없다.** 그래서
+     · 슬롯 칩(acceptableSteps)에서 빠지고,
+     · 마지막 카드를 넣는 순간 **자동으로 따라붙어** 서버 steps 에 들어가고,
+     · 레인에는 카드가 아니라 산출물 노드로 그려진다.
+   목록을 하드코딩하지 않고 **위젯 카드가 없는 단계**로 판정한다 — 호환
+   그래프가 늘어나도 규칙이 따라온다. */
+export function isCardStep(feature: string): boolean {
+  if (!isChainStepFeature(feature)) return false;
+  return feature !== 'topline';
+}
+
+/**
+ * 도킹된 카드 목록 → **서버에 보낼 단계 목록**. 마지막 카드 뒤에 카드 없는
+ * 단계만 올 수 있으면 그것까지 함께 보낸다(탑라인 = 산출물).
+ */
+export function chainStepsFor(
+  cards: readonly ChainStepFeature[],
+): ChainStepFeature[] {
+  const last = cards[cards.length - 1];
+  if (!last) return [...cards];
+  const tail = nextCompatSteps(last).filter(
+    (f): f is ChainStepFeature => isChainStepFeature(f) && !isCardStep(f),
+  );
+  return [...cards, ...tail];
 }
 
 /**
@@ -417,9 +446,17 @@ export function laneCardSteps(
 }
 
 /** 레인 끝에 산출물 노드가 붙는가 — 마지막 카드 뒤에 더 이을 단계가 없을 때. */
+/**
+ * 레인 끝에 산출물 노드가 붙는가 — 마지막 **카드** 다음에 올 수 있는 단계가
+ * 전부 "카드 없는 단계" 일 때. (단계 목록으로 불리면 마지막이 탑라인이라
+ * next 가 비고, 카드 목록으로 불리면 next 가 탑라인뿐이다 — 둘 다 참.)
+ */
 export function laneHasReportNode(lane: readonly string[]): boolean {
   const last = lane[lane.length - 1];
-  return !!last && isChainStepFeature(last) && nextCompatSteps(last).length === 0;
+  if (!last || !isChainStepFeature(last)) return false;
+  const next = nextCompatSteps(last);
+  if (next.length === 0) return !isCardStep(last);
+  return next.every((f) => !isCardStep(f));
 }
 
 /** 호환 그래프 전체 순서 — 거절 슬롯의 "넣을 수 있는 순서" 칩 행. */

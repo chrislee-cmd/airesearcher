@@ -48,6 +48,7 @@ import {
 } from 'react';
 import {
   canDock,
+  chainStepsFor,
   type ChainStepFeature,
   type DockPosition,
   type DockVerdict,
@@ -149,18 +150,21 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
         if (view && isEditable(view)) await cancel();
         return;
       }
+      // 카드 없는 단계(탑라인)는 마지막 카드에 딸려 간다 — 레인에는 산출물
+      // 노드로만 보이고, 서버 steps 에는 실제 단계로 들어가야 B 가 전진시킨다.
+      const steps = chainStepsFor(cards);
       if (!view) {
-        await createChain({ steps: cards });
+        await createChain({ steps });
         return;
       }
       // 실행 흔적이 없는 체인 = 조립 수정(A″ PATCH). 409 면 patchSteps 가
       // 갱신된 상태를 다시 읽고 false 를 돌려준다 — 여기서 재시도하지 않는다.
       if (isEditable(view)) {
-        await patchSteps(cards);
+        await patchSteps(steps);
         return;
       }
       // 종결 체인에서 구성을 바꾸면 그건 편집이 아니라 새 체인이다.
-      await createChain({ steps: cards });
+      await createChain({ steps });
     },
     [view, createChain, patchSteps, cancel],
   );
