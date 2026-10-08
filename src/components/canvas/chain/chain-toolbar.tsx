@@ -43,7 +43,12 @@ export function ChainToolbar({ locked, onNewChain, summary }: ChainToolbarProps)
   return (
     <div
       data-chain="toolbar"
-      className="pointer-events-none absolute top-8 left-8 z-overlay flex items-center gap-4"
+      // left 는 캔버스 좌상단의 위젯 내비게이터(기본 x 24 · 폭 224)를 피한다 —
+      // CD 는 툴바를 좌상단에 두지만 이 캔버스에는 이미 패널이 하나 있다
+      // (프리뷰 실측: "+ 새 체인" 이 패널 뒤로 완전히 가려졌다). 내비게이터는
+      // 사용자가 옮길 수 있으므로 기본 자리만 비켜 둔다.
+      style={{ left: 264 }}
+      className="pointer-events-none absolute top-8 z-overlay flex items-center gap-4"
     >
       {/* eslint-disable-next-line react/forbid-elements -- CD 툴바 pill 은 높이 56 · border 2 ink · 20/800 · shadow 3px3px0 ink 전용 chrome 이고 "잠김"(surface-disabled · faint · 그림자 없음) 상태를 가진다. Button primitive 의 고정 radius/size variant 와 불일치(§7.11). v2 캡슐 주 버튼과 동일 선례. */}
       <button
