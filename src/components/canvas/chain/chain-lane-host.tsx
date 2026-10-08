@@ -1,0 +1,495 @@
+'use client';
+
+/* ────────────────────────────────────────────────────────────────────
+   ChainLaneHost — 레인 본문 조립 (슬롯 · 도킹 카드 자리 · 세그먼트 · 산출물 노드).
+
+   CD SSOT: `v3/README.md` L0~L9.
+
+   **도킹 카드는 여기서 렌더하지 않는다.** 카드를 다른 부모로 옮기면 React 가
+   remount 해 라이브 세션(프로빙·통역)이 끊기기 때문이다. 대신 각 단계 자리에
+   빈 **portal 타깃**만 두고, canvas-board 가 항상 마운트해 둔 카드를 그 타깃으로
+   portal 한다 — 레포가 전체보기에서 이미 쓰는 "always-mounted 카드 + portal"
+   패턴 그대로다(fullview-shell-context 주석 참조).
+
+   세그먼트 종류·캡슐 위치는 v2 의 `deriveEdgeKinds`/`capsuleEdgeIndex` 를 그대로
+   쓴다 — 순수 함수라 체인 구성이 자유로워져도 유효하다.
+   ──────────────────────────────────────────────────────────────────── */
+
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { usePaywall } from '@/components/paywall-provider';
+import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
+import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
+import {
+  acceptableSteps,
+  capsuleEdgeIndex,
+  compatOrder,
+  deriveEdgeKinds,
+  doneCount,
+  lastDoneStep,
+  laneHasReportNode,
+  stepCostOf,
+  CHAIN_STEP_WIDGET_KEY,
+  type ChainEdgeKind,
+  type ChainStepFeature,
+  type ChainView,
+} from '@/lib/chains/view';
+import { ChainLane, type ChainLaneStatusTone } from './chain-lane';
+import { ChainSlot, LANE_CARD_H, LANE_CARD_W } from './chain-slot';
+import { ChainSegment } from './chain-segment';
+import { ChainReportNode } from './chain-report-node';
+import type { ChainCapsuleProps } from './chain-capsule';
+import { useChainLane } from './chain-lane-provider';
+import { useWidgetChain } from './widget-chain-provider';
+
+export function ChainLaneHost({
+  onOpenWidget,
+}: {
+  onOpenWidget: (widgetKey: string) => void;
+}) {
+  const t = useTranslations('Chain');
+  const { view, busy, approve, skip, cancel, resume, dismiss } = useWidgetChain();
+  const {
+    lane,
+    drag,
+    locked,
+    dissolveLane,
+    registerDockTarget,
+    laneBodyRef,
+  } = useChainLane();
+  const { showPaywall } = usePaywall();
+  const { projects, create } = useInterviewV2Projects();
+  const [picked, setPicked] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setReducedMotion(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  const dockRef = useCallback(
+    (feature: string) => (el: HTMLDivElement | null) =>
+      registerDockTarget(feature, el),
+    [registerDockTarget],
+  );
+
+  if (!lane) return null;
+
+  const cards = lane.cards;
+  const kinds: ChainEdgeKind[] = view ? deriveEdgeKinds(view) : [];
+  const capsuleIdx = view ? capsuleEdgeIndex(view) : null;
+  const showReport = laneHasReportNode(view?.steps.map((s) => s.feature) ?? cards);
+
+  // ── 헤더 ─────────────────────────────────────────────────────────
+  const { statusText, statusTone } = laneStatus(view, cards.length, t);
+  const costNote = buildCostNote(cards, t);
+
+  // ── 본문 ─────────────────────────────────────────────────────────
+  const items: React.ReactNode[] = [];
+  cards.forEach((f, i) => {
+    if (i > 0) {
+      const edgeIdx = i - 1;
+      items.push(
+        <ChainSegment
+          key={`seg-${edgeIdx}`}
+          kind={kinds[edgeIdx] ?? 'pending'}
+          label={
+            kinds[edgeIdx] === 'running' && view
+              ? t('status.running', {
+                  n: view.currentStep + 1,
+                  total: view.steps.length,
+                  step: t(`stepsShort.${view.steps[view.currentStep]?.feature}`),
+                })
+              : null
+          }
+          capsule={
+            capsuleIdx === edgeIdx && view
+              ? buildCapsule(view, {
+                  t,
+                  projects: projects.map((p) => ({ id: p.id, name: p.name })),
+                  picked,
+                  onPick: setPicked,
+                  onCreateProject: () => setCreateOpen(true),
+                  busy,
+                  onApprove: () => {
+                    void approve(view.currentStep, picked);
+                    setPicked(null);
+                  },
+                  onSkip: () => void skip(view.currentStep),
+                  onCancel: () => void cancel(),
+                  onResume: () => void resume(),
+                  onTopUp: showPaywall,
+                  onDismiss: dismiss,
+                  onOpenWidget,
+                })
+              : null
+          }
+          reducedMotion={reducedMotion}
+        />,
+      );
+    }
+    // 도킹 카드 자리 — 빈 portal 타깃(카드는 board 가 여기로 portal 한다).
+    items.push(
+      <div
+        key={`dock-${f}`}
+        ref={dockRef(f)}
+        data-chain="dock-target"
+        data-chain-dock={f}
+        style={{ width: LANE_CARD_W, height: LANE_CARD_H }}
+        className="relative shrink-0"
+      />,
+    );
+  });
+
+  // 마지막: 산출물 노드(더 이을 단계 없음) 또는 빈/드롭 슬롯.
+  if (showReport && view) {
+    const last = view.steps[view.steps.length - 1];
+    items.push(
+      <ChainSegment
+        key="seg-report"
+        kind={kinds[kinds.length - 1] ?? 'pending'}
+        capsule={
+          capsuleIdx === kinds.length - 1 && view
+            ? buildCapsule(view, {
+                t,
+                projects: [],
+                picked: null,
+                onPick: () => {},
+                onCreateProject: () => {},
+                busy,
+                onApprove: () => void approve(view.currentStep, null),
+                onSkip: () => void skip(view.currentStep),
+                onCancel: () => void cancel(),
+                onResume: () => void resume(),
+                onTopUp: showPaywall,
+                onDismiss: dismiss,
+                onOpenWidget,
+              })
+            : null
+        }
+        reducedMotion={reducedMotion}
+      />,
+      <div key="report" className="shrink-0">
+        <ChainReportNode
+          state={last?.status === 'done' ? 'done' : 'pending'}
+          left={0}
+          top={0}
+        />
+      </div>,
+    );
+  } else if (!locked) {
+    // 아직 더 받을 수 있다 — 빈 슬롯(또는 드래그 피드백).
+    if (cards.length > 0) {
+      items.push(<ChainSegment key="seg-next" kind="pending" reducedMotion={reducedMotion} />);
+    }
+    items.push(
+      <div key="slot" className="shrink-0">
+        <ChainSlot {...slotProps(drag, cards, t)} />
+      </div>,
+    );
+  }
+
+  return (
+    <>
+      <ChainLane
+        title={t('lane.title')}
+        mode={view?.mode ?? 'approve'}
+        modeEditable={!locked}
+        onModeChange={() => {
+          /* 모드 변경은 생성 시점에 정해진다 — 조립 중 전환은 A″ 범위. */
+        }}
+        statusText={statusText}
+        statusTone={statusTone}
+        lockNote={locked ? t('lane.lockNote') : null}
+        costNote={costNote}
+        action={
+          locked
+            ? { label: t('action.cancel'), onClick: () => void cancel() }
+            : { label: t('lane.dissolve'), onClick: dissolveLane }
+        }
+        bodyRef={laneBodyRef}
+      >
+        {items}
+      </ChainLane>
+
+      <CreateProjectModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={async (name, description) => {
+          const { project } = await create(name, description);
+          if (project) {
+            setPicked(project.id);
+            setCreateOpen(false);
+            return project.id;
+          }
+          return null;
+        }}
+      />
+    </>
+  );
+}
+
+// ── 슬롯 상태 ───────────────────────────────────────────────────────
+
+function slotProps(
+  drag: ReturnType<typeof useChainLane>['drag'],
+  cards: ChainStepFeature[],
+  t: (key: string, values?: Record<string, string | number>) => string,
+) {
+  if (!drag || drag.over === null) {
+    return {
+      state: 'empty' as const,
+      chips: acceptableSteps(cards),
+    };
+  }
+  if (drag.valid) {
+    return {
+      state: 'valid' as const,
+      toneFeature: drag.feature as ChainStepFeature,
+      title: t('lane.slotValidTitle', { n: cards.length + 1 }),
+    };
+  }
+  return {
+    state: 'invalid' as const,
+    title: dockReason(drag.verdict, drag.feature, t),
+    chips: compatOrder(),
+  };
+}
+
+/** 거절 사유 — A′ 의 **에러 코드**로 분기한다(문구 파싱 금지). */
+export function dockReason(
+  verdict: ReturnType<typeof useChainLane>['drag'] extends infer D
+    ? D extends { verdict: infer V }
+      ? V
+      : never
+    : never,
+  feature: string,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  if (!verdict || verdict.ok) return '';
+  if (verdict.error === 'incompatible_steps' && verdict.from && verdict.to) {
+    return t('dock.incompatible_steps', {
+      from: t(`steps.${verdict.from}`),
+      to: t(`steps.${verdict.to}`),
+      josa: '',
+    });
+  }
+  return t(`dock.${verdict.error}`, { widget: feature, josa: '' });
+}
+
+// ── 헤더 상태 ───────────────────────────────────────────────────────
+
+export function laneStatus(
+  view: ChainView | null,
+  cardCount: number,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): { statusText: string; statusTone: ChainLaneStatusTone } {
+  if (!view) {
+    return cardCount === 0
+      ? { statusText: t('lane.statusEmpty'), statusTone: 'mute' }
+      : { statusText: t('lane.statusSteps', { n: cardCount }), statusTone: 'mute' };
+  }
+  switch (view.status) {
+    case 'running':
+      // 진입 단계(0)가 아직 돌고 있으면 "준비됨" — 서버가 kick 할 것이 없는
+      // 수동 단계라, 사용자가 그 위젯을 돌리기 전까지는 대기 상태다(CD L3).
+      return view.currentStep === 0
+        ? { statusText: t('lane.statusReady'), statusTone: 'ink' }
+        : {
+            statusText: t('status.running', {
+              n: view.currentStep + 1,
+              total: view.steps.length,
+              step: t(`stepsShort.${view.steps[view.currentStep]?.feature}`),
+            }),
+            statusTone: 'processing',
+          };
+    case 'awaiting_approval':
+      return { statusText: t('status.awaiting'), statusTone: 'amber' };
+    case 'paused_insufficient_credits':
+      return { statusText: t('status.paused'), statusTone: 'amber' };
+    case 'error':
+      return { statusText: t('status.ended'), statusTone: 'error' };
+    case 'done':
+      return {
+        statusText: t('status.completedCount', {
+          done: doneCount(view),
+          total: view.steps.length,
+        }),
+        statusTone: 'success',
+      };
+    default:
+      return { statusText: t('status.ended'), statusTone: 'mute' };
+  }
+}
+
+/** "세션 후 💎1 + 파일당 25" — 진입 단계를 뺀 나머지 비용. */
+function buildCostNote(
+  cards: ChainStepFeature[],
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string | null {
+  if (cards.length < 2) return null;
+  const rest = cards.slice(1);
+  const perFile = rest.includes('interview_ingest')
+    ? stepCostOf('interview_ingest')
+    : 0;
+  const fixed = rest
+    .filter((f) => f !== 'interview_ingest')
+    .reduce((sum, f) => sum + stepCostOf(f), 0);
+  return perFile > 0
+    ? t('lane.costNote', { fixed, perFile })
+    : t('lane.costNoteFixed', { fixed });
+}
+
+// ── 캡슐 (v2 그대로 — 배치만 세그먼트 안으로) ────────────────────────
+
+type CapsuleDeps = {
+  t: (key: string, values?: Record<string, string | number>) => string;
+  projects: { id: string; name: string }[];
+  picked: string | null;
+  onPick: (id: string) => void;
+  onCreateProject: () => void;
+  busy: boolean;
+  onApprove: () => void;
+  onSkip: () => void;
+  onCancel: () => void;
+  onResume: () => void;
+  onTopUp: () => void;
+  onDismiss: () => void;
+  onOpenWidget: (key: string) => void;
+};
+
+function buildCapsule(view: ChainView, d: CapsuleDeps): ChainCapsuleProps | null {
+  const { t } = d;
+  const cur = view.steps[view.currentStep];
+  const stepName = (f?: ChainStepFeature) => (f ? t(`steps.${f}`) : '');
+  const costText = (n: number) =>
+    n === 0 ? t('costIncluded') : t('cost', { cost: n });
+
+  switch (view.status) {
+    case 'awaiting_approval': {
+      const needsProject =
+        view.projectId === null && cur?.feature === 'interview_ingest';
+      const prev = view.steps[view.currentStep - 1];
+      return {
+        tone: 'amber',
+        glyph: '?',
+        eyebrow: t('capsule.nextEyebrow', { step: stepName(cur?.feature) }),
+        cost: cur && cur.cost > 0 ? costText(cur.cost) : null,
+        ...(needsProject
+          ? {
+              msgA: t('row.project.msgA'),
+              msgB: t('row.project.msgB'),
+              msgC: t('row.project.msgC'),
+            }
+          : {
+              msgA: prev
+                ? t(`row.awaiting.msgAFrom.${prev.feature}`)
+                : t('row.awaiting.msgAStart'),
+              msgB: t('row.awaiting.msgB'),
+              msgC: t('row.awaiting.msgC'),
+            }),
+        onCancel: d.onCancel,
+        secondary: needsProject
+          ? undefined
+          : { label: t('action.skip'), onClick: d.onSkip },
+        primary: {
+          label:
+            cur && cur.cost > 0
+              ? t('action.proceedCost', { cost: cur.cost })
+              : t('action.proceed'),
+          onClick: d.onApprove,
+          locked: needsProject && d.picked === null,
+        },
+        busy: d.busy,
+        picker: needsProject
+          ? {
+              projects: d.projects,
+              selectedId: d.picked,
+              onSelect: d.onPick,
+              onCreate: d.onCreateProject,
+            }
+          : undefined,
+      };
+    }
+    case 'paused_insufficient_credits':
+      return {
+        tone: 'amber',
+        glyph: 'Ⅱ',
+        eyebrow: t('capsule.pausedEyebrow', { step: stepName(cur?.feature) }),
+        cost: cur ? t('capsule.needCost', { cost: cur.cost }) : null,
+        msgA:
+          typeof view.creditBalance === 'number'
+            ? t('row.paused.msgAWithBalance', { balance: view.creditBalance })
+            : t('row.paused.msgAStart'),
+        msgB: costText(cur?.cost ?? 0),
+        msgC: t('row.paused.msgC'),
+        onCancel: d.onCancel,
+        secondary: { label: t('action.resume'), onClick: d.onResume },
+        primary: { label: t('action.topUp'), onClick: d.onTopUp },
+        busy: d.busy,
+      };
+    case 'error': {
+      const failed = view.steps[view.currentStep];
+      const widget =
+        CHAIN_STEP_WIDGET_KEY[failed?.feature ?? 'interview_ingest'];
+      return {
+        tone: 'error',
+        glyph: '✕',
+        eyebrow: t('capsule.errorEyebrow', { step: stepName(failed?.feature) }),
+        cost: null,
+        msgA: '',
+        msgB: failed?.error ?? t('row.error.reasonUnknown'),
+        msgC: t('row.error.msgC'),
+        secondary: { label: t('action.close'), onClick: d.onDismiss },
+        primary: {
+          label: t('action.openWidget', { widget: t(`widget.${widget}`) }),
+          onClick: () => d.onOpenWidget(widget),
+        },
+        busy: d.busy,
+      };
+    }
+    case 'done': {
+      const last = view.steps[view.steps.length - 1];
+      return {
+        tone: 'success',
+        glyph: '✓',
+        eyebrow: t('status.completedCount', {
+          done: doneCount(view),
+          total: view.steps.length,
+        }),
+        cost: null,
+        msgA: '',
+        msgB: t('row.done.msgB', { step: stepName(last?.feature) }),
+        msgC: t('row.done.msgC'),
+        secondary: { label: t('action.close'), onClick: d.onDismiss },
+        primary: {
+          label: t('action.openReport'),
+          onClick: () =>
+            d.onOpenWidget(CHAIN_STEP_WIDGET_KEY[last?.feature ?? 'topline']),
+        },
+        busy: d.busy,
+      };
+    }
+    case 'cancelled': {
+      const last = lastDoneStep(view);
+      return {
+        tone: 'neutral',
+        eyebrow: t('status.ended'),
+        cost: null,
+        msgA: t('row.cancelled.msgA'),
+        msgB: last
+          ? t('row.cancelled.msgB', { step: stepName(last.feature) })
+          : t('row.cancelled.msgBGeneric'),
+        msgC: t('row.cancelled.msgC'),
+        primary: { label: t('action.close'), onClick: d.onDismiss },
+        busy: d.busy,
+      };
+    }
+    default:
+      return null;
+  }
+}

@@ -24,6 +24,7 @@ import { moderatorAiCard } from '@/components/canvas/widgets/moderator-ai-card';
 import { pptReportCard } from '@/components/canvas/widgets/ppt-report-card';
 import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import { WidgetChainProvider } from '@/components/canvas/chain/widget-chain-provider';
+import { ChainLaneProvider } from '@/components/canvas/chain/chain-lane-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
 // CanvasWidgetKey → WidgetContent 매핑. visibility 가 true 인 키만
@@ -125,6 +126,8 @@ export default async function CanvasPage({
           캔버스에 하나뿐이고(CD §0 Q1) 카드 칩도 같은 상태를 읽으므로 board 보다
           한 겹 위에 둔다 — board 와 카드 어디서나 useWidgetChain() 으로 읽는다. */}
       <WidgetChainProvider>
+      {/* 레인(도킹) 클라 상태 — 체인 데이터 위에 얹히므로 안쪽에 둔다. */}
+      <ChainLaneProvider>
       <CanvasBoard
         widgets={widgets}
         initialFocus={focus}
@@ -138,6 +141,7 @@ export default async function CanvasPage({
         canPublish={vis.isSuperAdmin}
         applyPublished={!vis.isSuperAdmin && !isUnlimited}
       />
+      </ChainLaneProvider>
       </WidgetChainProvider>
     </RealtimeTranscriptProvider>
   );

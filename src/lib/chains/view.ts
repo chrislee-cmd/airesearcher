@@ -435,3 +435,8 @@ export function compatOrder(): ChainStepFeature[] {
   }
   return out;
 }
+
+/** 단계 하나의 표시 비용 — 레지스트리 조회(가격 SSOT = features.ts). */
+export function stepCostOf(feature: string): number {
+  return stepCostByKey(feature);
+}
