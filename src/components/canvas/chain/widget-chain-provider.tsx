@@ -46,9 +46,9 @@ import {
 import { chipStatusOf, type ChainChipProps } from './chain-chip';
 
 export type CreateChainInput = {
-  template?: string;
-  startAt?: number;
-  mode: 'approve' | 'auto';
+  /** 조립된 단계 시퀀스(A′ 1급 입력). 레인이 만든 구성 그대로 보낸다. */
+  steps: string[];
+  mode?: 'approve' | 'auto';
   projectId?: string | null;
 };
 
@@ -77,7 +77,6 @@ type WidgetChainApi = {
 
 const WidgetChainContext = createContext<WidgetChainApi | null>(null);
 
-const DEFAULT_TEMPLATE = 'interview_pipeline';
 
 export function WidgetChainProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
@@ -194,9 +193,8 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            template: input.template ?? DEFAULT_TEMPLATE,
-            startAt: input.startAt ?? 0,
-            mode: input.mode,
+            steps: input.steps,
+            mode: input.mode ?? 'approve',
             ...(input.projectId ? { project_id: input.projectId } : {}),
           }),
         });
@@ -208,10 +206,10 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
         setDismissedId(null);
 
         // approve 모드: 첫 단계(진입 위젯)를 즉시 승인해 running 으로 올린다.
-        // 서버 kick 은 'manual' 이라 아무것도 착수하지 않고, 사용자가 방금 시작한
-        // 세션의 완료 훅(advanceChain)이 이 running 단계를 찾아 전진시킨다.
+        // 서버 kick 은 'manual' 이라 아무것도 착수하지 않고, 사용자가 진입 위젯을
+        // 돌리고 나면 그 완료 훅(advanceChain)이 이 running 단계를 찾아 전진시킨다.
         // auto 모드는 생성 라우트가 이미 running 으로 세팅한다.
-        if (input.mode === 'approve') {
+        if ((input.mode ?? 'approve') === 'approve') {
           const approveRes = await fetch(`/api/chains/${created.id}/approve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
