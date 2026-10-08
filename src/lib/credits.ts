@@ -29,8 +29,29 @@ export type CreditsStatus = {
 
 /** Status snapshot the UI uses to render the trial badge / paywall gating. */
 export async function getCreditsStatus(orgId: string): Promise<CreditsStatus> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  return readCreditsStatus(await createClient(), orgId);
+}
+
+/**
+ * Service-role variant for contexts without an `auth.uid()` — the same reason
+ * spendCreditsAdmin exists. A session-scoped read of `organizations` returns
+ * NOTHING when there is no cookie (RLS), which would silently report
+ * balance 0 / isUnlimited false and make every preflight look insufficient.
+ * Background runners (위젯 체인 인제스트 어댑터 등) must use this instead.
+ */
+export async function getCreditsStatusAdmin(
+  orgId: string,
+): Promise<CreditsStatus> {
+  return readCreditsStatus(createAdminClient(), orgId);
+}
+
+// Shared reader — the only difference between the two entry points above is
+// which client (and therefore which RLS context) performs the select.
+async function readCreditsStatus(
+  client: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>,
+  orgId: string,
+): Promise<CreditsStatus> {
+  const { data } = await client
     .from('organizations')
     .select('credit_balance, trial_ends_at, is_unlimited, grant_credits, grant_expires_at')
     .eq('id', orgId)

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { env } from '@/env';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -262,6 +262,31 @@ export async function dispatchTextExtraction(args: {
   // Match the audio-transcription path: webhook charges credits on completion,
   // so we charge here too. spendCreditsAdmin is no-op for is_unlimited orgs.
   await spendCreditsAdmin(orgId, userId, 'transcripts', jobId);
+
+  // ── 위젯 체인 advance (PR-B) ──────────────────────────────────────────────
+  // ⚠️ #1024 불변식: **활성 체인이 없으면 완전 no-op** 이다. 체인을 명시
+  // 생성하지 않은 전사 잡은 여기서 아무 일도 겪지 않는다(DB 쓰기 0 · 외부
+  // 호출 0 · 과금 0). 2026-07-13 #1024 가 제거한 "원치 않는 자동 kick/과금"
+  // 을 되살리는 유일한 조건은 "사용자가 체인을 만들고 모드를 골랐다" 뿐.
+  //
+  // after(): auto 모드의 다음 단계 kick 은 convert 왕복을 포함할 수 있어 start
+  // 응답을 지연시키면 안 된다(= 본 파이프라인 훼손). 예외는 흡수한다.
+  //
+  // 동적 import 인 이유: advance 모듈이 이 파일의 getDeploymentBaseUrl 을 쓰기
+  // 때문에 정적 import 면 dispatch ↔ advance 순환 참조가 된다. 호출 시점에만
+  // 로드해 순환을 끊는다(평가 순서 의존 제거).
+  after(async () => {
+    try {
+      const { advanceChain } = await import('@/lib/chains/advance');
+      await advanceChain({
+        orgId,
+        sourceFeature: 'transcripts',
+        jobRef: jobId,
+      });
+    } catch (e) {
+      console.warn('[transcripts/dispatch] chain advance failed', e);
+    }
+  });
 
   return NextResponse.json({
     job_id: jobId,

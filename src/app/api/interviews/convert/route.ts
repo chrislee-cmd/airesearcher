@@ -5,8 +5,14 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { env } from '@/env';
 import { ZERO_RETENTION } from '@/lib/llm/config';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrg } from '@/lib/org';
-import { spendCredits, getCreditsStatus } from '@/lib/credits';
+import {
+  spendCredits,
+  spendCreditsAdmin,
+  getCreditsStatus,
+  getCreditsStatusAdmin,
+} from '@/lib/credits';
 import { FEATURE_COSTS } from '@/lib/features';
 import { classifyFile, extractDocText } from '@/lib/file-extract';
 import {
@@ -47,13 +53,91 @@ function logConvertFail(info: {
   console.error('[interviews/convert] fail', info);
 }
 
-export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+// JSON intake body. `chain_*` are only read on the internal (CRON_SECRET)
+// path — a session caller sending them changes nothing, because the session
+// branch never looks at them.
+type ConvertJsonBody = {
+  storage_key?: unknown;
+  filename?: unknown;
+  mime?: unknown;
+  project_id?: unknown;
+  chain_user_id?: unknown;
+  chain_org_id?: unknown;
+};
 
-  const org = await getActiveOrg();
-  if (!org) return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(v: unknown): v is string {
+  return typeof v === 'string' && UUID_RE.test(v);
+}
+
+export async function POST(request: Request) {
+  // Two intake paths share one body read. The JSON body has to be parsed
+  // BEFORE auth because the internal (chain) caller carries its identity in
+  // the body — Request bodies can only be consumed once, so reading it twice
+  // would throw.
+  const contentType = request.headers.get('content-type') ?? '';
+  const isJsonIntake = contentType.includes('application/json');
+  const jsonBody = isJsonIntake
+    ? ((await request.json().catch(() => null)) as ConvertJsonBody | null)
+    : null;
+
+  const supabase = await createClient();
+
+  // ── 인증: 세션(사용자) 또는 내부 호출(위젯 체인 어댑터) ──
+  // 체인의 인제스트 어댑터(src/lib/chains/adapters.ts)는 전사 완료 webhook 등
+  // **세션 없는 서버 지점**에서 돌기 때문에 쿠키가 없다. 세션 대신 CRON_SECRET
+  // Bearer 로 신뢰하고, 행위자(user_id)·테넌트(org_id)를 body 로 명시 전달받는
+  // 다 — /api/interviews/index 의 재개 홉이 이미 쓰는 패턴과 동일. 내부 경로는
+  // auth.uid() 가 없어 RLS 가 아무 row 도 못 보므로, 아래 데이터 접근은
+  // 서비스롤 클라이언트(`db`)로 수행한다.
+  //
+  // 신뢰 경계는 그대로다: storage_key 는 여전히 `<user_id>/` prefix 여야 하고
+  // (아래 검사), 차감도 같은 지점에서 같은 금액으로 발화한다. 체인은 차감을
+  // 우회하지도 추가하지도 않는다.
+  const isInternal =
+    (request.headers.get('authorization') ?? '') === `Bearer ${env.CRON_SECRET}`;
+  let userId: string;
+  let orgId: string;
+  let actorEmail: string | null = null;
+  let internal = false;
+  if (isInternal && jsonBody) {
+    const uid = jsonBody.chain_user_id;
+    const oid = jsonBody.chain_org_id;
+    if (!isUuid(uid) || !isUuid(oid)) {
+      logConvertFail({
+        name: 'internal',
+        stage: 'validate',
+        reason: 'invalid_internal_identity',
+        status: 400,
+      });
+      return NextResponse.json(
+        { error: 'invalid_internal_identity' },
+        { status: 400 },
+      );
+    }
+    userId = uid;
+    orgId = oid;
+    internal = true;
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+    const org = await getActiveOrg();
+    if (!org) {
+      return NextResponse.json({ error: 'no_organization' }, { status: 403 });
+    }
+    userId = user.id;
+    orgId = org.org_id;
+    actorEmail = user.email ?? null;
+  }
+
+  // Data-access client. The session path keeps the RLS-scoped client it always
+  // used; the internal path must use the service role (no auth.uid()).
+  const db = internal ? createAdminClient() : supabase;
 
   // NOTE: the per-user/per-org LLM rate limit is applied lazily, only on the
   // paths that actually call an LLM (audio/video transcription, or the Sonnet
@@ -77,20 +161,14 @@ export async function POST(request: Request) {
   //  · multipart/form-data { file } — the LEGACY path, still used by the
   //    interview-job-provider convert loop and any pre-deploy client. Kept for
   //    backward compat; small files (< 4.5MB) work through it unchanged.
-  const contentType = request.headers.get('content-type') ?? '';
   let file: File;
   let projectId: string | null = null;
   // Object key to delete once convert fully succeeds (direct-upload scratch).
   // Left in place on failure so a client 429-retry can re-download it.
   let cleanupKey: string | null = null;
 
-  if (contentType.includes('application/json')) {
-    const body = (await request.json().catch(() => null)) as {
-      storage_key?: unknown;
-      filename?: unknown;
-      mime?: unknown;
-      project_id?: unknown;
-    } | null;
+  if (isJsonIntake) {
+    const body = jsonBody;
     const storageKey =
       typeof body?.storage_key === 'string' ? body.storage_key : '';
     const filename =
@@ -105,7 +183,7 @@ export async function POST(request: Request) {
     // The key must live under this user's prefix (mirrors the bucket RLS). A
     // client can only ever have uploaded to `<userId>/…` via upload-url, so a
     // mismatch means a forged/foreign key — refuse to read it.
-    if (!storageKey.startsWith(`${user.id}/`)) {
+    if (!storageKey.startsWith(`${userId}/`)) {
       logConvertFail({ name: filename, stage: 'validate', reason: 'forbidden_key', status: 403 });
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
@@ -113,7 +191,7 @@ export async function POST(request: Request) {
       typeof body?.project_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.project_id)
         ? body.project_id
         : null;
-    const { data: blob, error: dlErr } = await supabase.storage
+    const { data: blob, error: dlErr } = await db.storage
       .from(UPLOAD_BUCKET)
       .download(storageKey);
     if (dlErr || !blob) {
@@ -149,7 +227,7 @@ export async function POST(request: Request) {
   const cleanupUpload = async () => {
     if (!cleanupKey) return;
     try {
-      await supabase.storage.from(UPLOAD_BUCKET).remove([cleanupKey]);
+      await db.storage.from(UPLOAD_BUCKET).remove([cleanupKey]);
     } catch {
       // orphaned scratch object — harmless, storage lifecycle can reclaim it
     }
@@ -171,7 +249,9 @@ export async function POST(request: Request) {
   // transcription / Anthropic format call and only then learn they're
   // short on credits. Trial / unlimited orgs skip the check (the RPC
   // gives them delta=0 charges).
-  const status = await getCreditsStatus(org.org_id);
+  const status = internal
+    ? await getCreditsStatusAdmin(orgId)
+    : await getCreditsStatus(orgId);
   if (
     !status.isUnlimited &&
     !status.isTrialActive &&
@@ -220,7 +300,7 @@ export async function POST(request: Request) {
     if (kind === 'audio' || kind === 'video') {
       stage = 'transcribe';
       // Real LLM work (OpenAI transcription) — apply the LLM rate limit here.
-      const limited = await checkLlmRateLimit(user.id, org.org_id);
+      const limited = await checkLlmRateLimit(userId, orgId);
       if (limited) {
         logConvertFail({ name: file.name, stage, reason: 'rate_limited', status: 429 });
         return limited;
@@ -268,7 +348,7 @@ export async function POST(request: Request) {
       feature: 'interview',
       code: 'convert_extract_failed',
       message: err.message,
-      context: { stage, mime: file.type, org_id: org.org_id },
+      context: { stage, mime: file.type, org_id: orgId, internal },
     });
     return NextResponse.json(
       { error: err.message, stage, name: file.name, mime: file.type },
@@ -308,7 +388,7 @@ export async function POST(request: Request) {
       // here, only on the unstructured-transcript path that actually calls it.
       // No DB writes have happened yet, so returning 429 is clean and the
       // client's retry-after backoff drains it.
-      const limited = await checkLlmRateLimit(user.id, org.org_id);
+      const limited = await checkLlmRateLimit(userId, orgId);
       if (limited) {
         logConvertFail({ name: file.name, stage: 'format', reason: 'rate_limited', status: 429 });
         return limited;
@@ -317,9 +397,9 @@ export async function POST(request: Request) {
         const anthropic = createAnthropic({ apiKey: anthropicKey });
         const rawTextSan = await sanitizeUserInput(rawText, 'raw_transcript', {
           endpoint: '/api/interviews/convert',
-          user_id: user.id,
-          org_id: org.org_id,
-          actor_email: user.email ?? null,
+          user_id: userId,
+          org_id: orgId,
+          actor_email: actorEmail,
           input_length: rawText.length,
           input_label: 'raw_transcript',
         });
@@ -344,11 +424,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: gen, error: insertErr } = await supabase
+  const { data: gen, error: insertErr } = await db
     .from('generations')
     .insert({
-      org_id: org.org_id,
-      user_id: user.id,
+      org_id: orgId,
+      user_id: userId,
       feature: 'quotes',
       input: file.name,
       output: markdown,
@@ -363,9 +443,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: insertErr?.message ?? 'db_error' }, { status: 500 });
   }
 
-  const spend = await spendCredits(org.org_id, 'quotes', gen.id);
+  // 차감 — 체인 경로도 **같은 지점·같은 금액**으로 발화한다. 세션이 없어
+  // auth.uid() 기반 RPC 를 못 쓰므로 행위자를 명시 전달하는 admin 변종을 쓴다
+  // (감사 추적은 credit_transactions 에 동일하게 남는다).
+  const spend = internal
+    ? await spendCreditsAdmin(orgId, userId, 'quotes', gen.id)
+    : await spendCredits(orgId, 'quotes', gen.id);
   if (!spend.ok) {
-    await supabase.from('generations').delete().eq('id', gen.id);
+    await db.from('generations').delete().eq('id', gen.id);
     logConvertFail({ name: file.name, stage: 'spend', reason: spend.reason, status: 402 });
     return NextResponse.json({ error: spend.reason }, { status: 402 });
   }

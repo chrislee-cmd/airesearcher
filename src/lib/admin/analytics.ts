@@ -223,6 +223,13 @@ export type WidgetHealthSource = {
   success: string[];
   fail: string[];
   statusColumn?: string;
+  // Owning-user column, used only by the dashboard's exclude-internal filter.
+  // Defaults to 'user_id'; set explicitly when the table names it differently
+  // (translate_sessions → host_user_id, widget_chains → created_by). Getting
+  // this wrong makes the whole row degrade to zeros (the select 400s and the
+  // catch swallows it), so it belongs in the registry rather than in an
+  // inline table-name special case.
+  userColumn?: string;
   // Free-text failure-cause column, read by the job-fail sweep
   // (widget-error-sweep.ts) to split error_events by cause. Defaults to
   // 'error_message'; set explicitly when the table names it differently
@@ -251,7 +258,27 @@ export const WIDGET_HEALTH_SOURCES: WidgetHealthSource[] = [
     statusColumn: 'index_status',
   },
   // OBS-4: 'error' is new (migration 20260710155935). Was fail:[] → 노랑.
-  { table: 'translate_sessions', label: '동시통역', feature: 'translate', success: ['ended'], fail: ['error'] },
+  { table: 'translate_sessions', label: '동시통역', feature: 'translate', success: ['ended'], fail: ['error'], userColumn: 'host_user_id' },
+  // 위젯 체인(PR-E). `fail` 에 paused_insufficient_credits 가 들어 있는 것은
+  // 의도다 — 잔액 부족 정지는 사용자가 충전하면 풀리는 대기 상태지만, 아무도
+  // 충전하지 않으면 체인은 거기서 영구히 멈춘 채 **아무 신호도 내지 않는다**
+  // (#1319 "유령 완료" 교훈). 그 침묵을 깨는 것이 이 등록의 목적이고, 파일럿
+  // 규모에선 과잉 알림보다 미탐이 비싸다. cancelled 는 (컨벤션대로) 사용자
+  // 종료라 fail 이 아니다.
+  //
+  // feature='chain' — 체인은 별개 표면이라 error_events 를 자기 키로 모은다.
+  // (B 의 chain_stalled 는 feature='interview' 로 적재되는데, 이 PR 은 체인
+  // 로직 무수정 제약이라 그쪽은 건드리지 않았다.)
+  {
+    table: 'widget_chains',
+    // i18n-allow-korean -- 어드민 전용(비-i18n 표면, 아래 라벨들과 동일 관례)
+    label: '위젯 체인',
+    feature: 'chain',
+    success: ['done'],
+    fail: ['error', 'paused_insufficient_credits'],
+    statusColumn: 'status',
+    userColumn: 'created_by',
+  },
 ];
 
 type Db = ReturnType<typeof createAdminClient>;
@@ -441,8 +468,9 @@ async function computeWidgetHealth(
   const cutoff = periodCutoff(q.period);
   const rows = await Promise.all(
     WIDGET_HEALTH_SOURCES.map(async (src) => {
-      // translate_sessions keys the user on host_user_id, not user_id.
-      const userCol = src.table === 'translate_sessions' ? 'host_user_id' : 'user_id';
+      // Owning-user column — 'user_id' unless the registry names another
+      // (translate_sessions → host_user_id, widget_chains → created_by).
+      const userCol = src.userColumn ?? 'user_id';
       // Terminal-status column — 'status' unless the table's lifecycle lives
       // elsewhere (interview V2 → index_status). Aliased back to `status` in
       // the select so the row-reading loop stays column-agnostic.
