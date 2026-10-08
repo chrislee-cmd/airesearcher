@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { CHAIN_TEMPLATES } from '@/lib/chains/registry';
+import { CHAIN_STEP_KEYS } from '@/lib/chains/registry';
 import type { ChainStepInstance, ChainStepStatus } from '@/lib/chains/registry';
 import type { ChainStatus } from '@/lib/chains/state';
 import {
@@ -71,16 +71,15 @@ export type ChainObservabilityReport = {
 // 되면 SQL 집계로 옮긴다(그때는 단일 계산 경로를 깨지 않게 뷰 1개로).
 const QUERY_LIMIT = 20000;
 
-// 레지스트리 템플릿 선언 순서대로의 단계 key 목록 — 카드의 단계 행 순서가
-// 파이프라인 순서와 같아야 "어디서 끊기는지" 가 눈에 읽힌다.
+// 레지스트리 선언 순서대로의 단계 key 목록 — 카드의 단계 행 순서가 파이프라인
+// 순서와 같아야 "어디서 끊기는지" 가 눈에 읽힌다.
+//
+// 자유 조합(A')로 바뀐 뒤에도 **표시 순서는 레지스트리 선언 순서**다. 체인마다
+// 실제 시퀀스가 다르므로(사용자가 조립) "모든 체인에 공통인 순서" 는 존재하지
+// 않는다 — 집계 카드는 단계별 합을 보는 뷰이므로 선언 순서면 충분하고,
+// 미등재 key(과거 인스턴스·오타)는 호출측이 뒤로 보낸다.
 function registryStepOrder(): string[] {
-  const out: string[] = [];
-  for (const tmpl of Object.values(CHAIN_TEMPLATES)) {
-    for (const step of tmpl.steps) {
-      if (!out.includes(step.key)) out.push(step.key);
-    }
-  }
-  return out;
+  return [...CHAIN_STEP_KEYS];
 }
 
 function emptyByStatus(): Record<ChainStatus, number> {
