@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { josa } from '@/lib/korean-particle';
 import { usePaywall } from '@/components/paywall-provider';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { CreateProjectModal } from '@/components/interviews-v2/create-project-modal';
@@ -27,6 +28,7 @@ import {
   deriveEdgeKinds,
   doneCount,
   lastDoneStep,
+  isChainStepFeature,
   laneHasReportNode,
   stepCostOf,
   CHAIN_STEP_WIDGET_KEY,
@@ -48,6 +50,7 @@ export function ChainLaneHost({
   onOpenWidget: (widgetKey: string) => void;
 }) {
   const t = useTranslations('Chain');
+  const tRoot = useTranslations();
   const { view, busy, approve, skip, cancel, resume, dismiss } = useWidgetChain();
   const {
     lane,
@@ -214,7 +217,7 @@ export function ChainLaneHost({
     }
     items.push(
       <div key="slot" className="shrink-0">
-        <ChainSlot {...slotProps(drag, cards, t)} />
+        <ChainSlot {...slotProps(drag, cards, t, tRoot)} />
       </div>,
     );
   }
@@ -265,6 +268,7 @@ function slotProps(
   drag: ReturnType<typeof useChainLane>['drag'],
   cards: ChainStepFeature[],
   t: (key: string, values?: Record<string, string | number>) => string,
+  tRoot: (key: string, values?: Record<string, string | number>) => string,
 ) {
   if (!drag || drag.over === null) {
     return {
@@ -281,12 +285,22 @@ function slotProps(
   }
   return {
     state: 'invalid' as const,
-    title: dockReason(drag.verdict, drag.feature, t),
+    title: dockReason(drag.verdict, drag.feature, t, tRoot),
     chips: compatOrder(),
   };
 }
 
-/** 거절 사유 — A′ 의 **에러 코드**로 분기한다(문구 파싱 금지). */
+/**
+ * 거절 사유 — A′ 의 **에러 코드**로 분기한다(문구 파싱 금지).
+ *
+ * 위젯 이름은 **로케일 문자열**로 넣는다: 단계면 `Chain.steps.*`, 체인에 못
+ * 들어가는 위젯(unknown_step)이면 사이드바 이름(`Sidebar.*`)으로 폴백한다 —
+ * 원시 feature 키("transcripts")가 사용자에게 보이면 안 된다.
+ *
+ * ko 문구는 이름 뒤에 조사가 붙으므로(`{widget}{josa}`) 받침을 보고 고른다.
+ * en/ja/th 문구에는 `{josa}` 자리가 없어 영향이 0이다(next-intl 은 쓰지 않는
+ * 값을 무시한다).
+ */
 export function dockReason(
   verdict: ReturnType<typeof useChainLane>['drag'] extends infer D
     ? D extends { verdict: infer V }
@@ -295,16 +309,34 @@ export function dockReason(
     : never,
   feature: string,
   t: (key: string, values?: Record<string, string | number>) => string,
+  tRoot?: (key: string, values?: Record<string, string | number>) => string,
 ): string {
   if (!verdict || verdict.ok) return '';
   if (verdict.error === 'incompatible_steps' && verdict.from && verdict.to) {
+    const to = t(`steps.${verdict.to}`);
     return t('dock.incompatible_steps', {
       from: t(`steps.${verdict.from}`),
-      to: t(`steps.${verdict.to}`),
-      josa: '',
+      to,
+      josa: josa(to),
     });
   }
-  return t(`dock.${verdict.error}`, { widget: feature, josa: '' });
+  const name = stepLabel(feature, t, tRoot);
+  return t(`dock.${verdict.error}`, { widget: name, josa: josa(name) });
+}
+
+/** 단계면 체인 이름, 아니면 사이드바 이름. 어느 쪽도 없으면 키 그대로. */
+export function stepLabel(
+  feature: string,
+  t: (key: string, values?: Record<string, string | number>) => string,
+  tRoot?: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  if (isChainStepFeature(feature)) return t(`steps.${feature}`);
+  if (!tRoot) return feature;
+  try {
+    return tRoot(`Sidebar.${feature}`);
+  } catch {
+    return feature;
+  }
 }
 
 // ── 헤더 상태 ───────────────────────────────────────────────────────

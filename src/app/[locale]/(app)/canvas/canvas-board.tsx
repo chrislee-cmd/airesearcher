@@ -26,6 +26,7 @@ import {
   useState,
   type CSSProperties,
   type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
@@ -56,7 +57,10 @@ import { ChainChip } from '@/components/canvas/chain/chain-chip';
 import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
 import { useChainLane } from '@/components/canvas/chain/chain-lane-provider';
 import { ChainToolbarHost } from '@/components/canvas/chain/chain-toolbar-host';
-import { ChainLaneHost } from '@/components/canvas/chain/chain-lane-host';
+import {
+  ChainLaneHost,
+  dockReason,
+} from '@/components/canvas/chain/chain-lane-host';
 import {
   CHAIN_STEP_WIDGET_KEY,
   type ChainStepFeature,
@@ -790,6 +794,124 @@ export function CanvasBoard({
     };
   }, [dragKey]);
 
+  // ── 키보드 도킹 (CD Interactions) ───────────────────────────────────
+  // Space 로 들기 → ←/→ 로 레인 자리 선택 → Space 로 놓기 / Esc 로 취소.
+  // 캔버스의 Space-hold(pan)와 겹치므로 **카드 래퍼에 포커스가 있을 때만**
+  // 들기로 해석한다(아래 pan 핸들러에서 같은 조건으로 양보). 래퍼를 포커스
+  // 가능하게 만든 것은 보드 레이어의 요소라 위젯 셸 diff 가 0이다.
+  const [lifted, setLifted] = useState<{
+    key: string;
+    position: DockPosition;
+  } | null>(null);
+
+  const liftAnnounce = useMemo(() => {
+    if (!lifted || !laneDrag) return '';
+    if (laneDrag.undocking) {
+      return laneDrag.undocking.ok
+        ? tChain('lane.restored')
+        : tChain(
+            `dock.${laneDrag.undocking.error === 'locked' ? 'locked' : 'middleUndock'}`,
+          );
+    }
+    if (laneDrag.valid) {
+      const n = lifted.position === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
+      return tChain('lane.slotValidTitle', { n });
+    }
+    return dockReason(laneDrag.verdict, laneDrag.feature, tChain, tRoot);
+  }, [lifted, laneDrag, lane, tChain, tRoot]);
+
+  const liftTo = useCallback(
+    (key: string, position: DockPosition) => {
+      const feature = stepOfWidget.get(key) ?? key;
+      const docked = dockedKeys.get(key) ?? null;
+      if (docked) {
+        setLaneDrag({
+          feature,
+          over: null,
+          valid: false,
+          verdict: null,
+          undocking: evaluateUndock(docked),
+        });
+        return;
+      }
+      const verdict = evaluateDock(feature, position);
+      setLaneDrag({
+        feature,
+        over: position,
+        valid: verdict.ok,
+        verdict,
+        undocking: null,
+      });
+    },
+    [stepOfWidget, dockedKeys, evaluateUndock, evaluateDock, setLaneDrag],
+  );
+
+  const cancelLift = useCallback(() => {
+    setLifted(null);
+    setLaneDrag(null);
+  }, [setLaneDrag]);
+
+  const commitLift = useCallback(() => {
+    if (!lifted) return;
+    const { key, position } = lifted;
+    const docked = dockedKeys.get(key);
+    if (docked) {
+      // 언도킹 — 거절이면 카드는 레인에 남고 사유는 이미 읽어줬다.
+      if (evaluateUndock(docked).ok) undockCard(docked);
+      cancelLift();
+      return;
+    }
+    const feature = stepOfWidget.get(key);
+    const origin = positions[key];
+    if (feature && origin && evaluateDock(feature, position).ok) {
+      dockCard(feature, position, origin);
+    }
+    cancelLift();
+  }, [
+    lifted,
+    dockedKeys,
+    evaluateUndock,
+    undockCard,
+    stepOfWidget,
+    positions,
+    evaluateDock,
+    dockCard,
+    cancelLift,
+  ]);
+
+  const onCardKeyDown = useCallback(
+    (key: string) => (e: ReactKeyboardEvent<HTMLElement>) => {
+      // 카드 **안쪽** 컨트롤에서 올라온 키는 그 컨트롤의 것이다.
+      if (e.target !== e.currentTarget) return;
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        if (!lane) return; // 레인이 없으면 평소 캔버스 동작(pan)에 양보.
+        e.preventDefault();
+        e.stopPropagation();
+        if (lifted?.key === key) commitLift();
+        else {
+          setLifted({ key, position: 'append' });
+          liftTo(key, 'append');
+        }
+        return;
+      }
+      if (!lifted || lifted.key !== key) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelLift();
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        // 파일럿의 받을 수 있는 자리는 둘(앞 / 끝)이라 토글이다.
+        const next: DockPosition =
+          e.key === 'ArrowLeft' ? 'prepend' : 'append';
+        setLifted({ key, position: next });
+        liftTo(key, next);
+      }
+    },
+    [lane, lifted, commitLift, cancelLift, liftTo],
+  );
+
   // ── 해체 복귀 애니메이션 (FLIP) ─────────────────────────────────────
   // CD: 카드별로 원래 자리로 220ms, 40ms stagger, 그 다음 레인이 사라진다.
   // 카드는 레인 슬롯 → 그리드로 **부모가 바뀌므로** left/top transition 으로는
@@ -873,10 +995,14 @@ export function CanvasBoard({
   }, [dragKey, lane, dockedKeys]);
 
   // 스페이스바 hold → pan 모드. input/textarea/contenteditable 안에서는 무시.
+  // 카드 래퍼에 포커스가 있으면 **Space 는 체인 들기**다(위 onCardKeyDown) —
+  // 같은 키를 두 뜻으로 쓰므로 여기서 양보한다. 포커스가 래퍼 자신일 때만
+  // 양보해, 카드 안쪽에서 스페이스를 눌렀을 때의 기존 동작은 그대로 둔다.
   useEffect(() => {
     const isEditableTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
       const tag = el.tagName;
+      if (el.hasAttribute('data-canvas-card')) return true;
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1468,6 +1594,11 @@ export function CanvasBoard({
       {/* 체인 툴바 — 변환 레이어 **밖**(캔버스를 pan/zoom 해도 화면에 남는다).
           진입점은 이 버튼 하나다(CD 결정 2). */}
       <ChainToolbarHost onFocusLane={() => setPan((prev) => ({ ...prev, y: 0 }))} />
+      {/* 키보드 도킹 안내 — 받을 수 없는 자리의 사유를 읽어준다(CD Interactions).
+          시각 피드백은 슬롯이 이미 하므로 화면에는 보이지 않는다. */}
+      <div aria-live="polite" className="sr-only">
+        {liftAnnounce}
+      </div>
       {/* 드래그 라벨 pill — 커서 옆. 변환 레이어 밖 + fixed 라 줌/팬과 무관하게
           실제 커서를 따라간다(CD Geometry "커서 옆 라벨 pill"). */}
       {dragLabel && dragPoint && (
@@ -1590,7 +1721,14 @@ export function CanvasBoard({
                 data-widget-key={w.key}
                 data-canvas-row={pos.row}
                 data-chain-docked={dockedKeys.has(w.key) ? 'true' : 'false'}
-                className="absolute"
+                data-chain-lifted={lifted?.key === w.key ? 'true' : undefined}
+                // 키보드 도킹의 포커스 대상(CD Interactions). 보드 레이어의
+                // 요소라 위젯 셸 구조는 그대로다 — Tab 으로 카드에 닿고,
+                // Space 로 든다. 레인이 없으면 Space 는 평소대로 pan 이다.
+                tabIndex={0}
+                aria-label={tRoot(`Sidebar.${w.key}`)}
+                onKeyDown={onCardKeyDown(w.key)}
+                className="absolute focus-visible:outline-none focus-visible:shadow-focus-ring"
                 onDragOver={onCellDragOver(pos.col, pos.row)}
                 onDragLeave={onCellDragLeave(pos.col, pos.row)}
                 onDrop={onCellDrop(pos.col, pos.row)}
@@ -1602,7 +1740,7 @@ export function CanvasBoard({
                     top: pos.row * (CELL_H + GAP) + laneOffsetY,
                     width,
                     height,
-                    opacity: isDragSource ? 0.4 : 1,
+                    opacity: isDragSource || lifted?.key === w.key ? 0.4 : 1,
                     transition: 'opacity 0.15s ease-out',
                     '--widget-header-row-bg': tone.bg,
                     '--widget-header-row-border': tone.border,
