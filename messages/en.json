@@ -1600,20 +1600,28 @@
     "costIncluded": "Included",
     "status": {
       "running": "{n}/{total} · {step} in progress",
+      "awaiting": "Awaiting approval",
       "completedCount": "{done}/{total} done",
       "paused": "Paused",
       "ended": "Chain ended"
     },
+    "capsule": {
+      "nextEyebrow": "Next · {step}",
+      "pausedEyebrow": "Paused · {step}",
+      "errorEyebrow": "Chain ended · {step} failed",
+      "needCost": "Needs 💎{cost}"
+    },
     "row": {
       "awaiting": {
-        "msgAStart": "Next up: ",
+        "msgAStart": "",
         "msgAFrom": {
-          "probing": "The session is done. Next up: ",
-          "transcripts": "Transcription is done. Next up: ",
-          "interview_ingest": "Interview analysis is done. Next up: ",
-          "topline": "The topline report is done. Next up: "
+          "probing": "The session is done. ",
+          "transcripts": "Transcription is done. ",
+          "interview_ingest": "Interview analysis is done. ",
+          "topline": "The topline report is done. "
         },
-        "msgC": " — credits are deducted the moment it starts."
+        "msgB": "Credits are deducted",
+        "msgC": " the moment it starts."
       },
       "project": {
         "msgA": "Interview analysis is ",
@@ -1621,24 +1629,16 @@
         "msgC": ". Where should it go?"
       },
       "paused": {
-        "msgAWithBalance": "Balance 💎{balance} — {step} needs ",
-        "msgA": "{step} needs ",
-        "msgC": ", so the chain stopped here."
+        "msgAWithBalance": "Balance 💎{balance} — ",
+        "msgAStart": "",
+        "msgC": " is needed, so the chain stopped here."
       },
       "error": {
-        "msgAFrom": {
-          "probing": "Interview Assistant failed, so the chain ended — ",
-          "transcripts": "Transcription failed, so the chain ended — ",
-          "interview_ingest": "Interview analysis failed, so the chain ended — ",
-          "topline": "The topline report failed, so the chain ended — "
-        },
-        "msgAFromUnknown": "The chain ended — ",
         "reasonUnknown": "reason unknown",
-        "msgC": "."
+        "msgC": ". Try again from this widget."
       },
       "done": {
         "msgB": "{step} is ready.",
-        "msgBGeneric": "The chain completed every step.",
         "msgC": " It opens in the Insight Analyzer full view."
       },
       "cancelled": {
@@ -1662,6 +1662,8 @@
     "chip": {
       "withStep": "Chain {step}/{total}",
       "withStepState": "Chain {step}/{total} · {state}",
+      "withRange": "Chain {step}–{stepTo}/{total}",
+      "withRangeState": "Chain {step}–{stepTo}/{total} · {state}",
       "stateOnly": "Chain · {state}",
       "state": {
         "running": "running",
@@ -1676,26 +1678,27 @@
       "sectionLabel": "Target project",
       "newProject": "＋ New project"
     },
+    "report": {
+      "ready": "Ready",
+      "waiting": "Waiting"
+    },
     "entry": {
       "title": "Continue after the session ends",
-      "subtitle": "Transcription → interview analysis → topline report",
+      "subtitle": "Hands the probing output to the next widget",
       "modeGroup": "Chain mode",
-      "noteApprove": "At the end of every step we show the next step and its cost, then ask.",
-      "noteAuto": "Runs the remaining steps without asking.",
+      "handleLabel": "Connect the next widget",
       "autoWarning": "Credits are deducted without asking at each step. If the balance runs short, the chain stops at that step.",
       "note": {
-        "entry": "charged at start",
         "probing": "charged at start",
         "transcripts": "on completion",
-        "interview_ingest": "per file · prepaid",
+        "interview_ingest": "per file",
         "topline": ""
       },
       "totalLabel": "Cost after the session",
       "totalFixedPerFile": "💎{fixed} + {perFile} per file",
       "totalFixed": "💎{fixed}",
-      "footSuffixApprove": " · {count} steps to follow",
-      "footSuffixAuto": " · {count} steps automatic",
-      "createFailed": "Could not create the chain. The session continues as usual."
+      "cancel": "Cancel",
+      "connect": "Connect"
     }
   },
   "Desk": {

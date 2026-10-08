@@ -53,9 +53,6 @@ import {
 import { useFullviewHeaderSlotPublisher } from '@/components/canvas/shell/fullview-header-slot-context';
 import { ProbingFullviewBody } from '@/components/canvas/fullview/probing/probing-fullview-body';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
-import { ChainEntryBlock } from '@/components/canvas/chain/chain-entry-block';
-import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
-import { chainPreviewRows } from '@/lib/chains/view';
 import { ChromeButton } from '@/components/ui/chrome-button';
 import { useWidgetState } from '@/components/canvas/shell/widget-state-context';
 import { useWidgetGate } from '@/components/widget-gate-provider';
@@ -355,7 +352,6 @@ function parseEmit(
 function ExpandedBody() {
   const t = useTranslations('Probing');
   const tPicker = useTranslations('ProjectPicker');
-  const tChain = useTranslations('Chain');
   const locale = useLocale();
   const toast = useToast();
   const now = useNowTick();
@@ -597,20 +593,6 @@ function ExpandedBody() {
   // null → 아래 useProbingPersonaConfig 가 로컬 localStorage fallback 으로 동작.
   const { getSelection, setSelection } = useProjectSelection();
   const selectedProjectId = getSelection('probing');
-
-  // ── 위젯 체인 진입점 (widget-chain D · CD C1) ─────────────────────────
-  // 기본 꺼짐 · 켜면 기본 모드는 단계별 승인(사용자 결정 ①). 체인 생성은 세션
-  // 시작 CTA 와 함께 일어난다 — 토글은 "무엇을 켰는지" 만 기억한다.
-  const { createChain: createWidgetChain } = useWidgetChain();
-  const [chainEnabled, setChainEnabled] = useState(false);
-  const [chainMode, setChainMode] = useState<'approve' | 'auto'>('approve');
-  // 프로빙 진입 = 템플릿 처음부터(startAt 0). 비용은 레지스트리에서 읽는다.
-  const chainPreview = useMemo(
-    () => chainPreviewRows('interview_pipeline', 0),
-    [],
-  );
-  // 진입 단계(프로빙)를 뺀 "이어질" 단계 수 — 푸터 footNote 접미.
-  const chainFollowUpCount = chainPreview.length - 1;
   // 풀뷰 V2 헤더 프로젝트 pill 표시명 — 미선택/미매칭이면 폴백 라벨.
   const { projects } = useInterviewV2Projects();
   const fullviewProjectName =
@@ -1556,32 +1538,7 @@ function ExpandedBody() {
     setSetupPeek(false);
     trackEvent('job_started', { widget: 'probing', job_type: 'session' });
     await startSession({ source });
-    // 체인 진입점이 켜져 있으면 세션 시작과 함께 체인을 만든다. 생성이 세션
-    // **종료 전**에 끝나 있어야 종료 훅(advanceChain)이 running 단계를 찾는다.
-    // 꺼져 있으면 아무 일도 하지 않는다 — #1024 불변식("체인을 명시 생성하지
-    // 않은 세션은 종료 후 전사 자동 착수 0 · 과금 0")을 UI 쪽에서도 지킨다.
-    if (chainEnabled) {
-      const created = await createWidgetChain({
-        mode: chainMode,
-        projectId: selectedProjectId,
-      });
-      // 조용한 실패 금지 — 세션은 이미 시작됐고 체인만 안 붙었다는 사실을 알린다.
-      if (!created) {
-        toast.push(tChain('entry.createFailed'), { tone: 'warn' });
-      }
-    }
-  }, [
-    gate,
-    startSession,
-    source,
-    outputLang,
-    chainEnabled,
-    chainMode,
-    createWidgetChain,
-    selectedProjectId,
-    toast,
-    tChain,
-  ]);
+  }, [gate, startSession, source, outputLang]);
   // 시작 클릭 진입점 — 정적 안내 모달은 제거. 온라인/참관(tab/both)은 실측
   // 오디오 게이트가 화면공유까지 주도하므로(startSession 이 게이트를 연다) 바로
   // 진행. mic(대면)은 게이트 없이 진행. (게이트 UI 는 아래 AudioCheckStep Modal.)
@@ -2404,17 +2361,8 @@ function ExpandedBody() {
           // 위젯 자유). live/전체보기 표면은 아래 분기로 그대로(회귀 0).
           if (!isLive && !isCurrent) {
             return (
-              // gap="field" — 셋업 아코디언과 체인 진입점 블록 사이 리듬.
-              // 간격 값은 ControlBoardPanel 의 열거형 SSOT 소유(임의 mt- 금지).
-              //
-              // fill 제거: fill 은 아코디언 Region 을 flex-1 min-h-0 으로 눌러
-              // 카드 바닥까지 늘린다 — 자식이 하나일 때는 맞지만, 아래에 체인
-              // 진입점 블록이 붙으면 아코디언 콘텐츠가 축소된 박스를 넘쳐
-              // (overflow visible) 블록 위로 겹쳐 그려진다(프리뷰 실측).
-              // fill 없이 두면 클러스터가 자연 높이가 되고 wrapper 의
-              // overflow-y-auto 가 스크롤을 맡아 겹침이 사라진다.
-              <ControlBoardPanel gap="field">
-                <ControlBoardPanel.Region>
+              <ControlBoardPanel gap="none" fill>
+                <ControlBoardPanel.Region fill>
                   <ProbingSetupAccordion
                     projectId={selectedProjectId}
                     onProjectChange={(id) => setSelection('probing', id)}
@@ -2431,18 +2379,6 @@ function ExpandedBody() {
                     }
                     questionDraft={questionDraft}
                     onQuestionDraftChange={setQuestionDraft}
-                  />
-                </ControlBoardPanel.Region>
-                {/* 체인 진입점 (CD C1) — 셋업 본문 **하단**, 접힌 아코디언 아래.
-                    자연 높이 Region 이라 아코디언(fill)이 바닥까지 늘어나도 이
-                    블록은 그 아래 제자리에 남는다. */}
-                <ControlBoardPanel.Region>
-                  <ChainEntryBlock
-                    enabled={chainEnabled}
-                    mode={chainMode}
-                    onToggle={setChainEnabled}
-                    onModeChange={setChainMode}
-                    preview={chainPreview}
                   />
                 </ControlBoardPanel.Region>
               </ControlBoardPanel>
@@ -2649,20 +2585,10 @@ function ExpandedBody() {
             disabled={startDisabled}
             onClick={handleStartSession}
             // 아코디언 푸터 좌측 상태 라벨 (프로토 D10). ready = 소스+언어 선택 완료.
-            // 체인이 켜져 있으면 CD C1 대로 footNote 에 "· 이어서 N단계" /
-            // "· 자동 N단계" 를 덧붙인다 (CTA 라벨은 불변).
             statusLabel={
-              (!source || !outputLang
+              !source || !outputLang
                 ? t('setup.readyPending')
-                : t('setup.readyGo')) +
-              (chainEnabled
-                ? tChain(
-                    chainMode === 'auto'
-                      ? 'entry.footSuffixAuto'
-                      : 'entry.footSuffixApprove',
-                    { count: chainFollowUpCount },
-                  )
-                : '')
+                : t('setup.readyGo')
             }
           />
         )}

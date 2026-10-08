@@ -244,8 +244,12 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
         .reverse()
         .find((m) => m.step.status !== 'pending');
       const picked = atCursor ?? advanced ?? matches[0];
+      // 한 위젯이 연속 두 단계를 맡으면 범위로 표기한다(CD S6 "체인 3–4/4").
+      const first = matches[0].index + 1;
+      const last = matches[matches.length - 1].index + 1;
       return {
-        step: picked.index + 1,
+        step: first,
+        stepTo: last,
         total: view.steps.length,
         status: chipStatusOf(picked.step.status),
       };

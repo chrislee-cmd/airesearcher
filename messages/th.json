@@ -1600,20 +1600,28 @@
     "costIncluded": "รวมอยู่แล้ว",
     "status": {
       "running": "{n}/{total} · กำลัง{step}",
+      "awaiting": "รออนุมัติ",
       "completedCount": "เสร็จ {done}/{total}",
       "paused": "หยุด",
       "ended": "เชนสิ้นสุดแล้ว"
     },
+    "capsule": {
+      "nextEyebrow": "ถัดไป · {step}",
+      "pausedEyebrow": "หยุด · {step}",
+      "errorEyebrow": "เชนสิ้นสุด · {step}ล้มเหลว",
+      "needCost": "ต้องใช้ 💎{cost}"
+    },
     "row": {
       "awaiting": {
-        "msgAStart": "ขั้นต่อไปคือ ",
+        "msgAStart": "",
         "msgAFrom": {
-          "probing": "เซสชันเสร็จแล้ว ขั้นต่อไปคือ ",
-          "transcripts": "การถอดเสียงเสร็จแล้ว ขั้นต่อไปคือ ",
-          "interview_ingest": "การวิเคราะห์การสัมภาษณ์เสร็จแล้ว ขั้นต่อไปคือ ",
-          "topline": "รายงานสรุปเสร็จแล้ว ขั้นต่อไปคือ "
+          "probing": "เซสชันเสร็จแล้ว ",
+          "transcripts": "การถอดเสียงเสร็จแล้ว ",
+          "interview_ingest": "การวิเคราะห์การสัมภาษณ์เสร็จแล้ว ",
+          "topline": "รายงานสรุปเสร็จแล้ว "
         },
-        "msgC": " — เครดิตจะถูกหักทันทีที่เริ่ม"
+        "msgB": "เครดิตจะถูกหักทันที",
+        "msgC": "ที่เริ่ม"
       },
       "project": {
         "msgA": "การวิเคราะห์การสัมภาษณ์จะ ",
@@ -1621,24 +1629,16 @@
         "msgC": " จะให้เก็บไว้ที่ไหน"
       },
       "paused": {
-        "msgAWithBalance": "ยอดคงเหลือ 💎{balance} — {step} ต้องใช้ ",
-        "msgA": "{step} ต้องใช้ ",
+        "msgAWithBalance": "ยอดคงเหลือ 💎{balance} — ",
+        "msgAStart": "",
         "msgC": " จึงหยุดไว้ที่นี่"
       },
       "error": {
-        "msgAFrom": {
-          "probing": "ผู้ช่วยสัมภาษณ์ล้มเหลว เชนจึงสิ้นสุด — ",
-          "transcripts": "การถอดเสียงล้มเหลว เชนจึงสิ้นสุด — ",
-          "interview_ingest": "การวิเคราะห์การสัมภาษณ์ล้มเหลว เชนจึงสิ้นสุด — ",
-          "topline": "รายงานสรุปล้มเหลว เชนจึงสิ้นสุด — "
-        },
-        "msgAFromUnknown": "เชนสิ้นสุดแล้ว — ",
         "reasonUnknown": "ไม่ทราบสาเหตุ",
-        "msgC": ""
+        "msgC": " ลองใหม่อีกครั้งจากวิดเจ็ตนี้"
       },
       "done": {
         "msgB": "{step} พร้อมแล้ว",
-        "msgBGeneric": "เชนทำครบทุกขั้นแล้ว",
         "msgC": " เปิดในมุมมองเต็มของตัววิเคราะห์อินไซต์"
       },
       "cancelled": {
@@ -1662,6 +1662,8 @@
     "chip": {
       "withStep": "เชน {step}/{total}",
       "withStepState": "เชน {step}/{total} · {state}",
+      "withRange": "เชน {step}–{stepTo}/{total}",
+      "withRangeState": "เชน {step}–{stepTo}/{total} · {state}",
       "stateOnly": "เชน · {state}",
       "state": {
         "running": "กำลังทำงาน",
@@ -1676,26 +1678,27 @@
       "sectionLabel": "โปรเจกต์เป้าหมาย",
       "newProject": "＋ โปรเจกต์ใหม่"
     },
+    "report": {
+      "ready": "พร้อมแล้ว",
+      "waiting": "รอดำเนินการ"
+    },
     "entry": {
       "title": "ทำต่อเมื่อเซสชันจบ",
-      "subtitle": "ถอดเสียง → วิเคราะห์การสัมภาษณ์ → รายงานสรุป",
+      "subtitle": "ส่งผลลัพธ์จากโพรบบิงไปยังวิดเจ็ตถัดไป",
       "modeGroup": "รูปแบบการทำงานของเชน",
-      "noteApprove": "ทุกครั้งที่จบขั้นหนึ่ง จะแสดงขั้นต่อไปพร้อมค่าใช้จ่ายแล้วถามก่อน",
-      "noteAuto": "ทำขั้นที่เหลือต่อเนื่องโดยไม่ถาม",
+      "handleLabel": "เชื่อมวิดเจ็ตที่จะทำต่อ",
       "autoWarning": "เครดิตจะถูกหักโดยไม่ถามในแต่ละขั้น หากยอดคงเหลือไม่พอ เชนจะหยุดที่ขั้นนั้น",
       "note": {
-        "entry": "หักเมื่อเริ่ม",
         "probing": "หักเมื่อเริ่ม",
         "transcripts": "เมื่อเสร็จ",
-        "interview_ingest": "ต่อไฟล์ · หักล่วงหน้า",
+        "interview_ingest": "ต่อไฟล์",
         "topline": ""
       },
       "totalLabel": "ค่าใช้จ่ายหลังเซสชัน",
       "totalFixedPerFile": "💎{fixed} + {perFile} ต่อไฟล์",
       "totalFixed": "💎{fixed}",
-      "footSuffixApprove": " · อีก {count} ขั้น",
-      "footSuffixAuto": " · อัตโนมัติ {count} ขั้น",
-      "createFailed": "สร้างเชนไม่สำเร็จ เซสชันจะดำเนินต่อไปตามปกติ"
+      "cancel": "ยกเลิก",
+      "connect": "เชื่อมต่อ"
     }
   },
   "Desk": {

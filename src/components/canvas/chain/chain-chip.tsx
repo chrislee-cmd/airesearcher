@@ -62,13 +62,19 @@ const CHIP_CLASS: Record<ChainChipStatus, string> = {
 export type ChainChipProps = {
   /** 이 카드가 맡은 단계의 1-기준 순번. */
   step: number;
+  /**
+   * 한 위젯이 연속 두 단계를 맡으면 끝 번호(CD S6: 인터뷰 분석 + 탑라인 =
+   * "체인 3–4/4"). step 과 같거나 없으면 단일 번호로 표기한다.
+   */
+  stepTo?: number;
   /** 체인 전체 단계 수. */
   total: number;
   status: ChainChipStatus;
 };
 
-export function ChainChip({ step, total, status }: ChainChipProps) {
+export function ChainChip({ step, stepTo, total, status }: ChainChipProps) {
   const t = useTranslations('Chain');
+  const ranged = typeof stepTo === 'number' && stepTo !== step;
 
   // 라벨 3형태 (§3 · C3):
   //   pending            → "체인 4/4"            (상태 구절 없음 — 아직 차례 아님)
@@ -76,11 +82,16 @@ export function ChainChip({ step, total, status }: ChainChipProps) {
   //   그 외              → "체인 2/4 · 진행 중"
   const label =
     status === 'pending'
-      ? t('chip.withStep', { step, total })
+      ? t(ranged ? 'chip.withRange' : 'chip.withStep', {
+          step,
+          stepTo: stepTo ?? step,
+          total,
+        })
       : status === 'stopped' || status === 'skipped'
         ? t('chip.stateOnly', { state: t(`chip.state.${status}`) })
-        : t('chip.withStepState', {
+        : t(ranged ? 'chip.withRangeState' : 'chip.withStepState', {
             step,
+            stepTo: stepTo ?? step,
             total,
             state: t(`chip.state.${status}`),
           });

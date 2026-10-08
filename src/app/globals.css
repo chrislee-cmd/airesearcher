@@ -1044,23 +1044,20 @@ html, body {
   .probing-widget-added { animation: none; }
 }
 
-/* chain-node-ring — 위젯 체인 트랙의 running 노드 링 (BUILD-SPEC §1.3).
-   링 자체(paper 3px + processing 5px)는 **클래스가 항상 그린다** — 애니메이션만
-   조건부다. reduced-motion 에서 "펄스 제거 · 정적 링 유지" 가 CD 요구사항이라
-   (§4), 링을 animation 안에 넣으면 모션 off 환경에서 링이 사라진다.
-   펄스는 바깥 링만 늘렸다 줄인다 — 노드 안의 톤 채움/글리프는 건드리지 않음.
-   running 노드에만 붙는다: 멈춤·실패·종료에 붙으면 유령 상태(§3). */
-@keyframes chainNodeRingPulse {
-  0%   { box-shadow: 0 0 0 3px var(--color-paper), 0 0 0 5px var(--color-processing); }
-  55%  { box-shadow: 0 0 0 3px var(--color-paper), 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 3px var(--color-paper), 0 0 0 5px var(--color-processing); }
+/* chain-edge-flow — 위젯 체인 v2 의 running 엣지 흐름 (CD v2 R2).
+   보라 dash(10 14)가 레인을 따라 흘러 "지금 이 단계가 돌고 있다" 를 말한다.
+   dashoffset 0 → −48 / 1.1s linear 무한 반복 — CD `@keyframes chainflow` 와 동일.
+   **running 엣지에만** 붙인다: 멈춤·실패·종료에 흐름이 남으면 유령 상태다.
+   reduced-motion 에서는 흐름을 끄고 정적 보라 실선으로 남긴다(컴포넌트가 dash 도
+   함께 제거하므로 여기선 애니메이션만 끈다). */
+@keyframes chainEdgeFlow {
+  to { stroke-dashoffset: -48; }
 }
-.chain-node-ring {
-  box-shadow: 0 0 0 3px var(--color-paper), 0 0 0 5px var(--color-processing);
-  animation: chainNodeRingPulse 1.8s ease-in-out infinite;
+.chain-edge-flow {
+  animation: chainEdgeFlow 1.1s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .chain-node-ring { animation: none; }
+  .chain-edge-flow { animation: none; }
 }
 
 /* completed-cta-pulse — 위젯 완료 CTA 가 처음 노출되는 순간(마운트) 3초간

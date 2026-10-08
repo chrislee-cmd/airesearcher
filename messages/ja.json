@@ -1600,20 +1600,28 @@
     "costIncluded": "込み",
     "status": {
       "running": "{n}/{total} · {step}中",
+      "awaiting": "承認待ち",
       "completedCount": "{done}/{total} 完了",
       "paused": "停止",
       "ended": "チェーン終了"
     },
+    "capsule": {
+      "nextEyebrow": "次 · {step}",
+      "pausedEyebrow": "停止 · {step}",
+      "errorEyebrow": "チェーン終了 · {step}失敗",
+      "needCost": "必要 💎{cost}"
+    },
     "row": {
       "awaiting": {
-        "msgAStart": "次は ",
+        "msgAStart": "",
         "msgAFrom": {
-          "probing": "セッションが終わりました。次は ",
-          "transcripts": "文字起こしが終わりました。次は ",
-          "interview_ingest": "インタビュー分析が終わりました。次は ",
-          "topline": "トップライン報告書が終わりました。次は "
+          "probing": "セッションが終わりました。",
+          "transcripts": "文字起こしが終わりました。",
+          "interview_ingest": "インタビュー分析が終わりました。",
+          "topline": "トップライン報告書が終わりました。"
         },
-        "msgC": " — 開始するとすぐに差し引かれます。"
+        "msgB": "開始するとすぐに差し引かれ",
+        "msgC": "ます。"
       },
       "project": {
         "msgA": "インタビュー分析は ",
@@ -1621,24 +1629,16 @@
         "msgC": "されます。どこに入れますか？"
       },
       "paused": {
-        "msgAWithBalance": "残高 💎{balance} — {step}には ",
-        "msgA": "{step}には ",
+        "msgAWithBalance": "残高 💎{balance} — ",
+        "msgAStart": "",
         "msgC": " が必要なためここで止まりました。"
       },
       "error": {
-        "msgAFrom": {
-          "probing": "インタビューアシスタントが失敗してチェーンが終了しました — ",
-          "transcripts": "文字起こしが失敗してチェーンが終了しました — ",
-          "interview_ingest": "インタビュー分析が失敗してチェーンが終了しました — ",
-          "topline": "トップライン報告書が失敗してチェーンが終了しました — "
-        },
-        "msgAFromUnknown": "チェーンが終了しました — ",
         "reasonUnknown": "理由不明",
-        "msgC": "。"
+        "msgC": "。このウィジェットでもう一度お試しください。"
       },
       "done": {
         "msgB": "{step}の準備ができました。",
-        "msgBGeneric": "チェーンが最後まで完了しました。",
         "msgC": " インサイト分析の全体表示で開きます。"
       },
       "cancelled": {
@@ -1662,6 +1662,8 @@
     "chip": {
       "withStep": "チェーン {step}/{total}",
       "withStepState": "チェーン {step}/{total} · {state}",
+      "withRange": "チェーン {step}–{stepTo}/{total}",
+      "withRangeState": "チェーン {step}–{stepTo}/{total} · {state}",
       "stateOnly": "チェーン · {state}",
       "state": {
         "running": "進行中",
@@ -1676,26 +1678,27 @@
       "sectionLabel": "対象プロジェクト",
       "newProject": "＋ 新規プロジェクト"
     },
+    "report": {
+      "ready": "準備完了",
+      "waiting": "待機"
+    },
     "entry": {
       "title": "セッション終了後に続けて進める",
-      "subtitle": "文字起こし → インタビュー分析 → トップライン報告書まで",
+      "subtitle": "プロビングの成果物を次のウィジェットに渡します",
       "modeGroup": "チェーンの進め方",
-      "noteApprove": "各ステップが終わるたびに次のステップと費用を見せて確認します。",
-      "noteAuto": "残りのステップを確認せずに続けて実行します。",
+      "handleLabel": "続けて進めるウィジェットを接続",
       "autoWarning": "ステップごとに確認せずクレジットが差し引かれます。残高が足りないとそのステップで止まります。",
       "note": {
-        "entry": "開始時に差引",
         "probing": "開始時に差引",
         "transcripts": "完了時",
-        "interview_ingest": "ファイルごと · 前払い",
+        "interview_ingest": "ファイルごと",
         "topline": ""
       },
       "totalLabel": "セッション後にかかる費用",
       "totalFixedPerFile": "💎{fixed} + ファイルごと {perFile}",
       "totalFixed": "💎{fixed}",
-      "footSuffixApprove": " · 続けて{count}ステップ",
-      "footSuffixAuto": " · 自動{count}ステップ",
-      "createFailed": "チェーンを作成できませんでした。セッションはそのまま進みます。"
+      "cancel": "キャンセル",
+      "connect": "接続する"
     }
   },
   "Desk": {

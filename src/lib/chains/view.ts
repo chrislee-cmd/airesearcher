@@ -194,7 +194,9 @@ export function currentStepOf(view: ChainView): ChainStepView | null {
 export type ChainPreviewRow = {
   feature: ChainStepFeature;
   cost: number;
-  /** 체인 시작 전 이미 차감된 진입 단계 — 미리보기 1행 음영 + 합계 제외. */
+  /** 템플릿 기준 1-based 단계 번호(진입 단계를 빼고 보여줘도 번호는 보존). */
+  index: number;
+  /** 체인 시작 전 이미 차감된 진입 단계 — 합계 제외. */
   entryStep: boolean;
 };
 
@@ -210,7 +212,120 @@ export function chainPreviewRows(
   const start = Math.max(0, Math.min(startAt, defs.length - 1));
   return defs.slice(start).flatMap((def, i) =>
     isChainStepFeature(def.key)
-      ? [{ feature: def.key, cost: stepCost(def), entryStep: i === 0 }]
+      ? [
+          {
+            feature: def.key,
+            cost: stepCost(def),
+            index: start + i + 1,
+            entryStep: i === 0,
+          },
+        ]
       : [],
   );
+}
+
+// ── v2 커넥터 오버레이 파생 (README v2 "State Management") ────────────────
+//
+// v2 는 상태를 **엣지**가 말한다. 엣지 i 는 steps[i] → steps[i+1] 을 잇고, 종류는
+// 두 단계 status + 체인 status 조합으로 정해진다. 이 함수가 그 규칙의 SSOT 이고,
+// 프레젠테이션은 결과 배열만 받는다.
+
+export type ChainEdgeKind =
+  | 'done'
+  | 'running'
+  | 'awaiting'
+  | 'paused'
+  | 'error'
+  | 'pending'
+  /** 진입 팝오버가 열려 있는 동안의 미리보기(아직 체인 없음). */
+  | 'ghost';
+
+export function deriveEdgeKinds(view: ChainView): ChainEdgeKind[] {
+  const out: ChainEdgeKind[] = [];
+  for (let i = 0; i < view.steps.length - 1; i += 1) {
+    const a = view.steps[i];
+    const b = view.steps[i + 1];
+    out.push(edgeKind(view, i, a, b));
+  }
+  return out;
+}
+
+function edgeKind(
+  view: ChainView,
+  i: number,
+  a: ChainStepView,
+  b: ChainStepView,
+): ChainEdgeKind {
+  // 종료된 체인은 "끝까지 간 구간"만 검정 실선으로 남기고 나머지는 전부 회색
+  // 점선이다 — 색이 있는 요소 0 (S7).
+  if (view.status === 'cancelled') {
+    return a.status === 'done' && b.status === 'done' ? 'done' : 'pending';
+  }
+  // 실패는 그 단계에서 **나가는** 엣지를 끊는다(멈춤과 반대 — R2).
+  if (a.status === 'error') return 'error';
+  // 멈춤은 그 단계로 **들어가는** 엣지를 끊는다.
+  if (
+    view.status === 'paused_insufficient_credits' &&
+    i + 1 === view.currentStep
+  ) {
+    return 'paused';
+  }
+  if (b.status === 'awaiting') return 'awaiting';
+  if (a.status === 'done' && b.status === 'running') return 'running';
+  if (a.status === 'done' && b.status === 'done') return 'done';
+  // 실패 단계로 **들어가는** 엣지는 done 이다 — 그 단계에 도달하는 데는 성공했고,
+  // 끊기는 것은 나가는 쪽이기 때문(S5 비교 기준).
+  if (a.status === 'done' && b.status === 'error') return 'done';
+  return 'pending';
+}
+
+/** 캡슐이 붙을 엣지 index. 붙을 자리가 없으면 null(진행 중 = 캡슐 없음). */
+export function capsuleEdgeIndex(view: ChainView): number | null {
+  const last = view.steps.length - 2;
+  if (last < 0) return null;
+  switch (view.status) {
+    case 'awaiting_approval':
+    case 'paused_insufficient_credits':
+      // currentStep 으로 **들어가는** 엣지.
+      return view.currentStep - 1 >= 0 ? view.currentStep - 1 : null;
+    case 'error':
+      // 실패 단계에서 **나가는** 엣지.
+      return Math.min(view.currentStep, last);
+    case 'done':
+      return last;
+    case 'cancelled': {
+      // 마지막 done 다음 엣지.
+      let lastDone = -1;
+      view.steps.forEach((s, i) => {
+        if (s.status === 'done') lastDone = i;
+      });
+      return lastDone >= 0 ? Math.min(lastDone, last) : null;
+    }
+    default:
+      return null;
+  }
+}
+
+/** running 상태 라벨이 붙을 엣지 index(없으면 null). */
+export function runningEdgeIndex(kinds: ChainEdgeKind[]): number | null {
+  const i = kinds.indexOf('running');
+  return i === -1 ? null : i;
+}
+
+/**
+ * 마지막 엣지가 산출물 노드로 들어가는가 — 마지막 두 단계를 같은 위젯이 맡으면
+ * 카드가 하나라 카드→카드 엣지가 성립하지 않는다(인터뷰 분석 + 탑라인).
+ */
+export function lastEdgeTargetsReport(view: ChainView): boolean {
+  const n = view.steps.length;
+  if (n < 2) return false;
+  return (
+    CHAIN_STEP_WIDGET_KEY[view.steps[n - 1].feature] ===
+    CHAIN_STEP_WIDGET_KEY[view.steps[n - 2].feature]
+  );
+}
+
+/** 체인이 화면에 흔적을 남기는 상태인가(포트·엣지·칩 렌더 여부). */
+export function isChainVisible(view: ChainView | null): view is ChainView {
+  return !!view && view.steps.length > 1;
 }
