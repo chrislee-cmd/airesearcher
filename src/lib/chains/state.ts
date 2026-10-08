@@ -59,14 +59,25 @@ export type CasResult =
 // 통과해 커서를 두 칸 밀어버린다. 커서를 CAS 술어에 넣으면 선승 1회만
 // 통과한다(리스크 R1). 생략하면 status-only CAS — A 의 사용자 액션 전이
 // (approve/skip/cancel)는 status 가 반드시 바뀌므로 그대로 안전하다.
+//
+// expectedUpdatedAt (선택) — 행 전체의 낙관적 잠금 토큰. updated_at 은 DB
+// 트리거가 **모든 update 에서** 갱신하므로, 읽은 시점 이후 누군가 이 행을
+// 건드렸다면 CAS 가 떨어진다. 필요한 이유: steps[] 를 read-modify-write 하는
+// 전이(approve/skip)는 status·current_step 이 **그대로인데 steps 만 바뀐**
+// 변경(= 조립 수정 PATCH, A″)을 감지할 수 없고, 그러면 낡은 스냅샷으로
+// 새 조립을 덮어써 사용자가 본 체인과 실제로 도는 체인이 갈라진다.
 export async function casChain(
   admin: SupabaseClient,
   id: string,
   expected: ChainStatus,
   patch: Partial<
-    Pick<ChainRow, 'status' | 'current_step' | 'steps' | 'error_message'>
+    Pick<
+      ChainRow,
+      'status' | 'current_step' | 'steps' | 'error_message' | 'template'
+    >
   >,
   expectedCurrentStep?: number,
+  expectedUpdatedAt?: string,
 ): Promise<CasResult> {
   let query = admin
     .from(CHAINS_TABLE)
@@ -75,6 +86,9 @@ export async function casChain(
     .eq('status', expected);
   if (expectedCurrentStep !== undefined) {
     query = query.eq('current_step', expectedCurrentStep);
+  }
+  if (expectedUpdatedAt !== undefined) {
+    query = query.eq('updated_at', expectedUpdatedAt);
   }
   const { data, error } = await query.select().maybeSingle();
 
@@ -113,10 +127,17 @@ export async function approveChain(
     return { applied: false, reason: 'conflict' };
   }
   const steps = markStep(row.steps, row.current_step, 'running');
-  return casChain(admin, row.id, 'awaiting_approval', {
-    status: 'running',
-    steps,
-  });
+  // steps 를 낡은 스냅샷에서 파생하므로 updated_at 토큰까지 술어에 넣는다 —
+  // 읽은 뒤 조립 수정(PATCH steps, A″)이 끼어들었으면 승인이 떨어지고(409)
+  // 사용자는 갱신된 조립을 다시 승인한다. 구 조립이 조용히 되살아나지 않는다.
+  return casChain(
+    admin,
+    row.id,
+    'awaiting_approval',
+    { status: 'running', steps },
+    row.current_step,
+    row.updated_at,
+  );
 }
 
 // 건너뛰기 — 현재 단계를 skipped 로 두고 다음 단계로 커서 이동. 다음 단계가
@@ -134,11 +155,15 @@ export async function skipStep(
   const hasNext = nextIndex < steps.length;
 
   if (!hasNext) {
-    return casChain(admin, row.id, 'awaiting_approval', {
-      status: 'done',
-      steps,
-      current_step: row.current_step,
-    });
+    // approveChain 과 동일한 사유로 updated_at 토큰까지 CAS(steps RMW).
+    return casChain(
+      admin,
+      row.id,
+      'awaiting_approval',
+      { status: 'done', steps, current_step: row.current_step },
+      row.current_step,
+      row.updated_at,
+    );
   }
 
   // 다음 단계로 커서 이동. approve 모드면 다음 단계도 승인 게이트(awaiting),
@@ -150,11 +175,14 @@ export async function skipStep(
   // 모두 통과한다.
   const nextStatus = row.mode === 'auto' ? 'running' : 'awaiting_approval';
   const steps2 = markStep(steps, nextIndex, nextStatus);
-  return casChain(admin, row.id, 'awaiting_approval', {
-    status: nextStatus,
-    steps: steps2,
-    current_step: nextIndex,
-  });
+  return casChain(
+    admin,
+    row.id,
+    'awaiting_approval',
+    { status: nextStatus, steps: steps2, current_step: nextIndex },
+    row.current_step,
+    row.updated_at,
+  );
 }
 
 // 종료 — 활성 상태(running / awaiting_approval / paused) 중 어느 것에서든
@@ -170,6 +198,88 @@ export async function cancelChain(
   return casChain(admin, row.id, row.status, {
     status: 'cancelled',
   });
+}
+
+// ── 조립 수정 (A″) ───────────────────────────────────────────────────────
+
+// 조립 수정이 허용되는 상태인가 — "체인 row 는 이미 만들어졌지만 **아직
+// 아무것도 시작되지 않았다**".
+//
+// 왜 이 판별이 필요한가: 도킹 레인은 레인이 유효(2단계+ 호환 경로)해지는
+// 순간 체인을 POST 한다 — B 의 advance 훅이 진입 위젯 완료 시점에 체인을
+// 찾으려면 row 가 세션 완료 전에 존재해야 하기 때문이다. 그래서 "만들어졌지만
+// 실행 전" 인 창이 실재하고, 그 창에서 사용자가 카드를 더 붙이거나 떼는 것이
+// **정상 사용**이다. 이것을 cancel+재생성으로 처리하면 편집 횟수만큼
+// cancelled row 가 쌓여 E 집계(완주율·상태 분포)가 조립 편집 노이즈로
+// 오염된다(파일럿 평가 데이터 왜곡). 그래서 row 를 그 자리에서 고친다.
+//
+// 허용 조건 — 전부 만족해야 한다:
+//   1. status='awaiting_approval' — 승인 게이트 **앞**. 이 상태를 고른 것은
+//      보수적 선택이다: advance 의 findChainAtStep 은 `status='running'` +
+//      현재 단계 `status='running'` 만 매칭하므로, awaiting_approval 체인은
+//      advance 가 **구조적으로 손댈 수 없다**. 즉 조립 수정과 체인 전진이
+//      애초에 같은 행을 두고 경합하지 않는다.
+//      → auto 모드로 생성된 체인(status='running', steps[0]='running')은
+//        생성 직후부터 advance 의 채택(adoption) 대상이라 여기서 제외된다.
+//        그 경우의 조립 변경은 기존 cancel+재생성 경로로 남는다. auto 는 명시
+//        opt-in 이고 기본·파일럿 경로는 approve 이므로, 노이즈 제거 효과는
+//        기본 경로에서 온전히 얻는다.
+//   2. current_step=0 — 커서가 한 칸도 움직이지 않았다.
+//   3. 어느 단계에도 job_ref 가 없다 — 위젯 job 이 하나도 착수되지 않았다.
+//   4. steps[0] 은 pending 또는 awaiting_approval, 나머지는 전부 pending —
+//      done/skipped/error/running 이 하나라도 있으면 보존해야 할 진행 기록이
+//      있다는 뜻이므로 수정 불가.
+//
+// 4번이 스펙의 "전 단계 pending" 을 그대로 쓰지 않는 이유: 생성 라우트가
+// steps[0].status 를 체인 status 의 미러로 세팅하므로(`steps[0] = {...,
+// status: chainStatus}`) **전수 pending 인 행은 실제로 존재하지 않는다.**
+// 스펙의 의도("running 전 상태")를 지키려면 첫 칸의 승인 대기까지 허용해야
+// 한다. pending 도 같이 받는 것은 방어(그 조합이 생기더라도 여전히 미실행).
+export function isAssemblyEditable(row: ChainRow): boolean {
+  if (row.status !== 'awaiting_approval') return false;
+  if (row.current_step !== 0) return false;
+  const steps = row.steps ?? [];
+  if (steps.length === 0) return false;
+  return steps.every((step, i) => {
+    if (step.job_ref) return false;
+    if (i === 0) {
+      return step.status === 'awaiting_approval' || step.status === 'pending';
+    }
+    return step.status === 'pending';
+  });
+}
+
+// 조립 교체 — 검증된 새 steps 로 통째 치환한다(멱등 CAS).
+//
+// CAS 술어 3중: status='awaiting_approval' · current_step=0 · updated_at 토큰.
+// 잠금 전이(승인/건너뛰기/종료)나 sweep 이 읽은 뒤 끼어들었으면 전부 떨어진다
+// → 라우트가 409 로 돌려주고 사용자는 갱신된 상태를 다시 본다(스펙: 경합 1승).
+//
+// template='custom' — 자유 조합에서 체인의 정의는 steps 자체이고 template 은
+// 관측용 라벨이다. 레거시 템플릿 키로 만들어진 행을 수정하면 더 이상 그 템플릿
+// 의 인스턴스가 아니므로 라벨을 사실에 맞춘다(생성 라우트의 자유 조합 경로와
+// 동일 값).
+//
+// updated_at 은 명시적으로 쓰지 않는다 — DB 트리거(widget_chains_updated_at)가
+// 모든 update 에서 now() 로 bump 한다. 이게 중요한 이유: chain-sweep 의 STALE
+// 판정 기준이 updated_at 이라, 조립을 만지는 동안 체인이 24h 창에 걸려 닫히지
+// 않는다. (그리고 그 bump 자체가 위 낙관적 잠금 토큰이 된다.)
+export async function replaceChainSteps(
+  admin: SupabaseClient,
+  row: ChainRow,
+  steps: ChainStepInstance[],
+): Promise<CasResult> {
+  if (!isAssemblyEditable(row)) {
+    return { applied: false, reason: 'conflict' };
+  }
+  return casChain(
+    admin,
+    row.id,
+    'awaiting_approval',
+    { steps, current_step: 0, template: 'custom' },
+    0,
+    row.updated_at,
+  );
 }
 
 // ── 순수 헬퍼 ────────────────────────────────────────────────────────────
