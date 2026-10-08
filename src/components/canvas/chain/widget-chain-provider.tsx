@@ -3,15 +3,16 @@
 /* ────────────────────────────────────────────────────────────────────
    WidgetChainProvider — 체인 UI 의 **컨테이너** (데이터 전부).
 
-   프레젠테이션(v2 커넥터 오버레이)은 전부 typed props 와 콜백만 받는다 —
+   프레젠테이션(v3 도킹 레인)은 전부 typed props 와 콜백만 받는다 —
    페칭·구독·액션 호출은 여기 모인다. 소비자:
-     · `ChainChip`               — 카드 서브바 우측 칩 (v1 에서 그대로 유지)
-     · `chain-overlay`           — 측정·배치 호스트. 그 아래로
-       `chain-edge-layer`(SVG 엣지) · `chain-port` · `chain-capsule` ·
-       `chain-report-node` · `chain-entry-popover`
-     · `chain-summary-host`      — 좌상단 요약 pill (변환 레이어 밖)
-   (v1 의 ChainBar · ChainEntryBlock 은 제거됐다 — 진입은 출력 포트 팝오버,
-   전역 바는 요약 pill 로 대체. v2 README R4·R5.)
+     · `ChainChip`         — 카드 서브바 우측 칩 (v1 에서 그대로 유지)
+     · `chain-lane-host`   — 레인 본문 조립. 그 아래로 `chain-lane`(셸) ·
+       `chain-slot` · `chain-segment` · `chain-capsule` · `chain-report-node`
+     · `chain-toolbar-host`— 좌상단 "+ 새 체인" + 요약 pill (변환 레이어 밖)
+     · `chain-lane-provider` — 레인 클라이언트 상태(도킹 구성 · 드래그 판정)
+   (v1 의 ChainBar/ChainEntryBlock, v2 의 오버레이·포트·엣지 레이어·진입
+   팝오버는 전부 제거됐다 — 체인은 캔버스 위 **선반**이고 사용자가 카드를
+   끌어다 조립한다. v3 README 결정 1·2.)
 
    한 캔버스에 체인은 **하나**다. 그래서 조회도 전역 1건:
    `GET /api/chains`(project_id 생략 = org 최근 활성 1건). 프로빙 진입 체인은
