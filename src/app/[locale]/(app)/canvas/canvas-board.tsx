@@ -1002,7 +1002,7 @@ export function CanvasBoard({
     const isEditableTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
       const tag = el.tagName;
-      if (el.hasAttribute('data-canvas-card')) return true;
+      if (el.hasAttribute('data-widget-node')) return true;
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1721,14 +1721,7 @@ export function CanvasBoard({
                 data-widget-key={w.key}
                 data-canvas-row={pos.row}
                 data-chain-docked={dockedKeys.has(w.key) ? 'true' : 'false'}
-                data-chain-lifted={lifted?.key === w.key ? 'true' : undefined}
-                // 키보드 도킹의 포커스 대상(CD Interactions). 보드 레이어의
-                // 요소라 위젯 셸 구조는 그대로다 — Tab 으로 카드에 닿고,
-                // Space 로 든다. 레인이 없으면 Space 는 평소대로 pan 이다.
-                tabIndex={0}
-                aria-label={tRoot(`Sidebar.${w.key}`)}
-                onKeyDown={onCardKeyDown(w.key)}
-                className="absolute focus-visible:outline-none focus-visible:shadow-focus-ring"
+                className="absolute"
                 onDragOver={onCellDragOver(pos.col, pos.row)}
                 onDragLeave={onCellDragLeave(pos.col, pos.row)}
                 onDrop={onCellDrop(pos.col, pos.row)}
@@ -1747,17 +1740,6 @@ export function CanvasBoard({
                   } as CSSProperties
                 }
               >
-                {/* "↩ 원래 자리로" — 해체/언도킹 직후 1.6초. 카드가 조용히
-                    돌아오면 사용자가 어디로 갔는지 놓치기 때문이다(CD State). */}
-                {restoredKeys.has(w.key) && (
-                  <div
-                    data-chain="restored-badge"
-                    aria-live="polite"
-                    className="pointer-events-none absolute top-4 left-1/2 z-overlay -translate-x-1/2 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-2xl font-extrabold text-ink shadow-memphis-sm-faint"
-                  >
-                    {tChain('lane.restored')}
-                  </div>
-                )}
                 {/* dimmed placeholder 위젯 ("준비 중") — 셸 전체를 반투명
                     처리해 옛 실기능 위젯과 시각 구분. 클릭은 차단하지 않는다
                     — 헤더의 "전체 보기" 로 기능 소개 hero (ComingSoonBody)
@@ -1770,7 +1752,27 @@ export function CanvasBoard({
                   const dockFeature = dockedKeys.get(w.key);
                   const target = dockFeature ? dockTargets[dockFeature] : null;
                   const node = (
-                    <div className={w.dimmed ? 'h-full opacity-50' : 'h-full'}>
+                    // 포커스·키보드 도킹·복귀 배지는 **portal 되는 이 노드**가
+                    // 가진다. 바깥 래퍼는 도킹 중 `display:none` 이라(본체가
+                    // 레인으로 옮겨가므로) 거기에 두면 정작 레인 안 카드를
+                    // 키보드로 뺄 수 없다 — 프리뷰 실측에서 드러난 구멍이다.
+                    <div
+                      data-widget-node={w.key}
+                      data-chain-lifted={lifted?.key === w.key ? 'true' : undefined}
+                      tabIndex={0}
+                      aria-label={tRoot(`Sidebar.${w.key}`)}
+                      onKeyDown={onCardKeyDown(w.key)}
+                      className={`relative focus-visible:outline-none focus-visible:shadow-focus-ring ${w.dimmed ? 'h-full opacity-50' : 'h-full'}`}
+                    >
+                      {restoredKeys.has(w.key) && (
+                        <div
+                          data-chain="restored-badge"
+                          aria-live="polite"
+                          className="pointer-events-none absolute top-4 left-1/2 z-overlay -translate-x-1/2 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-2xl font-extrabold text-ink shadow-memphis-sm-faint"
+                        >
+                          {tChain('lane.restored')}
+                        </div>
+                      )}
                 <WidgetShell
                   content={w}
                   dashboardMode
