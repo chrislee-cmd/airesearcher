@@ -21,7 +21,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import type { TranscriptJob } from '@/components/transcript-job-provider';
 import type { TranscriptFullviewActions } from './transcript-fullview-body';
 import {
@@ -160,14 +160,12 @@ function FileRow({
         </Button>
       )}
       {(isDone || isFailed) && (
-        <IconButton
-          variant="ghost-danger"
+        <CloseButton
+          variant="row-remove"
           aria-label={t('deleteJobAria')}
           onClick={onDelete}
-          className="text-sm"
-        >
-          ✕
-        </IconButton>
+          className="shrink-0"
+        />
       )}
     </div>
   );

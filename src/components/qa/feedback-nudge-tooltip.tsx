@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 
 // FeedbackNudgeTooltip — wraps the QA voice (🎤) button in a relative anchor and
 // floats a one-shot callout below it to nudge feedback submissions. It is NOT
@@ -122,15 +122,12 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
           <span className="whitespace-nowrap text-xs font-medium text-ink">
             {t('nudge')}
           </span>
-          <IconButton
-            variant="plain"
-            size="compact"
+          <CloseButton
+            variant="banner-dismiss"
             aria-label={t('nudgeDismiss')}
             onClick={dismiss}
-            className="pointer-events-auto -mr-1 -mt-0.5 shrink-0 px-1 text-xs text-mute-soft"
-          >
-            ✕
-          </IconButton>
+            className="pointer-events-auto -mr-1 -mt-0.5 shrink-0"
+          />
         </span>
       )}
     </span>

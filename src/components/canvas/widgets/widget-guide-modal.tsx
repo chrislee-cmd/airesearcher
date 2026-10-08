@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
+import { CloseButton } from '@/components/ui/close-button';
 import type { AccentColor } from '../widget-types';
 import type { WidgetGuide } from '@/lib/widget-guides';
 
@@ -219,24 +220,15 @@ export function WidgetGuideModal({
             >
               {guide.durationLabel}
             </span>
-            {/* close ✕ — 30px · 1.5px ink · radius 9 · shadow-memphis-sm. */}
-            {/* eslint-disable-next-line react/forbid-elements -- CD 전용 30px ✕ 칩(1.5px border·radius9·memphis-sm). ui/IconButton chrome 과 지오메트리 불일치 → 셸 툴바 세그 버튼과 동일 사유. */}
-            <button
-              type="button"
+            {/* close ✕ — 모달 헤더 우측 = BUILD-SPEC §1-B dialog-close (32px ·
+                radius-icon(9) · border 1.5 ink · memphis 하드 그림자). 기존 30px
+                인라인 style 칩이 그 토큰표와 사실상 같은 모양이었다. */}
+            <CloseButton
+              variant="dialog-close"
               onClick={onClose}
               aria-label={t('WidgetGuide.close')}
-              className="inline-flex shrink-0 items-center justify-center bg-paper text-ink shadow-memphis-sm"
-              style={{
-                width: 30,
-                height: 30,
-                border: '1.5px solid var(--canvas-card-border)',
-                borderRadius: 9,
-                fontSize: 14,
-                fontWeight: 700,
-              }}
-            >
-              ✕
-            </button>
+              className="shrink-0"
+            />
           </div>
 
           {/* Player — bg-ink · 16:9 · flex-1 min-h-0 (먼저 shrink). */}

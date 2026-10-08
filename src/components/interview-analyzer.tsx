@@ -20,7 +20,7 @@ import { FileDropZone } from './ui/file-drop-zone';
 import { DownloadMenu } from './ui/download-menu';
 import { ShareMenu } from './ui/share-menu';
 import { Button } from './ui/button';
-import { IconButton } from './ui/icon-button';
+import { CloseButton } from './ui/close-button';
 import { InterviewChat } from './interview-chat';
 import { prefillKey } from '@/lib/workspace';
 
@@ -475,14 +475,12 @@ function ConvRow({
             {item.expanded ? t('hideMd') : t('viewMd')}
           </Button>
         )}
-        <IconButton
-          variant="ghost-danger"
+        <CloseButton
+          variant="row-remove"
           aria-label={tUp('remove')}
           onClick={onRemove}
-          className="text-sm"
-        >
-          ✕
-        </IconButton>
+          className="shrink-0"
+        />
       </div>
       {item.status === 'done' && item.markdown && item.expanded && (
         <div className="border-t border-line-soft px-5 pb-4 pt-3">

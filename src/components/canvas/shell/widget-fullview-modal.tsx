@@ -3,16 +3,16 @@
 import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 
 // Shared <WidgetFullviewModal> — generalizes the full-view "chrome" that
 // canvas widgets (probing 등) reach for when they pop their dense surface
-// into a near-fullscreen modal: a title/subtitle band with a close ×,
+// into a near-fullscreen modal: a title/subtitle band with a close ✕,
 // a scrollable body slot, and an optional footer band.
 //
 // Why a wrapper instead of using <Modal> directly:
 //   <Modal>'s built-in title/description/footer renders a header WITHOUT a
-//   close button. Full-view widget surfaces want an explicit × in the
+//   close button. Full-view widget surfaces want an explicit ✕ in the
 //   header (the body owns its own grid and the backdrop is easy to miss on
 //   a 90vw panel). So this wrapper renders its OWN header/body/footer as the
 //   Modal's children — Modal's wide/full size strips body padding + overflow
@@ -64,15 +64,12 @@ export function WidgetFullviewModal({
             <p className="mt-0.5 truncate text-md text-mute">{subtitle}</p>
           ) : null}
         </div>
-        <IconButton
-          variant="bordered"
-          size="md"
+        <CloseButton
+          variant="dialog-close"
           onClick={onClose}
           aria-label={resolvedCloseLabel}
           className="ml-4 shrink-0"
-        >
-          <CloseIcon />
-        </IconButton>
+        />
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
@@ -83,25 +80,5 @@ export function WidgetFullviewModal({
         </footer>
       ) : null}
     </Modal>
-  );
-}
-
-// Inline × glyph. Explicit h-4 w-4 + aria-hidden satisfies the a11y QA
-// rules (icon-only control labelled by its IconButton; SVG sized).
-function CloseIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 4l8 8M12 4l-8 8"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

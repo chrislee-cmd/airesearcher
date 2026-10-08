@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}a{color:#c2334f;text-decoration:none;}a:hover{color:#9e2740;}
+@keyframes chainflow{to{stroke-dashoffset:-48;}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;}}</style>
+</helmet>
+
+<div style="min-height:100vh;width:max-content;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:56px;display:flex;flex-direction:column;align-items:flex-start;gap:56px;">
+
+  <div style="width:1660px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:inline-flex;align-items:center;align-self:flex-start;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:9px;padding:5px 14px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;letter-spacing:2px;box-shadow:3px 3px 0 rgba(29,27,32,.3);">WIDGET CHAIN v2 · 방향 ② 커넥터 오버레이</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:44px;font-weight:800;color:#1d1b20;letter-spacing:-1.3px;line-height:1.1;">연결은 카드 사이에 있습니다</div>
+    <div style="font-size:14.5px;color:#5b5965;line-height:1.85;max-width:1060px;">카드는 제자리에 두고, 카드 위 여백(거터)으로 지나가는 엣지가 카드와 카드를 잇습니다. 승인·멈춤·실패는 전부 <b style="color:#1d1b20;">엣지 위</b>에서 일어나고, 위젯 안에는 체인 UI 가 없습니다. 데이터 계약(<code style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;">ChainView</code>)은 v1 그대로입니다.</div>
+  </div>
+
+  <div style="width:1660px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;">
+    <sc-for list="{{ rules }}" as="r" hint-placeholder-count="5">
+      <div style="border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);padding:14px 16px;display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;background:#1d1b20;color:#fff;border-radius:5px;padding:2px 7px;">{{ r.id }}</span><span style="font-size:13.5px;font-weight:800;color:#1d1b20;">{{ r.t }}</span></div>
+        <div style="font-size:12px;color:#2a262f;line-height:1.75;">{{ r.d }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="9">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">{{ s.id }}</span><span style="font-size:17px;font-weight:800;color:#1d1b20;">{{ s.title }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ s.code }}</span></div>
+      <div style="width:1660px;height:636px;border:3px solid #1d1b20;border-radius:16px;background:#fbfbf9;background-image:radial-gradient(#dcdedb 1.1px,transparent 1.1px);background-size:20px 20px;box-shadow:8px 8px 0 rgba(29,27,32,.28);position:relative;overflow:hidden;">
+
+        <sc-for list="{{ s.cards }}" as="c" hint-placeholder-count="4">
+          <div style="position:absolute;left:{{ c.left }};top:236px;width:280px;height:360px;border:3px solid #1d1b20;border-radius:16px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;opacity:{{ c.op }};z-index:2;">
+            <div style="background:{{ c.tone }};border-bottom:2px solid #1d1b20;padding:12px 14px;display:flex;align-items:center;gap:8px;"><span style="font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ c.ko }}</span><span style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:7px;background:#fff;box-shadow:1.5px 1.5px 0 #1d1b20;overflow:hidden;flex-shrink:0;"><span style="padding:2px 5px;font-family:ui-monospace,Menlo,monospace;font-size:8.5px;">💎{{ c.credit }}</span><span style="width:1.5px;background:#1d1b20;"></span><span style="padding:2px 5px;font-family:ui-monospace,Menlo,monospace;font-size:8.5px;font-weight:800;">{{ c.pill }}</span></span></div>
+            <div style="border-bottom:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;padding:7px 14px;display:flex;align-items:center;gap:7px;min-height:33px;">
+              <span style="display:inline-block;width:70px;height:15px;border-radius:999px;background:#fff;border:1.5px solid #1d1b20;"></span>
+              <sc-if value="{{ c.chained }}" hint-placeholder-val="{{ true }}">
+                <span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1.5px solid {{ c.chipLine }};background:{{ c.chipBg }};border-radius:999px;padding:2px 9px 2px 7px;font-size:10px;font-weight:800;color:{{ c.chipFg }};white-space:nowrap;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="{{ c.chipFg }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>{{ c.chip }}</span>
+              </sc-if>
+            </div>
+            <div style="flex:1;padding:13px 14px;display:flex;flex-direction:column;gap:9px;">
+              <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="3"><div style="height:{{ r.h }};border:{{ r.bd }};border-radius:{{ r.rd }};background:{{ r.bg }};flex-shrink:0;"></div></sc-for>
+            </div>
+            <div style="border-top:1px solid rgba(29,27,32,.08);padding:10px 14px;display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:#8a8693;">{{ c.foot }}</span><span style="margin-left:auto;display:inline-block;width:76px;height:24px;border-radius:999px;background:{{ c.cta }};"></span></div>
+          </div>
+        </sc-for>
+
+        <div style="position:absolute;left:1416px;top:236px;width:200px;height:150px;border:{{ s.rep.bd }};border-radius:12px;background:#fff;box-shadow:{{ s.rep.sh }};overflow:hidden;display:flex;flex-direction:column;z-index:2;">
+          <div style="background:{{ s.rep.headBg }};border-bottom:{{ s.rep.headLine }};padding:9px 12px;"><span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:{{ s.rep.headFg }};">탑라인 보고서</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;">
+            <div style="width:34px;height:34px;border:{{ s.rep.tileBd }};border-radius:10px;background:{{ s.rep.tileBg }};box-shadow:{{ s.rep.tileSh }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:{{ s.rep.tileFg }};">{{ s.rep.glyph }}</div>
+            <div style="font-size:11.5px;font-weight:800;color:{{ s.rep.capFg }};">{{ s.rep.cap }}</div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;top:0;width:1660px;height:636px;z-index:3;pointer-events:none;">{{ s.svg }}</div>
+
+        <sc-for list="{{ s.ports }}" as="p" hint-placeholder-count="5">
+          <div style="position:absolute;left:{{ p.left }};top:{{ p.top }};width:{{ p.size }};height:{{ p.size }};border-radius:50%;border:{{ p.bd }};background:{{ p.bg }};box-shadow:{{ p.sh }};z-index:4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;line-height:1;">{{ p.glyph }}</div>
+        </sc-for>
+
+        <sc-for list="{{ s.labels }}" as="l" hint-placeholder-count="1">
+          <div style="position:absolute;left:{{ l.left }};top:174px;width:140px;display:flex;justify-content:center;z-index:5;"><span style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid {{ l.line }};background:{{ l.bg }};border-radius:999px;padding:3px 11px;font-size:11px;font-weight:800;color:{{ l.fg }};white-space:nowrap;">{{ l.text }}</span></div>
+        </sc-for>
+
+        <sc-for list="{{ s.marks }}" as="m" hint-placeholder-count="1">
+          <div style="position:absolute;left:{{ m.left }};top:173px;width:26px;height:26px;border-radius:50%;border:2px solid {{ m.line }};background:{{ m.bg }};z-index:5;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:{{ m.fg }};">{{ m.glyph }}</div>
+        </sc-for>
+
+        <sc-for list="{{ s.caps }}" as="k" hint-placeholder-count="1">
+          <div style="position:absolute;left:{{ k.left }};top:8px;width:400px;height:178px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;z-index:6;">
+            <div style="width:400px;border:2px solid {{ k.line }};border-radius:12px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.2);overflow:hidden;">
+              <div style="display:flex;align-items:center;gap:8px;padding:9px 13px 0;">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ k.dot }};flex-shrink:0;"></span>
+                <span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:{{ k.eyeFg }};font-weight:800;">{{ k.eyebrow }}</span>
+                <span style="margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;">{{ k.cost }}</span>
+              </div>
+              <div style="padding:6px 13px 10px;font-size:12.5px;color:#2a262f;line-height:1.55;">{{ k.msgA }}<b style="color:#1d1b20;">{{ k.msgB }}</b>{{ k.msgC }}</div>
+              <sc-if value="{{ k.picker }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:0 13px 10px;"><div style="display:flex;align-items:center;gap:8px;border:1.5px solid #1d1b20;border-radius:10px;background:#fff;padding:6px 11px;box-shadow:2px 2px 0 #1d1b20;"><span style="font-size:12px;font-weight:700;color:#8a8693;flex:1;">대상 프로젝트 선택</span><span style="font-size:8px;color:#1d1b20;">▼</span></div></div>
+              </sc-if>
+              <div style="border-top:1.5px solid {{ k.rowLine }};background:{{ k.rowBg }};padding:8px 13px;display:flex;align-items:center;gap:10px;">
+                <sc-if value="{{ k.hasEnd }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;font-weight:700;color:#5b5965;">체인 종료</span></sc-if>
+                <span style="margin-left:auto;"></span>
+                <sc-if value="{{ k.hasSec }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;padding:6px 13px;font-size:12px;font-weight:700;color:#1d1b20;box-shadow:2px 2px 0 rgba(29,27,32,.12);">{{ k.sec }}</span></sc-if>
+                <span style="display:inline-flex;border:2px solid {{ k.priBd }};border-radius:999px;background:{{ k.priBg }};padding:6px 15px;font-size:12.5px;font-weight:800;color:{{ k.priFg }};box-shadow:{{ k.priSh }};">{{ k.pri }}</span>
+              </div>
+            </div>
+            <div style="width:2px;height:12px;background:{{ k.line }};"></div>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ s.hasSummary }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:20px;top:18px;z-index:7;display:inline-flex;align-items:center;gap:8px;border:1.5px solid #1d1b20;background:#fff;border-radius:999px;padding:5px 12px 5px 6px;box-shadow:2px 2px 0 rgba(29,27,32,.14);">
+            <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #1d1b20;background:{{ s.sum.tileBg }};display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{ s.sum.tileFg }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></span>
+            <span style="font-size:12px;font-weight:800;color:#1d1b20;">체인</span>
+            <span style="font-size:10.5px;font-weight:700;color:#5b5965;">{{ s.sum.mode }}</span>
+            <span style="width:1.5px;height:13px;background:rgba(29,27,32,.14);"></span>
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:{{ s.sum.fg }};">{{ s.sum.text }}</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ s.popover }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:288px;top:22px;width:372px;z-index:8;border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.2);overflow:hidden;">
+            <div style="padding:12px 15px 4px;display:flex;flex-direction:column;gap:3px;"><span style="font-size:14px;font-weight:800;color:#1d1b20;">세션이 끝나면 이어서 진행</span><span style="font-size:11.5px;color:#5b5965;">프로빙의 산출물을 다음 위젯으로 넘깁니다</span></div>
+            <div style="padding:8px 15px;"><div style="display:inline-flex;align-items:stretch;border:1.5px solid #1d1b20;border-radius:10px;overflow:hidden;background:#fff;box-shadow:2px 2px 0 #1d1b20;"><div style="padding:6px 14px;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;">단계별 승인</div><div style="width:1.5px;background:#1d1b20;"></div><div style="padding:6px 14px;font-size:12px;font-weight:800;color:#5b5965;">자동</div></div></div>
+            <div style="margin:2px 15px 0;border:1.5px solid rgba(29,27,32,.14);border-radius:10px;overflow:hidden;">
+              <sc-for list="{{ popRows }}" as="p" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;padding:7px 11px;border-bottom:1px solid rgba(29,27,32,.07);"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#8a8693;width:12px;">{{ p.n }}</span><span style="width:11px;height:11px;border-radius:50%;background:{{ p.tone }};border:1.5px solid #1d1b20;"></span><span style="font-size:12px;font-weight:700;color:#1d1b20;flex:1;">{{ p.label }}</span><span style="font-size:10.5px;color:#8a8693;">{{ p.note }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#1d1b20;width:52px;text-align:right;">{{ p.cost }}</span></div>
+              </sc-for>
+              <div style="display:flex;align-items:center;padding:8px 11px;background:#f7f7f5;"><span style="font-size:11.5px;font-weight:800;color:#1d1b20;flex:1;">세션 후 이어질 비용</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;color:#1d1b20;">💎1 + 파일당 25</span></div>
+            </div>
+            <div style="border-top:1.5px solid rgba(29,27,32,.12);background:#fbfbf9;padding:9px 15px;margin-top:11px;display:flex;align-items:center;gap:10px;"><span style="font-size:11.5px;font-weight:700;color:#5b5965;">취소</span><span style="margin-left:auto;display:inline-flex;background:#1d1b20;color:#fff;border-radius:999px;padding:7px 16px;font-size:12.5px;font-weight:800;box-shadow:2px 2px 0 rgba(29,27,32,.28);">연결하기</span></div>
+          </div>
+        </sc-if>
+      </div>
+      <div style="width:1660px;display:flex;gap:12px;">
+        <sc-for list="{{ s.notes }}" as="n" hint-placeholder-count="2">
+          <div style="flex:1;border-left:3px solid #ff5c8a;background:#ffeef4;border-radius:0 10px 10px 0;padding:11px 15px;font-size:12.5px;color:#2a262f;line-height:1.75;">{{ n }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const TOP = 236, LANE = 186, R = 14, CW = 280, GAP = 64, X0 = 40, RX = 1416;
+const cx = i => X0 + i * (CW + GAP);
+const OUT = i => cx(i) + CW - 56, IN = i => cx(i) + 56, REP_IN = RX + 56;
+const EDGES = [[OUT(0), IN(2)], [OUT(2), IN(3)], [OUT(3), REP_IN]];
+const MID = EDGES.map(([a, b]) => (a + b) / 2);
+const Y1 = TOP - 8, Y2 = TOP - 15;
+
+const full = (a, b) => `M${a} ${Y1} V${LANE + R} Q${a} ${LANE} ${a + R} ${LANE} H${b - R} Q${b} ${LANE} ${b} ${LANE + R} V${Y2}`;
+const left = (a, m) => `M${a} ${Y1} V${LANE + R} Q${a} ${LANE} ${a + R} ${LANE} H${m - 17}`;
+const right = (m, b) => `M${m + 17} ${LANE} H${b - R} Q${b} ${LANE} ${b} ${LANE + R} V${Y2}`;
+
+const ST = {
+  done: { c: '#1d1b20', w: 2.5 },
+  runBase: { c: '#d6c7f5', w: 3 },
+  runFlow: { c: '#8b5cf6', w: 3, dash: '10 14', anim: true },
+  awaiting: { c: '#e0a83a', w: 2.5, dash: '7 6' },
+  pending: { c: '#c9ccd2', w: 2, dash: '5 6' },
+  ghost: { c: 'rgba(29,27,32,.32)', w: 2, dash: '6 6' },
+  amber: { c: '#e0a83a', w: 2.5 },
+  error: { c: '#ef4444', w: 2.5 },
+};
+const e = React.createElement;
+const P = (d, s, k) => e('path', { key: k, d, fill: 'none', stroke: s.c, strokeWidth: s.w, strokeDasharray: s.dash, strokeLinecap: 'round', style: s.anim ? { animation: 'chainflow 1.1s linear infinite' } : undefined });
+const ARROW = (b, s, k) => e('polygon', { key: k, points: `${b - 6},${TOP - 17} ${b + 6},${TOP - 17} ${b},${TOP - 9}`, fill: s.c });
+
+function svgFor(kinds) {
+  const kids = [];
+  kinds.forEach((k, i) => {
+    const [a, b] = EDGES[i], m = MID[i];
+    if (k === 'running') { kids.push(P(full(a, b), ST.runBase, 'b' + i), P(full(a, b), ST.runFlow, 'f' + i), ARROW(b, ST.runFlow, 'a' + i)); return; }
+    if (k === 'paused' || k === 'error') { const s = k === 'paused' ? ST.amber : ST.error; kids.push(P(left(a, m), s, 'l' + i), P(right(m, b), ST.pending, 'r' + i), ARROW(b, ST.pending, 'a' + i)); return; }
+    const s = ST[k] || ST.pending;
+    kids.push(P(full(a, b), s, 'p' + i), ARROW(b, s, 'a' + i));
+  });
+  return e('svg', { width: 1660, height: 636, style: { position: 'absolute', left: 0, top: 0 } }, kids);
+}
+
+const ROWS = {
+  setup: [{ h: '30px', bd: '1.5px solid #1d1b20', bg: '#fff' }, { h: '34px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }, { h: '34px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }],
+  done: [{ h: '46px', bd: '1.5px solid #cdeed8', bg: '#f4fbf6' }, { h: '34px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }, { h: '34px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }],
+  running: [{ h: '42px', bd: '1.5px solid #d6c7f5', bg: '#f6f2ff' }, { h: '30px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }, { h: '8px', bd: 'none', bg: 'rgba(29,27,32,.1)' }],
+  idle: [{ h: '24px', bd: 'none', bg: 'rgba(29,27,32,.07)' }, { h: '84px', bd: '1.5px dashed #c9ccd2', bg: '#fbfbf9' }, { h: '30px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }],
+  live: [{ h: '44px', bd: '1.5px solid #16a34a', bg: '#f4fbf6' }, { h: '44px', bd: '1.5px solid #1d1b20', bg: '#fff' }, { h: '30px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }],
+  error: [{ h: '44px', bd: '1.5px solid #f0c0c0', bg: '#fdf0f0' }, { h: '30px', bd: '1.5px solid rgba(29,27,32,.14)', bg: '#fff' }],
+};
+ROWS.idle.forEach(r => r.rd = '9px'); Object.values(ROWS).forEach(a => a.forEach(r => { r.rd = r.rd || '9px'; }));
+
+const CHIP = {
+  running: ['#f6f2ff', '#d6c7f5', '#6b4aa0', '진행 중'],
+  awaiting: ['#fff1e6', '#f0d78a', '#8a5a10', '승인 대기'],
+  pending: ['#fff', 'rgba(29,27,32,.2)', '#5b5965', ''],
+  done: ['#f4fbf6', '#cdeed8', '#14713a', '완료'],
+  stop: ['#fff', '#e0a83a', '#8a5a10', '멈춤'],
+  skipped: ['#f2f2ef', 'rgba(29,27,32,.24)', '#5b5965', '건너뜀'],
+};
+const BASE = [
+  { ko: '프로빙 어시스턴트', tone: '#cfe6ff', credit: 25, n: 1 },
+  { ko: '라이브 통역', tone: '#cdebd9', credit: 50, n: 0 },
+  { ko: '전사록 생성기', tone: '#e7defe', credit: 1, n: 2 },
+  { ko: '인터뷰 결과 생성기', tone: '#ffd0e2', credit: 10, n: 3 },
+];
+function card(i, body, pill, chip, op) {
+  const b = BASE[i], c = chip ? CHIP[chip] : null;
+  const label = c ? (b.n === 3 ? '체인 3–4/4' : `체인 ${b.n}/4`) + (c[3] ? ' · ' + c[3] : '') : '';
+  return { ...b, left: cx(i) + 'px', rows: ROWS[body], pill, chained: !!c, chip: label, chipBg: c && c[0], chipLine: c && c[1], chipFg: c && c[2], op: op ?? 1,
+    foot: body === 'done' ? '완료' : body === 'running' ? '진행 중' : body === 'live' ? '● LIVE' : '💎' + b.credit, cta: body === 'idle' && chip ? '#eceef1' : '#1d1b20' };
+}
+
+const PORT = {
+  out: (x, tone) => ({ left: x - 8 + 'px', top: TOP - 8 + 'px', size: '16px', bd: '2px solid #1d1b20', bg: tone, sh: 'none', glyph: '' }),
+  in: x => ({ left: x - 8 + 'px', top: TOP - 8 + 'px', size: '16px', bd: '2px solid #1d1b20', bg: '#fff', sh: 'none', glyph: '' }),
+  dim: x => ({ left: x - 7 + 'px', top: TOP - 7 + 'px', size: '14px', bd: '1.5px dashed #c9ccd2', bg: '#fff', sh: 'none', glyph: '' }),
+  handle: x => ({ left: x - 13 + 'px', top: TOP - 13 + 'px', size: '26px', bd: '2px solid #1d1b20', bg: '#1d1b20', sh: '0 0 0 4px #fff, 0 0 0 6px #ff5c8a', glyph: '+' }),
+  target: x => ({ left: x - 8 + 'px', top: TOP - 8 + 'px', size: '16px', bd: '2px dashed #1d1b20', bg: '#fff', sh: '0 0 0 3px rgba(255,92,138,.25)', glyph: '' }),
+};
+function ports(kinds) {
+  const xs = [OUT(0), IN(2), OUT(2), IN(3), OUT(3), REP_IN];
+  const tones = ['#cfe6ff', null, '#e7defe', null, '#ffd0e2', null];
+  return kinds.map((k, i) => k === 'out' ? PORT.out(xs[i], tones[i]) : PORT[k](xs[i]));
+}
+
+const REP = {
+  pending: { bd: '1.5px dashed #c9ccd2', sh: 'none', headBg: '#fff', headLine: '1.5px dashed #c9ccd2', headFg: '#8a8693', tileBd: '1.5px dashed #c9ccd2', tileBg: '#fff', tileSh: 'none', tileFg: '#a3a7ad', glyph: '', cap: '대기', capFg: '#a3a7ad' },
+  done: { bd: '2.5px solid #1d1b20', sh: '4px 4px 0 rgba(29,27,32,.24)', headBg: '#ffd0e2', headLine: '2px solid #1d1b20', headFg: '#1d1b20', tileBd: '2px solid #1d1b20', tileBg: '#f4fbf6', tileSh: '3px 3px 0 #16a34a', tileFg: '#16a34a', glyph: '✓', cap: '준비됨', capFg: '#14713a' },
+};
+
+const PRI = { ink: { priBg: '#1d1b20', priFg: '#fff', priBd: '#1d1b20', priSh: '2px 2px 0 rgba(29,27,32,.28)' }, off: { priBg: '#eceef1', priFg: '#8a8693', priBd: 'rgba(29,27,32,.2)', priSh: 'none' } };
+const CAPT = {
+  amber: { line: '#e0a83a', dot: '#e0a83a', eyeFg: '#8a5a10', rowBg: '#fff1e6', rowLine: '#f0d78a' },
+  error: { line: '#ef4444', dot: '#ef4444', eyeFg: '#b4443f', rowBg: '#fdf0f0', rowLine: '#f0c0c0' },
+  success: { line: '#16a34a', dot: '#16a34a', eyeFg: '#14713a', rowBg: '#f4fbf6', rowLine: '#cdeed8' },
+  neutral: { line: '#1d1b20', dot: '#8a8693', eyeFg: '#5b5965', rowBg: '#f7f7f5', rowLine: 'rgba(29,27,32,.12)' },
+};
+const capsule = (edge, t, o) => ({ left: MID[edge] - 200 + 'px', picker: false, hasEnd: false, hasSec: false, sec: '', cost: '', msgA: '', msgB: '', msgC: '', ...CAPT[t], ...PRI[o.p || 'ink'], ...o });
+const label = (edge, text) => ({ left: MID[edge] - 70 + 'px', text, bg: '#f6f2ff', line: '#d6c7f5', fg: '#6b4aa0' });
+const mark = (edge, k) => ({ left: MID[edge] - 13 + 'px', ...(k === 'paused' ? { line: '#e0a83a', bg: '#fff', fg: '#8a5a10', glyph: 'Ⅱ' } : { line: '#ef4444', bg: '#fdf0f0', fg: '#b4443f', glyph: '✕' }) });
+const SUM = (mode, text, fg, auto) => ({ mode, text, fg, tileBg: auto ? '#1d1b20' : '#fff', tileFg: auto ? '#fff' : '#1d1b20' });
+
+function scene(o) {
+  return { labels: [], marks: [], caps: [], popover: false, hasSummary: !!o.sum, rep: REP[o.repK || 'pending'], ...o, svg: svgFor(o.edges), ports: ports(o.portK) };
+}
+
+const SCENES = [
+  scene({ id: 'S0', title: '진입 — 출력 포트에서 체인 만들기', code: 'chain 없음 → 생성', edges: ['ghost', 'ghost', 'ghost'], portK: ['handle', 'target', 'dim', 'target', 'dim', 'target'],
+    cards: [card(0, 'setup', 'READY'), card(1, 'idle', 'READY'), card(2, 'idle', 'READY'), card(3, 'idle', 'READY')], popover: true,
+    notes: ['체인을 만드는 곳이 위젯 본문에서 <b>카드 테두리의 출력 포트</b>로 옮겨갑니다. 카드 위에 마우스를 올리면 오른쪽 위에 포트가 나타나고, 누르면 이 팝오버가 열립니다(드래그 아님 — 방향 ③ 은 기각). v1 의 위젯 내 토글 블록은 없어집니다.', '팝오버가 열린 동안에는 이어질 경로가 <b>점선 미리보기</b>로 그려지고, 받는 쪽 입력 포트가 강조됩니다. "연결하기"를 누르면 미리보기가 그대로 pending 엣지가 됩니다. 비용 고지·모드 선택 규칙은 v1 과 같습니다.'] }),
+  scene({ id: 'S1', title: '진행 중 — 프로빙 완료 → 전사 진행', code: "running · steps[1]", edges: ['running', 'pending', 'pending'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'running', 'RUN', 'running'), card(3, 'idle', 'READY', 'pending')], labels: [label(0, '전사 중 · 2/4')], sum: SUM('단계별 승인', '2/4 · 전사 중', '#6b4aa0'),
+    notes: ['진행 중인 엣지 하나만 보라색 흐름 애니메이션이 돕니다. 엣지 중간의 라벨이 상태를 한 줄로 말합니다. 나머지 엣지는 회색 점선(pending).', '엣지는 <b>카드 위 여백(거터 레인)으로만</b> 지나갑니다. 프로빙과 전사 사이에 통역 카드가 있어도 엣지가 그 위를 넘어가므로 카드를 가로지르지 않습니다 — v1 에서 커넥터를 기각한 이유(비인접)를 이 규칙으로 풉니다.'] }),
+  scene({ id: 'S2', title: '승인 대기 — 엣지 위 캡슐', code: 'awaiting_approval', edges: ['done', 'awaiting', 'pending'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'done', 'DONE', 'done'), card(3, 'idle', 'READY', 'awaiting')],
+    caps: [capsule(1, 'amber', { eyebrow: '다음 · 인터뷰 분석', cost: '💎25', msgA: '전사가 끝났습니다. ', msgB: '시작하면 바로 차감', msgC: '됩니다.', hasEnd: true, hasSec: true, sec: '건너뛰기', pri: '진행 · 💎25 →' })], sum: SUM('단계별 승인', '승인 대기', '#8a5a10'),
+    notes: ['이 기능의 핵심 모먼트가 <b>두 카드 사이</b>에 뜹니다. 캡슐은 대기 중인 엣지의 가운데 위에 붙고, 짧은 세로선으로 엣지와 이어집니다. 엣지는 amber 점선으로 바뀝니다.', '버튼 규칙은 v1 B2 와 같습니다 — 진행 버튼에 금액, 건너뛰기는 보조, 체인 종료는 텍스트(확인 모달 없음). 받는 카드(인터뷰 결과)는 본문을 잠그지 않고 칩만 "승인 대기"가 됩니다.'] }),
+  scene({ id: 'S2b', title: '승인 대기 — 프로젝트가 필요할 때', code: 'awaiting_approval · projectId=null', edges: ['done', 'awaiting', 'pending'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'done', 'DONE', 'done'), card(3, 'idle', 'READY', 'awaiting')],
+    caps: [capsule(1, 'amber', { eyebrow: '다음 · 인터뷰 분석', cost: '💎25', msgA: '인터뷰 분석은 ', msgB: '프로젝트에 저장', msgC: '됩니다. 어디에 넣을까요?', picker: true, hasEnd: true, pri: '진행 · 💎25 →', p: 'off' })], sum: SUM('단계별 승인', '승인 대기', '#8a5a10'),
+    notes: ['프로젝트 선택은 별도 단계 없이 같은 캡슐 안에 피커로 들어갑니다. 고르기 전까지 진행 버튼은 잠기고, 건너뛰기는 숨깁니다(v1 B3 와 같음).', '캡슐은 위로 자랍니다 — 아래쪽(엣지에 붙는 쪽)이 고정이라 내용이 늘어도 엣지와의 연결 위치가 변하지 않습니다.'] }),
+  scene({ id: 'S3', title: '비체인 카드 공존 — 통역이 따로 쓰이는 중', code: 'running · 통역 LIVE', edges: ['done', 'running', 'pending'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'live', 'LIVE'), card(2, 'done', 'DONE', 'done'), card(3, 'running', 'RUN', 'running')], labels: [label(1, '분석 중 · 3/4')], sum: SUM('단계별 승인', '3/4 · 분석 중', '#6b4aa0'),
+    notes: ['체인에 묶이지 않은 카드는 <b>평소대로 쓸 수 있습니다</b>. 엣지가 위로 지나가기 때문에 통역 카드는 가려지지도, 흐려지지도 않습니다. 비체인 카드에는 포트가 보이지 않습니다.', '체인이 돌고 있다는 것과 다른 작업을 한다는 것이 서로 방해하지 않아야 하므로, 평소에는 비체인 카드를 <b>흐리게 처리하지 않습니다</b>. 흐림은 다음 장면(S3b)의 포커스 상태에서만 씁니다.'] }),
+  scene({ id: 'S3b', title: '체인 포커스 — 엣지나 요약 pill 에 마우스를 올렸을 때', code: 'hover / focus', edges: ['done', 'awaiting', 'pending'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'live', 'LIVE', null, 0.32), card(2, 'done', 'DONE', 'done'), card(3, 'idle', 'READY', 'awaiting')],
+    caps: [capsule(1, 'amber', { eyebrow: '다음 · 인터뷰 분석', cost: '💎25', msgA: '전사가 끝났습니다. ', msgB: '시작하면 바로 차감', msgC: '됩니다.', hasEnd: true, hasSec: true, sec: '건너뛰기', pri: '진행 · 💎25 →' })], sum: SUM('단계별 승인', '승인 대기', '#8a5a10'),
+    notes: ['엣지·캡슐·요약 pill·체인 칩 중 하나에 마우스를 올리거나 키보드 포커스가 가면 비체인 카드를 <b>opacity .32</b> 로 흐립니다. 손을 떼면 즉시 돌아옵니다(150ms). 묶인 경로를 한눈에 따라가게 하려는 것입니다.', '좌상단 요약 pill 은 v1 상단 체인 바를 줄인 것입니다. 누르면 캔버스가 체인 쪽으로 이동하고 포커스 상태가 됩니다. 승인 버튼은 pill 이 아니라 캡슐에만 있습니다.'] }),
+  scene({ id: 'S4', title: '크레딧 부족 — 엣지가 끊기고 멈춤', code: 'paused_insufficient_credits · auto', edges: ['done', 'paused', 'pending'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'done', 'DONE', 'done'), card(3, 'idle', 'READY', 'stop')], marks: [mark(1, 'paused')],
+    caps: [capsule(1, 'amber', { eyebrow: '멈춤 · 인터뷰 분석', cost: '필요 💎25', msgA: '잔액 💎12 — ', msgB: '💎25', msgC: '가 필요해 여기서 멈췄습니다.', hasEnd: true, hasSec: true, sec: '재개', pri: '💎 충전하기' })], sum: SUM('자동', '멈춤', '#8a5a10', true),
+    notes: ['멈춘 곳은 <b>들어가는 엣지</b>입니다 — 아직 분석을 시작하지 못했으니까요. 엣지 가운데가 끊기고 Ⅱ 표시가 붙습니다. 끊긴 앞쪽은 amber 실선, 뒤쪽은 회색 점선.', '자동 모드도 여기서는 멈추고 캡슐을 띄웁니다. 보라색·흐름 애니메이션은 하나도 남기지 않습니다(유령 상태 금지). 요약 pill 의 아이콘은 자동 모드라 검정 채움입니다.'] }),
+  scene({ id: 'S5', title: '단계 실패 — 그 다음 엣지가 끊김', code: 'error · steps[2]', edges: ['done', 'done', 'error'], portK: ['out', 'in', 'out', 'in', 'out', 'in'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'done', 'DONE', 'done'), card(3, 'error', 'ERR', 'stop')], marks: [mark(2, 'error')],
+    caps: [capsule(2, 'error', { eyebrow: '체인 종료됨 · 인터뷰 분석 실패', msgA: '', msgB: '녹음에서 텍스트를 찾지 못함', msgC: '. 이 위젯에서 다시 시도하세요.', hasSec: true, sec: '닫기', pri: '인터뷰 결과 열기' })], sum: SUM('단계별 승인', '체인 종료됨', '#b4443f'),
+    notes: ['실패는 단계가 <b>돌다가</b> 생긴 일이라, 그 단계에서 <b>나가는 엣지</b>가 끊깁니다(멈춤은 들어가는 엣지). 엣지 위치만 보고 "시작을 못 했다"와 "하다가 실패했다"를 구분할 수 있습니다.', '실패하면 체인이 끝나므로 재시도 버튼을 두지 않고 해당 위젯으로 보냅니다. 오류 문구는 steps[i].error 를 그대로 씁니다. 크레딧 환불 문구는 계약 확인 전까지 넣지 않았습니다.'] }),
+  scene({ id: 'S6', title: '완료 — 산출물 노드에 도착', code: 'done', edges: ['done', 'done', 'done'], portK: ['out', 'in', 'out', 'in', 'out', 'in'], repK: 'done',
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'done', 'DONE', 'done'), card(3, 'done', 'DONE', 'done')],
+    caps: [capsule(2, 'success', { eyebrow: '4/4 완료', msgA: '', msgB: '탑라인 보고서가 준비됐습니다.', msgC: ' 인터뷰 결과 전체보기에서 엽니다.', hasSec: true, sec: '닫기', pri: '보고서 열기 ⤢' })], sum: SUM('단계별 승인', '4/4 완료', '#14713a'),
+    notes: ['체인의 끝은 카드가 아니라 <b>산출물 노드</b>(탑라인 보고서)입니다. 인터뷰 분석과 탑라인은 같은 위젯이 맡으므로 카드 하나에서 나가는 마지막 엣지가 이 노드로 들어갑니다. 노드는 체인이 있는 동안만 보입니다.', '완료 캡슐은 자동으로 사라지지 않습니다. 닫으면 캡슐·엣지·포트·산출물 노드가 함께 사라지고, 카드의 체인 칩도 없어집니다.'] }),
+  scene({ id: 'S7', title: '종료 — 사용자가 체인을 끝냄', code: 'cancelled', edges: ['done', 'pending', 'pending'], portK: ['out', 'in', 'dim', 'dim', 'dim', 'dim'],
+    cards: [card(0, 'done', 'DONE', 'done'), card(1, 'idle', 'READY'), card(2, 'done', 'DONE', 'done'), card(3, 'idle', 'READY', 'skipped')],
+    caps: [capsule(1, 'neutral', { eyebrow: '체인 종료됨', msgA: '체인을 종료했습니다. ', msgB: '전사까지의 결과', msgC: '는 각 위젯에 그대로 있습니다.', pri: '닫기' })], sum: SUM('단계별 승인', '체인 종료됨', '#5b5965'),
+    notes: ['끝까지 간 엣지는 검정 실선으로 남고, 가지 못한 엣지는 회색 점선이 됩니다. 색이 있는 요소는 없습니다 — 공유 링크가 만료된 화면과 같은 규칙입니다.', '이 장면의 "닫기"만 주 버튼입니다(할 수 있는 일이 그것뿐). 닫으면 S6 과 같이 체인 표시가 모두 사라집니다.'] }),
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      rules: [
+        { id: 'R1', t: '엣지는 거터로만', d: '카드 위쪽 여백(거터 레인, 카드 상단에서 50px 위)으로만 지나갑니다. 카드를 가로지르지 않으므로 사이에 다른 카드가 있어도 성립합니다.' },
+        { id: 'R2', t: '상태는 엣지가 말한다', d: '진행 = 보라색 흐름 · 대기 = amber 점선 · 멈춤 = 들어가는 엣지 끊김 Ⅱ · 실패 = 나가는 엣지 끊김 ✕ · 완료 = 검정 실선.' },
+        { id: 'R3', t: '결정은 캡슐에서', d: '승인·충전·실패 안내는 해당 엣지 가운데 위에 붙는 캡슐 하나로. 모달·토스트 없음. 버튼 규칙은 v1 과 같습니다.' },
+        { id: 'R4', t: '진입은 출력 포트', d: '위젯 안의 체인 토글을 없애고, 카드 출력 포트를 누르면 팝오버로 만듭니다. 드래그 생성(방향 ③)은 쓰지 않습니다.' },
+        { id: 'R5', t: '상단 바 → 요약 pill', d: '전역 바는 좌상단 pill 로 줄입니다. 누르면 캔버스가 체인으로 이동. 비체인 카드 흐림은 체인에 포커스가 있을 때만.' },
+      ],
+      popRows: [
+        { n: '2', tone: '#e7defe', label: '전사', note: '완료 시', cost: '💎1' },
+        { n: '3', tone: '#ffd0e2', label: '인터뷰 분석', note: '파일당', cost: '💎25' },
+        { n: '4', tone: '#ffd0e2', label: '탑라인 보고서', note: '', cost: '포함' },
+      ],
+      scenes: SCENES.map(s => ({ ...s, notes: s.notes.map(n => n.replace(/<\/?b>/g, '')) })),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

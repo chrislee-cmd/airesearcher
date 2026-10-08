@@ -16,7 +16,7 @@ import { useToast } from '@/components/toast-provider';
 import { useWidgetGate } from '@/components/widget-gate-provider';
 import { Button } from '@/components/ui/button';
 import { WidgetPrimaryCta } from '@/components/canvas/shell/widget-primary-cta';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DownloadMenu } from '@/components/ui/download-menu';
 import { ShareMenu } from '@/components/ui/share-menu';
@@ -1999,14 +1999,12 @@ function JobRow({
               {tView('retry')}
             </Button>
           )}
-          <IconButton
-            variant="ghost-danger"
+          <CloseButton
+            variant="row-remove"
             aria-label={tView('deleteJobAria')}
             onClick={onDelete}
-            className="text-sm"
-          >
-            ✕
-          </IconButton>
+            className="shrink-0"
+          />
         </>
       }
     >

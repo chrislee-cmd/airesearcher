@@ -51,7 +51,7 @@ import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
 import { useProjectSelection } from '@/components/project-selection-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import {
   CriteriaEditor,
@@ -527,16 +527,13 @@ function SourceStepBody({
               <span className="shrink-0 tabular-nums text-mute-soft">
                 {formatBytes(f.size)}
               </span>
-              <IconButton
+              <CloseButton
+                variant="row-remove"
                 aria-label={t('fileRemove')}
-                size="sm"
-                variant="ghost"
                 onClick={() => onRemoveFile(i)}
                 disabled={running}
                 className="shrink-0"
-              >
-                <span aria-hidden>✕</span>
-              </IconButton>
+              />
             </li>
           ))}
         </ul>

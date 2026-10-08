@@ -5,13 +5,13 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { ChipInput } from '@/components/ui/chip-input';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 
 // Shared <ChipField> primitive — codifies the whole chip *container*, not
 // just the extender input. Audit found 4 sites hand-rolling the identical
 // skeleton (desk-card-body keyword input, translate-console glossary,
 // project-tag-editor, share-invite-modal): a `focus-within:border-amore`
-// frame + `rounded-pill border-amore` chips + a remove × + a <ChipInput>.
+// frame + `rounded-pill border-amore` chips + a remove ✕ + a <ChipInput>.
 // That copy-paste was the root of the #517/#519 divergence (each site drew
 // the box slightly differently). ChipField folds container + chip pill +
 // remove button + ChipInput into one primitive so the four variations
@@ -22,11 +22,13 @@ import { IconButton } from '@/components/ui/icon-button';
 // renders it internally. Sites that only need the bare input keep using
 // ChipInput directly.
 //
-// The remove × is <IconButton variant="plain"> — a bare glyph with no
-// box/bg/shadow (PR #903). It replaces the older ghost-brand boxed × the
-// four sites used, so a second Memphis box no longer sits inside the chip
-// pill (user request: background-less × button). The × rests on the CD grey
-// (#a3a7ad → text-mute-soft) to match the kwChip spec.
+// The remove ✕ is <CloseButton variant="chip-clear"> — a bare glyph with no
+// box/bg/shadow. It replaces the older ghost-brand boxed ✕ the four sites
+// used, so a second Memphis box no longer sits inside the chip pill (user
+// request: background-less ✕ button). The glyph rests on the CD grey
+// (#a3a7ad → text-mute-soft) and lifts to crimson on hover — the shared
+// close-button contract (close-button-BUILD-SPEC §1-C), no longer hand-tuned
+// here.
 //
 // Container color lives on the VARIANT, never BASE — §7.11: Tailwind v4
 // resolves className conflicts by compiled-CSS source order, so a resting
@@ -148,22 +150,16 @@ export function ChipField({
       {values.map((value, idx) => (
         <span key={`${idx}-${value}`} className={CHIP}>
           {value}
-          <IconButton
-            variant="plain"
+          {/* 칩 제거 = BUILD-SPEC §1-C chip-clear: 16×16 · pill · 글리프만 ·
+              mute-soft → hover crimson. 칩 자체가 이미 테두리라 상자를 겹치지
+              않는다(§0-4). CD kwChip x 의 rest 그레이(#a3a7ad→mute-soft)는
+              변종이 직접 소유하므로 className 으로 색을 덧대지 않는다(§7.11). */}
+          <CloseButton
+            variant="chip-clear"
             onClick={() => removeAt(idx)}
             disabled={disabled}
             aria-label={removeLabel(value)}
-            // CD kwChip x = #a3a7ad (rest). `plain` defaults to text-mute
-            // (--raw-ink-60, too dark); text-mute-soft (--raw-ink-40) is the
-            // sanctioned grey mapping. §7.11: --color-mute-soft is declared
-            // after --color-mute in @theme, so this class wins the source-order
-            // conflict over the variant's text-mute. hover:text-ink-2 (plain)
-            // stays — CD leaves hover undefined and the rest color now anchors
-            // on the CD grey first.
-            className="text-mute-soft"
-          >
-            <span aria-hidden>×</span>
-          </IconButton>
+          />
         </span>
       ))}
       <ChipInput

@@ -25,7 +25,7 @@ import { SelectMenu } from '@/components/ui/select-menu';
 import { CONTROL_TRIGGER_CLASS } from '@/components/ui/control-trigger';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { ProjectPicker } from '@/components/project-picker';
 import {
   CaptureUseCaseCards,
@@ -117,15 +117,12 @@ function InjectedQuestionsField({
               <span className="min-w-0 flex-1 break-words text-sm text-ink">
                 {q}
               </span>
-              <IconButton
+              <CloseButton
+                variant="row-remove"
                 aria-label={t('setup.questionRemove')}
-                size="sm"
-                variant="ghost"
                 onClick={() => onChange(questions.filter((_, j) => j !== i))}
                 className="shrink-0"
-              >
-                <span aria-hidden>✕</span>
-              </IconButton>
+              />
             </li>
           ))}
         </ul>

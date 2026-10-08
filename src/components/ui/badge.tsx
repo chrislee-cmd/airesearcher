@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { CloseButton } from '@/components/ui/close-button';
 
 // Shared <Badge> — the DISPLAY-side chip primitive. Fills the gap the design
 // audit (2026-07-10) found: ChipInput/ChipField cover INPUT chips (type a
@@ -13,7 +14,7 @@ import type { ReactNode } from 'react';
 //
 // Role split — keep these straight:
 //   Badge               = DISPLAY. A pill that shows a status / label / filter.
-//                         Optional `onDismiss` renders a trailing × to remove it.
+//                         Optional `onDismiss` renders a trailing ✕ to remove it.
 //   ChipInput/ChipField = INPUT. Type-and-commit list editing (ui/chip-*.tsx).
 //
 // Color lives on the VARIANT, never BASE — §7.11: Tailwind v4 resolves
@@ -57,11 +58,11 @@ type Props = {
   size?: BadgeSize;
   // Leading glyph (e.g. ◆). shrink-0 so it never truncates with the label.
   leadingIcon?: ReactNode;
-  // When set, a trailing × removes the badge — the DISPLAY-chip dismiss
-  // (matches ChipField's × pattern). The × is the removal control; the label
-  // itself is not clickable.
+  // When set, a trailing ✕ removes the badge — the DISPLAY-chip dismiss
+  // (same <CloseButton variant="chip-clear"> ChipField uses). The ✕ is the
+  // removal control; the label itself is not clickable.
   onDismiss?: () => void;
-  // Accessible label for the × (i18n-owned by the caller) when onDismiss is
+  // Accessible label for the ✕ (i18n-owned by the caller) when onDismiss is
   // set. Falls back to a plain English label so the required aria-label is
   // never empty.
   dismissLabel?: string;
@@ -90,22 +91,16 @@ export function Badge({
       ) : null}
       <span className="min-w-0 truncate">{children}</span>
       {onDismiss ? (
-        // data-canvas-action: opt out of the [data-canvas-body] button cascade
-        // (globals.css injects padding/border on native buttons inside canvas
-        // widgets) so this × keeps its bare glyph shape — same guard Button /
-        // IconButton / probing ActionButton use. The × rests on the CD grey
-        // (#a3a7ad → text-mute-soft) with a hover:text-ink-2 lift — kept in
-        // sync with ChipField's remove × so the two dismiss glyphs read as one
-        // family (was text-current + opacity, which tinted amore-variant × pink).
-        <button
-          type="button"
+        // BUILD-SPEC §1-C chip-clear — 배지가 이미 테두리 상자이므로 ✕ 는
+        // 글리프만(16×16 · pill · mute-soft → hover crimson). data-canvas-action
+        // 가드와 focus 처리는 CloseButton 이 들고 있다. ChipField 의 제거 ✕ 와
+        // 같은 변종을 쓰므로 두 글리프가 한 가족으로 읽힌다.
+        <CloseButton
+          variant="chip-clear"
           onClick={onDismiss}
           aria-label={dismissLabel ?? 'remove'}
-          data-canvas-action
-          className="-mr-0.5 shrink-0 leading-none text-mute-soft transition-colors hover:text-ink-2 focus:outline-none focus-visible:text-amore"
-        >
-          <span aria-hidden>×</span>
-        </button>
+          className="-mr-0.5 shrink-0"
+        />
       ) : null}
     </span>
   );
