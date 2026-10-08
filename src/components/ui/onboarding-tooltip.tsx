@@ -9,7 +9,7 @@
      - anchor(children) 아래에 말풍선을 띄운다.
      - id 별 localStorage(`onboarding-dismissed:<id>`) 로 1회 dismiss 를 기록 —
        이미 본 위젯은 다시 안 뜬다.
-     - × 클릭 or anchor 클릭(onAnchorClick) 시 dismiss.
+     - ✕ 클릭 or anchor 클릭(onAnchorClick) 시 dismiss.
 
    SSR: localStorage 는 클라이언트에만 있으므로 서버/첫 렌더에서는 dismissed
    로 취급해 숨긴다(hydrate mismatch 방지). 클라이언트 스냅샷은
@@ -19,6 +19,7 @@
 
 import { useCallback, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { CloseButton } from './close-button';
 
 function dismissKey(id: string) {
   return `onboarding-dismissed:${id}`;
@@ -36,7 +37,7 @@ export type OnboardingTooltipProps = {
   children: ReactNode;
   // 안내 문구.
   message: string;
-  // × aria-label (i18n). 미지정 시 Common.close.
+  // ✕ aria-label (i18n). 미지정 시 Common.close.
   dismissLabel?: string;
 };
 
@@ -58,7 +59,7 @@ export function OnboardingTooltip({
     }
   }, [id]);
   const persistedDismissed = useSyncExternalStore(subscribe, getSnapshot, () => true);
-  // 이번 세션에서 × / anchor 클릭으로 방금 닫은 경우.
+  // 이번 세션에서 ✕ / anchor 클릭으로 방금 닫은 경우.
   const [sessionDismissed, setSessionDismissed] = useState(false);
   const dismissed = persistedDismissed || sessionDismissed;
 
@@ -83,26 +84,12 @@ export function OnboardingTooltip({
         className="absolute left-0 top-full z-fab mt-2 flex items-center gap-2 rounded-sm border-[2px] border-ink bg-amore-bg px-3 py-2 shadow-memphis-md"
       >
         <span className="whitespace-nowrap text-sm text-ink-2">{message}</span>
-        <button
-          type="button"
+        <CloseButton
+          variant="banner-dismiss"
           onClick={dismiss}
           aria-label={resolvedDismissLabel}
-          className="shrink-0 leading-none text-mute transition-colors hover:text-ink"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-3.5 w-3.5"
-            aria-hidden
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+          className="shrink-0"
+        />
       </div>
     </div>
   );

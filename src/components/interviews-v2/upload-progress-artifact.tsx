@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { useToast } from '@/components/toast-provider';
 import {
   useInterviewUpload,
@@ -272,15 +272,12 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
             {complete ? summaryLine : `${resolved}/${total} · ${pct}%`}
           </div>
         </div>
-        <IconButton
-          variant="ghost"
-          size="compact"
-          className="shrink-0 text-lg leading-none"
+        <CloseButton
+          variant="dialog-close"
+          className="shrink-0"
           aria-label={t('close')}
           onClick={() => dismissBatch(batch.id)}
-        >
-          ×
-        </IconButton>
+        />
       </div>
 
       {/* Aggregate progress bar — track ink/10, fill violet processing signal;

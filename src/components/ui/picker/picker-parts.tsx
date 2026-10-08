@@ -22,6 +22,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { CloseButton } from '@/components/ui/close-button';
 import { computePanelStyle } from './picker-positioning';
 
 /* 섹션 미니 라벨 — mono 9.5/700/.1em uppercase mute-soft(§2). */
@@ -343,14 +344,14 @@ export function PickerChipRow({
         >
           <span className="text-sm text-mute-soft">{chip.fieldLabel}</span>
           <span className="text-xs font-bold text-ink">{chip.valueLabel}</span>
-          <button
-            type="button"
+          {/* 칩 내부 제거 ✕ — BUILD-SPEC §1-C chip-clear. 칩 pill 이 이미
+              보더 상자라 ✕ 는 글리프만 들고 간다(기존 17px 회색 원 배경 제거).
+              옆의 "전체 해제"는 텍스트 버튼이라 이 변종 대상이 아니다. */}
+          <CloseButton
+            variant="chip-clear"
             onClick={chip.onRemove}
             aria-label={chip.removeLabel}
-            className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-full bg-line-soft/60 text-xs text-mute outline-none hover:bg-line-soft focus-visible:shadow-focus-ring"
-          >
-            ✕
-          </button>
+          />
         </span>
       ))}
       <button

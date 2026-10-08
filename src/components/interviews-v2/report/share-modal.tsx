@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
 import { ChipField } from '@/components/ui/chip-field';
+import { CloseButton } from '@/components/ui/close-button';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { useToast } from '@/components/toast-provider';
 
@@ -233,15 +234,12 @@ export function InterviewShareModal({
           >
             {t('shareTitle')}
           </div>
-          {/* eslint-disable-next-line react/forbid-elements -- 모달 닫기 ✕ 는 28px 스퀘어 chrome(rounded-nav·memphis-sm); IconButton 고정 배경과 불일치 */}
-          <button
-            type="button"
+          <CloseButton
+            variant="dialog-close"
             onClick={onClose}
             aria-label={t('shareClose')}
-            className="ml-auto flex h-[28px] w-[28px] items-center justify-center rounded-nav border-[1.5px] border-ink bg-paper text-sm font-bold text-ink shadow-memphis-sm"
-          >
-            ✕
-          </button>
+            className="ml-auto shrink-0"
+          />
         </div>
 
         {/* 본문. */}

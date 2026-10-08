@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu } from '@/components/ui/dropdown-menu';
@@ -468,14 +469,12 @@ export function SchedulingChatPanel({
           </div>
         </div>
         {onClose && (
-          <IconButton
+          <CloseButton
+            variant="dialog-close"
             aria-label={t('chatClose')}
-            variant="ghost"
-            size="sm"
             onClick={onClose}
-          >
-            ✕
-          </IconButton>
+            className="shrink-0"
+          />
         )}
       </div>
 

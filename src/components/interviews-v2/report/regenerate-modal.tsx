@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/modal';
+import { CloseButton } from '@/components/ui/close-button';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 
 // 재생성 방향 입력 최대 길이 — SSOT 는 lib/interview-v2/topline-prompt.ts 의
@@ -83,15 +84,12 @@ export function RegenerateModal({
           >
             {t('regenTitle')}
           </div>
-          {/* eslint-disable-next-line react/forbid-elements -- 모달 닫기 ✕ 는 30px 스퀘어 chrome(rounded-nav·memphis-sm); IconButton 고정 배경과 불일치 */}
-          <button
-            type="button"
+          <CloseButton
+            variant="dialog-close"
             onClick={onClose}
             aria-label={t('regenClose')}
-            className="ml-auto flex h-[30px] w-[30px] items-center justify-center rounded-nav border-[1.5px] border-ink bg-paper text-md font-bold text-ink shadow-memphis-sm"
-          >
-            ✕
-          </button>
+            className="ml-auto shrink-0"
+          />
         </div>
 
         {/* 본문. */}

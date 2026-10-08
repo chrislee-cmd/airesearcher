@@ -42,6 +42,7 @@ import { Button } from './ui/button';
 import { WidgetPrimaryCta } from './canvas/shell/widget-primary-cta';
 import { ChromeInput } from './ui/chrome-input';
 import { IconButton } from './ui/icon-button';
+import { CloseButton } from './ui/close-button';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Modal } from './ui/modal';
@@ -6060,19 +6061,17 @@ function GlossaryField({
               className="inline-flex items-center gap-1 rounded-pill border border-ink bg-paper-soft py-1 pl-3 pr-1 text-sm text-ink"
             >
               <span className="break-words">{term}</span>
-              {/* CD kwChip 정합(제자리 교정): border-line→border-ink(먹색 아웃라인),
-                  boxed ghost ✕ → 무박스 plain × + text-mute-soft 그레이(#a3a7ad
-                  매핑). ChipField x 와 동일 톤(형제 일관). */}
-              <IconButton
+              {/* CD kwChip 정합: border-line→border-ink(먹색 아웃라인) + 무박스
+                  ✕. 그레이(#a3a7ad→mute-soft)·hover crimson 은 이제
+                  <CloseButton variant="chip-clear"> 가 소유한다(BUILD-SPEC §1-C) —
+                  ChipField·Badge 의 제거 ✕ 와 같은 변종(형제 일관). */}
+              <CloseButton
+                variant="chip-clear"
                 aria-label={`${removeLabel}: ${term}`}
-                size="sm"
-                variant="plain"
                 disabled={disabled}
                 onClick={() => onChange(values.filter((_, j) => j !== i))}
-                className="shrink-0 text-mute-soft"
-              >
-                <span aria-hidden>×</span>
-              </IconButton>
+                className="shrink-0"
+              />
             </li>
           ))}
         </ul>

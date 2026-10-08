@@ -2,17 +2,17 @@
 
 import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { IconButton } from '@/components/ui/icon-button';
+import { CloseButton } from '@/components/ui/close-button';
 import { useFullviewChrome } from './fullview-shell-context';
 
 // WidgetFullviewPanel — 공유 전체보기 모달 안에서 한 위젯의 본문이
 // 차지하는 우측 패널. WidgetFullviewModal 의 inner chrome (title/subtitle
-// band + 닫기 × + 스크롤 본문) 과 동일하되 <Modal> backdrop 은 없다 —
+// band + 닫기 ✕ + 스크롤 본문) 과 동일하되 <Modal> backdrop 은 없다 —
 // backdrop / 사이드바 / size 는 CanvasBoard 의 단일 <WidgetFullviewModal>
 // 이 소유하고, 각 위젯은 이 패널을 그 모달의 slot 으로 portal 한다
 // (fullview-shell-context 참고).
 //
-// 닫기 × 는 공유 모달 전체를 닫는다 (onClose = FullviewShell.close).
+// 닫기 ✕ 는 공유 모달 전체를 닫는다 (onClose = FullviewShell.close).
 
 type WidgetFullviewPanelProps = {
   title: string;
@@ -22,7 +22,7 @@ type WidgetFullviewPanelProps = {
   children: ReactNode;
   /** aria-label for the close button. i18n override; defaults to Common.close. */
   closeLabel?: string;
-  /** 헤더 우측, 닫기 × 왼쪽에 놓이는 액션 (예: 내보내기 버튼). optional. */
+  /** 헤더 우측, 닫기 ✕ 왼쪽에 놓이는 액션 (예: 내보내기 버튼). optional. */
   headerAction?: ReactNode;
   /**
    * 헤더밴드 배경 톤 — CSS 값(예: 'var(--widget-header-bg-peach)'). 미지정 시
@@ -51,8 +51,8 @@ export function WidgetFullviewPanel({
   titleDisplay,
   badge,
 }: WidgetFullviewPanelProps) {
-  // 리스트 뷰(풀페이지 셸)에서는 닫을 모달이 없으므로 닫기 × 를 감춘다.
-  // 캔버스 뷰의 전체보기 모달('modal', 기본) 은 그대로 × 노출 → 회귀 0.
+  // 리스트 뷰(풀페이지 셸)에서는 닫을 모달이 없으므로 닫기 ✕ 를 감춘다.
+  // 캔버스 뷰의 전체보기 모달('modal', 기본) 은 그대로 ✕ 노출 → 회귀 0.
   const tCommon = useTranslations('Common');
   const resolvedCloseLabel = closeLabel ?? tCommon('close');
   const chrome = useFullviewChrome();
@@ -91,14 +91,11 @@ export function WidgetFullviewPanel({
         <div className="ml-4 flex shrink-0 items-center gap-2">
           {headerAction}
           {chrome === 'modal' && (
-            <IconButton
-              variant="bordered"
-              size="md"
+            <CloseButton
+              variant="dialog-close"
               onClick={onClose}
               aria-label={resolvedCloseLabel}
-            >
-              <CloseIcon />
-            </IconButton>
+            />
           )}
         </div>
       </header>
@@ -111,20 +108,5 @@ export function WidgetFullviewPanel({
         </footer>
       ) : null}
     </div>
-  );
-}
-
-// Inline × glyph — h-4 w-4 + aria-hidden 으로 a11y QA 룰 충족 (아이콘 전용
-// 컨트롤은 IconButton 의 aria-label 로 라벨됨; SVG 는 장식).
-function CloseIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M4 4l8 8M12 4l-8 8"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

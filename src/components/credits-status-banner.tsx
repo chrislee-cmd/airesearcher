@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
-import { IconButton } from './ui/icon-button';
+import { CloseButton } from './ui/close-button';
 
 export function CreditsStatusBanner({
   status,
@@ -57,14 +57,12 @@ export function CreditsStatusBanner({
       className="mb-4 flex items-center justify-between gap-4 px-4 py-3 text-md rounded-sm"
     >
       <span className="font-bold text-ink-2">{message}</span>
-      <IconButton
-        variant="ghost"
+      <CloseButton
+        variant="banner-dismiss"
         onClick={() => setVisible(false)}
-        className="shrink-0 !border-0 text-2xl leading-none text-ink-2 opacity-70 hover:opacity-100"
+        className="shrink-0"
         aria-label="dismiss"
-      >
-        ×
-      </IconButton>
+      />
     </div>
   );
 }
