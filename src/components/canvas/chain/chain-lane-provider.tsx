@@ -97,6 +97,13 @@ type LaneApi = {
   undock: (feature: ChainStepFeature) => void;
   /** 해체 직후 1.6초 "원래 자리로" 배지를 띄울 대상. */
   restored: string[];
+  /**
+   * 해체 순간 각 도킹 카드가 **있던 화면 좌표**(FLIP 의 first). 카드는 레인
+   * 슬롯 → 그리드로 **부모가 바뀌므로** CSS transition 으로는 이을 수 없다 —
+   * 보드가 이 좌표로 역변환을 걸고 0 으로 애니메이션한다. 소비 후 clearFlip.
+   */
+  flipFrom: Record<string, { x: number; y: number }> | null;
+  clearFlip: () => void;
   /** 레인 본문 DOM — 좌표 판정의 기준. */
   laneBodyRef: React.MutableRefObject<HTMLDivElement | null>;
   /** 도킹 카드가 portal 될 슬롯 DOM 등록(카드 remount 방지). */
@@ -114,6 +121,10 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const [restored, setRestored] = useState<string[]>([]);
   const [dockTargets, setDockTargets] = useState<Record<string, HTMLElement | null>>({});
+  const [flipFrom, setFlipFrom] = useState<Record<
+    string,
+    { x: number; y: number }
+  > | null>(null);
   const laneBodyRef = useRef<HTMLDivElement | null>(null);
 
   // 구성 잠금 — CD Interactions 는 `{running, awaiting_approval, paused}` 로
@@ -160,13 +171,23 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
 
   const dissolveLane = useCallback(() => {
     const cards = lane?.cards ?? [];
+    // FLIP first — 레인에서 사라지기 **전에** 현재 화면 좌표를 읽는다. 카드는
+    // dockTargets[f] 안에 portal 돼 있으므로 타깃 rect 가 곧 카드 rect 다.
+    const from: Record<string, { x: number; y: number }> = {};
+    cards.forEach((f) => {
+      const el = dockTargets[f];
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      from[f] = { x: r.left, y: r.top };
+    });
+    setFlipFrom(Object.keys(from).length > 0 ? from : null);
     setLane(null);
     setDrag(null);
     setRestored(cards);
     setTimeout(() => setRestored([]), RESTORE_BADGE_MS);
     // 실행 전 체인은 거둬들인다(종결 체인은 기록으로 남긴다).
     if (view && isEditable(view)) void cancel().then(() => refresh());
-  }, [lane, view, cancel, refresh]);
+  }, [lane, view, cancel, refresh, dockTargets]);
 
   const evaluate = useCallback(
     (feature: string, position: DockPosition): DockVerdict =>
@@ -228,6 +249,8 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
     [syncComposition, evaluateUndock],
   );
 
+  const clearFlip = useCallback(() => setFlipFrom(null), []);
+
   const registerDockTarget = useCallback(
     (feature: string, el: HTMLElement | null) => {
       setDockTargets((prev) =>
@@ -250,6 +273,8 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       dock,
       undock,
       restored,
+      flipFrom,
+      clearFlip,
       laneBodyRef,
       registerDockTarget,
       dockTargets,
@@ -265,6 +290,8 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       dock,
       undock,
       restored,
+      flipFrom,
+      clearFlip,
       registerDockTarget,
       dockTargets,
     ],
@@ -319,6 +346,8 @@ const INERT: LaneApi = {
   dock: () => {},
   undock: () => {},
   restored: [],
+  flipFrom: null,
+  clearFlip: () => {},
   laneBodyRef: { current: null },
   registerDockTarget: () => {},
   dockTargets: {},

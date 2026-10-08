@@ -578,6 +578,9 @@ export function CanvasBoard({
     undock: undockCard,
     dockTargets,
     laneBodyRef,
+    restored: laneRestored,
+    flipFrom,
+    clearFlip,
   } = useChainLane();
 
   // 도킹된 위젯 key ← 단계 key. 카드는 **그리드에서 빠지고** 레인 슬롯으로
@@ -787,6 +790,50 @@ export function CanvasBoard({
     };
   }, [dragKey]);
 
+  // ── 해체 복귀 애니메이션 (FLIP) ─────────────────────────────────────
+  // CD: 카드별로 원래 자리로 220ms, 40ms stagger, 그 다음 레인이 사라진다.
+  // 카드는 레인 슬롯 → 그리드로 **부모가 바뀌므로** left/top transition 으로는
+  // 이을 수 없다. 그래서 FLIP: 사라진 직후의 새 자리에서 옛 자리로 역변환을
+  // 걸고(transition 없음), 다음 프레임에 0 으로 풀어 되돌아가는 것처럼 보인다.
+  useEffect(() => {
+    if (!flipFrom) return;
+    const entries = Object.entries(flipFrom);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      clearFlip();
+      return;
+    }
+    const nodes: HTMLElement[] = [];
+    entries.forEach(([feature, from], i) => {
+      const key = CHAIN_STEP_WIDGET_KEY[feature as ChainStepFeature];
+      const el = document.querySelector<HTMLElement>(
+        `[data-widget-key="${key}"]`,
+      );
+      if (!el) return;
+      const to = el.getBoundingClientRect();
+      const dx = from.x - to.left;
+      const dy = from.y - to.top;
+      if (dx === 0 && dy === 0) return;
+      el.style.transition = 'none';
+      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      nodes.push(el);
+      // 다음 프레임에 풀어야 브라우저가 시작 상태를 한 번 그린다.
+      requestAnimationFrame(() => {
+        el.style.transition = `transform 220ms ease-out ${i * 40}ms`;
+        el.style.transform = 'translate3d(0, 0, 0)';
+      });
+    });
+    const total = 220 + entries.length * 40 + 60;
+    const timer = window.setTimeout(() => {
+      nodes.forEach((el) => {
+        el.style.transition = '';
+        el.style.transform = '';
+      });
+      clearFlip();
+    }, total);
+    return () => window.clearTimeout(timer);
+  }, [flipFrom, clearFlip]);
+
   // ── 드래그 피드백 파생값 (CD Geometry: 고스트 라벨 · 원래 자리 윤곽) ──
   // 라벨은 **체인 정보**만 말한다: 받을 수 있으면 몇 단계로 들어가는지, 없으면
   // "놓을 수 없음". 레인과 무관한 평소 카드 이동에는 라벨이 없다.
@@ -805,6 +852,17 @@ export function CanvasBoard({
       laneDrag.over === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
     return { text: tChain('dock.ghostValid', { n }), valid: true };
   }, [laneDrag, lane, tChain]);
+
+  // 복귀 배지 대상 — 단계 key → 위젯 key.
+  const restoredKeys = useMemo(
+    () =>
+      new Set(
+        laneRestored
+          .map((f) => CHAIN_STEP_WIDGET_KEY[f as ChainStepFeature])
+          .filter(Boolean),
+      ),
+    [laneRestored],
+  );
 
   // 끌고 있는 도킹 카드가 해체 때 돌아갈 자리.
   const originOutline = useMemo((): Coords | null => {
@@ -1551,6 +1609,17 @@ export function CanvasBoard({
                   } as CSSProperties
                 }
               >
+                {/* "↩ 원래 자리로" — 해체/언도킹 직후 1.6초. 카드가 조용히
+                    돌아오면 사용자가 어디로 갔는지 놓치기 때문이다(CD State). */}
+                {restoredKeys.has(w.key) && (
+                  <div
+                    data-chain="restored-badge"
+                    aria-live="polite"
+                    className="pointer-events-none absolute top-4 left-1/2 z-overlay -translate-x-1/2 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-2xl font-extrabold text-ink shadow-memphis-sm-faint"
+                  >
+                    {tChain('lane.restored')}
+                  </div>
+                )}
                 {/* dimmed placeholder 위젯 ("준비 중") — 셸 전체를 반투명
                     처리해 옛 실기능 위젯과 시각 구분. 클릭은 차단하지 않는다
                     — 헤더의 "전체 보기" 로 기능 소개 hero (ComingSoonBody)
