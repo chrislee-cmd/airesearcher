@@ -25,7 +25,7 @@
    같은 z 에서 DOM 순서로 이긴다 — 새 z 티어를 만들지 않고 해소된다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePaywall } from '@/components/paywall-provider';
 import { useInterviewV2Projects } from '@/hooks/use-interview-v2-projects';
@@ -60,6 +60,8 @@ const ENTRY_WIDGET_KEY = 'probing';
 const TEMPLATE = 'interview_pipeline';
 /** 산출물 노드는 마지막 카드 오른쪽 64px (CD S6). */
 const REPORT_GAP = 64;
+/** 카드 → 핸들 포인터 이동을 잇는 숨김 유예(ms). */
+const HANDLE_HIDE_DELAY_MS = 160;
 
 const TONE_BG: Record<ChainStepFeature, string> = {
   probing: 'bg-sky',
@@ -118,7 +120,9 @@ export function ChainOverlay({
   const [reducedMotion, setReducedMotion] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
   const [entryMode, setEntryMode] = useState<'approve' | 'auto'>('approve');
-  const [entryHover, setEntryHover] = useState(false);
+  // 진입 핸들 노출 — 카드 hover 와 **핸들 자체 hover** 를 따로 센다.
+  const [cardHover, setCardHover] = useState(false);
+  const [handleHover, setHandleHover] = useState(false);
   const [pickedProject, setPickedProject] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -176,15 +180,44 @@ export function ChainOverlay({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  // 핸들 숨김 디바운스 — 카드 → 핸들 이동 사이의 "아무 데도 안 걸린" 프레임을
+  // 넘기기 위한 유예. 이게 없으면 핸들이 그 순간 unmount 돼 핸들의 mouseenter 가
+  // 아예 발생하지 못한다(아래 주석의 flicker 루프).
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelHide = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = null;
+  }, []);
+  const scheduleHide = useCallback(() => {
+    cancelHide();
+    hideTimer.current = setTimeout(() => {
+      setCardHover(false);
+      setHandleHover(false);
+    }, HANDLE_HIDE_DELAY_MS);
+  }, [cancelHide]);
+  useEffect(() => cancelHide, [cancelHide]);
+
   // 진입 핸들은 프로빙 카드에 hover/focus 가 있을 때만 나타난다(S0).
+  //
+  // ⚠️ 핸들은 **카드의 자식이 아니다** — 포트 레이어(surface 직계)에 그려지고,
+  // 중심이 카드 상단 테두리 위라 위쪽 절반은 카드 bounding box 밖이다.
+  // mouseenter/mouseleave 는 기하가 아니라 **DOM 포함 관계**로 판정하므로,
+  // 포인터가 핸들에 닿는 순간 카드의 mouseleave 가 터진다. 카드 hover 하나로만
+  // 표시를 걸면: 핸들 표시 → 포인터가 핸들로 → 카드 leave → 핸들 unmount →
+  // 포인터 밑이 다시 카드 → enter → 표시 … 무한 flicker 로 클릭이 불가능하다
+  // (사용자 프리뷰 실사고). 그래서 카드와 핸들의 hover 를 각각 세고, 둘 사이
+  // 전환은 숨김 디바운스로 잇는다.
   useEffect(() => {
     if (!surfaceEl) return;
     const card = surfaceEl.querySelector<HTMLElement>(
       `[data-widget-key="${ENTRY_WIDGET_KEY}"]`,
     );
     if (!card) return;
-    const on = () => setEntryHover(true);
-    const off = () => setEntryHover(false);
+    const on = () => {
+      cancelHide();
+      setCardHover(true);
+    };
+    const off = () => scheduleHide();
     card.addEventListener('mouseenter', on);
     card.addEventListener('mouseleave', off);
     card.addEventListener('focusin', on);
@@ -193,7 +226,7 @@ export function ChainOverlay({
       card.removeEventListener('mouseleave', off);
       card.removeEventListener('focusin', on);
     };
-  }, [surfaceEl, layoutKey]);
+  }, [surfaceEl, layoutKey, cancelHide, scheduleHide]);
 
   const allBoxes = useMemo(() => Object.values(boxes), [boxes]);
   const preview = useMemo(() => chainPreviewRows(TEMPLATE, 0), []);
@@ -249,7 +282,8 @@ export function ChainOverlay({
 
   if (!surfaceEl) return null;
 
-  const showEntryHandle = !view && !!entryBox && (entryHover || entryOpen);
+  const showEntryHandle =
+    !view && !!entryBox && (cardHover || handleHover || entryOpen);
 
   return (
     <>
@@ -279,7 +313,21 @@ export function ChainOverlay({
 
       <div className="pointer-events-none absolute inset-0 z-overlay">
         {showEntryHandle && entryBox && (
-          <span className="pointer-events-auto">
+          // 핸들 자신의 hover/focus 도 노출 조건에 넣는다 — 포인터가 카드를 떠나
+          // 핸들로 올라와도 사라지지 않아야 클릭이 성립한다.
+          <span
+            className="pointer-events-auto"
+            onMouseEnter={() => {
+              cancelHide();
+              setHandleHover(true);
+            }}
+            onMouseLeave={scheduleHide}
+            onFocus={() => {
+              cancelHide();
+              setHandleHover(true);
+            }}
+            onBlur={scheduleHide}
+          >
             <ChainPort
               kind="handle"
               x={outPortX(entryBox)}
