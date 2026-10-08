@@ -1644,7 +1644,16 @@ export function CanvasBoard({
               ref={setLaneEl}
               data-chain="lane-row"
               className="absolute"
-              style={{ top: LANE_TOP, left: LANE_LEFT }}
+              // 레인은 캔버스 폭 안에 머문다 — 체인이 길어지면 레인이 surface
+              // 밖으로 자라는 대신 **본문이 가로로 스크롤**된다(CD 열린 항목 2:
+              // 2,850px 레인 + 줌 동시 동작). 폭 제한이 없으면 inline-flex 가
+              // 내용만큼 늘어나 overflow-x-auto 가 영영 걸리지 않는다(실측:
+              // scrollWidth == clientWidth == 2484).
+              style={{
+                top: LANE_TOP,
+                left: LANE_LEFT,
+                maxWidth: SURFACE_W - LANE_LEFT * 2,
+              }}
               onDragOver={onLaneDragOver}
               onDrop={onLaneDrop}
             >
