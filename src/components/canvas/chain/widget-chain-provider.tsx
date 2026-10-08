@@ -65,12 +65,18 @@ type WidgetChainApi = {
   dismiss: () => void;
   refresh: () => Promise<void>;
   /**
-   * 체인 생성. approve 모드는 생성 직후 첫 단계를 승인한다 — 진입 단계(프로빙)는
-   * 서버가 kick 할 것이 없어(kick='manual') 승인이 곧 "사용자가 지금 이 단계를
-   * 직접 수행 중" 이라는 표시이고, advanceChain 이 완료를 집어내려면
-   * steps[0].status 가 running 이어야 한다(findChainAtStep 조건).
+   * 체인 생성. **승인하지 않는다** — approve 모드 체인은 `awaiting_approval`
+   * (= 조립 수정 가능, A″ `isAssemblyEditable`)로 남는다. v1/v2 는 생성 직후
+   * 첫 단계를 승인해 running 으로 올렸지만, v3 는 조립이 끝나는 순간 체인을
+   * 만들므로(수명주기 (가)) 그때 승인하면 L3 에서 구성이 즉시 잠긴다.
+   * 진입 단계를 running 으로 올리는 일은 `approve` 가 따로 담당한다.
    */
   createChain: (input: CreateChainInput) => Promise<boolean>;
+  /**
+   * 조립 교체 — A″ `PATCH /api/chains/:id/steps`. 성공하면 최신 행을 반영하고,
+   * 409(`chain_locked`)면 **갱신된 상태를 다시 읽는다**(경합 시 상대 1승 구조).
+   */
+  patchSteps: (steps: string[]) => Promise<boolean>;
   /** 이 위젯 카드에 붙일 칩 props. 체인 밖 카드는 null → 서브바 미렌더. */
   chipFor: (widgetKey: string) => ChainChipProps | null;
 };
@@ -204,28 +210,49 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
         if (!created) return false;
         applyRow(created);
         setDismissedId(null);
-
-        // approve 모드: 첫 단계(진입 위젯)를 즉시 승인해 running 으로 올린다.
-        // 서버 kick 은 'manual' 이라 아무것도 착수하지 않고, 사용자가 진입 위젯을
-        // 돌리고 나면 그 완료 훅(advanceChain)이 이 running 단계를 찾아 전진시킨다.
-        // auto 모드는 생성 라우트가 이미 running 으로 세팅한다.
-        if ((input.mode ?? 'approve') === 'approve') {
-          const approveRes = await fetch(`/api/chains/${created.id}/approve`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
-          });
-          const approveJson = (await approveRes.json().catch(() => ({}))) as {
-            chain?: ChainRow | null;
-          };
-          if (approveJson.chain?.id === created.id) applyRow(approveJson.chain);
-        }
         return true;
       } catch {
         return false;
       }
     },
     [applyRow],
+  );
+
+  const patchSteps = useCallback(
+    async (steps: string[]): Promise<boolean> => {
+      const current = rowRef.current;
+      if (!current) return false;
+      setBusy(true);
+      try {
+        const res = await fetch(`/api/chains/${current.id}/steps`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ steps }),
+        });
+        if (res.status === 409) {
+          // 잠금 전이(승인·건너뛰기·종료·sweep)가 먼저 도착했다 — 상대가 이기고 사용자는
+          // **갱신된 상태**를 봐야 한다. 재시도하지 않는다.
+          await refresh();
+          return false;
+        }
+        if (!res.ok) {
+          // 400(검증 실패)은 프론트 `canDock` 과 같은 권위(validateSteps)를 사용하므로
+          // 정상 경로에선 오지 않는다. 와도 서버가 맞으니 화면을 서버에 맞춘다.
+          await refresh();
+          return false;
+        }
+        const json = (await res.json()) as { chain?: ChainRow | null };
+        if (json.chain?.id === current.id) applyRow(json.chain);
+        else await refresh();
+        return true;
+      } catch {
+        await refresh();
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [applyRow, refresh],
   );
 
   // ── 뷰 ───────────────────────────────────────────────────────────────
@@ -273,6 +300,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
       dismiss,
       refresh,
       createChain,
+      patchSteps,
       chipFor,
     }),
     [
@@ -285,6 +313,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
       dismiss,
       refresh,
       createChain,
+      patchSteps,
       chipFor,
     ],
   );
@@ -307,6 +336,7 @@ const INERT: WidgetChainApi = {
   dismiss: () => {},
   refresh: async () => {},
   createChain: async () => false,
+  patchSteps: async () => false,
   chipFor: () => null,
 };
 

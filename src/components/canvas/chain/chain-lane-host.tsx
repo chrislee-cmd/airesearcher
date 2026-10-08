@@ -295,8 +295,9 @@ export function laneStatus(
   }
   switch (view.status) {
     case 'running':
-      // 진입 단계(0)가 아직 돌고 있으면 "준비됨" — 서버가 kick 할 것이 없는
-      // 수동 단계라, 사용자가 그 위젯을 돌리기 전까지는 대기 상태다(CD L3).
+      // 커서가 진입 단계(0)면 "준비됨" — 진입은 서버가 kick 할 것이 없는 수동
+      // 단계라, 사용자가 그 위젯을 돌리기 전까지는 대기다(CD L3). auto 모드는
+      // 생성 즉시 이 상태로 들어온다.
       return view.currentStep === 0
         ? { statusText: t('lane.statusReady'), statusTone: 'ink' }
         : {
@@ -308,7 +309,13 @@ export function laneStatus(
             statusTone: 'processing',
           };
     case 'awaiting_approval':
-      return { statusText: t('status.awaiting'), statusTone: 'amber' };
+      // 같은 이유로 커서 0 = 조립을 막 끝낸 approve 모드 레인 = L3 "준비됨".
+      // 승인 대기 문구(amber)는 **중간 단계로 들어갈 때**(L5)만 쓴다 — 조립
+      // 직후에 그걸 띄우면 사용자가 누를 승인 캡슐도 없이 대기로 보인다
+      // (capsuleEdgeIndex 도 currentStep-1 = -1 로 캡슐을 안 그린다).
+      return view.currentStep === 0
+        ? { statusText: t('lane.statusReady'), statusTone: 'ink' }
+        : { statusText: t('status.awaiting'), statusTone: 'amber' };
     case 'paused_insufficient_credits':
       return { statusText: t('status.paused'), statusTone: 'amber' };
     case 'error':

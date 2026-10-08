@@ -10,11 +10,28 @@
    ── 설계 결정 2가지 (writer 확정 2026-10-08) ──────────────────────────
    1) **수명주기**: 레인이 유효(2단계+ compat)해지는 순간 서버 체인을 POST 한다.
       B 의 advance 훅이 진입 위젯 완료 시 체인을 찾으려면 row 가 먼저 있어야 한다.
-   2) **조립 변경**은 `syncComposition()` **함수 하나로 추상화**한다 — 지금은
-      cancel + 재생성이지만, A″(`pr-chain-steps-patch`)가 머지되면 **이 함수
-      내부만** PATCH 호출로 바뀌고 호출부는 그대로다. 수정 허용 범위도 A″ 기준에
-      맞춘다: **전 단계 pending 인 실행 전 체인만** 편집, 종결(error/done/
-      cancelled) 체인의 "같은 구성 재실행" 은 편집이 아니라 **새 체인 POST** 다.
+   2) **조립 변경**은 `syncComposition()` **함수 하나로 추상화**한다 — 호출부
+      (dock/undock)는 서버 전이를 모른다. A″(`pr-chain-steps-patch`) 머지로 이
+      함수 내부가 cancel+재생성 → **`PATCH /api/chains/:id/steps` 1회**로 바뀌었다
+      (호출부 무변경). 종결(error/done/cancelled) 체인의 "같은 구성 재실행" 은
+      편집이 아니라 **새 체인 POST** 다.
+
+   ── 수정 가능 판정은 백엔드와 정렬한다 (A″ `isAssemblyEditable`) ──────────
+   판정 권위는 서버다. 프론트는 같은 술어의 **관측 가능한 부분**만 복제해
+   낙관적으로 UI 를 잠그고(헤더 문구·툴바), 실제 거절은 **409 `chain_locked`**
+   로 받아 갱신된 상태를 다시 읽는다(경합 시 상대 1승 — 재시도 없음).
+
+   그래서 생성 시 **자동 승인을 하지 않는다**: `isAssemblyEditable` 은
+   `status='awaiting_approval'` 을 요구하므로, v1/v2 처럼 생성 직후 승인하면
+   조립이 그 즉시 잠겨 CD L3 의 "양 끝에서 빼기" 가 불가능해진다.
+
+   ⚠️ 알려진 틈 (B 쪽 후속 1건): `advance.findChainAtStep` 은 `status='running'`
+   체인만 채택하므로, `awaiting_approval` 로 대기 중인 진입 단계는 위젯 세션이
+   끝나도 전진하지 않는다. CD L3→L4 전이("세션이 끝나면 시작")에는 advance 가
+   `awaiting_approval` + 커서 단계 일치 + `job_ref` 없음인 행도 채택하며
+   running 으로 올리는 경로가 필요하다. 그 채택은 `status` 를 **바꾸므로**
+   A″ 의 CAS(`status='awaiting_approval'` + `updated_at`)로 PATCH 와 선후를
+   가를 수 있다 — auto 모드에서 CAS 로 못 가렸던 구간과 다르다.
 
    판정의 유일한 소유자는 A′ 의 `validateSteps` 다(`canDock` 경유) — 프론트가
    규칙을 복제하거나 detail 문구를 파싱하지 않는다.
@@ -80,7 +97,7 @@ const LaneContext = createContext<LaneApi | null>(null);
 const RESTORE_BADGE_MS = 1600;
 
 export function ChainLaneProvider({ children }: { children: ReactNode }) {
-  const { view, createChain, cancel, refresh } = useWidgetChain();
+  const { view, createChain, patchSteps, cancel, refresh } = useWidgetChain();
   const [lane, setLane] = useState<LaneState | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [restored, setRestored] = useState<string[]>([]);
@@ -91,10 +108,10 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
   // 적었지만, 그건 **체인이 실행 시점에야 생긴다는 v2 전제**에서 쓰인 집합이다.
   // v3 는 조립이 끝나는 순간 체인을 만들므로(수명주기 (가)) 그 집합을 그대로
   // 쓰면 **조립 직후부터 구성이 잠겨** L3 의 "양 끝에서 빼기" 가 불가능해진다.
-  // 그래서 CD 의 의도("실행 중에는 바꿀 수 없다")를 실행 여부로 판정한다 —
-  // 아직 아무 단계도 끝나지 않았으면(= 편집 가능) 잠그지 않는다. 종결 상태
-  // (error/done/cancelled)도 CD 대로 잠금이 풀린다.
-  const locked = !!view && !isEditable(view);
+  // 그래서 백엔드 `isAssemblyEditable` 과 같은 기준(실행 흔적 유무)으로 잠근다.
+  // 종결 상태(error/done/cancelled)도 CD 대로 잠금이 풀린다 — 그쪽은 편집이
+  // 아니라 새 체인 POST 경로다.
+  const locked = !!view && !isEditable(view) && !isTerminal(view.status);
 
   /**
    * 조립 결과를 서버에 반영한다 — **교체 지점은 여기 하나뿐**이다.
@@ -103,6 +120,7 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
   const syncComposition = useCallback(
     async (cards: ChainStepFeature[]) => {
       // 2단계 미만은 아직 체인이 아니다 — 서버에 만들지 않는다(초안).
+      // PATCH 는 `too_short` 로 거절하므로(validateSteps) 여기서 갈라야 한다.
       if (cards.length < 2) {
         // 이미 만들어 둔 실행 전 체인이 있으면 거둬들인다.
         if (view && isEditable(view)) await cancel();
@@ -112,17 +130,16 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
         await createChain({ steps: cards });
         return;
       }
-      // 실행 전(전 단계 pending) 체인만 "편집" 대상 — A″ 기준과 정렬.
-      // TODO(A″ `pr-chain-steps-patch`): 아래 cancel+재생성을 PATCH 한 번으로.
+      // 실행 흔적이 없는 체인 = 조립 수정(A″ PATCH). 409 면 patchSteps 가
+      // 갱신된 상태를 다시 읽고 false 를 돌려준다 — 여기서 재시도하지 않는다.
       if (isEditable(view)) {
-        await cancel();
-        await createChain({ steps: cards });
+        await patchSteps(cards);
         return;
       }
       // 종결 체인에서 구성을 바꾸면 그건 편집이 아니라 새 체인이다.
       await createChain({ steps: cards });
     },
-    [view, createChain, cancel],
+    [view, createChain, patchSteps, cancel],
   );
 
   const createLane = useCallback(() => {
@@ -225,18 +242,37 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * 아직 **아무 단계도 끝나지 않은** 체인인가 — A″ 의 편집 허용 기준과 정렬.
+ * 조립을 수정할 수 있는 체인인가 — 백엔드 `isAssemblyEditable`(state.ts)의 미러.
  *
- * 생성 직후 진입 단계(0)는 running 이다: 서버가 kick 할 것이 없는 수동 단계라
- * (kick='manual') 사용자가 그 위젯을 직접 돌리고, 그 완료 훅이 체인을 전진시킨다.
- * 그래서 "실행 전" 의 정의는 *전 단계 pending* 이 아니라 **커서가 아직 0이고
- * 뒤 단계가 전부 pending** 이다.
+ * 서버 술어: `status='awaiting_approval'` · `current_step=0` · 모든 단계에
+ * `job_ref` 없음 · 진행 마킹(done/skipped/error/running) 없음. 그중 `job_ref` 는
+ * `ChainView` 에 없으므로(표시에 쓰이지 않음) **관측 가능한 부분만** 복제한다 —
+ * 즉 이 함수는 서버보다 **느슨할 수 있고**, 그 간극은 409 `chain_locked` 가 닫는다.
+ * 판정을 여기서 재발명하지 않는 이유: 두 곳의 규칙이 갈라지는 순간 사용자가 본
+ * 체인과 실제로 도는 체인이 달라진다(A″ LEARNINGS §2 와 같은 류의 사고).
+ *
+ * `status` 가 `awaiting_approval` 인 것이 핵심이다 — auto 모드(생성 즉시
+ * `running`)는 advance 의 채택 구간과 CAS 로 구분할 수 없어 서버가 아예 수정
+ * 대상에서 제외한다(A″ LEARNINGS §3). 그래서 auto 레인은 조립 후 잠긴다.
  */
-function isEditable(view: { currentStep: number; steps: { status: string }[] }): boolean {
-  return (
-    view.currentStep === 0 &&
-    view.steps.slice(1).every((s) => s.status === 'pending')
+function isEditable(view: {
+  status: string;
+  currentStep: number;
+  steps: { status: string }[];
+}): boolean {
+  if (view.status !== 'awaiting_approval') return false;
+  if (view.currentStep !== 0) return false;
+  if (view.steps.length === 0) return false;
+  return view.steps.every((s, i) =>
+    i === 0
+      ? s.status === 'awaiting_approval' || s.status === 'pending'
+      : s.status === 'pending',
   );
+}
+
+/** 종결 체인 — 구성 변경이 "편집" 이 아니라 새 체인 POST 인 상태. */
+function isTerminal(status: string): boolean {
+  return status === 'done' || status === 'error' || status === 'cancelled';
 }
 
 const INERT: LaneApi = {
