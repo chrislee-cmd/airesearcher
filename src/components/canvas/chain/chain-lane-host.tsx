@@ -212,13 +212,10 @@ export function ChainLaneHost({
         }
         reducedMotion={reducedMotion}
       />,
-      <div key="report" className="shrink-0">
-        <ChainReportNode
-          state={last?.status === 'done' ? 'done' : 'pending'}
-          left={0}
-          top={0}
-        />
-      </div>,
+      <ChainReportNode
+        key="report"
+        state={last?.status === 'done' ? 'done' : 'pending'}
+      />,
     );
   } else if (!locked) {
     // 아직 더 받을 수 있다 — 빈 슬롯(또는 드래그 피드백).
