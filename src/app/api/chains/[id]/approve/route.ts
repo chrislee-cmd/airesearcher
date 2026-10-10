@@ -19,9 +19,20 @@ import { kickCurrentStep, type KickOutcome } from '@/lib/chains/advance';
 // steps[].error 에 기록되고 응답의 `kick` 에 요약된다(조용한 실패 금지, R9).
 // 진입 단계처럼 서버가 착수할 것이 없는 단계는 kick='manual' — 사용자가 위젯
 // UI 에서 직접 수행하고, 그 완료 훅이 체인을 다시 전진시킨다.
+//
+// Body `{ project_id? }` (PR-D) — CD B3 의 프로젝트 선택은 **승인과 같은 순간**에
+// 일어난다("별도 스텝·모달을 만들지 않는다"). 프로빙 진입 체인은 project_id 가
+// null 이고 인제스트/탑라인 단계는 프로젝트를 요구하므로(adapters R8), 승인 요청이
+// 선택된 프로젝트를 함께 싣는다. 이미 귀속된 체인은 덮어쓰지 않는다(아래 is-null
+// 가드) — 별도 PATCH 라우트를 새로 만드는 대신 승인에 합친 이유도 같다: 선택은
+// 승인의 일부지 독립 상태 전이가 아니다.
+
+const Body = z.object({
+  project_id: z.string().uuid().optional(),
+});
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -41,10 +52,39 @@ export async function POST(
     return NextResponse.json({ error: 'no_org' }, { status: 403 });
   }
 
+  // body 는 없을 수 있다(기존 호출부는 빈 POST) — 파싱 실패는 빈 객체로 취급.
+  const parsedBody = Body.safeParse(await req.json().catch(() => ({})));
+  const pickedProjectId = parsedBody.success
+    ? parsedBody.data.project_id
+    : undefined;
+
   const admin = createAdminClient();
-  const chain = await getChainForOrg(admin, id, org.org_id);
+  let chain = await getChainForOrg(admin, id, org.org_id);
   if (!chain) {
     return NextResponse.json({ error: 'chain_not_found' }, { status: 404 });
+  }
+
+  // B3 — 미귀속 체인에 프로젝트를 못박는다. 이 org 소유인지 먼저 확인하고(정보
+  // 누출 방지), project_id is null 조건으로만 적용해 경합에서도 덮어쓰지 않는다.
+  if (pickedProjectId && chain.project_id === null) {
+    const { data: projectRow } = await admin
+      .from('interview_projects')
+      .select('id')
+      .eq('id', pickedProjectId)
+      .eq('org_id', org.org_id)
+      .maybeSingle();
+    if (!projectRow) {
+      return NextResponse.json({ error: 'project_not_found' }, { status: 404 });
+    }
+    const { data: bound } = await admin
+      .from('widget_chains')
+      .update({ project_id: pickedProjectId })
+      .eq('id', chain.id)
+      .is('project_id', null)
+      .select()
+      .maybeSingle();
+    // 적용되면 갱신된 행으로 승인/kick 을 진행해야 어댑터가 프로젝트를 본다.
+    if (bound) chain = bound as typeof chain;
   }
 
   const result = await approveChain(admin, chain);

@@ -1573,6 +1573,154 @@
       "hint": "Publishes the current layout as the default for regular accounts"
     }
   },
+  "Chain": {
+    "label": "Chain",
+    "mode": {
+      "approve": "Step approval",
+      "auto": "Automatic"
+    },
+    "steps": {
+      "probing": "Interview Assistant",
+      "transcripts": "Transcription",
+      "interview_ingest": "Interview analysis",
+      "topline": "Topline report"
+    },
+    "stepsShort": {
+      "probing": "Session",
+      "transcripts": "Transcription",
+      "interview_ingest": "Analysis",
+      "topline": "Topline"
+    },
+    "widget": {
+      "probing": "Interview Assistant",
+      "quotes": "Transcript Generator",
+      "interviews": "Insight Analyzer"
+    },
+    "cost": "💎{cost}",
+    "costIncluded": "Included",
+    "status": {
+      "running": "{n}/{total} · {step} in progress",
+      "awaiting": "Awaiting approval",
+      "completedCount": "{done}/{total} done",
+      "paused": "Paused",
+      "ended": "Chain ended"
+    },
+    "capsule": {
+      "nextEyebrow": "Next · {step}",
+      "pausedEyebrow": "Paused · {step}",
+      "errorEyebrow": "Chain ended · {step} failed",
+      "needCost": "Needs 💎{cost}"
+    },
+    "row": {
+      "awaiting": {
+        "msgAStart": "",
+        "msgAFrom": {
+          "probing": "The session is done. ",
+          "transcripts": "Transcription is done. ",
+          "interview_ingest": "Interview analysis is done. ",
+          "topline": "The topline report is done. "
+        },
+        "msgB": "Credits are deducted",
+        "msgC": " the moment it starts."
+      },
+      "project": {
+        "msgA": "Interview analysis is ",
+        "msgB": "saved into a project",
+        "msgC": ". Where should it go?"
+      },
+      "paused": {
+        "msgAWithBalance": "Balance 💎{balance} — ",
+        "msgAStart": "",
+        "msgC": " is needed, so the chain stopped here."
+      },
+      "error": {
+        "reasonUnknown": "reason unknown",
+        "msgC": ". Try again from this widget."
+      },
+      "done": {
+        "msgB": "{step} is ready.",
+        "msgC": " It opens in the Insight Analyzer full view."
+      },
+      "cancelled": {
+        "msgA": "Chain ended. ",
+        "msgB": "Results up to {step}",
+        "msgBGeneric": "Results so far",
+        "msgC": " are still in each widget."
+      }
+    },
+    "action": {
+      "proceed": "Proceed →",
+      "proceedCost": "Proceed · 💎{cost} →",
+      "skip": "Skip",
+      "cancel": "End chain",
+      "resume": "Resume",
+      "topUp": "💎 Top up",
+      "close": "Close",
+      "openWidget": "Open {widget}",
+      "openReport": "Open report ⤢"
+    },
+    "chip": {
+      "withStep": "Chain {step}/{total}",
+      "withStepState": "Chain {step}/{total} · {state}",
+      "withRange": "Chain {step}–{stepTo}/{total}",
+      "withRangeState": "Chain {step}–{stepTo}/{total} · {state}",
+      "stateOnly": "Chain · {state}",
+      "state": {
+        "running": "running",
+        "awaiting": "awaiting approval",
+        "done": "done",
+        "stopped": "stopped",
+        "skipped": "skipped"
+      }
+    },
+    "picker": {
+      "placeholder": "Select target project",
+      "sectionLabel": "Target project",
+      "newProject": "＋ New project"
+    },
+    "report": {
+      "ready": "Ready",
+      "waiting": "Waiting"
+    },
+    "entry": {
+      "modeGroup": "Chain mode",
+      "totalFixedPerFile": "💎{fixed} + {perFile} per file",
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "Chain 1",
+      "slotEmptyTitle": "Drag a widget here",
+      "slotEmptySub": "Widgets that can go here",
+      "slotValidTitle": "Drop to make this step {n}",
+      "slotValidSub": "Release and the card moves into this spot",
+      "slotInvalidSub": "Order the chain accepts",
+      "lockNote": "The chain cannot be rearranged while it runs",
+      "dissolve": "Dissolve",
+      "statusEmpty": "Empty",
+      "statusSteps": "{n} steps",
+      "statusReady": "Ready · starts when the session ends",
+      "costNote": "After the session 💎{fixed} + {perFile} per file",
+      "costNoteFixed": "After the session 💎{fixed}",
+      "restored": "↩ Back to its place"
+    },
+    "toolbar": {
+      "newChain": "+ New chain",
+      "newChainLocked": "Only one chain at a time"
+    },
+    "dock": {
+      "unknown_step": "{widget} cannot go into a chain yet{josa}",
+      "incompatible_steps": "{to} can only come after {from}{josa}",
+      "incompatible_start": "{widget} cannot start a chain{josa}",
+      "duplicate_step": "{widget} is already in the chain{josa}",
+      "too_short": "A chain needs at least two steps",
+      "invalid_start": "A chain cannot start here",
+      "middleUndock": "Middle steps cannot be removed — take them off the ends",
+      "locked": "The chain cannot be rearranged while it runs",
+      "ghostValid": "Chain step {n}",
+      "ghostInvalid": "Cannot drop here",
+      "originSlot": "Its place"
+    }
+  },
   "Desk": {
     "fv": {
       "sections": "Sections",

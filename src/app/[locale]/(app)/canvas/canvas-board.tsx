@@ -26,6 +26,7 @@ import {
   useState,
   type CSSProperties,
   type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
@@ -51,6 +52,20 @@ import {
   type WidgetContent,
 } from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
+import { createPortal } from 'react-dom';
+import { ChainChip } from '@/components/canvas/chain/chain-chip';
+import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
+import { useChainLane } from '@/components/canvas/chain/chain-lane-provider';
+import { ChainToolbarHost } from '@/components/canvas/chain/chain-toolbar-host';
+import {
+  ChainLaneHost,
+  dockReason,
+} from '@/components/canvas/chain/chain-lane-host';
+import {
+  CHAIN_STEP_WIDGET_KEY,
+  type ChainStepFeature,
+  type DockPosition,
+} from '@/lib/chains/view';
 import { WidgetNavigator } from './widget-navigator';
 import { LayoutPublishControl } from './layout-publish-control';
 import type { CanvasCoords } from '@/lib/admin/canvas-layout';
@@ -86,6 +101,9 @@ const ZOOM_FACTOR = 1.03;
 // 줌인 (click-to-focus). scale 이 이 값 이상이면 "작업 모드": 오버레이 제거 →
 // 내부 인터랙션 정상. hysteresis 없이 클릭 시점 zoom 1회 판정 (spec 결정).
 const FOCUS_THRESHOLD = 0.55;
+/** 체인 레인의 캔버스 내 위치(CD 장면 좌표). */
+const LANE_TOP = 152;
+const LANE_LEFT = 32;
 // 클릭 vs pan 드래그 구분 — pointerdown→pointerup 이동거리가 이 픽셀 미만일
 // 때만 클릭(=focus)으로 판정. 이보다 크면 드래그 pan 으로 보고 focus 안 함.
 const CLICK_MOVE_THRESHOLD = 5;
@@ -304,7 +322,7 @@ export function CanvasBoard({
   // 아래 effect deps 에 넣어도 불필요 재실행 없음.
   const { cols: GRID_COLS, rows: GRID_ROWS } = gridDimsFor(widgets.length);
   const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP;
-  const SURFACE_H = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
+  const SURFACE_H_BASE = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
 
   const [positions, setPositions] = useState<Record<string, Coords>>(() =>
     defaultPositions(widgets, GRID_COLS, GRID_ROWS),
@@ -544,6 +562,7 @@ export function CanvasBoard({
   const { mode: viewMode } = useViewMode();
   const isList = viewMode === 'list';
   const tRoot = useTranslations();
+  const tChain = useTranslations('Chain');
   // 리스트 상세 pane(우측) DOM — 리스트 모드에서 위젯 본문이 portal 될 대상.
   const [listSlotEl, setListSlotEl] = useState<HTMLElement | null>(null);
 
@@ -551,6 +570,82 @@ export function CanvasBoard({
     setCurrentWidgetKey(key);
     setFullviewOpen(true);
   }, []);
+
+  // 위젯 체인 — 카드 서브바 칩. 컨테이너(WidgetChainProvider)가 체인 전체 상태를
+  // 단일 소유하므로 카드마다 새 fetch 가 없다. 체인 밖 위젯은 null.
+  const { chipFor: chainChipFor } = useWidgetChain();
+  const {
+    lane,
+    locked: laneLocked,
+    drag: laneDrag,
+    setDrag: setLaneDrag,
+    evaluate: evaluateDock,
+    evaluateUndock,
+    dock: dockCard,
+    undock: undockCard,
+    dockTargets,
+    laneBodyRef,
+    restored: laneRestored,
+    flipFrom,
+    clearFlip,
+  } = useChainLane();
+
+  // 도킹된 위젯 key ← 단계 key. 카드는 **그리드에서 빠지고** 레인 슬롯으로
+  // portal 된다(remount 금지 — 라이브 세션 보존).
+  const dockedKeys = useMemo(
+    () =>
+      new Map<string, ChainStepFeature>(
+        (lane?.cards ?? []).map((f) => [CHAIN_STEP_WIDGET_KEY[f], f]),
+      ),
+    [lane],
+  );
+
+  // 레인 높이 — 그리드를 그만큼 아래로 민다(CD L0 "기존 그리드는 아래로 밀림").
+  const [laneEl, setLaneEl] = useState<HTMLDivElement | null>(null);
+  const [laneH, setLaneH] = useState(0);
+  useEffect(() => {
+    if (!laneEl) return;
+    // ResizeObserver 는 observe 직후 1회 발화하므로 초기값도 여기서 들어온다
+    // (effect 본문에서 동기 setState 하지 않는다 — react-hooks 규칙).
+    const ro = new ResizeObserver(() => setLaneH(laneEl.offsetHeight));
+    ro.observe(laneEl);
+    return () => ro.disconnect();
+  }, [laneEl]);
+  // CD 장면 좌표: 레인은 캔버스 안에서 left 32 · top 152 에 놓인다. 0,0 에
+  // 두면 화면 고정 툴바("+ 새 체인" · 요약 pill)가 레인 헤더를 덮는다
+  // (프리뷰 실측 — 헤더의 상태·비용·해체가 전부 가려졌다).
+  const laneOffsetY = lane ? LANE_TOP + laneH + GAP : 0;
+  // 위젯 key → 체인 단계 key 역매핑. 체인 미지원 위젯은 undefined 라
+  // canDock 이 `unknown_step` 으로 거절하고 슬롯이 사유를 보여준다(CD 결정 4).
+  const stepOfWidget = useMemo(() => {
+    const m = new Map<string, ChainStepFeature>();
+    (Object.keys(CHAIN_STEP_WIDGET_KEY) as ChainStepFeature[]).forEach((f) => {
+      if (!m.has(CHAIN_STEP_WIDGET_KEY[f])) m.set(CHAIN_STEP_WIDGET_KEY[f], f);
+    });
+    return m;
+  }, []);
+  // surface 높이도 레인만큼 늘어난다(그리드가 아래로 밀리므로).
+  const SURFACE_H = SURFACE_H_BASE + laneOffsetY;
+
+  // 그리드 좌표 — 도킹된 카드는 그리드에서 빠지고, **남은 카드가 빈자리를 메운다**
+  // (CD 결정 5). 재압축은 **렌더 레이어에서만** 한다: 발행 배치(positions)는
+  // 그대로 두고 해체 시 originIndex 로 되돌린다(발행 baseline 변이 금지).
+  const gridPositions = useMemo(() => {
+    if (dockedKeys.size === 0) return positions;
+    const remaining = visibleWidgets
+      .filter((w) => !dockedKeys.has(w.key))
+      .map((w) => ({ key: w.key, pos: positions[w.key] }))
+      .filter((x) => !!x.pos)
+      .sort((a, b) => a.pos.row - b.pos.row || a.pos.col - b.pos.col);
+    const next: Record<string, Coords> = { ...positions };
+    remaining.forEach((item, i) => {
+      next[item.key] = {
+        col: i % GRID_COLS,
+        row: Math.floor(i / GRID_COLS),
+      };
+    });
+    return next;
+  }, [positions, dockedKeys, visibleWidgets, GRID_COLS]);
   const switchFullview = useCallback((key: string) => {
     setCurrentWidgetKey(key);
   }, []);
@@ -641,9 +736,14 @@ export function CanvasBoard({
 
   // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용. multi-row 위젯은
   // cols × rows footprint 의 모든 셀이 점유로 표시됨.
+  // 점유 맵은 **화면에 보이는 배치**(gridPositions)를 따른다 — 레인이 있으면
+  // 남은 카드가 재압축돼 발행 배치(positions)와 어긋나므로, 발행값으로 그리면
+  // 빈 셀 힌트와 드롭 타깃이 실제 카드 위치와 틀어진다. 도킹된 카드는 그리드에
+  // 없으니 점유도 하지 않는다(그 자리에 언도킹 드롭을 받을 수 있어야 한다).
   const occupiedCells = useMemo(() => {
     const occ = new Map<string, string>(); // "c,r" → widget key
-    Object.entries(positions).forEach(([k, p]) => {
+    Object.entries(gridPositions).forEach(([k, p]) => {
+      if (dockedKeys.has(k)) return;
       const { cols, rows } = spanOf(widgetByKey[k]);
       for (let dc = 0; dc < cols; dc += 1) {
         for (let dr = 0; dr < rows; dr += 1) {
@@ -652,7 +752,7 @@ export function CanvasBoard({
       }
     });
     return occ;
-  }, [positions, widgetByKey]);
+  }, [gridPositions, widgetByKey, dockedKeys]);
 
   // pan / zoom
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -681,11 +781,237 @@ export function CanvasBoard({
     ghostRef.current = img;
   }, []);
 
+  // 드래그 라벨 pill 위치 — CD 는 커서 옆에 "체인 n단계" / "놓을 수 없음" 을
+  // 띄운다. HTML5 drag 이벤트만 좌표를 주므로(마우스 이벤트는 드래그 중 안 옴)
+  // window `dragover` 로 받는다. 레포의 카드 고스트는 투명 이미지 + 원본 0.4
+  // 디밍이 기존 제스처 언어라 그대로 두고, **체인 정보를 나르는 라벨만** 더한다.
+  const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!dragKey) return;
+    const onOver = (e: globalThis.DragEvent) => {
+      setDragPoint({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('dragover', onOver);
+    return () => {
+      window.removeEventListener('dragover', onOver);
+      setDragPoint(null);
+    };
+  }, [dragKey]);
+
+  // ── 키보드 도킹 (CD Interactions) ───────────────────────────────────
+  // Space 로 들기 → ←/→ 로 레인 자리 선택 → Space 로 놓기 / Esc 로 취소.
+  // 캔버스의 Space-hold(pan)와 겹치므로 **카드 래퍼에 포커스가 있을 때만**
+  // 들기로 해석한다(아래 pan 핸들러에서 같은 조건으로 양보). 래퍼를 포커스
+  // 가능하게 만든 것은 보드 레이어의 요소라 위젯 셸 diff 가 0이다.
+  const [lifted, setLifted] = useState<{
+    key: string;
+    position: DockPosition;
+  } | null>(null);
+
+  const liftAnnounce = useMemo(() => {
+    if (!lifted || !laneDrag) return '';
+    if (laneDrag.undocking) {
+      return laneDrag.undocking.ok
+        ? tChain('lane.restored')
+        : tChain(
+            `dock.${laneDrag.undocking.error === 'locked' ? 'locked' : 'middleUndock'}`,
+          );
+    }
+    if (laneDrag.valid) {
+      const n = lifted.position === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
+      return tChain('lane.slotValidTitle', { n });
+    }
+    return dockReason(laneDrag.verdict, laneDrag.feature, tChain, tRoot);
+  }, [lifted, laneDrag, lane, tChain, tRoot]);
+
+  const liftTo = useCallback(
+    (key: string, position: DockPosition) => {
+      const feature = stepOfWidget.get(key) ?? key;
+      const docked = dockedKeys.get(key) ?? null;
+      if (docked) {
+        setLaneDrag({
+          feature,
+          over: null,
+          valid: false,
+          verdict: null,
+          undocking: evaluateUndock(docked),
+        });
+        return;
+      }
+      const verdict = evaluateDock(feature, position);
+      setLaneDrag({
+        feature,
+        over: position,
+        valid: verdict.ok,
+        verdict,
+        undocking: null,
+      });
+    },
+    [stepOfWidget, dockedKeys, evaluateUndock, evaluateDock, setLaneDrag],
+  );
+
+  const cancelLift = useCallback(() => {
+    setLifted(null);
+    setLaneDrag(null);
+  }, [setLaneDrag]);
+
+  const commitLift = useCallback(() => {
+    if (!lifted) return;
+    const { key, position } = lifted;
+    const docked = dockedKeys.get(key);
+    if (docked) {
+      // 언도킹 — 거절이면 카드는 레인에 남고 사유는 이미 읽어줬다.
+      if (evaluateUndock(docked).ok) undockCard(docked);
+      cancelLift();
+      return;
+    }
+    const feature = stepOfWidget.get(key);
+    const origin = positions[key];
+    if (feature && origin && evaluateDock(feature, position).ok) {
+      dockCard(feature, position, origin);
+    }
+    cancelLift();
+  }, [
+    lifted,
+    dockedKeys,
+    evaluateUndock,
+    undockCard,
+    stepOfWidget,
+    positions,
+    evaluateDock,
+    dockCard,
+    cancelLift,
+  ]);
+
+  const onCardKeyDown = useCallback(
+    (key: string) => (e: ReactKeyboardEvent<HTMLElement>) => {
+      // 카드 **안쪽** 컨트롤에서 올라온 키는 그 컨트롤의 것이다.
+      if (e.target !== e.currentTarget) return;
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        if (!lane) return; // 레인이 없으면 평소 캔버스 동작(pan)에 양보.
+        e.preventDefault();
+        e.stopPropagation();
+        if (lifted?.key === key) commitLift();
+        else {
+          setLifted({ key, position: 'append' });
+          liftTo(key, 'append');
+        }
+        return;
+      }
+      if (!lifted || lifted.key !== key) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelLift();
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        // 파일럿의 받을 수 있는 자리는 둘(앞 / 끝)이라 토글이다.
+        const next: DockPosition =
+          e.key === 'ArrowLeft' ? 'prepend' : 'append';
+        setLifted({ key, position: next });
+        liftTo(key, next);
+      }
+    },
+    [lane, lifted, commitLift, cancelLift, liftTo],
+  );
+
+  // ── 해체 복귀 애니메이션 (FLIP) ─────────────────────────────────────
+  // CD: 카드별로 원래 자리로 220ms, 40ms stagger, 그 다음 레인이 사라진다.
+  // 카드는 레인 슬롯 → 그리드로 **부모가 바뀌므로** left/top transition 으로는
+  // 이을 수 없다. 그래서 FLIP: 사라진 직후의 새 자리에서 옛 자리로 역변환을
+  // 걸고(transition 없음), 다음 프레임에 0 으로 풀어 되돌아가는 것처럼 보인다.
+  useEffect(() => {
+    if (!flipFrom) return;
+    const entries = Object.entries(flipFrom);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      clearFlip();
+      return;
+    }
+    const nodes: HTMLElement[] = [];
+    entries.forEach(([feature, from], i) => {
+      const key = CHAIN_STEP_WIDGET_KEY[feature as ChainStepFeature];
+      const el = document.querySelector<HTMLElement>(
+        `[data-widget-key="${key}"]`,
+      );
+      if (!el) return;
+      const to = el.getBoundingClientRect();
+      const dx = from.x - to.left;
+      const dy = from.y - to.top;
+      if (dx === 0 && dy === 0) return;
+      el.style.transition = 'none';
+      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      nodes.push(el);
+      // 다음 프레임에 풀어야 브라우저가 시작 상태를 한 번 그린다.
+      requestAnimationFrame(() => {
+        el.style.transition = `transform 220ms ease-out ${i * 40}ms`;
+        el.style.transform = 'translate3d(0, 0, 0)';
+      });
+    });
+    const total = 220 + entries.length * 40 + 60;
+    const timer = window.setTimeout(() => {
+      nodes.forEach((el) => {
+        el.style.transition = '';
+        el.style.transform = '';
+      });
+      clearFlip();
+    }, total);
+    return () => window.clearTimeout(timer);
+  }, [flipFrom, clearFlip]);
+
+  // ── 드래그 피드백 파생값 (CD Geometry: 고스트 라벨 · 원래 자리 윤곽) ──
+  // 라벨은 **체인 정보**만 말한다: 받을 수 있으면 몇 단계로 들어가는지, 없으면
+  // "놓을 수 없음". 레인과 무관한 평소 카드 이동에는 라벨이 없다.
+  const dragLabel = useMemo((): { text: string; valid: boolean } | null => {
+    if (!laneDrag) return null;
+    if (laneDrag.undocking) {
+      return laneDrag.undocking.ok
+        ? null // 뺄 수 있는 카드 — 평소 카드 이동과 같게 둔다.
+        : { text: tChain('dock.ghostInvalid'), valid: false };
+    }
+    if (laneDrag.over === null) return null;
+    if (!laneDrag.valid) {
+      return { text: tChain('dock.ghostInvalid'), valid: false };
+    }
+    const n =
+      laneDrag.over === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
+    return { text: tChain('dock.ghostValid', { n }), valid: true };
+  }, [laneDrag, lane, tChain]);
+
+  // 복귀 배지 대상 — 단계 key → 위젯 key.
+  const restoredKeys = useMemo(
+    () =>
+      new Set(
+        laneRestored
+          .map((f) => CHAIN_STEP_WIDGET_KEY[f as ChainStepFeature])
+          .filter(Boolean),
+      ),
+    [laneRestored],
+  );
+
+  // 끌고 있는 도킹 카드가 해체 때 돌아갈 자리.
+  // **복원된 레인**(새로고침 뒤 체인 행에서 투영된 것)은 originIndex 가 비어
+  // 있다 — 이 탭에서 도킹한 기록이 없기 때문이다. 그때는 **발행 배치**가 곧
+  // 돌아갈 자리다(해체 복귀도 positions 를 기준으로 그린다).
+  const originOutline = useMemo((): Coords | null => {
+    if (!dragKey || !lane) return null;
+    const feature = dockedKeys.get(dragKey);
+    if (!feature) return null;
+    return lane.originIndex[feature] ?? positions[dragKey] ?? null;
+  }, [dragKey, lane, dockedKeys, positions]);
+
   // 스페이스바 hold → pan 모드. input/textarea/contenteditable 안에서는 무시.
+  // 카드 래퍼에 포커스가 있으면 **Space 는 체인 들기**다(위 onCardKeyDown) —
+  // 같은 키를 두 뜻으로 쓰므로 여기서 양보한다. 포커스가 래퍼 자신일 때만
+  // 양보해, 카드 안쪽에서 스페이스를 눌렀을 때의 기존 동작은 그대로 둔다.
   useEffect(() => {
     const isEditableTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
       const tag = el.tagName;
+      if (el.hasAttribute('data-widget-node')) return true;
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -815,8 +1141,106 @@ export function CanvasBoard({
       e.dataTransfer.setData('text/plain', key);
       e.dataTransfer.effectAllowed = 'move';
       setDragKey(key);
+      // 레인 드래그 상태 시작 — 판정은 레인 위 좌표에서만 한다(아래 onLaneDragOver).
+      // 이미 도킹된 카드라면 방향이 반대다(언도킹): 판정을 **끌기 시작 시점에**
+      // 한 번 내고 드래그 내내 들고 간다 — 가운데 카드는 어디에 놓아도 거절이고,
+      // 그 사유를 자기 슬롯 위에 바로 띄워야 하기 때문이다(CD Interactions).
+      const docked = dockedKeys.get(key) ?? null;
+      setLaneDrag({
+        feature: stepOfWidget.get(key) ?? key,
+        over: null,
+        valid: false,
+        verdict: null,
+        undocking: docked ? evaluateUndock(docked) : null,
+      });
     },
-    [],
+    [setLaneDrag, stepOfWidget, dockedKeys, evaluateUndock],
+  );
+
+  // ── 레인 도킹 — **좌표 판정** ─────────────────────────────────────
+  // dragenter/dragleave 는 기하가 아니라 DOM 포함 관계로 판정해 자식에 들어갈
+  // 때마다 오발화한다(LEARNINGS §2-2 의 확장). dragover 는 포인터 좌표를 계속
+  // 주므로, 레인 rect 와 카드 rect 만 보고 append/prepend 를 정한다.
+  const onLaneDragOver = useCallback(
+    (e: ReactDragEvent<HTMLElement>) => {
+      if (!dragKey || !lane || laneLocked) return;
+      // 이미 레인 안에 있는 카드를 레인 위에서 끌고 있을 뿐이다 — 재도킹 판정
+      // (duplicate_step)을 띄우면 "이미 체인에 있어요" 가 거절처럼 보인다.
+      if (dockedKeys.has(dragKey)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const body = laneBodyRef.current;
+      const feature = stepOfWidget.get(dragKey) ?? dragKey;
+      let position: DockPosition = 'append';
+      if (body && lane.cards.length > 0) {
+        const first = body.querySelector<HTMLElement>('[data-chain-dock]');
+        if (first) {
+          const r = first.getBoundingClientRect();
+          position = e.clientX < r.left + r.width / 2 ? 'prepend' : 'append';
+        }
+      }
+      const verdict = evaluateDock(feature, position);
+      setLaneDrag({ feature, over: position, valid: verdict.ok, verdict });
+    },
+    [
+      dragKey,
+      lane,
+      laneLocked,
+      laneBodyRef,
+      stepOfWidget,
+      evaluateDock,
+      setLaneDrag,
+      dockedKeys,
+    ],
+  );
+
+  const onLaneDrop = useCallback(
+    (e: ReactDragEvent<HTMLElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = e.dataTransfer.getData('text/plain') || dragKey;
+      const current = laneDrag;
+      setLaneDrag(null);
+      setDragKey(null);
+      if (!key || dockedKeys.has(key)) return;
+      if (!current?.valid || !current.over) return;
+      const feature = stepOfWidget.get(key);
+      const origin = positions[key];
+      if (!feature || !origin) return;
+      dockCard(feature, current.over, origin);
+    },
+    [dragKey, laneDrag, setLaneDrag, stepOfWidget, positions, dockCard, dockedKeys],
+  );
+
+  // 레인 **안의 카드 위**에 떨어뜨린 드롭 — portal 때문에 레인까지 못 간다.
+  // React 의 합성 이벤트는 **DOM 트리가 아니라 컴포넌트 트리**를 타고 올라가므로,
+  // 레인 슬롯에 portal 된 카드에서 발생한 drop 은 레인 행(onLaneDrop)이 아니라
+  // 그 카드의 **그리드 래퍼**(onCellDrop)로 간다. 그래서 레인이 2장 이상이 되면
+  // 오른쪽 끝이 카드에 덮여 세 번째 카드를 받을 수 없었다(실측: 슬롯은 valid
+  // 인데 드롭이 무시됨). 도킹 카드에 레인과 같은 판정을 달아 그 구멍을 막는다.
+  const onDockedCardDragOver = useCallback(
+    (e: ReactDragEvent<HTMLElement>) => {
+      onLaneDragOver(e);
+    },
+    [onLaneDragOver],
+  );
+
+  const onDockedCardDrop = useCallback(
+    (e: ReactDragEvent<HTMLElement>) => {
+      // 그리드 래퍼(onCellDrop)까지 올라가면 **언도킹**으로 오해된다 — 레인 안에
+      // 떨어뜨린 것은 언도킹이 아니다. 여기서 끊는다.
+      e.stopPropagation();
+      const key = e.dataTransfer.getData('text/plain') || dragKey;
+      if (key && dockedKeys.has(key)) {
+        // 이미 레인에 있는 카드를 레인 안에 놓았다 — 아무 일도 없다.
+        e.preventDefault();
+        setLaneDrag(null);
+        setDragKey(null);
+        return;
+      }
+      onLaneDrop(e);
+    },
+    [dragKey, dockedKeys, onLaneDrop, setLaneDrag],
   );
 
   const onCellDragOver = useCallback(
@@ -845,9 +1269,22 @@ export function CanvasBoard({
       const sourceKey = e.dataTransfer.getData('text/plain') || dragKey;
       setDragKey(null);
       setHoverCell(null);
+      setLaneDrag(null);
       if (!sourceKey) return;
       const sourceWidget = widgetByKey[sourceKey];
       if (!sourceWidget) return;
+      // 레인 안 카드를 캔버스에 놓으면 **언도킹**이다. 양 끝만 되고, 거절이면
+      // 카드는 레인에 그대로 남는다(판정 소유자 = evaluateUndock).
+      const dockedFeature = dockedKeys.get(sourceKey);
+      if (dockedFeature) {
+        if (evaluateUndock(dockedFeature).ok) undockCard(dockedFeature);
+        return;
+      }
+      // 레인이 있는 동안 남은 카드의 배치는 **파생값**이다(재압축). 그때의 자리
+      // 변경을 발행 배치에 쓰면 해체 때 되돌릴 기준이 오염된다 — 그래서 레인이
+      // 있는 동안 비도킹 카드의 셀 이동은 받지 않는다(드래그 자체는 도킹용으로
+      // 계속 동작). 해체하면 평소 자리 변경이 그대로 돌아온다.
+      if (lane) return;
       const sourceSpan = spanOf(sourceWidget);
       // span 이 grid 끝 초과하지 않게 col/row clamp.
       const targetCol = Math.max(
@@ -895,13 +1332,26 @@ export function CanvasBoard({
         return next;
       });
     },
-    [dragKey, persist, widgetByKey, occupiedCells, GRID_COLS, GRID_ROWS],
+    [
+      dragKey,
+      persist,
+      widgetByKey,
+      occupiedCells,
+      GRID_COLS,
+      GRID_ROWS,
+      dockedKeys,
+      evaluateUndock,
+      undockCard,
+      setLaneDrag,
+      lane,
+    ],
   );
 
   const onHandleDragEnd = useCallback(() => {
+    setLaneDrag(null);
     setDragKey(null);
     setHoverCell(null);
-  }, []);
+  }, [setLaneDrag]);
 
   // ── focus (Navigator click / ?focus= query / 자동 갱신) ─────────────
   // focusedKey: 현재 시각적 중심에 있는 위젯 (Navigator highlight 용).
@@ -1166,9 +1616,6 @@ export function CanvasBoard({
         hiddenKeys={hiddenWidgets}
         onToggleHidden={toggleHidden}
       />
-      {/* 슈퍼어드민 전용 "기본 배치로 발행" — 현재 배치(positions)를 그대로 전역
-          발행해 일반계정 baseline 으로 만든다. 발행 후 슈퍼어드민 자신의 적용
-          version 도 기록(재적용 루프 무해화). 일반계정엔 미렌더(canPublish). */}
       {canPublish && (
         <LayoutPublishControl
           positions={positions}
@@ -1183,6 +1630,28 @@ export function CanvasBoard({
             }
           }}
         />
+      )}
+      {/* 체인 툴바 — 변환 레이어 **밖**(캔버스를 pan/zoom 해도 화면에 남는다).
+          진입점은 이 버튼 하나다(CD 결정 2). */}
+      <ChainToolbarHost onFocusLane={() => setPan((prev) => ({ ...prev, y: 0 }))} />
+      {/* 키보드 도킹 안내 — 받을 수 없는 자리의 사유를 읽어준다(CD Interactions).
+          시각 피드백은 슬롯이 이미 하므로 화면에는 보이지 않는다. */}
+      <div aria-live="polite" className="sr-only">
+        {liftAnnounce}
+      </div>
+      {/* 드래그 라벨 pill — 커서 옆. 변환 레이어 밖 + fixed 라 줌/팬과 무관하게
+          실제 커서를 따라간다(CD Geometry "커서 옆 라벨 pill"). */}
+      {dragLabel && dragPoint && (
+        <div
+          data-chain="drag-label"
+          aria-live="polite"
+          style={{ left: dragPoint.x + 18, top: dragPoint.y + 18 }}
+          className={`pointer-events-none fixed z-overlay inline-flex items-center rounded-pill border-2 border-ink px-4 py-2 text-2xl font-extrabold shadow-memphis-sm-faint ${
+            dragLabel.valid ? 'bg-ink text-paper' : 'bg-error-bg text-error-text'
+          }`}
+        >
+          {dragLabel.text}
+        </div>
       )}
       <div className="absolute inset-0 flex items-start justify-center pt-8">
         <div
@@ -1202,6 +1671,48 @@ export function CanvasBoard({
             transition: isPanning ? 'none' : 'transform 0.28s ease-out',
           }}
         >
+          {/* 체인 레인 — 캔버스 맨 위 고정 행(CD 결정 5). 카드보다 먼저 그려
+              뒤 레이어가 되고, 도킹 카드는 아래에서 portal 로 얹힌다. */}
+          {lane && (
+            <div
+              ref={setLaneEl}
+              data-chain="lane-row"
+              className="absolute"
+              // 레인은 캔버스 폭 안에 머문다 — 체인이 길어지면 레인이 surface
+              // 밖으로 자라는 대신 **본문이 가로로 스크롤**된다(CD 열린 항목 2:
+              // 2,850px 레인 + 줌 동시 동작). 폭 제한이 없으면 inline-flex 가
+              // 내용만큼 늘어나 overflow-x-auto 가 영영 걸리지 않는다(실측:
+              // scrollWidth == clientWidth == 2484).
+              style={{
+                top: LANE_TOP,
+                left: LANE_LEFT,
+                maxWidth: SURFACE_W - LANE_LEFT * 2,
+              }}
+              onDragOver={onLaneDragOver}
+              onDrop={onLaneDrop}
+            >
+              <ChainLaneHost onOpenWidget={openFullview} />
+            </div>
+          )}
+          {/* 원래 자리 윤곽 — 도킹된 카드를 끌 때만. 그 카드는 그리드에서
+              빠져 있어(portal) 어디로 돌아갈지 화면에 단서가 없기 때문이다.
+              비도킹 카드는 원본이 그 자리에 0.4 로 남아 있어 윤곽이 중복된다. */}
+          {originOutline && (
+            <div
+              data-chain="origin-outline"
+              className="absolute flex items-center justify-center rounded-md border-[2.5px] border-dashed border-line-empty"
+              style={{
+                left: originOutline.col * (CELL_W + GAP),
+                top: originOutline.row * (CELL_H + GAP) + laneOffsetY,
+                width: CELL_W,
+                height: CELL_H,
+              }}
+            >
+              <span className="text-2xl font-bold text-faint">
+                {tChain('dock.originSlot')}
+              </span>
+            </div>
+          )}
           {/* 빈 셀 — 드래그 중일 때만 시각화. 모든 cell 을 drop target 으로
               렌더 (점유 cell 의 drop event 는 그 위 widget card 가 먼저
               잡음). */}
@@ -1222,7 +1733,7 @@ export function CanvasBoard({
                   className="absolute rounded-md"
                   style={{
                     left: c * (CELL_W + GAP),
-                    top: r * (CELL_H + GAP),
+                    top: r * (CELL_H + GAP) + laneOffsetY,
                     width: CELL_W,
                     height: CELL_H,
                     // 평소엔 완전 투명 (점 grid 가 그대로 보임).
@@ -1244,7 +1755,7 @@ export function CanvasBoard({
               → 복원 시 원위치). 숨긴 슬롯은 occupiedCells 에 남아 예약되므로
               빈 셀 drop target 도, empty-cell hint 도 뜨지 않는다. */}
           {visibleWidgets.map((w) => {
-            const pos = positions[w.key];
+            const pos = gridPositions[w.key];
             if (!pos) return null;
             const { cols, rows } = spanOf(w);
             const width = expandedWidthOf(cols);
@@ -1259,17 +1770,20 @@ export function CanvasBoard({
                 data-canvas-card
                 data-widget-key={w.key}
                 data-canvas-row={pos.row}
+                data-chain-docked={dockedKeys.has(w.key) ? 'true' : 'false'}
                 className="absolute"
                 onDragOver={onCellDragOver(pos.col, pos.row)}
                 onDragLeave={onCellDragLeave(pos.col, pos.row)}
                 onDrop={onCellDrop(pos.col, pos.row)}
                 style={
                   {
+                    // 도킹된 카드는 그리드에서 사라진다(본체는 레인으로 portal).
+                    display: dockedKeys.has(w.key) ? 'none' : undefined,
                     left: pos.col * (CELL_W + GAP),
-                    top: pos.row * (CELL_H + GAP),
+                    top: pos.row * (CELL_H + GAP) + laneOffsetY,
                     width,
                     height,
-                    opacity: isDragSource ? 0.4 : 1,
+                    opacity: isDragSource || lifted?.key === w.key ? 0.4 : 1,
                     transition: 'opacity 0.15s ease-out',
                     '--widget-header-row-bg': tone.bg,
                     '--widget-header-row-border': tone.border,
@@ -1281,10 +1795,49 @@ export function CanvasBoard({
                     — 헤더의 "전체 보기" 로 기능 소개 hero (ComingSoonBody)
                     진입이 가능해야 하므로. wrapper 만 감싸므로 카드가
                     활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
-                <div className={w.dimmed ? 'h-full opacity-50' : 'h-full'}>
+                {/* 도킹된 카드는 **레인 슬롯으로 portal** 한다 — 부모를 바꾸면
+                    React 가 remount 해 라이브 세션(프로빙·통역)이 끊기기 때문.
+                    레포가 전체보기에서 이미 쓰는 always-mounted + portal 패턴. */}
+                {(() => {
+                  const dockFeature = dockedKeys.get(w.key);
+                  const target = dockFeature ? dockTargets[dockFeature] : null;
+                  const node = (
+                    // 포커스·키보드 도킹·복귀 배지는 **portal 되는 이 노드**가
+                    // 가진다. 바깥 래퍼는 도킹 중 `display:none` 이라(본체가
+                    // 레인으로 옮겨가므로) 거기에 두면 정작 레인 안 카드를
+                    // 키보드로 뺄 수 없다 — 프리뷰 실측에서 드러난 구멍이다.
+                    <div
+                      data-widget-node={w.key}
+                      data-chain-lifted={lifted?.key === w.key ? 'true' : undefined}
+                      {...(dockFeature
+                        ? {
+                            onDragOver: onDockedCardDragOver,
+                            onDrop: onDockedCardDrop,
+                          }
+                        : null)}
+                      tabIndex={0}
+                      aria-label={tRoot(`Sidebar.${w.key}`)}
+                      onKeyDown={onCardKeyDown(w.key)}
+                      className={`relative focus-visible:outline-none focus-visible:shadow-focus-ring ${w.dimmed ? 'h-full opacity-50' : 'h-full'}`}
+                    >
+                      {restoredKeys.has(w.key) && (
+                        <div
+                          data-chain="restored-badge"
+                          aria-live="polite"
+                          className="pointer-events-none absolute top-4 left-1/2 z-overlay -translate-x-1/2 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-2xl font-extrabold text-ink shadow-memphis-sm-faint"
+                        >
+                          {tChain('lane.restored')}
+                        </div>
+                      )}
                 <WidgetShell
                   content={w}
                   dashboardMode
+                  // 체인 칩 — 체인에 묶인 카드만 슬롯을 받는다(비체인 카드는
+                  // undefined → 서브바 행 자체가 안 그려진다).
+                  subbarEnd={(() => {
+                    const chip = chainChipFor(w.key);
+                    return chip ? <ChainChip {...chip} /> : undefined;
+                  })()}
                   onFullview={() => openFullview(w.key)}
                   hasGuide={widgetGuide(w.key) != null}
                   onGuide={openGuide}
@@ -1309,7 +1862,14 @@ export function CanvasBoard({
                     },
                   }}
                 />
-                </div>
+                    </div>
+                  );
+                  return dockFeature && target
+                    ? createPortal(node, target)
+                    : dockFeature
+                      ? null
+                      : node;
+                })()}
                 {/* "숨김" 뱃지 — 슈퍼어드민 캔버스에서 일반 유저에게 노출 off 인
                     위젯 표시(hiddenBadgeSet). 일반 유저는 set 이 비어 미노출.
                     카드 우상단에 얹되 pointer-events-none 로 인터랙션 방해 X. */}

@@ -747,6 +747,7 @@
   --shadow-memphis-xs-amore: var(--raw-memphis-xs) 0 var(--color-amore);
   --shadow-memphis-sm: var(--raw-memphis-sm) 0 var(--color-ink);
   --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(29, 27, 32, 0.12); /* tokens.json 2.0 — ink 저알파(패밀리 ink 통일; 기존 rgba(0,0,0,.15)) */
+  --shadow-memphis-sm-mid: var(--raw-memphis-sm) 0 rgba(29, 27, 32, 0.28); /* ADDED — widget-chain BUILD-SPEC §1.1 체인 바 주 버튼(2px2px0 ink/28). 알파 0.28 = --shadow-frame 과 동일 스텝으로, faint(0.12)와 솔리드 ink 사이 갭. ink 채움 pill 위의 "부드러운 회색 오프셋" 이 CD 절대값이라 솔리드 memphis-sm 으로 굽히지 않는다(AUTHORITY). */
   --shadow-memphis-md: var(--raw-memphis-md) 0 var(--color-ink);
   --shadow-memphis-md-faint: var(--raw-memphis-md) 0 rgba(29, 27, 32, 0.14); /* ADDED 2.0 — table wrapper·grouped panel (솔리드 md 보다 약함) */
   --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
@@ -1041,6 +1042,22 @@ html, body {
 }
 @media (prefers-reduced-motion: reduce) {
   .probing-widget-added { animation: none; }
+}
+
+/* chain-lane-flow — 위젯 체인 v3 의 running 세그먼트 흐름 (CD v3 Geometry).
+   레인 안 카드 사이 구간에서 보라 띠가 흘러 "지금 이 단계가 돌고 있다" 를 말한다.
+   background-position 0 → 44px / 1s linear 무한 반복 (CD `@keyframes laneflow`).
+   **running 구간에만** 붙인다: 멈춤·실패·종료에 흐름이 남으면 유령 상태다.
+   reduced-motion 에서는 애니메이션을 끄고 정적 보라 실선으로 남긴다(컴포넌트가
+   gradient 도 함께 걷어내므로 여기선 애니메이션만 끈다). */
+@keyframes chainLaneFlow {
+  to { background-position: 44px 0; }
+}
+.chain-lane-flow {
+  animation: chainLaneFlow 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chain-lane-flow { animation: none; }
 }
 
 /* completed-cta-pulse — 위젯 완료 CTA 가 처음 노출되는 순간(마운트) 3초간

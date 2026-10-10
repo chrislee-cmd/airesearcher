@@ -1573,6 +1573,154 @@
       "hint": "현재 배치를 일반 계정 기본 배치로 발행합니다"
     }
   },
+  "Chain": {
+    "label": "체인",
+    "mode": {
+      "approve": "단계별 승인",
+      "auto": "자동"
+    },
+    "steps": {
+      "probing": "인터뷰 어시스턴트",
+      "transcripts": "전사",
+      "interview_ingest": "인터뷰 분석",
+      "topline": "탑라인 보고서"
+    },
+    "stepsShort": {
+      "probing": "세션",
+      "transcripts": "전사",
+      "interview_ingest": "분석",
+      "topline": "탑라인"
+    },
+    "widget": {
+      "probing": "인터뷰 어시스턴트",
+      "quotes": "전사록 생성기",
+      "interviews": "인사이트 분석기"
+    },
+    "cost": "💎{cost}",
+    "costIncluded": "포함",
+    "status": {
+      "running": "{n}/{total} · {step} 중",
+      "awaiting": "승인 대기",
+      "completedCount": "{done}/{total} 완료",
+      "paused": "멈춤",
+      "ended": "체인 종료됨"
+    },
+    "capsule": {
+      "nextEyebrow": "다음 · {step}",
+      "pausedEyebrow": "멈춤 · {step}",
+      "errorEyebrow": "체인 종료됨 · {step} 실패",
+      "needCost": "필요 💎{cost}"
+    },
+    "row": {
+      "awaiting": {
+        "msgAStart": "",
+        "msgAFrom": {
+          "probing": "세션이 끝났습니다. ",
+          "transcripts": "전사가 끝났습니다. ",
+          "interview_ingest": "인터뷰 분석이 끝났습니다. ",
+          "topline": "탑라인 보고서가 끝났습니다. "
+        },
+        "msgB": "시작하면 바로 차감",
+        "msgC": "됩니다."
+      },
+      "project": {
+        "msgA": "인터뷰 분석은 ",
+        "msgB": "프로젝트에 저장",
+        "msgC": "됩니다. 어디에 넣을까요?"
+      },
+      "paused": {
+        "msgAWithBalance": "잔액 💎{balance} — ",
+        "msgAStart": "",
+        "msgC": "가 필요해 여기서 멈췄습니다."
+      },
+      "error": {
+        "reasonUnknown": "사유를 알 수 없음",
+        "msgC": ". 이 위젯에서 다시 시도하세요."
+      },
+      "done": {
+        "msgB": "{step}가 준비됐습니다.",
+        "msgC": " 인사이트 분석기 전체보기에서 엽니다."
+      },
+      "cancelled": {
+        "msgA": "체인을 종료했습니다. ",
+        "msgB": "{step}까지의 결과",
+        "msgBGeneric": "지금까지의 결과",
+        "msgC": "는 각 위젯에 그대로 있습니다."
+      }
+    },
+    "action": {
+      "proceed": "진행 →",
+      "proceedCost": "진행 · 💎{cost} →",
+      "skip": "건너뛰기",
+      "cancel": "체인 종료",
+      "resume": "재개",
+      "topUp": "💎 충전하기",
+      "close": "닫기",
+      "openWidget": "{widget} 열기",
+      "openReport": "보고서 열기 ⤢"
+    },
+    "chip": {
+      "withStep": "체인 {step}/{total}",
+      "withStepState": "체인 {step}/{total} · {state}",
+      "withRange": "체인 {step}–{stepTo}/{total}",
+      "withRangeState": "체인 {step}–{stepTo}/{total} · {state}",
+      "stateOnly": "체인 · {state}",
+      "state": {
+        "running": "진행 중",
+        "awaiting": "승인 대기",
+        "done": "완료",
+        "stopped": "멈춤",
+        "skipped": "건너뜀"
+      }
+    },
+    "picker": {
+      "placeholder": "대상 프로젝트 선택",
+      "sectionLabel": "대상 프로젝트",
+      "newProject": "＋ 새 프로젝트"
+    },
+    "report": {
+      "ready": "준비됨",
+      "waiting": "대기"
+    },
+    "entry": {
+      "modeGroup": "체인 진행 방식",
+      "totalFixedPerFile": "💎{fixed} + 파일당 {perFile}",
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "체인 1",
+      "slotEmptyTitle": "위젯을 끌어다 놓으세요",
+      "slotEmptySub": "여기에 올 수 있는 위젯",
+      "slotValidTitle": "놓으면 {n}단계로 들어갑니다",
+      "slotValidSub": "손을 떼면 카드가 이 자리로 들어옵니다",
+      "slotInvalidSub": "체인에 넣을 수 있는 순서",
+      "lockNote": "실행 중에는 구성을 바꿀 수 없어요",
+      "dissolve": "해체",
+      "statusEmpty": "비어 있음",
+      "statusSteps": "{n}단계",
+      "statusReady": "준비됨 · 세션이 끝나면 시작",
+      "costNote": "세션 후 💎{fixed} + 파일당 {perFile}",
+      "costNoteFixed": "세션 후 💎{fixed}",
+      "restored": "↩ 원래 자리로"
+    },
+    "toolbar": {
+      "newChain": "+ 새 체인",
+      "newChainLocked": "체인은 하나만 만들 수 있어요"
+    },
+    "dock": {
+      "unknown_step": "{widget}{josa} 아직 체인에 넣을 수 없어요",
+      "incompatible_steps": "{to}{josa} {from} 다음에만 올 수 있어요",
+      "incompatible_start": "{widget}{josa} 체인을 시작할 수 없어요",
+      "duplicate_step": "{widget}{josa} 이미 체인에 있어요",
+      "too_short": "체인은 단계 2개 이상이 필요해요",
+      "invalid_start": "이 위치에서는 체인을 시작할 수 없어요",
+      "middleUndock": "가운데 단계는 뺄 수 없어요 — 끝에서부터 빼세요",
+      "locked": "실행 중에는 구성을 바꿀 수 없어요",
+      "ghostValid": "체인 {n}단계",
+      "ghostInvalid": "놓을 수 없음",
+      "originSlot": "원래 자리"
+    }
+  },
   "Desk": {
     "fv": {
       "sections": "섹션",

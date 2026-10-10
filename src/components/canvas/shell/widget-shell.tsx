@@ -336,6 +336,7 @@ export function WidgetShell({
   onFullview,
   hasGuide,
   onGuide,
+  subbarEnd,
 }: {
   content: WidgetContent;
   // 호출부 의도 표식 (현재는 default 동작).
@@ -350,6 +351,16 @@ export function WidgetShell({
   // PR-A 단독 머지 시엔 호출부가 안 넘겨 버튼 미노출(빈 모달 방지 · 회귀 0).
   hasGuide?: boolean;
   onGuide?: (widgetKey: string) => void;
+  // ── 서브바 우측 슬롯 (widget-chain D) ─────────────────────────────────
+  // 헤더밴드 바로 아래 얇은 서브바의 **우측**에 꽂히는 단일 슬롯. 지금 유일한
+  // 소비자는 체인 칩(ChainChip)이고, 셸은 칩에 대해 아무것도 모른다 — 노드를
+  // 그대로 그릴 뿐이다(프레젠테이션 경계 유지, CD HANDOFF §2 "셸 수정 금지,
+  // 슬롯이 없으면 슬롯만 추가").
+  //
+  // **미전달이면 서브바 자체가 렌더되지 않는다** — 체인에 묶이지 않은 카드는
+  // 헤더/툴바/바디 diff 0 (done-when "비체인 카드에 칩 없음"). 빈 서브바를
+  // 모든 카드에 깔지 않으려고 slot 유무로 행을 게이트한다.
+  subbarEnd?: ReactNode;
 }) {
   // shell 헤더 (PopStatePill) ↔ body (job hook) 가 같은 인스턴스 안에서
   // state 를 주고받게 1-위젯-1-Provider 로 wrap. 초기값은 widget meta 의
@@ -363,6 +374,7 @@ export function WidgetShell({
         onFullview={onFullview}
         hasGuide={hasGuide}
         onGuide={onGuide}
+        subbarEnd={subbarEnd}
       />
     </WidgetStateProvider>
   );
@@ -374,12 +386,14 @@ function WidgetShellInner({
   onFullview,
   hasGuide,
   onGuide,
+  subbarEnd,
 }: {
   content: WidgetContent;
   dragHandleProps?: DragHandleProps;
   onFullview?: () => void;
   hasGuide?: boolean;
   onGuide?: (widgetKey: string) => void;
+  subbarEnd?: ReactNode;
 }) {
   const { ExpandedBody } = content;
   const isDraggable = !!dragHandleProps?.draggable;
@@ -464,6 +478,16 @@ function WidgetShellInner({
           />
           <CostFlyUpOverlay featureKey={content.key} />
         </div>
+        {/* 서브바 — 헤더밴드와 바디 사이의 얇은 행. subbarEnd 슬롯이 있을 때만
+            렌더(= 체인에 묶인 카드만). 슬롯은 우측 정렬(ml-auto)이다. */}
+        {subbarEnd && (
+          <div
+            data-widget-subbar
+            className="flex min-h-[33px] shrink-0 items-center gap-[7px] border-b-[1.5px] border-ink/[0.1] bg-paper-soft px-[15px] py-[7px]"
+          >
+            <span className="ml-auto inline-flex items-center">{subbarEnd}</span>
+          </div>
+        )}
         {/* 바디 — overflow-hidden(내부 ControlBoardPanel 이 스크롤). framed inner
             frame 없음(카드 프레임이 셸을 대체). data-canvas-body 유지 →
             Memphis bold/display scoped CSS 가 아코디언 button/input 에 적용. */}

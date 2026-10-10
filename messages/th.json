@@ -1573,6 +1573,154 @@
       "hint": "เผยแพร่เลย์เอาต์ปัจจุบันเป็นค่าเริ่มต้นสำหรับบัญชีทั่วไป"
     }
   },
+  "Chain": {
+    "label": "เชน",
+    "mode": {
+      "approve": "อนุมัติทีละขั้น",
+      "auto": "อัตโนมัติ"
+    },
+    "steps": {
+      "probing": "ผู้ช่วยสัมภาษณ์",
+      "transcripts": "ถอดเสียง",
+      "interview_ingest": "วิเคราะห์การสัมภาษณ์",
+      "topline": "รายงานสรุป"
+    },
+    "stepsShort": {
+      "probing": "เซสชัน",
+      "transcripts": "ถอดเสียง",
+      "interview_ingest": "วิเคราะห์",
+      "topline": "สรุป"
+    },
+    "widget": {
+      "probing": "ผู้ช่วยสัมภาษณ์",
+      "quotes": "ตัวสร้างบทถอดเสียง",
+      "interviews": "ตัววิเคราะห์อินไซต์"
+    },
+    "cost": "💎{cost}",
+    "costIncluded": "รวมอยู่แล้ว",
+    "status": {
+      "running": "{n}/{total} · กำลัง{step}",
+      "awaiting": "รออนุมัติ",
+      "completedCount": "เสร็จ {done}/{total}",
+      "paused": "หยุด",
+      "ended": "เชนสิ้นสุดแล้ว"
+    },
+    "capsule": {
+      "nextEyebrow": "ถัดไป · {step}",
+      "pausedEyebrow": "หยุด · {step}",
+      "errorEyebrow": "เชนสิ้นสุด · {step}ล้มเหลว",
+      "needCost": "ต้องใช้ 💎{cost}"
+    },
+    "row": {
+      "awaiting": {
+        "msgAStart": "",
+        "msgAFrom": {
+          "probing": "เซสชันเสร็จแล้ว ",
+          "transcripts": "การถอดเสียงเสร็จแล้ว ",
+          "interview_ingest": "การวิเคราะห์การสัมภาษณ์เสร็จแล้ว ",
+          "topline": "รายงานสรุปเสร็จแล้ว "
+        },
+        "msgB": "เครดิตจะถูกหักทันที",
+        "msgC": "ที่เริ่ม"
+      },
+      "project": {
+        "msgA": "การวิเคราะห์การสัมภาษณ์จะ ",
+        "msgB": "บันทึกไว้ในโปรเจกต์",
+        "msgC": " จะให้เก็บไว้ที่ไหน"
+      },
+      "paused": {
+        "msgAWithBalance": "ยอดคงเหลือ 💎{balance} — ",
+        "msgAStart": "",
+        "msgC": " จึงหยุดไว้ที่นี่"
+      },
+      "error": {
+        "reasonUnknown": "ไม่ทราบสาเหตุ",
+        "msgC": " ลองใหม่อีกครั้งจากวิดเจ็ตนี้"
+      },
+      "done": {
+        "msgB": "{step} พร้อมแล้ว",
+        "msgC": " เปิดในมุมมองเต็มของตัววิเคราะห์อินไซต์"
+      },
+      "cancelled": {
+        "msgA": "สิ้นสุดเชนแล้ว ",
+        "msgB": "ผลลัพธ์จนถึง{step}",
+        "msgBGeneric": "ผลลัพธ์ที่ได้มา",
+        "msgC": "ยังอยู่ในแต่ละวิดเจ็ตตามเดิม"
+      }
+    },
+    "action": {
+      "proceed": "ดำเนินการ →",
+      "proceedCost": "ดำเนินการ · 💎{cost} →",
+      "skip": "ข้าม",
+      "cancel": "สิ้นสุดเชน",
+      "resume": "ทำต่อ",
+      "topUp": "💎 เติมเครดิต",
+      "close": "ปิด",
+      "openWidget": "เปิด{widget}",
+      "openReport": "เปิดรายงาน ⤢"
+    },
+    "chip": {
+      "withStep": "เชน {step}/{total}",
+      "withStepState": "เชน {step}/{total} · {state}",
+      "withRange": "เชน {step}–{stepTo}/{total}",
+      "withRangeState": "เชน {step}–{stepTo}/{total} · {state}",
+      "stateOnly": "เชน · {state}",
+      "state": {
+        "running": "กำลังทำงาน",
+        "awaiting": "รออนุมัติ",
+        "done": "เสร็จแล้ว",
+        "stopped": "หยุด",
+        "skipped": "ข้ามแล้ว"
+      }
+    },
+    "picker": {
+      "placeholder": "เลือกโปรเจกต์เป้าหมาย",
+      "sectionLabel": "โปรเจกต์เป้าหมาย",
+      "newProject": "＋ โปรเจกต์ใหม่"
+    },
+    "report": {
+      "ready": "พร้อมแล้ว",
+      "waiting": "รอดำเนินการ"
+    },
+    "entry": {
+      "modeGroup": "รูปแบบการทำงานของเชน",
+      "totalFixedPerFile": "💎{fixed} + {perFile} ต่อไฟล์",
+      "totalFixed": "💎{fixed}"
+    },
+    "lane": {
+      "title": "เชน 1",
+      "slotEmptyTitle": "ลากวิดเจ็ตมาวางที่นี่",
+      "slotEmptySub": "วิดเจ็ตที่วางตรงนี้ได้",
+      "slotValidTitle": "วางเพื่อให้เป็นขั้นที่ {n}",
+      "slotValidSub": "ปล่อยแล้วการ์ดจะเข้ามาอยู่ตรงนี้",
+      "slotInvalidSub": "ลำดับที่เชนรับได้",
+      "lockNote": "ระหว่างทำงานไม่สามารถแก้โครงสร้างได้",
+      "dissolve": "รื้อเชน",
+      "statusEmpty": "ว่าง",
+      "statusSteps": "{n} ขั้น",
+      "statusReady": "พร้อมแล้ว · เริ่มเมื่อเซสชันจบ",
+      "costNote": "หลังเซสชัน 💎{fixed} + {perFile} ต่อไฟล์",
+      "costNoteFixed": "หลังเซสชัน 💎{fixed}",
+      "restored": "↩ กลับที่เดิม"
+    },
+    "toolbar": {
+      "newChain": "+ เชนใหม่",
+      "newChainLocked": "สร้างเชนได้ครั้งละหนึ่งอันเท่านั้น"
+    },
+    "dock": {
+      "unknown_step": "{widget} ยังใส่ในเชนไม่ได้{josa}",
+      "incompatible_steps": "{to} ต้องอยู่ถัดจาก {from} เท่านั้น{josa}",
+      "incompatible_start": "{widget} เริ่มเชนไม่ได้{josa}",
+      "duplicate_step": "{widget} อยู่ในเชนแล้ว{josa}",
+      "too_short": "เชนต้องมีอย่างน้อย 2 ขั้น",
+      "invalid_start": "เริ่มเชนที่ตำแหน่งนี้ไม่ได้",
+      "middleUndock": "ขั้นตรงกลางเอาออกไม่ได้ — เอาออกจากปลายก่อน",
+      "locked": "ระหว่างทำงานไม่สามารถแก้โครงสร้างได้",
+      "ghostValid": "เชนขั้นที่ {n}",
+      "ghostInvalid": "วางตรงนี้ไม่ได้",
+      "originSlot": "ตำแหน่งเดิม"
+    }
+  },
   "Desk": {
     "fv": {
       "sections": "ส่วน",

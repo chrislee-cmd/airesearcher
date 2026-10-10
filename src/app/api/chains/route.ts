@@ -32,6 +32,10 @@ import { ACTIVE_STATUSES } from '@/lib/chains/state';
 //   - 프로젝트당 활성 체인 1 제약(partial unique index)이 DB 레벨에서 중복
 //     생성을 막는다 — 위반 시 23505 → 409(active_chain_exists).
 // GET ?project_id=<uuid> — 해당 프로젝트의 활성 체인 조회(없으면 null).
+//   - project_id 생략 시 = org 의 가장 최근 활성 체인(프로젝트 무관). 프로빙
+//     진입 체인은 project_id 가 null 이라(R8) 프로젝트 키로 찾을 수 없고, CD 의
+//     체인 바는 프로젝트별이 아니라 **캔버스 전역 1개**라서 UI 컨테이너가 쓰는
+//     조회는 이 형태여야 한다(pr-chain-ui-integration D).
 
 const CreateBody = z.object({
   // 1급 입력 — 조립된 단계 시퀀스. 런타임 세밀 검증은 validateSteps 가
@@ -170,21 +174,26 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'no_org' }, { status: 403 });
   }
 
-  const projectId = new URL(req.url).searchParams.get('project_id') ?? '';
-  if (!z.string().uuid().safeParse(projectId).success) {
+  // project_id 는 선택 — 주면 그 프로젝트로 좁히고, 생략하면 org 전체에서 가장
+  // 최근 활성 체인 1건. 빈 문자열/비-uuid 는 여전히 400(오타를 조용히 전체 조회로
+  // 바꾸지 않는다).
+  const rawProjectId = new URL(req.url).searchParams.get('project_id');
+  if (rawProjectId !== null && !z.string().uuid().safeParse(rawProjectId).success) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
 
   const admin = createAdminClient();
 
-  // 해당 프로젝트의 활성 체인(프로젝트당 1). 종결 체인은 제외. org 스코프로
-  // 타 org 누출 방지. 활성이 없으면 chain:null.
-  const { data, error } = await admin
+  // 활성 체인(프로젝트당 1). 종결 체인은 제외. org 스코프로 타 org 누출 방지.
+  // 활성이 없으면 chain:null.
+  let query = admin
     .from('widget_chains')
     .select('*')
     .eq('org_id', org.org_id)
-    .eq('project_id', projectId)
-    .in('status', [...ACTIVE_STATUSES])
+    .in('status', [...ACTIVE_STATUSES]);
+  if (rawProjectId !== null) query = query.eq('project_id', rawProjectId);
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
