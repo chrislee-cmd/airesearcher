@@ -9,14 +9,25 @@ import {
   recordStepJobRef,
   type AdapterResult,
 } from './adapters';
-import { casChain, type ChainRow } from './state';
-import type { ChainStepInstance, ChainStepKey } from './registry';
+import {
+  casChain,
+  pickChainForStepEvent,
+  planStepAdvance,
+  type ChainRow,
+  type ChainStepEventMatch,
+} from './state';
+import type { ChainStepKey } from './registry';
 
 // 위젯 연쇄 체인 — advance 훅 (PR-B).
 //
 // 각 파이프라인이 "단계 done 을 확정"하는 서버 지점에서 이 모듈을 부른다.
 // 하는 일: 활성 체인 조회 → 현재 단계 done 마킹(멱등 CAS) → 모드 분기
 // (approve 면 승인 대기 전이만, auto 면 다음 단계 즉시 kick).
+//
+// **채택(adoption) 대상 = running + 조립 완료(awaiting_approval) 둘 다** (B′).
+// 후자는 "도킹 레인에서 조립만 해 두고 승인 모달 없이 진입 위젯 세션을 그냥
+// 돌린" 경우이고, approve 가 기본 모드라 **그게 기본 경로**다. 자세한 근거와
+// 경합 판별은 findChainAtStep · state.planStepAdvance 주석 참고.
 //
 // ══════════════════════════════════════════════════════════════════════════
 // ⚠️ #1024 불변식 — 활성 체인이 없으면 **어떤 자동 동작도 없다**
@@ -82,24 +93,24 @@ export type AdvanceResult =
   | { advanced: false; reason: 'no_chain' | 'ambiguous' | 'conflict' }
   | { advanced: true; chainId: string; outcome: 'awaiting_approval' | KickOutcome };
 
-// 여러 후보 체인 중 어느 것인지 가릴 수 없는 경우의 센티넬. 추측해서 엉뚱한
-// 체인을 전진시키는 것보다 아무것도 하지 않는 것이 안전하다.
-const AMBIGUOUS = Symbol('ambiguous');
-
 /**
- * 이 완료 이벤트가 전진시켜야 할 활성 체인을 찾는다. 없으면 null(= no-op).
+ * 이 완료 이벤트가 전진시켜야 할 활성 체인을 찾는다. 없으면 matched:false(= no-op).
  *
- * 매칭 규칙 — 둘 다 체인 status='running' + 현재 단계 status='running' 전제.
- * (approve 모드에서 아직 승인되지 않은 단계는 'awaiting_approval' 이므로
- *  매칭되지 않는다 — 사용자가 승인하지 않은 작업을 체인 진행으로 오인하지
- *  않기 위한 가드.)
+ * DB 에서 후보를 넉넉히 읽고, **어느 체인인지 고르는 판정은 순수 함수**
+ * (`pickChainForStepEvent`, state.ts)에 맡긴다 — 매칭 경계를 단위 테스트로
+ * 고정하기 위해서다(이 모듈은 server-only import 때문에 `tests/` 가 로드하지
+ * 못한다).
  *
- *   1. **정확 일치** — 현재 단계의 job_ref === 이번 jobRef. 체인이 직접 kick 한
- *      단계는 어댑터가 job_ref 를 기록해 두므로 이 경로로 유일하게 결정된다.
- *   2. **채택(adoption)** — 현재 단계의 job_ref 가 null 인 체인. 가변 진입점
- *      (startAt)으로 시작한 첫 단계는 사용자가 위젯 UI 에서 직접 수행하므로
- *      job_ref 가 비어 있다. 후보가 **정확히 1개**일 때만 채택하고, 2개 이상이면
- *      ambiguous 로 no-op (추측 금지).
+ * 후보 status 가 두 개인 이유(B′):
+ *   - `running` — 기존 경로. 체인이 kick 한 단계(exact) 또는 가변 진입점으로
+ *     사용자가 직접 돌린 단계(adopt_running).
+ *   - `awaiting_approval` — **조립만 끝내고 아직 아무것도 시작하지 않은**
+ *     approve 체인(커서 0 · job_ref 전무). 도킹 레인은 레인이 유효해지는 순간
+ *     체인을 POST 하므로, 사용자가 승인 모달을 거치지 않고 진입 위젯 세션을
+ *     그냥 돌려 끝내는 것이 **기본 경로**다. 이 체인을 채택하지 않으면 "세션이
+ *     끝나면 시작"(CD L3→L4)이 성립하지 않는다. v1/v2 는 "생성 직후 자동 승인"
+ *     으로 이 틈을 메웠지만, 그건 조립을 즉시 잠가 카드 수정(A″)을 불능으로
+ *     만든다 — 그래서 승인이 아니라 **채택**으로 푼다.
  */
 async function findChainAtStep(
   admin: AdminClient,
@@ -109,41 +120,21 @@ async function findChainAtStep(
     sourceFeature: ChainSourceFeature;
     jobRef: string;
   },
-): Promise<ChainRow | null | typeof AMBIGUOUS> {
+): Promise<ChainStepEventMatch> {
   const { data, error } = await admin
     .from(CHAINS_TABLE)
     .select('*')
     .eq('org_id', args.orgId)
-    .eq('status', 'running')
+    .in('status', ['running', 'awaiting_approval'])
     .order('updated_at', { ascending: false })
     .limit(CANDIDATE_LIMIT);
   if (error) throw error;
 
-  const rows = (data ?? []) as ChainRow[];
-  const atStep = rows.filter((r) => {
-    const step = r.steps?.[r.current_step];
-    return step?.feature === args.sourceFeature && step.status === 'running';
+  return pickChainForStepEvent((data ?? []) as ChainRow[], {
+    projectId: args.projectId,
+    sourceFeature: args.sourceFeature,
+    jobRef: args.jobRef,
   });
-  if (atStep.length === 0) return null;
-
-  const exact = atStep.filter(
-    (r) => r.steps[r.current_step].job_ref === args.jobRef,
-  );
-  if (exact.length > 0) return exact[0];
-
-  const adoptable = atStep.filter((r) => {
-    const step = r.steps[r.current_step];
-    if (step.job_ref) return false;
-    // 프로젝트가 양쪽에 있고 서로 다르면 다른 체인이다. 체인 project_id 가
-    // null(프로빙 진입 직후 미귀속)이면 스코프로 가르지 않는다.
-    if (args.projectId && r.project_id && r.project_id !== args.projectId) {
-      return false;
-    }
-    return true;
-  });
-  if (adoptable.length === 1) return adoptable[0];
-  if (adoptable.length > 1) return AMBIGUOUS;
-  return null;
 }
 
 /**
@@ -163,67 +154,45 @@ export async function advanceChain(args: {
 }): Promise<AdvanceResult> {
   const admin = args.admin ?? createAdminClient();
 
-  const found = await findChainAtStep(admin, args);
-  if (found === null) {
-    // 체인 없음 = 평소의 위젯 사용. 아무 일도 일어나지 않는다.
+  const match = await findChainAtStep(admin, args);
+  if (!match.matched) {
+    if (match.reason === 'ambiguous') {
+      console.warn(
+        '[chains/advance] ambiguous chain match — skipped',
+        args.sourceFeature,
+        args.jobRef,
+      );
+      return { advanced: false, reason: 'ambiguous' };
+    }
+    // 체인 없음 = 평소의 위젯 사용. 아무 일도 일어나지 않는다(#1024).
     return { advanced: false, reason: 'no_chain' };
   }
-  if (found === AMBIGUOUS) {
-    console.warn(
-      '[chains/advance] ambiguous chain match — skipped',
-      args.sourceFeature,
-      args.jobRef,
-    );
-    return { advanced: false, reason: 'ambiguous' };
-  }
-  const chain = found;
-  const doneIndex = chain.current_step;
+  const chain = match.row;
 
-  // 완료 단계 마킹 + job_ref 채택(진입 단계는 여기서 처음 채워진다). 어댑터가
-  // 남긴 error 는 성공으로 덮는다(단계가 실제로 완료됐으므로).
-  const markedDone: ChainStepInstance[] = chain.steps.map((s, i) =>
-    i === doneIndex
-      ? { ...s, status: 'done', job_ref: s.job_ref ?? args.jobRef, error: null }
-      : s,
-  );
-
-  const nextIndex = doneIndex + 1;
-  if (nextIndex >= markedDone.length) {
-    // 마지막 단계 완료 → 체인 종결.
-    const res = await casChain(
-      admin,
-      chain.id,
-      'running',
-      { status: 'done', steps: markedDone },
-      doneIndex,
-    );
-    if (!res.applied) return { advanced: false, reason: 'conflict' };
-    return { advanced: true, chainId: chain.id, outcome: 'done' };
-  }
-
-  // 커서 이동 + 다음 단계 활성화. approve 모드는 승인 게이트(awaiting_approval)
-  // 까지만 — 실제 kick 은 사용자가 승인 모달에서 누를 때 approve 라우트가 한다
-  // (크레딧 사전 고지 = #1024 의 해독제). auto 모드는 바로 러너블(running).
-  //
-  // CAS 는 (status='running', current_step=doneIndex) 를 술어로 쓴다 — auto
-  // 모드의 running→running 전이에서도 동시 done 이벤트 중 1개만 통과한다(R1).
-  const nextStatus = chain.mode === 'auto' ? 'running' : 'awaiting_approval';
-  const steps: ChainStepInstance[] = markedDone.map((s, i) =>
-    i === nextIndex ? { ...s, status: nextStatus } : s,
-  );
+  // 전이 계획(순수) — 완료 단계 done 마킹 · 다음 단계 활성화 · CAS 술어 선택.
+  // 조립 채택(adopt_assembly)이면 expectedStatus='awaiting_approval' +
+  // updated_at 낙관적 토큰이 들어온다(조립 수정 PATCH 와의 선후 판별).
+  const plan = planStepAdvance(chain, args.jobRef);
   const res = await casChain(
     admin,
     chain.id,
-    'running',
-    { status: nextStatus, steps, current_step: nextIndex },
-    doneIndex,
+    plan.expectedStatus,
+    plan.patch,
+    plan.expectedCurrentStep,
+    plan.expectedUpdatedAt,
   );
   if (!res.applied) {
-    // 경합에서 졌다(다른 done 이벤트가 먼저 전진시켰다) — 멱등 no-op.
+    // 경합에서 졌다 — 다른 done 이벤트가 먼저 전진시켰거나(멱등), 조립 채택
+    // 이라면 그 사이 PATCH/승인/종료가 행을 건드렸다. 어느 쪽이든 no-op:
+    // 사용자가 갱신된 조립으로 다시 세션을 돌리는 것이 정상 경로다.
     return { advanced: false, reason: 'conflict' };
   }
 
-  if (chain.mode !== 'auto') {
+  if (plan.nextIndex === null) {
+    return { advanced: true, chainId: chain.id, outcome: 'done' };
+  }
+  if (plan.nextStatus !== 'running') {
+    // approve 모드 — 다음 단계는 승인 게이트. kick 은 승인 라우트의 몫.
     return { advanced: true, chainId: chain.id, outcome: 'awaiting_approval' };
   }
 
