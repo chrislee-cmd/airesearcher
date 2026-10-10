@@ -28,6 +28,11 @@ const TONE_CLASS: Record<ChainLaneStatusTone, string> = {
 export type ChainToolbarProps = {
   /** 레인이 이미 있으면 잠긴다(파일럿 = 레인 1개). */
   locked: boolean;
+  /**
+   * 잠금은 아니지만 지금은 누를 수 없다 — 체인 첫 조회 중(레인이 복원될지
+   * 모르는 구간). 사유 문구는 띄우지 않는다(곧 사라지는 상태라서).
+   */
+  busy?: boolean;
   onNewChain: () => void;
   /** 레인이 있을 때만 — 상태 요약. 누르면 레인으로 스크롤. */
   summary?: {
@@ -38,7 +43,13 @@ export type ChainToolbarProps = {
   } | null;
 };
 
-export function ChainToolbar({ locked, onNewChain, summary }: ChainToolbarProps) {
+export function ChainToolbar({
+  locked,
+  busy = false,
+  onNewChain,
+  summary,
+}: ChainToolbarProps) {
+  const inert = locked || busy;
   const t = useTranslations('Chain');
   return (
     <div
@@ -54,11 +65,11 @@ export function ChainToolbar({ locked, onNewChain, summary }: ChainToolbarProps)
       <button
         type="button"
         data-chain-action="new-chain"
-        data-chain-locked={locked ? 'true' : 'false'}
-        disabled={locked}
+        data-chain-locked={inert ? 'true' : 'false'}
+        disabled={inert}
         onClick={onNewChain}
         className={`pointer-events-auto inline-flex h-14 items-center rounded-pill px-6 text-3xl font-extrabold ${
-          locked
+          inert
             ? 'border-2 border-ink/[0.2] bg-surface-disabled text-mute-soft'
             : 'border-2 border-ink bg-paper text-ink shadow-memphis-md active:translate-x-px active:translate-y-px active:shadow-memphis-2xs'
         }`}

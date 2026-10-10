@@ -23,7 +23,7 @@ export function ChainToolbarHost({
 }) {
   const t = useTranslations('Chain');
   const { lane, createLane, locked } = useChainLane();
-  const { view } = useWidgetChain();
+  const { view, hydrating } = useWidgetChain();
   const { statusText, statusTone } = laneStatus(
     view,
     lane?.cards.length ?? 0,
@@ -33,6 +33,7 @@ export function ChainToolbarHost({
   return (
     <ChainToolbar
       locked={!!lane}
+      busy={hydrating}
       onNewChain={createLane}
       summary={
         lane && locked

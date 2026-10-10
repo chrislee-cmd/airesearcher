@@ -993,12 +993,15 @@ export function CanvasBoard({
   );
 
   // 끌고 있는 도킹 카드가 해체 때 돌아갈 자리.
+  // **복원된 레인**(새로고침 뒤 체인 행에서 투영된 것)은 originIndex 가 비어
+  // 있다 — 이 탭에서 도킹한 기록이 없기 때문이다. 그때는 **발행 배치**가 곧
+  // 돌아갈 자리다(해체 복귀도 positions 를 기준으로 그린다).
   const originOutline = useMemo((): Coords | null => {
     if (!dragKey || !lane) return null;
     const feature = dockedKeys.get(dragKey);
     if (!feature) return null;
-    return lane.originIndex[feature] ?? null;
-  }, [dragKey, lane, dockedKeys]);
+    return lane.originIndex[feature] ?? positions[dragKey] ?? null;
+  }, [dragKey, lane, dockedKeys, positions]);
 
   // 스페이스바 hold → pan 모드. input/textarea/contenteditable 안에서는 무시.
   // 카드 래퍼에 포커스가 있으면 **Space 는 체인 들기**다(위 onCardKeyDown) —

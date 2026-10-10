@@ -58,6 +58,12 @@ type WidgetChainApi = {
   view: ChainView | null;
   /** 액션 in-flight. */
   busy: boolean;
+  /**
+   * 첫 조회가 아직 안 끝났다 — 체인이 있는지 없는지 **모르는** 구간.
+   * 레인 복원이 이 조회에 달려 있으므로, 그 전에 "+ 새 체인" 을 누르면
+   * 복원될 레인 위에 빈 레인을 덮어쓰게 된다(툴바가 이 값으로 비활성).
+   */
+  hydrating: boolean;
   approve: (stepIndex: number, projectId?: string | null) => Promise<void>;
   skip: (stepIndex: number) => Promise<void>;
   cancel: () => Promise<void>;
@@ -91,6 +97,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
   const [row, setRow] = useState<ChainRow | null>(null);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
   // 액션 응답이 realtime 보다 늦게 와 오래된 행으로 되돌리는 것을 막는다.
   const rowRef = useRef<ChainRow | null>(null);
 
@@ -107,6 +114,8 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
       applyRow(json.chain ?? null);
     } catch {
       // 조용히 — 체인 바는 보조 표면이고, 실패해도 위젯 사용은 그대로다.
+    } finally {
+      setHydrating(false);
     }
   }, [applyRow]);
 
@@ -294,6 +303,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
     () => ({
       view,
       busy,
+      hydrating,
       approve,
       skip,
       cancel,
@@ -307,6 +317,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
     [
       view,
       busy,
+      hydrating,
       approve,
       skip,
       cancel,
@@ -330,6 +341,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
 const INERT: WidgetChainApi = {
   view: null,
   busy: false,
+  hydrating: false,
   approve: async () => {},
   skip: async () => {},
   cancel: async () => {},
