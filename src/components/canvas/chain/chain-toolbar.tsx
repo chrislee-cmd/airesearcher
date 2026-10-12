@@ -16,13 +16,15 @@ import { useTranslations } from 'next-intl';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import type { ChainLaneStatusTone } from './chain-lane';
 
+// 시그널 글자색 — 레인 헤더와 같은 Soft 원자를 쓴다(두 곳이 갈라지면 같은
+// 체인의 상태가 툴바와 레인에서 다른 색으로 읽힌다).
 const TONE_CLASS: Record<ChainLaneStatusTone, string> = {
-  processing: 'text-lav-text',
-  amber: 'text-amber-text',
-  error: 'text-error-text',
-  success: 'text-success-text',
+  processing: 'text-soft-run-fg',
+  amber: 'text-soft-warn-fg',
+  error: 'text-soft-err-fg',
+  success: 'text-soft-ok-fg',
   ink: 'text-ink',
-  mute: 'text-mute',
+  mute: 'text-soft-mute',
 };
 
 export type ChainToolbarProps = {
@@ -54,12 +56,11 @@ export function ChainToolbar({
   return (
     <div
       data-chain="toolbar"
-      // left 는 캔버스 좌상단의 위젯 내비게이터(기본 x 24 · 폭 224)를 피한다 —
-      // CD 는 툴바를 좌상단에 두지만 이 캔버스에는 이미 패널이 하나 있다
-      // (프리뷰 실측: "+ 새 체인" 이 패널 뒤로 완전히 가려졌다). 내비게이터는
-      // 사용자가 옮길 수 있으므로 기본 자리만 비켜 둔다.
-      style={{ left: 264 }}
-      className="pointer-events-none absolute top-8 z-overlay flex items-center gap-4"
+      // 배치는 보드가 한다(캔버스 영역 기준 left 24 · top 20 — canvas-modular
+      // §7). 옛 `left: 264` 는 좌상단의 **위젯 내비게이터**를 피하려던 값이고,
+      // 그 패널이 이 PR 에서 퇴역했으므로 CD 좌표를 그대로 쓸 수 있게 됐다
+      // (LEARNINGS §8-7 의 "그 자리에 이미 뭐가 있는지" 가 해소됨).
+      className="pointer-events-none flex items-center gap-4"
     >
       {/* eslint-disable-next-line react/forbid-elements -- CD 툴바 pill 은 높이 56 · border 2 ink · 20/800 · shadow 3px3px0 ink 전용 chrome 이고 "잠김"(surface-disabled · faint · 그림자 없음) 상태를 가진다. Button primitive 의 고정 radius/size variant 와 불일치(§7.11). v2 캡슐 주 버튼과 동일 선례. */}
       <button
@@ -68,17 +69,17 @@ export function ChainToolbar({
         data-chain-locked={inert ? 'true' : 'false'}
         disabled={inert}
         onClick={onNewChain}
-        className={`pointer-events-auto inline-flex h-14 items-center rounded-pill px-6 text-3xl font-extrabold ${
+        className={`pointer-events-auto inline-flex h-14 items-center rounded-pill px-6 text-3xl font-semibold ${
           inert
-            ? 'border-2 border-ink/[0.2] bg-surface-disabled text-mute-soft'
-            : 'border-2 border-ink bg-paper text-ink shadow-memphis-md active:translate-x-px active:translate-y-px active:shadow-memphis-2xs'
+            ? 'bg-soft-fill text-soft-faint'
+            : 'border border-soft-line bg-soft-surface text-ink shadow-soft-card hover:border-soft-line-hover'
         }`}
       >
         {t('toolbar.newChain')}
       </button>
 
       {locked && (
-        <span data-chain-el="lock-reason" className="text-2xl text-mute">
+        <span data-chain-el="lock-reason" className="text-2xl text-soft-faint">
           {t('toolbar.newChainLocked')}
         </span>
       )}
@@ -90,22 +91,22 @@ export function ChainToolbar({
           data-chain="summary-pill"
           data-chain-mode={summary.mode}
           onClick={summary.onFocusLane}
-          className="pointer-events-auto inline-flex h-14 items-center gap-3 rounded-pill border-2 border-ink bg-paper pr-6 pl-2 shadow-memphis-sm-faint focus-visible:outline-none focus-visible:shadow-focus-ring"
+          className="pointer-events-auto inline-flex h-14 items-center gap-3 rounded-pill border border-soft-line bg-soft-surface pr-6 pl-2 shadow-soft-card focus-visible:outline-none focus-visible:shadow-soft-focus-ring"
         >
           <span
-            className={`flex h-[38px] w-[38px] items-center justify-center rounded-full border-2 border-ink ${
-              summary.mode === 'auto' ? 'bg-ink' : 'bg-paper'
+            className={`flex h-[38px] w-[38px] items-center justify-center rounded-full ${
+              summary.mode === 'auto' ? 'bg-ink' : 'bg-soft-fill'
             }`}
           >
             <DuotoneIcon name="link" size={20} mono={summary.mode === 'auto'} />
           </span>
-          <span className="text-2xl font-extrabold text-ink">
+          <span className="text-2xl font-bold text-ink">
             {t('lane.title')}
           </span>
-          <span aria-hidden className="h-5 w-0.5 bg-ink/[0.14]" />
+          <span aria-hidden className="h-5 w-px bg-soft-line" />
           <span
             data-chain-el="status"
-            className={`font-mono text-2xl font-extrabold ${TONE_CLASS[summary.tone]}`}
+            className={`font-soft-mono text-2xl font-semibold ${TONE_CLASS[summary.tone]}`}
           >
             {summary.text}
           </span>

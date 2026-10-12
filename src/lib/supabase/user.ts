@@ -31,3 +31,49 @@ export const getViewMode = cache(async (): Promise<ViewMode> => {
     .single();
   return data?.view_mode === 'list' ? 'list' : 'canvas';
 });
+
+/* ────────────────────────────────────────────────────────────────────
+   캔버스 전환 온보딩 (P4) — `profiles.canvas_palette_onboarding` SSOT.
+
+   그리드 캔버스가 퇴역하고 위젯이 팔레트로 옮겨 가는 전환을 **대상자에게 1회**
+   알린다(canvas-modular/full §8). 값 3종: 'skip'(대상 아님 = 신규 사용자) ·
+   'pending'(아직 안 봤음) · 'done'(봤음). 대상자 판정은 마이그가 기존 row 를
+   'pending' 으로 채워 못박았으므로 여기서 추론하지 않는다.
+
+   미인증 / row 없음 / 미지원 값은 전부 **미노출**로 폴백한다 — 안내가 괜히
+   튀어나오는 쪽이 안 뜨는 쪽보다 나쁘다.
+   ──────────────────────────────────────────────────────────────────── */
+export const getCanvasOnboardingPending = cache(async (): Promise<boolean> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from('profiles')
+    .select('canvas_palette_onboarding')
+    .eq('id', user.id)
+    .single();
+  return data?.canvas_palette_onboarding === 'pending';
+});
+
+/**
+ * 팔레트 사용자 줄(§4.1)에 쓰는 표시 이름. `full_name` 이 없으면 이메일 local
+ * part 로 폴백한다 — 아바타 이니셜까지 비는 것을 막는다.
+ */
+export const getDisplayName = cache(async (): Promise<string | null> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('full_name, email')
+    .eq('id', user.id)
+    .single();
+  const full = data?.full_name?.trim();
+  if (full) return full;
+  const email = data?.email ?? user.email ?? null;
+  return email ? (email.split('@')[0] ?? null) : null;
+});

@@ -1553,24 +1553,50 @@
     "subscribeSuccess": "Your subscription is active. Credits have been added."
   },
   "Canvas": {
-    "navigator": {
-      "title": "Status",
-      "expand": "Expand widget list",
-      "collapse": "Collapse widget list",
-      "dragHandle": "Drag to move",
-      "resetPosition": "Reset position",
-      "stateRunning": "Running",
-      "stateDone": "Done",
-      "stateError": "Error",
-      "hideWidget": "Hide widget",
-      "showWidget": "Show widget"
+    "palette": {
+      "heading": "Widgets",
+      "hint": "Click to open, drag to add to a chain",
+      "collapse": "Collapse palette",
+      "expand": "Expand palette",
+      "chainChip": "Chain",
+      "credits": "💎 {n}",
+      "creditsNone": "💎 —",
+      "fit": "→ Step {n}",
+      "lifted": "Lifted · ←→ to choose a slot",
+      "dragging": "Dragging",
+      "chainStep": "{chain} · Step {n}",
+      "chainStatus": "{chain} · {status}",
+      "countStatus": "{n} · {status}",
+      "detailed": "{status} · {detail}",
+      "statusRunning": "Running",
+      "statusAwaiting": "Awaiting approval",
+      "statusPaused": "Paused",
+      "statusError": "Failed",
+      "statusPending": "Queued",
+      "statusDone": "Done",
+      "locations": "{n} in progress",
+      "workListMore": "{n} more",
+      "workListLibrary": "Past runs are in the library",
+      "workListToggle": "Work list",
+      "rowFullview": "Full view"
     },
-    "publish": {
-      "publish": "Publish as default layout",
-      "publishing": "Publishing…",
-      "published": "Published",
-      "failed": "Publish failed",
-      "hint": "Publishes the current layout as the default for regular accounts"
+    "workspace": {
+      "emptyTitle": "Your workspace is empty",
+      "emptyBody": "To build a chain, start a new chain and drag widgets in from the left. If you only need one widget, just click it to open."
+    },
+    "onboarding": {
+      "title": "Widgets now live in the list on the left",
+      "body": "They are no longer all spread across the canvas — you take one out only when you need it. Click to open, drag to add to a chain. Everything you already made is still there.",
+      "once": "Shown once",
+      "dismiss": "Got it"
+    },
+    "drag": {
+      "emptyDropHint": "Drop it on a chain slot to add it",
+      "slotLabel": "Step {n} slot",
+      "liftedAnnounce": "Picked up {widget}.{josa} {slot} — Space to drop, ←→ for another slot, Esc to cancel.",
+      "movedAnnounce": "{slot} — Space to drop, Esc to cancel.",
+      "droppedAnnounce": "{widget}{josa} added as step {n}.",
+      "cancelledAnnounce": "Pick-up cancelled."
     }
   },
   "Chain": {

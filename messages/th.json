@@ -1553,24 +1553,50 @@
     "subscribeSuccess": "การสมัครสมาชิกของคุณเปิดใช้งานแล้ว เพิ่มเครดิตเรียบร้อย"
   },
   "Canvas": {
-    "navigator": {
-      "title": "สถานะ",
-      "expand": "ขยายรายการวิดเจ็ต",
-      "collapse": "ย่อรายการวิดเจ็ต",
-      "dragHandle": "ลากเพื่อย้าย",
-      "resetPosition": "รีเซ็ตตำแหน่ง",
-      "stateRunning": "กำลังดำเนินการ",
-      "stateDone": "เสร็จสิ้น",
-      "stateError": "เกิดข้อผิดพลาด",
-      "hideWidget": "ซ่อนวิดเจ็ต",
-      "showWidget": "แสดงวิดเจ็ต"
+    "palette": {
+      "heading": "วิดเจ็ต",
+      "hint": "กดเพื่อเปิด ลากเพื่อใส่ในเชน",
+      "collapse": "ย่อพาเลต",
+      "expand": "ขยายพาเลต",
+      "chainChip": "เชน",
+      "credits": "💎 {n}",
+      "creditsNone": "💎 —",
+      "fit": "→ ขั้นที่ {n}",
+      "lifted": "ยกขึ้นแล้ว · ←→ เพื่อเลือกตำแหน่ง",
+      "dragging": "กำลังลาก",
+      "chainStep": "{chain} · ขั้นที่ {n}",
+      "chainStatus": "{chain} · {status}",
+      "countStatus": "{n} รายการ · {status}",
+      "detailed": "{status} · {detail}",
+      "statusRunning": "กำลังดำเนินการ",
+      "statusAwaiting": "รออนุมัติ",
+      "statusPaused": "หยุดชั่วคราว",
+      "statusError": "ไม่สำเร็จ",
+      "statusPending": "รอคิว",
+      "statusDone": "เสร็จสิ้น",
+      "locations": "งาน {n} รายการ",
+      "workListMore": "อีก {n} รายการ",
+      "workListLibrary": "การรันก่อนหน้าอยู่ในไลบรารี",
+      "workListToggle": "รายการงาน",
+      "rowFullview": "มุมมองเต็ม"
     },
-    "publish": {
-      "publish": "เผยแพร่เป็นเลย์เอาต์เริ่มต้น",
-      "publishing": "กำลังเผยแพร่…",
-      "published": "เผยแพร่แล้ว",
-      "failed": "เผยแพร่ไม่สำเร็จ",
-      "hint": "เผยแพร่เลย์เอาต์ปัจจุบันเป็นค่าเริ่มต้นสำหรับบัญชีทั่วไป"
+    "workspace": {
+      "emptyTitle": "พื้นที่ทำงานยังว่างอยู่",
+      "emptyBody": "หากต้องการสร้างเชน ให้เปิดเชนใหม่แล้วลากวิดเจ็ตจากด้านซ้ายเข้ามา ถ้าใช้เพียงตัวเดียว กดที่วิดเจ็ตก็เปิดได้ทันที"
+    },
+    "onboarding": {
+      "title": "วิดเจ็ตย้ายไปอยู่ในรายการด้านซ้ายแล้ว",
+      "body": "ไม่ได้กางไว้ทั้งหมดบนแคนวาสอีกต่อไป แต่จะหยิบออกมาเมื่อใช้งานเท่านั้น กดเพื่อเปิด ลากเพื่อใส่ในเชน ผลงานที่ทำไว้ยังอยู่ครบ",
+      "once": "แสดงเพียงครั้งเดียว",
+      "dismiss": "เข้าใจแล้ว"
+    },
+    "drag": {
+      "emptyDropHint": "ต้องวางลงในช่องของเชนจึงจะเข้าไปได้",
+      "slotLabel": "ช่องขั้นที่ {n}",
+      "liftedAnnounce": "ยก {widget}{josa} ขึ้นแล้ว {slot} — Space เพื่อวาง, ←→ เพื่อเลือกช่องอื่น, Esc เพื่อยกเลิก",
+      "movedAnnounce": "{slot} — Space เพื่อวาง, Esc เพื่อยกเลิก",
+      "droppedAnnounce": "เพิ่ม {widget}{josa} เป็นขั้นที่ {n} แล้ว",
+      "cancelledAnnounce": "ยกเลิกการยกแล้ว"
     }
   },
   "Chain": {

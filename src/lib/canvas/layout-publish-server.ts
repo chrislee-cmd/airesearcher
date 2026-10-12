@@ -13,7 +13,10 @@ import {
 //
 // 제약(하드): DB 조회 실패/미적용(마이그 전 프리뷰)이 캔버스 렌더를 절대
 // 블로킹/실패시키지 않는다 — try/catch 로 삼키고 null 반환 → board 는 종전
-// defaultPositions 폴백(회귀 0). authenticated select 정책으로 로드하므로
+// (옛 소비처: canvas-board 의 defaultPositions 폴백.) **캔버스 모듈화 Phase 1
+// 에서 그리드 캔버스가 퇴역해 이 좌표를 적용하는 화면이 없어졌다** — 데이터와
+// 라우트는 파괴하지 않고 그대로 남긴다(어드민 노출/순서 전환은 후속 확인 항목).
+// authenticated select 정책으로 로드하므로
 // service-role 불필요(발행값은 비밀이 아님).
 export const getPublishedCanvasLayout = cache(
   async (): Promise<PublishedCanvasLayout | null> => {

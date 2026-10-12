@@ -10,6 +10,17 @@
    경계: 프레젠테이션 + 콜백만. 레인 상태·도킹 판정·액션은 호스트가 소유한다.
    레인 chrome 은 **surface 레벨**이라 `[data-canvas-body]` cascade 밖이다
    (LEARNINGS §5 — 도킹 카드에 붙는 표시는 셸의 subbarEnd 슬롯만 쓴다).
+
+   ── Soft Identity 적용 범위 (캔버스 모듈화 Phase 1 · 스펙 제약 1) ──────────
+   이 PR 이 레인에서 하는 것은 **chrome 의 Soft 값 적용**뿐이다 — 색 · 선 ·
+   그림자 · 서체. 치수(헤더 높이 · 패딩 · radius · font-size)는 **건드리지
+   않는다**: 레인은 캔버스 transform 안에서 ~0.4 배로 보이는 표면이라 CD 컴프의
+   절대 px 가 1:1 로 옮겨지지 않고, 스펙이 "레인 내부 구조/치수/상호작용 불변"
+   을 명시한다. 그래서 1px 로 보여야 할 선은 3px 로 두되 **색만** Soft
+   hairline(`--line`)으로 바꾼다 — 0.4 배에서 1.2px 로 읽힌다.
+   외형 SSOT = `canvas-modular/full/README.md` §5 끝열 + 같은 번들의 레인 장면
+   (v3 `.dc.html` 의 Memphis 값은 리브랜드 1단계 머지로 외형 권위를 잃었다 —
+   soft-identity/WRITER-ANSWERS §5).
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';
@@ -26,13 +37,14 @@ export type ChainLaneStatusTone =
   | 'ink'
   | 'mute';
 
+// 시그널 글자색 — Soft 는 배지/상태 문구를 `--{ok,run,warn,err}-fg` 로 쓴다.
 const TONE_CLASS: Record<ChainLaneStatusTone, string> = {
-  processing: 'text-lav-text',
-  amber: 'text-amber-text',
-  error: 'text-error-text',
-  success: 'text-success-text',
+  processing: 'text-soft-run-fg',
+  amber: 'text-soft-warn-fg',
+  error: 'text-soft-err-fg',
+  success: 'text-soft-ok-fg',
   ink: 'text-ink',
-  mute: 'text-mute',
+  mute: 'text-soft-mute',
 };
 
 export type ChainLaneProps = {
@@ -79,20 +91,20 @@ export function ChainLane({
       data-chain-mode={mode}
       aria-label={title}
       style={{ borderRadius: 'var(--widget-card-frame-radius)' }}
-      className="inline-flex max-w-full flex-col overflow-hidden border-[3px] border-ink bg-paper-soft shadow-memphis-md-faint"
+      className="inline-flex max-w-full flex-col overflow-hidden border-[3px] border-soft-line bg-soft-surface shadow-soft-card"
     >
       <header
         style={{ height: LANE_HEADER_H }}
-        className="flex shrink-0 items-center gap-4 border-b-2 border-ink bg-paper px-6"
+        className="flex shrink-0 items-center gap-4 border-b-2 border-soft-hair bg-soft-surface px-6"
       >
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-card border-2 border-ink ${auto ? 'bg-ink' : 'bg-paper'}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-nav ${auto ? 'bg-ink' : 'bg-soft-fill'}`}
         >
           <DuotoneIcon name="link" size={20} mono={auto} />
         </span>
         <span
-          style={{ fontFamily: 'var(--font-outfit), var(--font-sans)' }}
-          className="shrink-0 text-3xl font-extrabold text-ink"
+          style={{ fontFamily: 'var(--font-display)' }}
+          className="shrink-0 text-3xl font-bold text-ink"
         >
           {title}
         </span>
@@ -102,7 +114,7 @@ export function ChainLane({
             role="radiogroup"
             aria-label={t('entry.modeGroup')}
             data-chain-el="mode-segment"
-            className="inline-flex shrink-0 overflow-hidden rounded-control border-2 border-ink bg-paper shadow-memphis-sm"
+            className="inline-flex shrink-0 items-center gap-0 rounded-pill bg-soft-fill p-1"
           >
             <ModeCell
               selected={!auto}
@@ -110,7 +122,6 @@ export function ChainLane({
             >
               {t('mode.approve')}
             </ModeCell>
-            <span aria-hidden className="w-0.5 bg-ink" />
             <ModeCell selected={auto} onClick={() => onModeChange('auto')}>
               {t('mode.auto')}
             </ModeCell>
@@ -118,19 +129,19 @@ export function ChainLane({
         ) : (
           <span
             data-chain-el="mode-badge"
-            className={`inline-flex shrink-0 items-center rounded-pill border-2 border-ink px-3 py-1 text-lg font-extrabold ${
-              auto ? 'bg-ink text-paper' : 'bg-paper text-ink'
+            className={`inline-flex shrink-0 items-center rounded-pill px-3 py-1 text-lg font-semibold ${
+              auto ? 'bg-ink text-soft-surface' : 'bg-soft-fill text-soft-ink-2'
             }`}
           >
             {t(auto ? 'mode.auto' : 'mode.approve')}
           </span>
         )}
 
-        <span aria-hidden className="h-[30px] w-0.5 shrink-0 bg-ink/[0.14]" />
+        <span aria-hidden className="h-[30px] w-px shrink-0 bg-soft-line" />
         <span
           role="status"
           data-chain-el="status"
-          className={`shrink-0 font-mono text-2xl font-extrabold ${TONE_CLASS[statusTone]}`}
+          className={`shrink-0 font-soft-mono text-2xl font-semibold ${TONE_CLASS[statusTone]}`}
         >
           {statusText}
         </span>
@@ -140,7 +151,7 @@ export function ChainLane({
         {lockNote && (
           <span
             data-chain-el="lock-note"
-            className="shrink-0 text-lg text-mute"
+            className="shrink-0 text-lg text-soft-mute"
           >
             {lockNote}
           </span>
@@ -148,7 +159,7 @@ export function ChainLane({
         {costNote && (
           <span
             data-chain-el="cost"
-            className="inline-flex shrink-0 items-center rounded-pill border-2 border-ink bg-paper px-3 py-1 font-mono text-lg font-extrabold text-ink"
+            className="inline-flex shrink-0 items-center rounded-pill bg-soft-fill px-3 py-1 font-soft-mono text-lg font-semibold text-soft-ink-2"
           >
             {costNote}
           </span>
@@ -159,7 +170,7 @@ export function ChainLane({
             type="button"
             data-chain-action="lane"
             onClick={action.onClick}
-            className="shrink-0 text-2xl font-bold text-mute transition-colors hover:text-ink"
+            className="shrink-0 text-2xl font-semibold text-soft-mute transition-colors hover:text-ink"
           >
             {action.label}
           </button>
@@ -195,8 +206,10 @@ function ModeCell({
       role="radio"
       aria-checked={selected}
       onClick={onClick}
-      className={`px-4 py-2 text-xl font-extrabold transition-colors ${
-        selected ? 'bg-ink text-paper' : 'bg-paper text-mute hover:bg-paper-soft'
+      className={`rounded-pill px-4 py-2 text-xl font-semibold transition-colors ${
+        selected
+          ? 'bg-soft-surface text-ink shadow-soft-chip'
+          : 'text-soft-mute hover:text-ink'
       }`}
     >
       {children}

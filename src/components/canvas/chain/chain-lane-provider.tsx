@@ -4,7 +4,9 @@
    ChainLaneProvider — 레인의 클라이언트 상태 + 도킹 판정 + 서버 체인 동기화.
 
    CD SSOT: `v3/README.md` State·Interactions. 상태 모양도 CD 그대로:
-     lane: { cards: feature[], originIndex: Record<feature, Coords> } | null
+     lane: { cards: feature[] } | null
+   (CD 의 `originIndex`(해체 시 돌아갈 그리드 셀)는 **캔버스 모듈화 Phase 1
+   에서 퇴역**했다 — 그리드 캔버스가 사라져 돌아갈 좌표가 없다.)
      drag: { feature, over: slotIndex | null, valid, reason } | null
 
    ── 설계 결정 2가지 (writer 확정 2026-10-08) ──────────────────────────
@@ -56,13 +58,9 @@ import {
 } from '@/lib/chains/view';
 import { useWidgetChain } from './widget-chain-provider';
 
-export type LaneCoords = { col: number; row: number };
-
 export type LaneState = {
   /** 도킹된 단계 — 레인 안 좌→우 순서. */
   cards: ChainStepFeature[];
-  /** 해체 시 돌아갈 자리. 캔버스 배치가 index 기반({col,row})이라 그대로 저장. */
-  originIndex: Record<string, LaneCoords>;
 };
 
 export type DragState = {
@@ -95,17 +93,13 @@ type LaneApi = {
   /** 언도킹 가능 판정 — 끌기 시작 시점에 한 번 보고 드래그 내내 들고 간다. */
   evaluateUndock: (feature: string) => UndockVerdict;
   setDrag: (next: DragState | null) => void;
-  dock: (feature: ChainStepFeature, position: DockPosition, origin: LaneCoords) => void;
-  undock: (feature: ChainStepFeature) => void;
-  /** 해체 직후 1.6초 "원래 자리로" 배지를 띄울 대상. */
-  restored: string[];
   /**
-   * 해체 순간 각 도킹 카드가 **있던 화면 좌표**(FLIP 의 first). 카드는 레인
-   * 슬롯 → 그리드로 **부모가 바뀌므로** CSS transition 으로는 이을 수 없다 —
-   * 보드가 이 좌표로 역변환을 걸고 0 으로 애니메이션한다. 소비 후 clearFlip.
+   * 도킹 — 캔버스 모듈화 Phase 1 에서 `origin`(돌아갈 그리드 셀)이 사라졌다.
+   * 그리드가 퇴역해 "원래 자리" 라는 좌표가 더는 없고, 레인에서 빠진 카드는
+   * **팔레트 타일로만** 보인다(번들 §2 규칙 3 "작업면에는 꺼낸 것만").
    */
-  flipFrom: Record<string, { x: number; y: number }> | null;
-  clearFlip: () => void;
+  dock: (feature: ChainStepFeature, position: DockPosition) => void;
+  undock: (feature: ChainStepFeature) => void;
   /** 레인 본문 DOM — 좌표 판정의 기준. */
   laneBodyRef: React.MutableRefObject<HTMLDivElement | null>;
   /** 도킹 카드가 portal 될 슬롯 DOM 등록(카드 remount 방지). */
@@ -115,8 +109,6 @@ type LaneApi = {
 
 const LaneContext = createContext<LaneApi | null>(null);
 
-const RESTORE_BADGE_MS = 1600;
-
 export function ChainLaneProvider({ children }: { children: ReactNode }) {
   const { view, createChain, patchSteps, cancel, refresh } = useWidgetChain();
   // 사용자가 **이 탭에서 만진** 레인. null 이면 아래 파생 복원이 쓰인다.
@@ -125,12 +117,7 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
   // 파생 복원이 레인을 되살리는 것을 막는다.
   const [dissolvedId, setDissolvedId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
-  const [restored, setRestored] = useState<string[]>([]);
   const [dockTargets, setDockTargets] = useState<Record<string, HTMLElement | null>>({});
-  const [flipFrom, setFlipFrom] = useState<Record<
-    string,
-    { x: number; y: number }
-  > | null>(null);
   const laneBodyRef = useRef<HTMLDivElement | null>(null);
 
   /* ── 레인 복원 — 체인 행이 SSOT, 레인은 그 투영 (writer 확정 2026-10-10) ──
@@ -148,8 +135,6 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
          done/error 도 복원하지 않는다 — CD L7/L8 의 "레인 잔존" 은 세션 내
          연속성으로 해석하고, 새로고침 뒤에는 결과가 각 위젯에 있다(파일럿 한계).
        · cards = 카드 있는 단계만(`laneCardSteps`) — 탑라인은 산출물 노드다.
-       · originIndex 는 비워 둔다 = **발행 배치 폴백**(해체 복귀는 published
-         positions 가 이미 기준이고, 드래그 중 "원래 자리" 윤곽만 보드가 폴백).
        · 복원 렌더는 **정적**이다 — 도킹 모션은 사용자 행위의 피드백이지
          복원의 것이 아니다(파생이라 애초에 모션 트리거가 없다).
        · 멀티 탭/기기는 파일럿 밖 — realtime 구독으로 따라오는 수준까지만. */
@@ -157,7 +142,7 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
     if (!view || view.id === dissolvedId) return null;
     if (isTerminal(view.status)) return null;
     const cards = laneCardSteps(view.steps.map((s) => s.feature));
-    return cards.length > 0 ? { cards, originIndex: {} } : null;
+    return cards.length > 0 ? { cards } : null;
   }, [view, dissolvedId]);
 
   const lane = laneState ?? derivedLane;
@@ -204,30 +189,20 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
   );
 
   const createLane = useCallback(() => {
-    setLaneState({ cards: [], originIndex: {} });
+    setLaneState({ cards: [] });
   }, []);
 
   const dissolveLane = useCallback(() => {
-    const cards = lane?.cards ?? [];
-    // FLIP first — 레인에서 사라지기 **전에** 현재 화면 좌표를 읽는다. 카드는
-    // dockTargets[f] 안에 portal 돼 있으므로 타깃 rect 가 곧 카드 rect 다.
-    const from: Record<string, { x: number; y: number }> = {};
-    cards.forEach((f) => {
-      const el = dockTargets[f];
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      from[f] = { x: r.left, y: r.top };
-    });
-    setFlipFrom(Object.keys(from).length > 0 ? from : null);
+    // 해체 복귀 FLIP 은 퇴역했다 — 카드가 돌아갈 **그리드 셀이 없다**.
+    // 레인이 사라지면 카드는 (항상 마운트된) 숨은 호스트로 돌아가고, 사용자가
+    // 보는 변화는 팔레트 타일이 chain → idle 로 바뀌는 것뿐이다.
     setLaneState(null);
     // 서버가 cancelled 로 바뀌기 전에도 파생 복원이 되살리지 않도록 못박는다.
     setDissolvedId(view?.id ?? null);
     setDrag(null);
-    setRestored(cards);
-    setTimeout(() => setRestored([]), RESTORE_BADGE_MS);
     // 실행 전 체인은 거둬들인다(종결 체인은 기록으로 남긴다).
     if (view && isEditable(view)) void cancel().then(() => refresh());
-  }, [lane, view, cancel, refresh, dockTargets]);
+  }, [view, cancel, refresh]);
 
   const evaluate = useCallback(
     (feature: string, position: DockPosition): DockVerdict =>
@@ -254,18 +229,15 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
   // setState 함수형 업데이트의 prev(= laneState = null)를 쓰면 복원분이
   // 통째로 날아간다.
   const dock = useCallback(
-    (feature: ChainStepFeature, position: DockPosition, origin: LaneCoords) => {
-      const base = lane ?? { cards: [], originIndex: {} };
+    (feature: ChainStepFeature, position: DockPosition) => {
+      const base = lane ?? { cards: [] };
       if (base.cards.includes(feature)) return;
       const cards =
         position === 'append'
           ? [...base.cards, feature]
           : [feature, ...base.cards];
       void syncComposition(cards);
-      setLaneState({
-        cards,
-        originIndex: { ...base.originIndex, [feature]: origin },
-      });
+      setLaneState({ cards });
       setDrag(null);
     },
     [lane, syncComposition],
@@ -279,16 +251,10 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       if (!evaluateUndock(feature).ok) return;
       const cards = lane.cards.filter((f) => f !== feature);
       void syncComposition(cards);
-      const originIndex = { ...lane.originIndex };
-      delete originIndex[feature];
-      setLaneState({ cards, originIndex });
-      setRestored([feature]);
-      setTimeout(() => setRestored([]), RESTORE_BADGE_MS);
+      setLaneState({ cards });
     },
     [lane, syncComposition, evaluateUndock],
   );
-
-  const clearFlip = useCallback(() => setFlipFrom(null), []);
 
   const registerDockTarget = useCallback(
     (feature: string, el: HTMLElement | null) => {
@@ -311,9 +277,6 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       setDrag,
       dock,
       undock,
-      restored,
-      flipFrom,
-      clearFlip,
       laneBodyRef,
       registerDockTarget,
       dockTargets,
@@ -328,9 +291,6 @@ export function ChainLaneProvider({ children }: { children: ReactNode }) {
       evaluateUndock,
       dock,
       undock,
-      restored,
-      flipFrom,
-      clearFlip,
       registerDockTarget,
       dockTargets,
     ],
@@ -388,9 +348,6 @@ const INERT: LaneApi = {
   setDrag: () => {},
   dock: () => {},
   undock: () => {},
-  restored: [],
-  flipFrom: null,
-  clearFlip: () => {},
   laneBodyRef: { current: null },
   registerDockTarget: () => {},
   dockTargets: {},
