@@ -98,8 +98,16 @@ export async function POST(req: Request) {
     if (!rawSteps && valid.error === 'too_short') {
       return NextResponse.json({ error: 'invalid_start' }, { status: 400 });
     }
+    // from/to 는 incompatible_steps 에서 "어느 쌍이 막혔는지" 를 UI 가 detail
+    // 문구를 파싱하지 않고 자기 로케일로 조립할 수 있게 구조로도 넘긴다 —
+    // PATCH(`[id]/steps`)와 같은 body shape 다(둘 다 같은 validateSteps 권위).
     return NextResponse.json(
-      { error: valid.error, detail: valid.detail },
+      {
+        error: valid.error,
+        detail: valid.detail,
+        ...(valid.from ? { from: valid.from } : {}),
+        ...(valid.to ? { to: valid.to } : {}),
+      },
       { status: 400 },
     );
   }
