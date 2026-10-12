@@ -266,7 +266,7 @@ export function WidgetGuideModal({
                   width: 74,
                   height: 74,
                   border: '1px solid var(--canvas-card-border)',
-                  boxShadow: 'var(--)',
+                  boxShadow: 'none',
                 }}
               >
                 <PlayTriangle />

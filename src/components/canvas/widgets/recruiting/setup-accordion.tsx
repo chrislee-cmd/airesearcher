@@ -233,7 +233,7 @@ function CdDropzone({
   );
 }
 
-// PasteBox — CD paste 박스(1.5px solid ink · radius14). ui/Textarea + canvas
+// PasteBox — CD paste 박스(1px --line · radius14 · Soft). ui/Textarea + canvas
 // 캐스케이드는 2px/#000/radius6 라 CD 와 상이 → fresh textarea(inline style 로
 // 캐스케이드 override). placeholder 는 CD 카피.
 function PasteBox({

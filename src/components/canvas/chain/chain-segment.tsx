@@ -130,11 +130,14 @@ function SegmentLine({
           <span className="absolute inset-x-0 flex" style={{ top: 1 }}>
             <span
               className="flex-1"
-              style={{ borderTop: `3px solid ${headColor}` }}
+              // 연결선 굵기 1.5px = CD 장면 01 지정값("완료 구간 1.5px ink 실선 ·
+              // 진행 구간 1.5px --run-dot · 대기 구간 1.5px dashed"). 선 1px 규칙의
+              // 대상인 '테두리'가 아니라 연결선 자체의 굵기다.
+              style={{ borderTop: `1.5px solid ${headColor}` }}
             />
             <span
               className="flex-1"
-              style={{ borderTop: '3px dashed var(--line-hover)' }}
+              style={{ borderTop: '1.5px dashed var(--line-hover)' }}
             />
           </span>
         ) : (
@@ -146,10 +149,10 @@ function SegmentLine({
               top: 1,
               borderTop:
                 kind === 'done'
-                  ? '3px solid var(--ink)'
+                  ? '1.5px solid var(--ink)'
                   : kind === 'awaiting'
-                    ? '3px dashed var(--warn-dot)'
-                    : '3px dashed var(--line-hover)',
+                    ? '1.5px dashed var(--warn-dot)'
+                    : '1.5px dashed var(--line-hover)',
             }}
           />
         )}

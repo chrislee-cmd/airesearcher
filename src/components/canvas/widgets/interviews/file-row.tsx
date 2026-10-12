@@ -27,7 +27,7 @@ function StatusChip({
   return (
     <span
       className={`shrink-0 rounded-chip border font-mono-label font-extrabold ${cls}`}
-      style={{ fontSize: 10, padding: '2px 8px', borderWidth: '1.4px' }}
+      style={{ fontSize: 10, padding: '2px 8px', borderWidth: '1px' }}
     >
       {label}
     </span>
@@ -104,7 +104,7 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
     return (
       <div
         className="flex items-center gap-2.5 rounded-card bg-paper"
-        style={{ padding: '11px 13px', border: `2px solid ${INK}` }}
+        style={{ padding: '11px 13px', border: `1px solid ${INK}` }}
       >
         <DuotoneIcon name={icon} size={17} />
         <div className="min-w-0 flex-1">
@@ -197,7 +197,7 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
   return (
     <div
       className="flex items-center gap-2.5 rounded-card bg-paper opacity-75"
-      style={{ padding: '11px 13px', border: `1.5px solid var(--color-line)` }}
+      style={{ padding: '11px 13px', border: `1px solid var(--color-line)` }}
     >
       <DuotoneIcon name={icon} size={17} />
       <div className="min-w-0 flex-1">

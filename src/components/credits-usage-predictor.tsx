@@ -167,7 +167,7 @@ export function CreditsUsagePredictor({
               style={{
                 background: active ? '#fff0f4' : '#fff',
                 color: '#000',
-                border: `${active ? 3 : 2.5}px solid var(--canvas-card-border)`,
+                border: '1px solid var(--canvas-card-border)',
                 borderRadius: '10px',
                 boxShadow: active ? 'none' : 'none',
                 fontFamily: outfitStack,
@@ -278,7 +278,7 @@ export function CreditsUsagePredictor({
               style={{
                 borderBottom: isLast
                   ? 'none'
-                  : '1.5px solid var(--canvas-card-border)',
+                  : '1px solid var(--canvas-card-border)',
               }}
               className="py-3 transition-colors hover:bg-[var(--canvas-bg)]"
             >

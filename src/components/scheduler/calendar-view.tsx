@@ -418,7 +418,7 @@ function RowGroup({
                         ? 'border border-ink bg-ink text-paper'
                         : 'border border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
                     }
-                    style={projectColor ? { borderLeft: `3px solid ${projectColor}` } : undefined}
+                    style={projectColor ? { borderLeft: `1px solid ${projectColor}` } : undefined}
                     title={isConfirmed ? label : `${s.start}–${s.end}`}
                   >
                     {label}
@@ -486,7 +486,7 @@ function DayList({
                       ? 'border-ink bg-ink text-paper'
                       : 'border-amore/40 bg-amore/10 text-ink-2 hover:border-amore hover:bg-amore/20 disabled:cursor-not-allowed disabled:opacity-50')
                   }
-                  style={projectColor ? { borderLeft: `4px solid ${projectColor}` } : undefined}
+                  style={projectColor ? { borderLeft: `1px solid ${projectColor}` } : undefined}
                 >
                   <span className="tabular-nums">{s.start} – {s.end}</span>
                   {isConfirmed && (

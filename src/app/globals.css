@@ -97,9 +97,9 @@
      의 var 통과 규칙 + FileDropZone 과 동일 sanctioned 패턴). */
   --raw-surface-locked: #faf6ea;                            /* 표준 설문 블록 fill (cream) */
   --cd-dashed-border: 1.6px dashed rgba(29, 27, 32, 0.22);  /* dropzone dashed */
-  --cd-solid-border: 1.5px solid var(--raw-ink-100);        /* paste box */
-  --cd-hairline-border: 1.4px solid rgba(29, 27, 32, 0.14); /* survey row·info */
-  --cd-amore-border: 1.4px solid var(--raw-accent-pink);    /* required chip·amore pill */
+  --cd-solid-border: 1px solid var(--line);                /* paste box (Soft: 선 1px) */
+  --cd-hairline-border: 1px solid var(--hair);              /* survey row·info (Soft) */
+  --cd-amore-border: 1px solid var(--raw-accent-pink);      /* required chip·amore pill */
   --cd-amore-shadow: none;    /* 버튼·칩에 그림자 없음 (핵심규칙 2) */
   --cd-review-ring: 0 0 0 4px rgba(255, 92, 138, 0.12);     /* review 노드 halo */
   --cd-disabled-bg: #eceef1;                                /* disabled pill bg */
