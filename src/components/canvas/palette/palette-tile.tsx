@@ -208,7 +208,13 @@ export function PaletteTile({
           </span>
 
           <span style={{ gap: 3 }} className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-lg font-semibold text-ink">
+            {/* leading-4 — CD 의 이름 줄상자는 16px 이다(§4.2 "이름 13.5/600",
+                줄간격 지정 없음 = 브라우저 기본). `text-lg` 토큰이 들고 오는
+                줄간격은 20.2px 이라 그대로 두면 이름+둘째 줄 블록이 CD 보다
+                4px 높아지고, 세로 중앙 정렬이라 **블록 전체가 2px 올라간다**
+                (CD 렌더와 겹친 지오메트리 실측: y 14.5 ↔ 12.4). 순수 레이아웃
+                값이라 토큰 대상이 아니다. */}
+            <span className="truncate text-lg leading-4 font-semibold text-ink">
               {name}
             </span>
             <span
