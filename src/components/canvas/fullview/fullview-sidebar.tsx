@@ -8,12 +8,18 @@
    (supersede). 여기서는 레거시를 편집·재사용하지 않는다.
 
    - 전달받은 순서대로 위젯을 세로 나열.
-   - 활성 항목 = border-2 ink · fv-radius-nav(8) · paper · shadow-memphis-sm.
-   - idle 항목 = 투명 border · text-mute-soft.
-   - status dot 10px = per-widget 파스텔(`--widget-header-bg-<accent>`, §S3).
-   - 배지(§F7 확정 소스 = `useWidgetStateOf`): running→LIVE(amore fill·mono·
-     pulse) · done→DONE(mint·success-text). CD 정적 comps 는 happy-path 만
-     그리므로 idle/error 는 배지 없음 — error 스타일은 CD 확정 시 후속.
+
+   **Soft Identity 리브랜드 1단계** — 셸 ②. 변환표 "풀뷰 사이드바:
+   `--surface-2` · border-r 1 `--hair` · 활성 = 흰 bg + 1px `--line` + 700"
+   (기존 paper-soft · border-r 2 ink · 활성 1.5 ink + 하드 그림자). 폭 240 ·
+   접힘 52 · 항목 지오메트리는 불변 — 시각 값만.
+   - 활성 항목 = 1px `--line` · fv-radius-nav(8) · `--surface` · weight 700.
+   - idle 항목 = 투명 border · `--mute` · hover `--surface`.
+   - status dot = per-widget **원색**(`--widget-header-bg-<accent>`, 작은 면 =
+     원색 OK · 핵심규칙 3) · 테두리 없음.
+   - 배지(§F7 확정 소스 = `useWidgetStateOf`): running→LIVE(`--run-bg`/`--run-fg`
+     + 깜빡이는 `--run-dot`) · done→DONE(`--ok-bg`/`--ok-fg`). 테두리·그림자
+     없음(핵심규칙 2·4). idle/error 는 배지 없음(불변).
    - locked(준비중) 위젯 = 중립 배지 + dim, 라이브 위젯과 시각 구분.
 
    Collapse (card #567): 사용자가 좌측 네비를 슬림 아이콘 레일(~52px)로 접을
@@ -22,8 +28,8 @@
    시 native title tooltip 으로 라벨을 노출한다. 클릭 전환·숫자키 1-9(보드
    레벨 핸들러)는 접힘/펼침 무관하게 동작. 상태는 localStorage 로 영속
    (`fv-sidebar-collapsed`) — 접은 채 위젯 전환/재오픈해도 유지. footnote 는
-   접힘 시 숨김(공간 부족, 제약상 허용). 토글 핸들은 기존 폴드-레일 톤
-   (Memphis, ‹/› 글리프, border-ink · bg-paper-soft) 재사용.
+   접힘 시 숨김(공간 부족, 제약상 허용). 토글 핸들은 Soft 보조 버튼 톤
+   (‹/› 글리프, 흰 면 · 1px `--line`, 그림자 없음).
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
@@ -35,11 +41,9 @@ import {
 } from '../widget-types';
 import { useWidgetStateOf } from '../shell/widget-state-context';
 
-// LIVE/DONE/locked 배지 radius — CD §F2 측정값 6px. 승격 fv radius 세트
-// (fv-radius-nav 8 ~ panel-lg 16, §F6(B)) 밖의 off-scale 값이라 매칭 토큰이
-// 없다. §F6(B) 가 off-scale radius 를 raw rounded-[Npx] 로 두는 규약과 동일.
-// design-allow-hardcoded -- CD §F2 배지 radius 6 (승격 fv radius 스케일 8~16 밖, 매칭 토큰 없음)
-const NAV_BADGE_RADIUS = 'rounded-[6px]';
+// LIVE/DONE/locked 배지 radius — Soft 핵심규칙 5 "배지·버튼·세그먼트는 전부
+// pill". 리브랜드 1단계에서 CD §F2 의 6px 사각 배지 → `rounded-pill`.
+const NAV_BADGE_RADIUS = 'rounded-pill';
 
 // ── collapse 상태 store — localStorage 영속 + in-tab/ cross-tab notify.
 //    (widget-header-color 의 external store 패턴과 동일 — SSR 안전, useEffect
@@ -85,19 +89,19 @@ function useSidebarCollapsed(): [boolean, () => void] {
 }
 
 // 항목의 라이브 배지 — running→LIVE, done→DONE (§F2/§F7). 그 외(idle/error)
-// 는 배지 없음. LIVE 는 amore fill + pulse 도트, DONE 은 mint + success-text.
+// 는 배지 없음. Soft 배지 규칙: 틴트 면 + 진한 글자 + 점, 테두리/그림자 0.
 function NavBadge({ widgetKey }: { widgetKey: string }) {
   const state = useWidgetStateOf(widgetKey);
   if (state.kind === 'running') {
     return (
       <span
         key={badgeKey(state)}
-        className={`pop-in inline-flex shrink-0 items-center gap-1 ${NAV_BADGE_RADIUS} border-[1.5px] border-amore bg-amore px-1.5 py-0.5 font-mono-label text-xs font-extrabold tracking-[0.06em] text-white`}
+        className={`pop-in inline-flex shrink-0 items-center gap-1.5 ${NAV_BADGE_RADIUS} bg-soft-run-bg px-2 py-0.5 font-soft-mono text-xs font-extrabold tracking-[0.06em] text-soft-run-fg`}
         aria-live="polite"
       >
         <span
           aria-hidden
-          className="inline-block h-[5px] w-[5px] animate-pulse rounded-full bg-white"
+          className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-soft-run-dot"
         />
         LIVE
       </span>
@@ -107,8 +111,9 @@ function NavBadge({ widgetKey }: { widgetKey: string }) {
     return (
       <span
         key={badgeKey(state)}
-        className={`pop-in inline-flex shrink-0 items-center gap-1 ${NAV_BADGE_RADIUS} border-[1.5px] border-ink bg-mint px-1.5 py-0.5 font-mono-label text-xs font-extrabold tracking-[0.06em] text-success-text`}
+        className={`pop-in inline-flex shrink-0 items-center gap-1.5 ${NAV_BADGE_RADIUS} bg-soft-ok-bg px-2 py-0.5 font-soft-mono text-xs font-extrabold tracking-[0.06em] text-soft-ok-fg`}
       >
+        <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-soft-ok-dot" />
         DONE
       </span>
     );
@@ -117,7 +122,7 @@ function NavBadge({ widgetKey }: { widgetKey: string }) {
 }
 
 // 접힘 레일용 배지 — 펼침의 LIVE/DONE pill 을 코너 dot 으로 축약(라벨 텍스트가
-// 들어갈 공간이 없으므로). running→amore pulse dot, done→mint dot. idle/error
+// 들어갈 공간이 없으므로). running→run-dot pulse, done→ok-dot. idle/error
 // 는 null(펼침과 동일 소스). 상태 색은 배지 pill 과 동일 토큰 유지 → 시각 매핑.
 function NavRailBadgeDot({ widgetKey }: { widgetKey: string }) {
   const state = useWidgetStateOf(widgetKey);
@@ -125,7 +130,7 @@ function NavRailBadgeDot({ widgetKey }: { widgetKey: string }) {
     return (
       <span
         aria-hidden
-        className="absolute right-1 top-1 h-[7px] w-[7px] animate-pulse rounded-full border border-white bg-amore"
+        className="absolute right-1 top-1 h-[7px] w-[7px] animate-pulse rounded-full border border-soft-surface bg-soft-run-dot"
       />
     );
   }
@@ -133,7 +138,7 @@ function NavRailBadgeDot({ widgetKey }: { widgetKey: string }) {
     return (
       <span
         aria-hidden
-        className="absolute right-1 top-1 h-[7px] w-[7px] rounded-full border border-white bg-mint"
+        className="absolute right-1 top-1 h-[7px] w-[7px] rounded-full border border-soft-surface bg-soft-ok-dot"
       />
     );
   }
@@ -152,7 +157,7 @@ function LockedBadge() {
   const t = useTranslations('Shell');
   return (
     <span
-      className={`inline-flex shrink-0 items-center ${NAV_BADGE_RADIUS} border-[1.5px] border-line-soft bg-paper-soft px-1.5 py-0.5 font-mono-label text-xs font-semibold text-mute-soft`}
+      className={`inline-flex shrink-0 items-center ${NAV_BADGE_RADIUS} bg-soft-fill px-2 py-0.5 font-soft-mono text-xs font-semibold text-soft-faint`}
       aria-label={t('locked')}
     >
       {t('locked')}
@@ -165,12 +170,12 @@ function LockedRailDot() {
   return (
     <span
       aria-hidden
-      className="absolute right-1 top-1 h-[7px] w-[7px] rounded-full border border-white bg-line-soft"
+      className="absolute right-1 top-1 h-[7px] w-[7px] rounded-full border border-soft-surface bg-soft-disabled"
     />
   );
 }
 
-// 접기/펼치기 토글 핸들 — 기존 폴드-레일 톤(Memphis) 재사용. 사이드바 하단.
+// 접기/펼치기 토글 핸들 — Soft 보조 버튼 체계(흰 면 + 1px --line, 그림자 없음).
 function CollapseToggle({
   collapsed,
   onToggle,
@@ -186,7 +191,7 @@ function CollapseToggle({
       onClick={onToggle}
       aria-label={collapsed ? t('navExpand') : t('navCollapse')}
       title={collapsed ? t('navExpand') : t('navCollapse')}
-      className="flex h-[34px] w-full shrink-0 items-center justify-center rounded-[var(--fv-radius-nav)] border-2 border-ink bg-paper-soft text-lg font-bold text-ink transition-colors hover:bg-paper"
+      className="flex h-[34px] w-full shrink-0 items-center justify-center rounded-[var(--fv-radius-nav)] border border-soft-line bg-soft-surface text-lg font-bold text-soft-mute transition-colors hover:bg-soft-fill"
     >
       <span aria-hidden>{collapsed ? '›' : '‹'}</span>
     </button>
@@ -220,7 +225,7 @@ export function FullviewSidebar({
     return (
       <nav
         aria-label={t('navLabel')}
-        className="flex w-[52px] shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r-2 border-ink bg-paper-soft px-1.5 py-3.5"
+        className="flex w-[52px] shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-soft-hair bg-soft-surface-2 px-1.5 py-3.5"
       >
         {widgets.map((w) => {
           const active = w.key === activeKey;
@@ -235,14 +240,14 @@ export function FullviewSidebar({
               aria-current={active ? 'page' : undefined}
               aria-label={label}
               title={label}
-              className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--fv-radius-nav)] border-2 transition-colors ${
+              className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--fv-radius-nav)] border transition-colors ${
                 active
-                  ? 'border-ink bg-paper shadow-memphis-sm'
-                  : 'border-transparent hover:bg-paper'
+                  ? 'border-soft-line bg-soft-surface'
+                  : 'border-transparent hover:bg-soft-surface'
               } ${isLocked && !active ? 'opacity-60' : ''}`}
             >
               <span
-                className="h-3.5 w-3.5 shrink-0 rounded-full border-[1.5px] border-ink/30"
+                className="h-3.5 w-3.5 shrink-0 rounded-full"
                 style={{
                   background: `var(--widget-header-bg-${w.meta.accent})`,
                 }}
@@ -267,9 +272,9 @@ export function FullviewSidebar({
   return (
     <nav
       aria-label={t('navLabel')}
-      className="flex w-[240px] shrink-0 flex-col gap-1.5 overflow-y-auto border-r-2 border-ink bg-paper-soft px-3 py-3.5"
+      className="flex w-[240px] shrink-0 flex-col gap-1.5 overflow-y-auto border-r border-soft-hair bg-soft-surface-2 px-3 py-3.5"
     >
-      <div className="px-2 pb-2 pt-1 font-mono-label text-xs font-bold tracking-[1px] text-faint">
+      <div className="px-2 pb-2 pt-1 font-soft-mono text-xs font-bold tracking-[1px] text-soft-faint">
         {t('navLabel')}
       </div>
       {widgets.map((w) => {
@@ -282,10 +287,10 @@ export function FullviewSidebar({
             type="button"
             onClick={() => onSwitch(w.key)}
             aria-current={active ? 'page' : undefined}
-            className={`flex w-full items-center justify-between gap-2 rounded-[var(--fv-radius-nav)] border-2 px-3 py-2.5 text-left transition-colors ${
+            className={`flex w-full items-center justify-between gap-2 rounded-[var(--fv-radius-nav)] border px-3 py-2.5 text-left transition-colors ${
               active
-                ? 'border-ink bg-paper shadow-memphis-sm'
-                : 'border-transparent hover:bg-paper'
+                ? 'border-soft-line bg-soft-surface'
+                : 'border-transparent hover:bg-soft-surface'
             }`}
           >
             <span
@@ -295,7 +300,7 @@ export function FullviewSidebar({
               }`}
             >
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-ink/30"
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{
                   background: `var(--widget-header-bg-${w.meta.accent})`,
                 }}
@@ -305,7 +310,7 @@ export function FullviewSidebar({
                 className={`truncate text-lg ${
                   active
                     ? 'font-bold text-ink'
-                    : 'font-medium text-mute-soft'
+                    : 'font-medium text-soft-mute'
                 }`}
               >
                 {resolveWidgetLabel(tRoot, w.meta)}
@@ -317,7 +322,7 @@ export function FullviewSidebar({
       })}
       <div className="mt-auto flex flex-col gap-1.5 pt-1.5">
         {footnote ? (
-          <div className="rounded-[var(--fv-radius-field)] border border-line bg-paper px-3 py-2.5 text-sm leading-[1.5] text-mute-soft">
+          <div className="rounded-[var(--fv-radius-field)] border border-soft-line bg-soft-surface px-3 py-2.5 text-sm leading-[1.5] text-soft-mute">
             {footnote}
           </div>
         ) : null}

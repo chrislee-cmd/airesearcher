@@ -59,6 +59,15 @@ export default async function LocaleLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap"
         />
+        {/* Soft Identity 리브랜드(1단계) — 제목 Bricolage Grotesque 600–800 ·
+            숫자/시각/ID JetBrains Mono 500–700. 로딩 방식은 기존 Caveat/
+            Pretendard 관례(= head <link> CDN)를 그대로 따른다. 한글 제목은
+            Bricolage 에 글리프가 없어 Pretendard 로 폴백되는 것이 의도
+            (design-handoff/soft-identity/README.md Assets). */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=JetBrains+Mono:wght@500..700&display=swap"
+        />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"

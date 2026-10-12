@@ -4,20 +4,23 @@ import type { DeliverableStatus } from '@/lib/artifacts/types';
 // §"shared 4-state vocabulary"). Identical in list, grid, rail and matrix.
 // NEVER re-word per feature ("Transcribing", "Crawling" belong in the meta
 // line, not here) — the caller passes the fixed 4-state label.
+//
+// Soft Identity 리브랜드 1단계 — 핵심규칙 4: "상태 배지는 테두리가 없다 —
+// 틴트 면(--*-bg) + 진한 글자(--*-fg) + 점". draft 는 속 빈 점(흰 면 + 1px
+// --faint)으로 구분한다(만료/철회 규칙과 동일 문법). 치수(패딩·점 크기)는 불변.
 
 type Tone = {
   dot: string; // dot bg utility (draft = hollow, handled below)
   tint: string; // pill bg
-  border: string; // pill border colour
   text: string; // label + dot text
 };
 
 const TONE: Record<DeliverableStatus, Tone> = {
-  ready: { dot: 'bg-success', tint: 'bg-success-bg', border: 'border-success-line', text: 'text-success-text' },
-  processing: { dot: 'bg-processing', tint: 'bg-lav-bg', border: 'border-lav-line', text: 'text-lav-text' },
-  // draft dot is hollow: paper fill + a mute-soft ring (rendered below).
-  draft: { dot: 'bg-paper', tint: 'bg-paper-soft', border: 'border-line-strong', text: 'text-mute' },
-  error: { dot: 'bg-error', tint: 'bg-error-bg', border: 'border-error-line', text: 'text-error-text' },
+  ready: { dot: 'bg-soft-ok-dot', tint: 'bg-soft-ok-bg', text: 'text-soft-ok-fg' },
+  processing: { dot: 'bg-soft-run-dot', tint: 'bg-soft-run-bg', text: 'text-soft-run-fg' },
+  // draft dot is hollow: --surface fill + a --faint ring (rendered below).
+  draft: { dot: 'bg-soft-surface', tint: 'bg-soft-fill', text: 'text-soft-mute' },
+  error: { dot: 'bg-soft-err-dot', tint: 'bg-soft-err-bg', text: 'text-soft-err-fg' },
 };
 
 export function StatusBadge({
@@ -35,11 +38,11 @@ export function StatusBadge({
   const textSize = size === 'sm' ? 'text-sm' : 'text-sm';
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-pill border-[1.3px] ${t.tint} ${t.border} ${pad} ${textSize} font-bold ${t.text}`}
+      className={`inline-flex items-center gap-1.5 rounded-pill ${t.tint} ${pad} ${textSize} font-bold ${t.text}`}
     >
       <span
         className={`rounded-full ${dotSize} ${t.dot} ${
-          status === 'draft' ? 'border-[1.6px] border-mute-soft' : ''
+          status === 'draft' ? 'border border-soft-faint' : ''
         }`}
       />
       {label}

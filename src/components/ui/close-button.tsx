@@ -18,31 +18,30 @@ import { forwardRef, type ButtonHTMLAttributes } from 'react';
 // what this primitive standardises.
 //
 // The four variants split on two axes only (§0-2):
-//   ① destructive? (discards something)   → row-remove, chip-clear get crimson hover
-//   ② already bordered by its surroundings? → only dialog-close carries its own border
+//   ① destructive? (discards something)   → row-remove, chip-clear get --danger hover
+//   ② hit-area / glyph size                → 16 / 24 / 28 / 32 (치수 불변)
+//   (Soft 전환 후에는 어느 variant 도 idle 보더를 들지 않는다 — 핵심규칙 1/2.)
 //
-//   row-remove     28×28 · r9   · borderless idle → crimson thin border on hover.
+//   row-remove     28×28 · pill · borderless idle → --danger on hover.
 //                  Lives inside list/attachment rows; quiet until hovered.
-//   dialog-close   32×32 · r9   · the ONLY variant with an idle border +
-//                  faint hard shadow. Modal/sheet header, no surrounding frame.
-//   chip-clear     16×16 · pill · glyph only, crimson on hover. Inside a chip
+//   dialog-close   32×32 · pill · borderless idle (Soft 변환표 "닫기 38 원 —
+//                  ✕ 1.8 스트로크 --mute, **테두리 없음**"), --fill on hover.
+//                  Modal/sheet header, no surrounding frame.
+//   chip-clear     16×16 · pill · glyph only, --danger on hover. Inside a chip
 //                  that is already a bordered box (28-px min-hit exemption —
 //                  the whole chip is the target).
-//   banner-dismiss 24×24 · r9   · borderless, ink/6 hover, NON-destructive so
-//                  no crimson (24-px min-hit exemption — low banner, reversible).
+//   banner-dismiss 24×24 · pill · borderless, --fill hover, NON-destructive so
+//                  no danger tint (24-px min-hit exemption — reversible).
 //
-// Colour mapping (CD raw value → DS token, no raw hex so `check:design` stays 0):
-//   #8a8693 mute-soft   → text-mute-soft
-//   #c2334f crimson     → text/border-amore-deep
-//   #fdf0f0 error.bg    → bg-error-bg
-//   #1d1b20 ink         → text/border-ink
-//   #fbfbf9 canvas      → bg-surface-canvas
-//   #fff    paper       → bg-paper
-//   2px2px0 ink/12      → shadow-memphis-sm-faint · 2px2px0 ink → shadow-memphis-sm
-//
-// PENDING TOKENS (BUILD-SPEC §2, do NOT add to globals.css here — CD to
-// promote): --control-h-sm/md (28/32) and --focus-ring. Until --focus-ring
-// lands we borrow IconButton's focus-visible:text-amore for consistency.
+// **Soft Identity 리브랜드 1단계** — 변환표 + 핵심규칙 1/2/5 적용:
+// 모든 variant 가 pill(원형) · 테두리 없음 · 그림자 0 · hover 는 색만.
+// Colour mapping (CD Soft token → util):
+//   --mute   #6e6a75  → text-soft-mute      (✕ 글리프 기본)
+//   --danger #c2334f  → text-soft-danger    (파괴 hover)
+//   --err-bg #fdf0f0  → bg-soft-err-bg      (파괴 hover 면)
+//   --fill   #f4f3f6  → bg-soft-fill        (중립 hover 면)
+//   --ink    #1d1b20  → text-ink
+// --focus-ring 는 1단계에서 등재돼 focus-visible:shadow-soft-focus-ring 로 소비.
 //
 // REQUIRED: aria-label. Icon-only controls are unusable by screen readers
 // without one, so the type forces callers to pass it.
@@ -67,37 +66,36 @@ const BASE =
   'inline-flex items-center justify-center font-bold leading-none select-none ' +
   'transition-[background-color,border-color,color,box-shadow] duration-[var(--dur-fast)] ' +
   'motion-reduce:transition-none ' +
-  'focus:outline-none focus-visible:text-amore ' +
-  'disabled:text-mute disabled:shadow-none disabled:pointer-events-none';
+  'focus:outline-none focus-visible:shadow-soft-focus-ring ' +
+  'disabled:text-soft-disabled disabled:shadow-none disabled:pointer-events-none';
 
 // Per §7.11: a variant owns its colour/border/shadow so caller className can
-// never strip it via CSS source order. Idle borders use border-transparent
-// (reserving 1.5px) so the borderless→bordered hover adds no layout shift.
+// never strip it via CSS source order. 치수(h/w)는 전부 불변 — radius·색·선·
+// 그림자만 Soft 로 교체.
 const VARIANT: Record<CloseButtonVariant, string> = {
-  // Destructive · borderless idle → crimson on hover.
+  // Destructive · borderless idle → --danger on hover.
   'row-remove':
-    'h-7 w-7 rounded-icon text-xl ' +
-    'border-[1.5px] border-transparent bg-transparent text-mute-soft ' +
-    'hover:bg-error-bg hover:border-amore-deep hover:text-amore-deep',
-  // The only bordered idle variant: paper fill, ink border, faint hard shadow.
-  // Non-destructive (folds a surface) so no crimson; active settles 1px in.
+    'h-7 w-7 rounded-pill text-xl ' +
+    'border border-transparent bg-transparent text-soft-mute ' +
+    'hover:bg-soft-err-bg hover:text-soft-danger',
+  // 모달/시트 헤더의 닫기 — Soft 에서는 테두리도 그림자도 없는 원형이다
+  // (변환표 "닫기 38 원 · ✕ 1.8 스트로크 --mute · 테두리 없음").
+  // Non-destructive (folds a surface) 라 danger 틴트 없음.
   'dialog-close':
-    'h-8 w-8 rounded-icon text-2xl ' +
-    'border-[1.5px] border-ink bg-paper text-ink shadow-memphis-sm-faint ' +
-    'hover:bg-surface-canvas hover:shadow-memphis-sm ' +
-    'active:translate-x-px active:translate-y-px active:shadow-none',
-  // Destructive · glyph only (chip is already the box). pill radius, 16-px
-  // exemption. crimson on hover, never a background/border of its own.
+    'h-8 w-8 rounded-pill text-2xl ' +
+    'border border-transparent bg-transparent text-soft-mute shadow-none ' +
+    'hover:bg-soft-fill hover:text-ink',
+  // Destructive · glyph only (chip is already the box). 16-px exemption.
   'chip-clear':
     'h-4 w-4 rounded-pill text-sm ' +
-    'border-transparent bg-transparent text-mute-soft ' +
-    'hover:text-amore-deep',
-  // Non-destructive dismiss: borderless, soft ink wash on hover, ink glyph.
-  // 24-px exemption (low banner, reversible) — no crimson.
+    'border-transparent bg-transparent text-soft-mute ' +
+    'hover:text-soft-danger',
+  // Non-destructive dismiss: borderless, 중립 --fill wash on hover.
+  // 24-px exemption (low banner, reversible) — no danger tint.
   'banner-dismiss':
-    'h-6 w-6 rounded-icon text-lg ' +
-    'border-transparent bg-transparent text-mute-soft ' +
-    'hover:bg-ink/6 hover:text-ink',
+    'h-6 w-6 rounded-pill text-lg ' +
+    'border-transparent bg-transparent text-soft-mute ' +
+    'hover:bg-soft-fill hover:text-ink',
 };
 
 export const CloseButton = forwardRef<HTMLButtonElement, Props>(function CloseButton(

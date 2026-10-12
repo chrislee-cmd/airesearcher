@@ -116,7 +116,7 @@ export function MultiSelectPanel({
       role="dialog"
       ariaLabel={ariaLabel ?? sectionLabel}
     >
-      <div className="flex items-center gap-2 border-b-[1.5px] border-ink/[0.12] px-[13px] py-[9px]">
+      <div className="flex items-center gap-2 border-b border-soft-hair px-[13px] py-[9px]">
         <span className={`min-w-0 truncate ${PICKER_SECTION_LABEL_CLASS}`}>
           {sectionLabel}
         </span>
@@ -132,7 +132,7 @@ export function MultiSelectPanel({
       </div>
 
       {showSearch && (
-        <div className="border-b border-ink/[0.08] px-[13px] py-2">
+        <div className="border-b border-soft-hair px-[13px] py-2">
           <PickerSearchField
             dense
             className="w-full"
@@ -165,7 +165,7 @@ export function MultiSelectPanel({
         )}
       </div>
 
-      <div className="flex items-center gap-[9px] border-t-2 border-ink bg-paper-soft px-[13px] py-2.5">
+      <div className="flex items-center gap-[9px] border-t border-soft-hair bg-soft-surface-2 px-[13px] py-2.5">
         <span className="text-sm text-mute">
           <b className="text-ink">{draft.length}</b> {labels.selectedSuffix}
         </span>
@@ -173,14 +173,14 @@ export function MultiSelectPanel({
           <button
             type="button"
             onClick={() => setDraft([])}
-            className="rounded-full border-[1.5px] border-ink bg-paper px-3.5 py-1.5 text-xs font-bold text-ink outline-none transition-colors hover:bg-line-soft/30 focus-visible:shadow-focus-ring"
+            className="rounded-pill border border-soft-line bg-soft-surface px-3.5 py-1.5 text-xs font-bold text-ink outline-none transition-colors hover:border-soft-line-hover hover:bg-soft-surface-2 focus-visible:shadow-soft-focus-ring"
           >
             {labels.reset}
           </button>
           <button
             type="button"
             onClick={() => onApply(draft)}
-            className="rounded-full border-2 border-ink bg-ink px-4 py-1.5 text-xs font-extrabold text-white shadow-memphis-sm outline-none focus-visible:shadow-focus-ring"
+            className="rounded-pill bg-ink px-4 py-1.5 text-xs font-bold text-soft-surface outline-none transition-colors hover:bg-soft-ink-hover focus-visible:shadow-soft-focus-ring"
           >
             {labels.apply}
           </button>

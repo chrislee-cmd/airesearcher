@@ -3,15 +3,16 @@
 /* ────────────────────────────────────────────────────────────────────
    WidgetShell — production canvas 카드 셸.
 
-   pop 잠금 디자인 (PR-D2 재정의) — banner-top + framed + display.
-   - 카드 chrome: 흰 bg + 3px 검은 border + 14px radius + 6px offset shadow.
-     (canvas pop 토큰 — globals.css @theme).
-   - 헤더 (banner-top, 140px): 노랑 bg (canvas-card-header-bg) + 검은 3px bottom border +
-     Outfit 폰트. 윗줄에 cost (좌) + state pill (우), 아래에 대형 32px label
-     + description.
-   - 본문 (framed): 2.5px 검은 inner border + inset shadow 액자 wrapper.
-     data-canvas-body 부착 — Memphis bold + display typography scoped
-     CSS rule 이 그 안의 button / input / 헤딩에 적용 (globals.css §canvas).
+   **Soft Identity 리브랜드 1단계** — 셸 4계층 중 ①. 변환표
+   (design-handoff/soft-identity/README.md) 그대로:
+   - 카드 chrome: 흰 bg + **1px `--line`** + radius 20(`--r-widget`) +
+     **`--sh-card`**(블러 4단계 중 1단). 하드 오프셋 그림자 0.
+   - 헤더 띠: **`--tint-*`** bg + border-b **1px `--hair`** + 왼쪽 **40 원색
+     아이콘 타일**(원색은 작은 면에만 — 핵심규칙 3) + Bricolage 제목.
+   - 툴바: 흰 bg + 1px `--line` + radius 10 + 셀 구분 1px `--hair` + 그림자 없음.
+   - 치수·레이아웃·상호작용 무변경(카드 604×900 · 패딩/슬롯 그대로) — 시각 값만.
+   - 본문은 **2단계 소유** — data-canvas-body 의 Memphis scoped CSS 는 그대로
+     두므로 본문이 한동안 Memphis 혼재로 보이는 것이 정상이다.
    - 헤더 영역 = drag handle (parent 가 dragHandleProps wire).
    ──────────────────────────────────────────────────────────────────── */
 
@@ -39,6 +40,7 @@ import {
 import { WidgetStatePill } from './widget-state-pill';
 import { WidgetCreditBadge } from './widget-credit-badge';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
+import { widgetIconFor } from './widget-icon';
 import {
   useCreditDeductionEvent,
   type CreditDeductionEvent,
@@ -139,15 +141,40 @@ function ArrowRightIcon({ className }: { className?: string }) {
 // banner-top chrome 에 분리돼 있던 크레딧 배지·상태 pill·풀뷰 진입을 헤더밴드
 // 안 단일 pill 로 병합. probing·interpreter(cardFrame) 세팅 표면 전용.
 
-// 세그 디바이더 — 1.5px ink 세로선. 셀 사이에만(×N-1) 삽입 — full-bleed
-// 세로 rule (컨테이너 align-items:stretch).
+// 세그 디바이더 — Soft: 1px `--hair` 세로선(변환표 "셀 구분 1px --hair").
+// 셀 사이에만(×N-1) 삽입 — full-bleed 세로 rule (align-items:stretch).
 function ToolbarDivider() {
   return (
     <span
       aria-hidden
       className="shrink-0 self-stretch"
-      style={{ width: 1.5, background: 'var(--canvas-card-border)' }}
+      style={{ width: 1, background: 'var(--hair)' }}
     />
+  );
+}
+
+// 헤더 띠 왼쪽 40 원색 아이콘 타일 (변환표 "왼쪽에 40 원색 아이콘 타일").
+// 띠가 틴트로 옅어진 만큼 위젯 정체성 원색은 이 타일이 들고 간다 —
+// bg = `--widget-tone`(유저 색 ?? accent 원색), 글리프는 흰 채움 + ink 1.8
+// 스트로크(duotone 세트 규칙 유지, README §Assets). radius 는 `--r-inner`(10).
+function WidgetIconTile({ widgetKey }: { widgetKey: string }) {
+  return (
+    <span
+      aria-hidden
+      className="inline-flex shrink-0 items-center justify-center"
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 'var(--r-inner)',
+        background: 'var(--widget-tone)',
+      }}
+    >
+      <DuotoneIcon
+        name={widgetIconFor(widgetKey)}
+        size={22}
+        fill="var(--surface)"
+      />
+    </span>
   );
 }
 
@@ -156,7 +183,7 @@ function ToolbarDivider() {
 const TOOLBAR_CELL_STYLE: CSSProperties = {
   width: 44,
   padding: '6px 0',
-  color: 'var(--canvas-card-header-text)',
+  color: 'var(--ink)',
 };
 
 // 가이드 `?` 글리프 — CD .dc.html SVG path (viewBox 0 0 24 24 · stroke ink 2.2 ·
@@ -248,7 +275,8 @@ function WidgetToolbar({
         style={{
           minWidth: 44,
           padding: '6px 6px',
-          color: 'var(--canvas-card-header-text)',
+          color: 'var(--ink)',
+          fontFamily: 'var(--font-mono-soft)',
           gap: 5,
           fontSize: 11,
           whiteSpace: 'nowrap',
@@ -273,7 +301,7 @@ function WidgetToolbar({
         }}
         title={guideLabel}
         aria-label={guideLabel}
-        className="inline-flex cursor-pointer items-center justify-center hover:bg-paper-soft"
+        className="inline-flex cursor-pointer items-center justify-center hover:bg-soft-fill"
         style={TOOLBAR_CELL_STYLE}
       >
         <GuideIcon />
@@ -301,7 +329,7 @@ function WidgetToolbar({
         }}
         title={fullviewLabel}
         aria-label={fullviewLabel}
-        className="inline-flex cursor-pointer items-center justify-center hover:bg-paper-soft"
+        className="inline-flex cursor-pointer items-center justify-center hover:bg-soft-fill"
         style={TOOLBAR_CELL_STYLE}
       >
         <ExpandIcon />
@@ -312,11 +340,12 @@ function WidgetToolbar({
   return (
     <span
       className="inline-flex shrink-0 items-stretch"
+      // Soft: 흰 bg · 1px --line · radius 10 · **그림자 없음**(핵심규칙 2 —
+      // 버튼/칩/배지/입력에는 그림자가 없다).
       style={{
-        background: 'var(--canvas-card-bg)',
-        border: '1.5px solid var(--canvas-card-border)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--widget-card-frame-toolbar-radius)',
-        boxShadow: 'var(--shadow-memphis-sm)',
         overflow: 'hidden',
       }}
     >
@@ -402,8 +431,8 @@ function WidgetShellInner({
   const tRoot = useTranslations();
 
   // ── Canvas 1c 카드 프레임 variant (probing·interpreter) ────────────────
-  // 옐로 banner-top chrome 대신 파스텔 헤더밴드 + 통합 툴바 + (위젯 바디의
-  // 기존) 푸터 CTA. 카드 셸 = border 3px ink · radius 20 · shadow-memphis-md.
+  // 옐로 banner-top chrome 대신 틴트 헤더밴드 + 통합 툴바 + (위젯 바디의
+  // 기존) 푸터 CTA. 카드 셸 = border 1px --line · radius 20 · --sh-card (Soft).
   // 바디는 overflow-hidden — 내부 ControlBoardPanel(flex-1 overflow-y-auto)이
   // 스크롤 주체, 위젯의 기존 shrink-0 CTA 는 스크롤 밖 형제로 pinned(바디
   // 마크업 무변경, 회귀 0). 크레딧/상태/풀뷰는 chrome 에서 사라지고 툴바로 이동.
@@ -422,10 +451,12 @@ function WidgetShellInner({
           width: 604,
           height: 900,
           maxWidth: '100%',
-          background: 'var(--canvas-card-bg)',
-          border: '3px solid var(--canvas-card-border)',
+          // Soft 변환표 — border 3 ink → 1 --line · 하드 오프셋 → --sh-card.
+          // radius 20 은 불변(--widget-card-frame-radius = CD --r-widget).
+          background: 'var(--surface)',
+          border: '1px solid var(--line)',
           borderRadius: 'var(--widget-card-frame-radius)',
-          boxShadow: 'var(--shadow-memphis-md)',
+          boxShadow: 'var(--sh-card)',
           // ── 헤더↔아이콘 톤 매칭 단일 소스 (R7/D1) ────────────────────────
           // 해상된 헤더 톤을 CSS 변수 하나로 카드 하위 전체에 노출한다:
           //   유저 per-widget 색(headerColor) > accent 파스텔 > 전역 default.
@@ -434,6 +465,14 @@ function WidgetShellInner({
           '--widget-tone':
             headerColor ??
             `var(--widget-header-bg-${content.meta.accent}, var(--canvas-card-header-bg))`,
+          // ── 헤더 띠 틴트 (Soft 핵심규칙 3) ────────────────────────────
+          // 넓은 면(헤더 띠)은 원색이 아니라 틴트. accent 기본값은 CD 틴트
+          // 토큰을 그대로 쓰고, 유저가 🎨 로 고른 임의 색(hsl)은 틴트 토큰이
+          // 없으므로 같은 색을 흰색에 22% 섞어 "그 색의 틴트"를 만든다 —
+          // 색 원자를 새로 발명하지 않고 유저 선택을 보존하는 유일한 경로.
+          '--widget-tint': headerColor
+            ? `color-mix(in srgb, ${headerColor} 22%, var(--surface))`
+            : `var(--tint-${content.meta.accent}, var(--surface-2))`,
         } as CSSProperties}
       >
         {/* 헤더밴드 — 파스텔(accent) bg · 2px ink bottom border · Outfit 800 29px
@@ -444,26 +483,36 @@ function WidgetShellInner({
           }`}
           {...dragHandleProps}
           style={{
-            // 헤더밴드 bg = var(--widget-tone) (매칭 불변식 단일 소스). 🎨 변경
-            // 시 아이콘·팔레트글리프와 동시에 리틴트된다.
-            background: 'var(--widget-tone)',
-            color: 'var(--canvas-card-header-text)',
-            fontFamily: 'var(--font-outfit), var(--font-sans)',
-            borderBottom: '2px solid var(--canvas-card-border)',
+            // 헤더밴드 bg = var(--widget-tint) (넓은 면 = 틴트). 원색
+            // var(--widget-tone) 은 왼쪽 40 아이콘 타일·카드 내 듀오톤
+            // 채움·🎨 글리프가 계속 쓴다 — 🎨 변경 시 둘이 함께 리틴트되는
+            // 단일 소스 구조는 그대로.
+            background: 'var(--widget-tint)',
+            color: 'var(--ink)',
+            fontFamily: 'var(--font-display)',
+            borderBottom: '1px solid var(--hair)',
+            // 패딩은 불변 — 제약("치수·레이아웃 무변경"). CD 02 의 20/24 는
+            // 적용하지 않는다(현행 18/22 유지).
             padding: '18px 22px',
           }}
         >
-          <span
-            className="min-w-0 truncate"
-            style={{
-              fontSize: 29,
-              fontWeight: 800,
-              letterSpacing: '-0.9px',
-              lineHeight: 1.05,
-              color: 'var(--canvas-card-header-text)',
-            }}
-          >
-            {resolveWidgetLabel(tRoot, content.meta)}
+          <span className="flex min-w-0 items-center gap-3">
+            <WidgetIconTile widgetKey={content.key} />
+            {/* 제목 — CD 02 "Bricolage 24/700 ls −0.6"(기존 Outfit 29/800).
+                한글 제목은 Bricolage 글리프가 없어 Pretendard 로 폴백되는 것이
+                의도다(README §Assets). */}
+            <span
+              className="min-w-0 truncate"
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                letterSpacing: '-0.6px',
+                lineHeight: 1.1,
+                color: 'var(--ink)',
+              }}
+            >
+              {resolveWidgetLabel(tRoot, content.meta)}
+            </span>
           </span>
           <WidgetToolbar
             cost={content.meta.cost}
@@ -483,7 +532,7 @@ function WidgetShellInner({
         {subbarEnd && (
           <div
             data-widget-subbar
-            className="flex min-h-[33px] shrink-0 items-center gap-[7px] border-b-[1.5px] border-ink/[0.1] bg-paper-soft px-[15px] py-[7px]"
+            className="flex min-h-[33px] shrink-0 items-center gap-[7px] border-b border-soft-hair bg-soft-surface-2 px-[15px] py-[7px]"
           >
             <span className="ml-auto inline-flex items-center">{subbarEnd}</span>
           </div>
@@ -493,7 +542,7 @@ function WidgetShellInner({
             Memphis bold/display scoped CSS 가 아코디언 button/input 에 적용. */}
         <div
           className="min-h-0 flex-1 overflow-hidden"
-          style={{ background: 'var(--canvas-card-bg)' }}
+          style={{ background: 'var(--surface)' }}
         >
           <div data-canvas-body className="flex h-full min-h-0 flex-col">
             <ExpandedBody />
@@ -508,11 +557,13 @@ function WidgetShellInner({
     <div
       className="relative flex h-full flex-col overflow-hidden"
       aria-expanded
+      // Soft 변환표(위 cardFrame 과 동일 규칙) — 준비중/숨김 위젯이 쓰는
+      // 레거시 banner-top 셸도 같은 셸 계층이라 함께 전환한다.
       style={{
-        background: 'var(--canvas-card-bg)',
-        border: 'var(--canvas-card-border-width) solid var(--canvas-card-border)',
-        borderRadius: 'var(--canvas-card-radius)',
-        boxShadow: 'var(--canvas-card-shadow)',
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--r-widget)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <div
@@ -524,15 +575,15 @@ function WidgetShellInner({
           height: 140,
           paddingTop: 16,
           paddingBottom: 16,
-          // 우선순위: 사용자 per-widget 색(headerColor) > 행 색(부모 canvas-board
-          // 이 --widget-header-row-* 로 주입) > 전역 default(노란 banner).
-          background:
-            headerColor ??
-            'var(--widget-header-row-bg, var(--canvas-card-header-bg))',
-          color: 'var(--canvas-card-header-text)',
-          fontFamily: 'var(--font-outfit), var(--font-sans)',
-          borderBottom:
-            '3px solid var(--widget-header-row-border, var(--canvas-card-header-divider))',
+          // 우선순위는 그대로(사용자 색 > 행 색 > 전역 default). Soft 에서는
+          // 넓은 면이므로 유저 색도 틴트로 섞고(핵심규칙 3), 기본값은 accent
+          // 틴트 토큰. 행 색 주입(--widget-header-row-bg)은 폴백으로 유지.
+          background: headerColor
+            ? `color-mix(in srgb, ${headerColor} 22%, var(--surface))`
+            : `var(--widget-header-row-bg, var(--tint-${content.meta.accent}, var(--surface-2)))`,
+          color: 'var(--ink)',
+          fontFamily: 'var(--font-display)',
+          borderBottom: '1px solid var(--hair)',
         }}
       >
         <div className="relative flex items-center gap-2 text-xs uppercase">
@@ -573,31 +624,31 @@ function WidgetShellInner({
         <div
           className="truncate"
           style={{
-            fontSize: 32,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.05,
-            color: 'var(--canvas-card-header-text)',
+            fontSize: 26,
+            fontWeight: 700,
+            letterSpacing: '-0.6px',
+            lineHeight: 1.1,
+            color: 'var(--ink)',
           }}
         >
           {resolveWidgetLabel(tRoot, content.meta)}
         </div>
       </div>
-      {/* framed body — 2.5px 검은 inner frame + inset shadow. 그 안쪽
-          wrapper 가 data-canvas-body — globals.css 의 Memphis bold +
-          display typography scoped rule 이 button / input / 헤딩에 적용. */}
+      {/* framed body — Soft 1px --hair inner frame(그림자 없음). 그 안쪽
+          wrapper 는 data-canvas-body 유지 — 본문 typography/컨트롤 scoped rule
+          은 2단계 소유라 건드리지 않는다. */}
       <div
         className="min-h-0 flex-1 overflow-hidden p-3"
-        style={{ background: 'var(--canvas-card-bg)' }}
+        style={{ background: 'var(--surface)' }}
       >
         <div
           className="h-full overflow-y-auto"
+          // Soft: 액자의 2.5px ink + inset 하드 그림자 → 1px --hair · radius 10.
+          // (핵심규칙 1/2 — 1.5/2/2.5/3px 보더와 하드 그림자는 전부 없앤다.)
           style={{
-            border: '2.5px solid var(--canvas-card-border)',
-            borderRadius: 6,
-            boxShadow:
-              'inset 0 0 0 1px rgba(255, 255, 255, 0.6), inset 0 2px 6px rgba(0, 0, 0, 0.05)',
-            background: 'var(--canvas-card-bg)',
+            border: '1px solid var(--hair)',
+            borderRadius: 'var(--r-inner)',
+            background: 'var(--surface)',
           }}
         >
           <div data-canvas-body className="h-full">

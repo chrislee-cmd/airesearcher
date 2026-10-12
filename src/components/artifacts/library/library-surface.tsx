@@ -11,7 +11,9 @@ import { ShareScopeToggle } from '@/components/share/dashboard/share-scope-toggl
 import { ShareDashboardContainer } from '@/components/share/dashboard/share-dashboard-container';
 import type { ShareScope } from '@/components/share/dashboard/types';
 
-const OUTFIT = { fontFamily: 'var(--font-outfit), var(--font-sans)' } as const;
+// Soft Identity 리브랜드 1단계 — 제품 헤더 제목은 Bricolage(한글은 Pretendard
+// 폴백 = 의도). 기존 Outfit 상수 자리를 그대로 대체해 호출부 변경 0.
+const DISPLAY = { fontFamily: 'var(--font-display)' } as const;
 
 // /library 표면 루트 — 외곽 프레임 + 공용 제목 + 탭바(공유 chrome)를 소유하고
 // 활성 탭 본문을 깐다. v1 탭 = 「산출물 · 공유」. 라우팅 = `?tab=shares`(딥링크).
@@ -52,10 +54,12 @@ export function LibrarySurface({
   ];
 
   return (
-    <div className="flex h-full min-h-[640px] w-full flex-col overflow-hidden rounded-panel-lg border-[3px] border-ink bg-surface-canvas shadow-frame">
-      <div className="shrink-0 border-b-[3px] border-ink bg-paper">
+    // Soft 변환표 — 라이브러리 프레임: border 1 --line · radius 16 · --sh-frame.
+    // 제품 헤더: 흰 bg + 하단선 1px --hair("구분은 bg로: 제품 = 흰색").
+    <div className="flex h-full min-h-[640px] w-full flex-col overflow-hidden rounded-panel-lg border border-soft-line bg-soft-canvas shadow-soft-frame">
+      <div className="shrink-0 border-b border-soft-hair bg-soft-surface">
         <div className="flex items-center gap-3 px-6 pt-3.5">
-          <span className="text-3xl font-extrabold tracking-tight text-ink" style={OUTFIT}>
+          <span className="text-3xl font-bold tracking-tight text-ink" style={DISPLAY}>
             {tl('title')}
           </span>
           <div className="flex-1" />
@@ -68,8 +72,8 @@ export function LibrarySurface({
                   labels={{ mine: t('scope.mine'), org: t('scope.org') }}
                 />
               )}
-              <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-[13px] py-1.5 text-md font-bold text-ink shadow-memphis-sm-faint">
-                <DuotoneIcon name="project" size={15} fill="var(--color-rose)" />
+              <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border border-soft-line bg-soft-surface px-[13px] py-1.5 text-md font-bold text-ink">
+                <DuotoneIcon name="project" size={15} fill="var(--tone-rose)" />
                 {t('scope.projectAll')}
                 <span className="text-xs" aria-hidden>
                   ▼

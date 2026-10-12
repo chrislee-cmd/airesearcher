@@ -11,7 +11,11 @@ import { RowActions } from './row-actions';
 // One list row — receives a single DeliverableRow and nothing else feature-
 // specific. Identity is the pastel tile + glyph; status is the shared badge.
 // Geometry (GEOMETRY §A): row pad 12/20, 34px tile, status 120 / updated 104 /
-// action 214 fixed columns.
+// action 214 fixed columns — 전부 불변.
+//
+// Soft Identity 리브랜드 1단계 — 변환표 "리스트 행: border-b 1 #f4f3f6(=--fill)
+// · hover --surface-2" + "34 아이콘 타일"(원색은 작은 면 = 타일에 남기고 테두리
+// 는 제거) + 선택 행은 --fill 면.
 
 export function DeliverableListRow({
   row,
@@ -34,8 +38,8 @@ export function DeliverableListRow({
 
   return (
     <div
-      className={`flex items-center gap-[9px] border-b border-line px-5 py-3 transition-colors hover:bg-surface-canvas ${
-        selected ? 'bg-amore-bg/20 shadow-[inset_3px_0_0_var(--color-amore)]' : ''
+      className={`flex items-center gap-[9px] border-b border-soft-fill px-5 py-3 transition-colors hover:bg-soft-surface-2 ${
+        selected ? 'bg-soft-fill shadow-[inset_3px_0_0_var(--ink)]' : ''
       }`}
     >
       <SelectBox
@@ -46,9 +50,9 @@ export function DeliverableListRow({
       />
 
       <div
-        className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-icon border-2 border-ink text-xl ${
+        className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control text-xl ${
           FEATURE_TONE_BG[row.feature]
-        } ${selected ? 'shadow-memphis-sm-faint' : ''}`}
+        }`}
       >
         {FEATURE_ICON[row.feature]}
       </div>
@@ -57,19 +61,19 @@ export function DeliverableListRow({
         <div className="flex min-w-0 items-center gap-2">
           <span
             className={`truncate text-lg font-bold ${
-              row.status === 'error' ? 'text-mute-soft' : 'text-ink'
+              row.status === 'error' ? 'text-soft-mute' : 'text-ink'
             }`}
           >
             {row.title}
           </span>
-          <span className="shrink-0 rounded-xs border-[1.3px] border-line-strong px-1.5 font-mono-label text-xs font-bold text-mute-soft">
+          <span className="shrink-0 rounded-chip bg-soft-fill px-1.5 font-soft-mono text-xs font-bold text-soft-mute">
             {row.kind}
           </span>
         </div>
         {metaItems.length > 0 && (
           <div className="flex flex-wrap items-center gap-[7px]">
             {metaItems.map((m, i) => (
-              <span key={i} className="text-sm text-mute-soft">
+              <span key={i} className="text-sm text-soft-faint">
                 {m}
               </span>
             ))}
@@ -81,7 +85,7 @@ export function DeliverableListRow({
         <StatusBadge status={row.status} label={t(`status.${row.status}`)} />
       </div>
 
-      <div className="w-[104px] shrink-0 font-mono-label text-sm text-mute-soft">
+      <div className="w-[104px] shrink-0 font-soft-mono text-sm text-soft-faint">
         {formatUpdated(row.updated_at)}
       </div>
 

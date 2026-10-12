@@ -6,11 +6,20 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 // the app (177 native <button> JSX sites observed in 2026-05-31 audit).
 //
 // Variants:
-//   primary / secondary / ghost / destructive  — capsule-shape actions
+//   primary / secondary / ghost / destructive  — pill-shape actions
 //   link / destructive-link                    — text-only inline actions
 // Sizes:
-//   xs / sm / md / lg                          — capsule sizes (rounded-sm)
-//   cta                                        — pill (rounded-full) hero CTA
+//   xs / sm / md / lg / cta                    — all pill (핵심규칙 5)
+//
+// **Soft Identity 리브랜드 1단계** — 공유 셸 4계층이 전부 이 primitive 를 쓰므로
+// 버튼 체계도 1단계에 포함된다(의뢰 "버튼 pill 체계"). CD 변환표·핵심규칙:
+//   · 핵심규칙 5 "버튼은 전부 pill" — 주 버튼 ink 채움 + 흰 글자(테두리·그림자
+//     없음) · 보조 버튼 흰 면 + 1px --line · 파괴는 --danger.
+//   · 핵심규칙 1/2 — 1.5/2/2.5/3px 보더와 하드 오프셋 그림자는 전부 없앤다.
+//     따라서 Memphis hover translate-lift 도 사라지고, hover 는 색만 바뀐다
+//     (주 버튼 bg #2e2b33 = --ink 보다 한 단계 밝은 톤, 보조 버튼 border
+//     --faint, 전환 120ms ease-out).
+// 치수(padding·font-size·hit area)는 불변 — radius 와 색/선/그림자만 교체.
 
 export type ButtonVariant =
   | 'primary'
@@ -36,68 +45,66 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   dsPrimitive?: string;
 };
 
-// transition-all (not just transition-colors) so Memphis hover/active
-// translate + shadow morphs animate alongside color changes.
-// disabled:{transform-none,shadow-none} neutralizes hover lift when disabled
-// so opacity-40 read stays flat.
+// transition-colors — Soft 에서 hover 는 색만 바뀐다(translate/shadow morph 가
+// 사라졌으므로 transition-all 이 필요 없다). disabled:{transform-none,
+// shadow-none} 은 press scale 을 중립화해 opacity-40 read 가 평평하게 남는다.
 const BASE =
   'inline-flex items-center justify-center gap-1.5 border font-semibold ' +
-  // duration 은 모션 토큰(--dur-fast) SSOT 참조 — 하드코드 산발 금지.
-  'transition-all duration-[var(--dur-fast)] ' +
-  // 전역 press 피드백(마이크로인터랙션 Foundation). Memphis active translate/
-  // shadow(variant) 위에 scale 이 합성돼 "눌림" 촉감을 더한다. reduced-motion
-  // 시 scale 중립(motion-reduce). disabled 는 아래 transform-none 이 무력화.
+  // duration 은 모션 토큰(--dur-fast = 120ms) SSOT 참조 — CD "전환 120ms
+  // ease-out" 과 동일값.
+  'transition-colors duration-[var(--dur-fast)] ' +
+  // press 피드백은 scale 만 남긴다(Memphis translate-lift 는 하드 그림자와 짝
+  // 이었으므로 함께 제거). reduced-motion 시 중립.
   'active:scale-[0.97] motion-reduce:active:scale-100 ' +
   'disabled:cursor-not-allowed disabled:opacity-40 ' +
   'disabled:transform-none disabled:shadow-none ' +
-  // Border-driven focus matches existing app pattern; loud ring left to
-  // app-wide a11y pass (P0 in audit) so this primitive stays drop-in.
-  'focus:outline-none focus-visible:border-amore';
+  // focus-visible = border ink + --focus-ring (하드 그림자로 포커스를 표시하지
+  // 않는다 — CD Interactions).
+  'focus:outline-none focus-visible:border-ink focus-visible:shadow-soft-focus-ring';
 
-// Memphis pop tone — 2.5px border + 3px hard shadow, lifts on hover, sinks
-// on active. link/destructive-link stay flat (text-only identity).
+// Soft tone — 1px 선 또는 선 없는 채움, 그림자 0, hover 는 색만.
+// link/destructive-link stay flat (text-only identity).
 const VARIANT: Record<ButtonVariant, string> = {
+  // 주 버튼 — ink 채움 + 흰 글자 · 테두리·그림자 없음 · hover 는 한 단계 밝게.
   primary:
-    'border-[2.5px] border-ink bg-ink text-paper shadow-memphis-md ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:shadow-memphis-lg ' +
-    'active:translate-x-0 active:translate-y-0 active:shadow-memphis-2xs',
+    'border-transparent bg-ink text-soft-surface shadow-none ' +
+    'hover:bg-soft-ink-hover',
+  // 보조 버튼 — 흰 면 + 1px --line · hover 는 border 만 진하게.
   secondary:
-    'border-[2.5px] border-ink bg-paper text-ink shadow-memphis-md ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:shadow-memphis-lg hover:bg-paper-soft ' +
-    'active:translate-x-0 active:translate-y-0 active:shadow-memphis-2xs',
+    'border-soft-line bg-soft-surface text-ink shadow-none ' +
+    'hover:border-soft-line-hover hover:bg-soft-surface-2',
+  // 3차(ghost) — 보조보다 약한 중립 면. 선 없음 + --fill.
   ghost:
-    'border-[2.5px] border-line bg-paper text-ink shadow-memphis-sm-faint ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-memphis-md',
+    'border-transparent bg-soft-fill text-soft-ink-2 shadow-none ' +
+    'hover:bg-soft-line',
+  // 파괴 — 흰 면 + 1px --line · 글자/보더가 hover 에서 --danger 로.
   destructive:
-    'border-[2.5px] border-line bg-paper text-ink shadow-memphis-sm-faint ' +
-    'hover:-translate-x-px hover:-translate-y-px hover:border-warning hover:text-warning ' +
-    'hover:shadow-memphis-md-warning',
+    'border-soft-line bg-soft-surface text-soft-danger shadow-none ' +
+    'hover:border-soft-danger hover:bg-soft-err-bg',
   // Text-only neutral action (e.g. "switch to sign up", inline cancels).
   link:
-    'border-transparent bg-transparent text-mute hover:text-ink-2 ' +
-    'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-ink',
-  // Text-only delete action (8 sites: row deletes, panel removes).
+    'border-transparent bg-transparent text-soft-mute hover:text-ink ' +
+    'underline decoration-1 underline-offset-4 decoration-transparent hover:decoration-ink',
+  // Text-only delete action (8 sites: row deletes, panel removes) —
+  // 변환표 "목록의 파괴 액션은 --danger 텍스트 버튼".
   'destructive-link':
-    'border-transparent bg-transparent text-mute hover:text-warning ' +
-    'underline decoration-2 underline-offset-4 decoration-transparent hover:decoration-warning',
-  // Subtle tone for header bands (yellow Topbar banner) — pill chip with
-  // soft ink fill, no border/shadow. Form-language matches TopbarTabs so
-  // the whole topbar reads as one family; hover deepens the fill instead
-  // of the Memphis translate/shadow lift used by primary/secondary.
+    'border-transparent bg-transparent text-soft-mute hover:text-soft-danger ' +
+    'underline decoration-1 underline-offset-4 decoration-transparent hover:decoration-soft-danger',
+  // Subtle tone for header bands — 중립 칩(--fill). 셸의 세그먼트 트랙과 같은
+  // 면색이라 헤더가 한 가족으로 읽힌다.
   subtle:
-    'border-transparent rounded-full bg-ink/10 text-ink-2 shadow-none ' +
-    'hover:bg-ink/15',
+    'border-transparent bg-soft-fill text-soft-ink-2 shadow-none ' +
+    'hover:bg-soft-line',
 };
 
-// SIZE owns padding/font/radius only — transition lives on BASE so the
-// Memphis hover lift animates uniformly across sizes. `cta` drops its
-// legacy soft-shadow hover; variant supplies the Memphis hard shadow.
+// SIZE owns padding/font/radius only. 패딩·폰트는 불변(치수 무변경) — radius
+// 만 전부 pill 로(핵심규칙 5 "버튼은 전부 pill").
 const SIZE: Record<ButtonSize, string> = {
-  xs: 'px-2.5 py-1 text-xs-soft rounded-sm',
-  sm: 'px-4 py-1.5 text-sm rounded-sm',
-  md: 'px-5 py-2 text-md rounded-sm',
-  lg: 'px-5 py-2.5 text-lg rounded-sm',
-  cta: 'px-4 py-3 text-sm uppercase tracking-[0.22em] rounded-full',
+  xs: 'px-2.5 py-1 text-xs-soft rounded-pill',
+  sm: 'px-4 py-1.5 text-sm rounded-pill',
+  md: 'px-5 py-2 text-md rounded-pill',
+  lg: 'px-5 py-2.5 text-lg rounded-pill',
+  cta: 'px-4 py-3 text-sm uppercase tracking-[0.22em] rounded-pill',
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(

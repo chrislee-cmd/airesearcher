@@ -214,11 +214,13 @@ export function DropdownMenu({
               role="menu"
               aria-labelledby={triggerId}
               onKeyDown={onMenuKeyDown}
-              className="menu-in z-overlay border-[2px] border-ink bg-paper py-1 rounded-sm shadow-memphis-md"
+              // Soft 변환표 "팝오버/피커 패널: border 1 --line · radius 12 ·
+              // --sh-popover · 행 radius 8". (리브랜드 1단계 · 셸 ④)
+              className="menu-in z-overlay rounded-panel border border-soft-line bg-soft-surface py-1 shadow-soft-popover"
               style={menuStyle}
             >
               {label ? (
-                <div className="px-3 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">
+                <div className="px-3 pb-1 pt-1.5 font-soft-mono text-xs font-semibold uppercase tracking-[0.18em] text-soft-faint">
                   {label}
                 </div>
               ) : null}
@@ -236,10 +238,10 @@ export function DropdownMenu({
                     onClick={() => onItemClick(item)}
                     className={`flex ${
                       item.toggle || item.action ? 'flex-1' : 'w-full'
-                    } items-center justify-between gap-4 px-3 py-1.5 text-left text-sm transition-colors duration-[120ms] ${
+                    } items-center justify-between gap-4 rounded-nav px-3 py-1.5 text-left text-sm transition-colors duration-[120ms] ${
                       item.disabled
-                        ? 'cursor-not-allowed text-mute-soft/60'
-                        : 'text-ink-2 hover:bg-line-soft/40 focus:bg-line-soft/40 focus:outline-none'
+                        ? 'cursor-not-allowed text-soft-disabled'
+                        : 'text-soft-ink-2 hover:bg-soft-fill focus:bg-soft-fill focus:outline-none'
                     }`}
                   >
                     <span className="truncate">{item.label}</span>
@@ -256,7 +258,7 @@ export function DropdownMenu({
                   item.separatorAfter && i < items.length - 1 ? (
                     <div
                       role="separator"
-                      className="my-1 border-t border-line-soft"
+                      className="my-1 border-t border-soft-hair"
                     />
                   ) : null;
                 if (!item.toggle && !item.action) {
@@ -288,7 +290,7 @@ export function DropdownMenu({
                             act.onAction();
                           }}
                           aria-label={item.action.ariaLabel}
-                          className="shrink-0 rounded-xs p-1 text-mute opacity-0 transition-opacity duration-[120ms] hover:bg-line-soft/50 hover:text-warning focus:opacity-100 focus:outline-none group-hover:opacity-100"
+                          className="shrink-0 rounded-nav p-1 text-soft-mute opacity-0 transition-opacity duration-[120ms] hover:bg-soft-err-bg hover:text-soft-danger focus:opacity-100 focus:outline-none group-hover:opacity-100"
                         >
                           {item.action.icon}
                         </button>

@@ -14,6 +14,11 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 // backdrops scattered across the app (paywall, signup, share dialog,
 // etc.) observed in 2026-05-31 audit.
 //
+// **Soft Identity 리브랜드 1단계** — 셸 4계층 중 ④(모달/팝오버/Picker).
+// 변환표 "모달: border 3 ink · radius 18 · shadow 8px 0 → border 1 --line ·
+// radius 18(--r-modal) · --sh-modal". 헤더/푸터 구분선 2px ink → 1px --hair.
+// backdrop·사이즈·포커스·Esc·scroll-lock 등 메커니즘과 치수는 전부 불변.
+//
 // Behavior:
 // - Esc closes
 // - Click on backdrop closes (unless `dismissOnBackdrop={false}`)
@@ -183,7 +188,7 @@ export function Modal({
     >
       <div
         className={[
-          'absolute inset-0 bg-ink/40',
+          'absolute inset-0 bg-ink/40',  // backdrop 불변
           reduced ? '' : 'transition-opacity duration-[180ms] ease-out',
           entered ? 'opacity-100' : 'opacity-0',
         ].join(' ')}
@@ -201,7 +206,7 @@ export function Modal({
           // bare: 패널 자체 border/bg/shadow/rounded/overflow + max-h 를 모두
           // 걷어낸다 — children(셸 프레임)이 유일한 비주얼 박스가 되고 프레임
           // 그림자가 패널에 clip 되지 않는다.
-          bare ? '' : 'overflow-hidden border-[3px] border-ink bg-paper',
+          bare ? '' : 'overflow-hidden border border-soft-line bg-soft-surface',
           // 일반 사이즈만 viewport 안에 맞도록 max-h; full / wide / 우측 드로어는
           // 자체적으로 h-screen / h-[90vh] / h-full 을 직접 잡는다.
           bare ||
@@ -211,15 +216,15 @@ export function Modal({
           side === 'right'
             ? ''
             : 'max-h-[calc(100vh-2rem)]',
-          // Memphis 외곽: 3px 검정 border + 8px offset 검정 그림자. full size 와
-          // 우측 드로어는 edge 에 붙어 모서리·그림자 잘림 회피 위해 각지게.
+          // Soft 외곽: 1px --line + --sh-modal(블러). full size 와 우측 드로어는
+          // edge 에 붙어 모서리·그림자 잘림 회피 위해 각지게.
           bare
             ? ''
             : side === 'right'
               ? 'h-full rounded-none'
               : size === 'full'
                 ? 'rounded-none'
-                : 'rounded-sm shadow-memphis-2xl',
+                : 'rounded-modal shadow-soft-modal',
           // Enter/leave: 우측 드로어는 오른쪽에서 슬라이드, 그 외는 중앙 scale+fade.
           // reduced-motion drops the transition so it snaps to the final state.
           reduced ? '' : 'transition-[transform,opacity] duration-[180ms] ease-out',
@@ -240,17 +245,17 @@ export function Modal({
         ) : (
           <>
         {(title || description) && (
-          <header className="shrink-0 border-b-[2px] border-ink px-5 pb-3 pt-4">
+          <header className="shrink-0 border-b border-soft-hair px-5 pb-3 pt-4">
             {title ? (
               <h2
                 id={headingId}
-                className="text-2xl font-semibold tracking-[-0.01em] text-ink-2"
+                className="text-2xl font-bold tracking-[-0.01em] text-ink"
               >
                 {title}
               </h2>
             ) : null}
             {description ? (
-              <p className="mt-1 text-md leading-[1.6] text-mute">
+              <p className="mt-1 text-md leading-[1.6] text-soft-mute">
                 {description}
               </p>
             ) : null}
@@ -258,7 +263,7 @@ export function Modal({
         )}
         <div
           className={[
-            'flex-1 text-lg leading-[1.65] text-ink-2',
+            'flex-1 text-lg leading-[1.65] text-soft-ink-2',
             // full / wide size: 자체 layout (헤더/2-column/3-column grid) 을
             // children 이 owning. body padding + overflow-auto 끈다
             // (이중 스크롤 회피).
@@ -270,7 +275,7 @@ export function Modal({
           {children}
         </div>
         {footer ? (
-          <footer className="flex shrink-0 items-center justify-end gap-2 border-t-[2px] border-ink px-5 py-3">
+          <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-soft-hair px-5 py-3">
             {footer}
           </footer>
         ) : null}

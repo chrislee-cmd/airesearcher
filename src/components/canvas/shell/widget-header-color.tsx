@@ -164,14 +164,14 @@ export function WidgetHeaderColorPicker({
   return (
     <>
       {variant === 'segment' ? (
-        // eslint-disable-next-line react/forbid-elements -- 통합 툴바 세그 버튼(🎨). ui/ IconButton 의 memphis chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — ⤢ 풀뷰 세그(widget-shell)와 동일한 셸 카드 프레임 정의 지점의 bare 세그 버튼.
+        // eslint-disable-next-line react/forbid-elements -- 통합 툴바 세그 버튼(🎨). ui/ IconButton 의 자체 chrome 은 컴팩트 세그먼트 pill 안에서 이중 보더로 보여 부적합 — ⤢ 풀뷰 세그(widget-shell)와 동일한 셸 카드 프레임 정의 지점의 bare 세그 버튼.
         <button
           ref={triggerRef}
           type="button"
           title={t('headerColorSelect')}
           aria-label={t('headerColorSelect')}
-          className="inline-flex cursor-pointer items-center justify-center hover:bg-paper-soft"
-          style={{ width: 44, padding: '6px 0', color: 'var(--canvas-card-header-text)' }}
+          className="inline-flex cursor-pointer items-center justify-center hover:bg-soft-fill"
+          style={{ width: 44, padding: '6px 0', color: 'var(--ink)' }}
           onMouseDown={onTriggerMouseDown}
           onClick={onTriggerClick}
         >
@@ -196,15 +196,16 @@ export function WidgetHeaderColorPicker({
           <div
             ref={popoverRef}
             className="z-overlay p-3"
+            // Soft 변환표 — 팝오버: border 1 --line · radius 12 · --sh-popover.
             style={{
               position: 'fixed',
               top: pos.top,
               left: pos.left,
               width: POPOVER_WIDTH,
-              background: 'var(--canvas-card-bg)',
-              border: '2.5px solid var(--canvas-card-border)',
-              borderRadius: 6,
-              boxShadow: '4px 4px 0 var(--canvas-card-border)',
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--r-panel)',
+              boxShadow: 'var(--sh-popover)',
             }}
             role="dialog"
             aria-label={t('headerColorPalette')}
@@ -218,8 +219,8 @@ export function WidgetHeaderColorPicker({
               className="cursor-crosshair touch-none"
               style={{
                 height: 28,
-                border: '2px solid var(--canvas-card-border)',
-                borderRadius: 4,
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--r-control)',
                 background:
                   'linear-gradient(to right,' +
                   'hsl(0 85% 82%),' +
@@ -257,7 +258,7 @@ export function WidgetHeaderColorPicker({
               {currentHue !== null && <PickerIndicator hue={currentHue} />}
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-xs uppercase tracking-wider opacity-70">
+              <span className="font-soft-mono text-xs uppercase tracking-wider text-soft-faint">
                 {value ? t('custom') : t('default')}
               </span>
               <Button
@@ -267,12 +268,14 @@ export function WidgetHeaderColorPicker({
                 leftIcon={
                   <span
                     aria-hidden
+                    // "기본값" 스와치 — 기본 헤더 톤(노란 banner)을 가리키는
+                    // 표식이라 색 자체는 기존 토큰 참조 그대로. 선만 Soft 1px.
                     style={{
                       display: 'inline-block',
                       width: 12,
                       height: 12,
-                      background: '#ffd53d',
-                      border: '1.5px solid var(--canvas-card-border)',
+                      background: 'var(--canvas-card-header-bg)',
+                      border: '1px solid var(--line)',
                       borderRadius: 3,
                     }}
                   />
@@ -307,7 +310,7 @@ function PickerIndicator({ hue }: { hue: number }) {
         bottom: -2,
         left,
         width: 3,
-        background: 'var(--canvas-card-border)',
+        background: 'var(--ink)',
         transform: 'translateX(-50%)',
         borderRadius: 2,
       }}
@@ -328,7 +331,7 @@ function PaletteGlyph() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden

@@ -31,8 +31,8 @@ type WidgetFullviewPanelProps = {
    */
   tone?: string;
   /**
-   * 타이틀을 Canvas 1c 카드 헤더처럼 Outfit 800 display 로 렌더. 기본 false
-   * (text-2xl semibold). tone 과 짝지어 카드 헤더밴드와 톤/타이포를 정합.
+   * 타이틀을 카드 헤더처럼 display(Bricolage 700) 로 렌더. 기본 false
+   * (text-2xl bold). tone 과 짝지어 카드 헤더밴드와 톤/타이포를 정합.
    */
   titleDisplay?: boolean;
   /** 타이틀 옆에 놓이는 pill/badge (예: 'Post-session review'). optional. */
@@ -57,20 +57,26 @@ export function WidgetFullviewPanel({
   const resolvedCloseLabel = closeLabel ?? tCommon('close');
   const chrome = useFullviewChrome();
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-paper">
+    // Soft 변환표 — 기능 헤더 하단선 1px --hair · 넓은 면인 헤더밴드는 원색이
+    // 아니라 그 톤의 틴트(FullviewHeader 와 같은 규칙 · 핵심규칙 3).
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-soft-surface">
       <header
-        className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3"
-        style={tone ? { background: tone } : undefined}
+        className="flex shrink-0 items-center justify-between border-b border-soft-hair px-6 py-3"
+        style={
+          tone
+            ? { background: `color-mix(in srgb, ${tone} 25%, var(--surface))` }
+            : undefined
+        }
       >
         <div className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
             {titleDisplay ? (
               <h2
-                className="truncate text-ink-2"
+                className="truncate text-ink"
                 style={{
-                  fontFamily: 'var(--font-outfit), var(--font-sans)',
+                  fontFamily: 'var(--font-display)',
                   fontSize: 22,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   letterSpacing: '-0.5px',
                   lineHeight: 1.1,
                 }}
@@ -78,12 +84,12 @@ export function WidgetFullviewPanel({
                 {title}
               </h2>
             ) : (
-              <h2 className="truncate text-2xl font-semibold tracking-[-0.01em] text-ink-2">
+              <h2 className="truncate text-2xl font-bold tracking-[-0.01em] text-ink">
                 {title}
               </h2>
             )}
             {subtitle ? (
-              <p className="mt-0.5 truncate text-md text-mute">{subtitle}</p>
+              <p className="mt-0.5 truncate text-md text-soft-mute">{subtitle}</p>
             ) : null}
           </div>
           {badge ? <div className="shrink-0">{badge}</div> : null}
@@ -103,7 +109,7 @@ export function WidgetFullviewPanel({
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
 
       {footer ? (
-        <footer className="flex shrink-0 items-center justify-end gap-2 border-t-[2px] border-ink px-6 py-3">
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-soft-hair px-6 py-3">
           {footer}
         </footer>
       ) : null}

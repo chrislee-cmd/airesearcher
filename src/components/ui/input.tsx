@@ -14,7 +14,9 @@ import { Label } from './label';
 // Shared <Input> primitive — codifies the recurring native <input>
 // pattern (85 sites observed in 2026-05-31 audit).
 //
-// Status: NOT YET CONSUMED. Page-by-page migration in follow-up PRs.
+// **Soft Identity 리브랜드 1단계** — 변환표 "입력/피커 트리거: border 1 `--line`
+// · radius 10 · focus = border ink + `--focus-ring`"(기존 border 1 line(ink/10)
+// · radius 14 · focus border amore). 패딩·폰트·에러 shake 등은 불변.
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
   label?: ReactNode;
@@ -52,7 +54,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
 
   // Wave3 주의 환기 — 에러가 없다가 생기는 순간(false→true)에만 shake 1회.
   // .shake 는 globals.css 에서 reduced-motion 을 독립 존중(무애니메이션). 색은
-  // border-warning transition(transition-colors)으로 error 톤이 부드럽게 전환.
+  // --err-line transition(transition-colors)으로 error 톤이 부드럽게 전환.
   const hasError = Boolean(error);
   const prevError = useRef(hasError);
   const [shaking, setShaking] = useState(false);
@@ -67,12 +69,15 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
   }, [hasError]);
 
   const inputCls = [
-    'border bg-paper text-ink placeholder:text-mute-soft transition-colors',
-    'focus:outline-none focus-visible:border-amore',
-    'disabled:opacity-40 disabled:cursor-not-allowed',
-    'rounded-sm',
+    'border bg-soft-surface text-ink placeholder:text-soft-faint transition-colors',
+    // focus = border ink + --focus-ring (하드 그림자로 포커스 표시 금지).
+    'focus:outline-none focus-visible:border-ink focus-visible:shadow-soft-focus-ring',
+    'disabled:bg-soft-fill disabled:text-soft-disabled disabled:cursor-not-allowed',
+    'rounded-control',
     fullWidth ? 'w-full' : '',
-    error ? 'border-warning focus:border-warning' : 'border-line focus:border-ink',
+    error
+      ? 'border-soft-err-line focus:border-soft-err-dot'
+      : 'border-soft-line focus:border-ink',
     shaking ? 'shake' : '',
     SIZE[size],
     leftSlot ? 'pl-8' : '',
@@ -94,7 +99,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
       ) : null}
       <div className="relative">
         {leftSlot ? (
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-mute-soft">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-soft-faint">
             {leftSlot}
           </span>
         ) : null}
@@ -114,17 +119,17 @@ export const Input = forwardRef<HTMLInputElement, Props>(function Input(
           {...rest}
         />
         {rightSlot ? (
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-mute-soft">
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-soft-faint">
             {rightSlot}
           </span>
         ) : null}
       </div>
       {error ? (
-        <p id={`${inputId}-error`} className="mt-1 text-sm text-warning">
+        <p id={`${inputId}-error`} className="mt-1 text-sm text-soft-err-fg">
           {error}
         </p>
       ) : helper ? (
-        <p id={`${inputId}-helper`} className="mt-1 text-sm text-mute-soft">
+        <p id={`${inputId}-helper`} className="mt-1 text-sm text-soft-mute">
           {helper}
         </p>
       ) : null}

@@ -2,7 +2,8 @@
    DuotoneIcon — Research-Canvas 듀오톤 아이콘 세트 (CD 핸드오프, R7 토큰화).
 
    SSOT: design-handoff/Icon System.dc.html (전수 대조). 이모지 전면 대체용 · 총 39종.
-   스타일: viewBox 0 0 24 24 · stroke 2 · round cap+join.
+   스타일: viewBox 0 0 24 24 · stroke 1.8 · round cap+join (Soft Identity
+   리브랜드 1단계에서 2 → 1.8; 세트 규칙 자체는 불변).
 
    듀오톤 = ink 스트로크 + **위젯 톤 채움**. 채움은 정적 hex 가 아니라
    `var(--widget-tone)` — widget-shell 이 카드 컨테이너에 노출하는 "해상된
@@ -117,7 +118,10 @@ export function DuotoneIcon({
       viewBox="0 0 24 24"
       fill="none"
       stroke={stroke}
-      strokeWidth={2}
+      // Soft Identity 리브랜드 1단계 — 세트 전역 스트로크 2 → 1.8
+      // (design-handoff/soft-identity/README.md Assets: duotone 세트 규칙은
+      // 그대로, 굵기만 낮춤). 39종 전부에 한 곳에서 적용된다.
+      strokeWidth={1.8}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
