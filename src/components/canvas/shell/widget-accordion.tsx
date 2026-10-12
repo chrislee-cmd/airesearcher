@@ -110,7 +110,7 @@ function StepNode({
       : state === 'done'
         ? 'bg-success text-paper'
         : state === 'review'
-          ? 'border border-amore bg-paper text-amore ring-4 ring-amore/10'
+          ? 'border-2 border-amore bg-paper text-amore ring-4 ring-amore/10'
           : 'bg-line-soft text-mute-soft';
   return (
     <span
