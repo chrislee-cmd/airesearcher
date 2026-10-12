@@ -42,7 +42,7 @@ import { Field } from './field';
 export const WIDGET_FRAME_INSET_X = 'px-5';
 
 // 위젯 프레임 콘텐츠 컬럼 폭 SSOT — 컨트롤 클러스터가 이 폭(max-w-2xl)으로
-// 좌우를 채우고 프레임 안에서 **수평 중앙 정렬**된다. 카드 body 는 CELL_W=816px
+// 좌우를 채우고 프레임 안에서 **수평 중앙 정렬**된다. 카드 body 는 넓은 위젯(옛 expandedCols=3 ≈ 816px)
 // (expandedCols=3) 라 프레임 내부 폭이 max-w-2xl(672px)보다 넓어서, 컨트롤은
 // px-5 가 아니라 중앙 정렬 오프셋(≈37px)만큼 안쪽에서 시작한다. 따라서 산출물이
 // 컨트롤과 좌측 정렬되려면 px-5 만으로 부족하고 — 산출물도 동일한 컬럼(중앙 정렬

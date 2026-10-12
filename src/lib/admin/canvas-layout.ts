@@ -67,6 +67,8 @@ export function normalizeCanvasLayout(
 // 무효/빈 값이면 null 반환 — 절대 throw 하지 않는다(캔버스 렌더가 파싱 에러로
 // 죽으면 안 됨). positions 가 비면(발행 이력 없음) null 로 폴백 → board 는 종전
 // defaultPositions 동작(회귀 0).
+// NOTE: 캔버스 모듈화 Phase 1 이후 이 좌표를 **소비하는 화면이 없다**(그리드
+// 퇴역). 타입·테이블·라우트는 보존 — 파괴 금지가 스펙 조건이다.
 export function parsePublishedLayout(
   rawPositions: unknown,
   rawVersion: unknown,

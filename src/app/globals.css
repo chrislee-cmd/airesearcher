@@ -412,10 +412,14 @@
    기존 토큰 이름 보존 — 호출처 변경 0.
    ========================================================================= */
 :root {
-  /* canvas — /canvas 라우트 */
-  --canvas-bg: var(--surface-page);
-  --canvas-bg-image: var(--raw-pattern-dot);
-  --canvas-bg-size: var(--raw-pattern-dot-size);
+  /* canvas — /canvas 라우트.
+     작업면 바탕은 **캔버스 모듈화 Phase 1 소유**라 Soft 값으로 둔다
+     (canvas-modular/full §4.1 · 장면 P3a~P3c: 작업면 #f7f7f8 + 22px dot).
+     Memphis 원자(--surface-page · --raw-pattern-dot)는 지우지 않고 그대로
+     남긴다 — 다른 표면이 계속 쓰고, 삭제는 리브랜드 2단계 소유다. */
+  --canvas-bg: var(--canvas);
+  --canvas-bg-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+  --canvas-bg-size: 22px 22px;
   --canvas-card-bg: var(--surface-card);
   --canvas-card-border: var(--border-strong);
   --canvas-card-border-width: var(--component-card-border-width);
@@ -620,6 +624,13 @@
      지정한 CD 절대값("--fill 트랙 + 흰 선택 칩(그림자 0 1px 2px rgba(29,27,32,.08))").
      4단계 그림자 중 어느 것도 이 값이 아니라 전용 원자로 승격한다(AUTHORITY). */
   --sh-chip: 0 1px 2px rgba(29,27,32,.08);
+
+  /* palette (캔버스 모듈화 Phase 1) — 이 PR 의 **신규 토큰 2개뿐**이다
+     (canvas-modular/full §1 "토큰": writer 접수 proposed-token 2건).
+     접힘 폭 72 는 토큰이 아니다 — CD 가 토큰으로 주지 않았고, 접힘 레일은
+     카드 형태라 폭이 레이아웃 상수다(과잉 토큰 금지). */
+  --palette-w: 240px;        /* 펼친 팔레트 폭 (§4.1) */
+  --palette-tile-h: 64px;    /* 타일 높이 (§4.2 — 216 × 64) */
 
   /* type */
   --font-display: 'Bricolage Grotesque', 'Pretendard Variable', 'Pretendard', sans-serif; /* titles; Korean falls back to Pretendard (의도) */
@@ -1235,6 +1246,81 @@ html, body {
 }
 @media (prefers-reduced-motion: reduce) {
   .chain-lane-flow { animation: none; }
+}
+
+/* 드래그 중에는 click-to-focus 오버레이가 포인터를 투과시킨다.
+   canvas-modular/full §5 저줌 + LEARNINGS §2-1 · §8-8: FOCUS_THRESHOLD(0.55)
+   미만에서 보드는 레인 카드마다 `[data-canvas-focus-overlay]`(z-overlay)를
+   깔아 클릭을 "그 위젯으로 줌인" 으로 가로챈다. 팔레트 드롭 판정은 기하라서
+   오버레이가 있어도 **판정 자체는 성립**하지만, 오버레이의 pointerup 이
+   줌인을 발화시켜 손을 떼는 순간 화면이 튄다. 그래서 드래그 중에만 투과시킨다
+   — 선언으로 두면 판정 코드가 오버레이를 몰라도 된다. */
+[data-palette-dragging='true'] [data-canvas-focus-overlay] {
+  pointer-events: none;
+}
+
+/* palette-tile-handle:focus-visible — 타일 포커스 링 (§4.2 focus:
+   `inset 0 0 0 1px ink` + 포커스 링). 링이 **inset + outset 2겹**이라
+   inline style 로는 pseudo-class 를 못 쓰고, `shadow-[…]` 유틸은 번들
+   §11 Done-when 이 0건을 요구하므로 클래스로 둔다.
+   바깥 겹은 Soft 토큰 `--focus-ring` 을 그대로 쓴다(컴프 리터럴 ink/10 과
+   미세 차이가 있지만, 토큰화된 속성은 같은 CD 패키지의 tokens.css 가
+   권위다 — 근사 DS 값으로 굽히는 것과는 다른 경우다). */
+.palette-tile-handle:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--ink), var(--focus-ring);
+  border-radius: var(--r-inner);
+}
+
+/* palette-pulse — 팔레트 타일 둘째 줄 **진행 중** 배지의 상태 점이 1.4s 로
+   맥동 (canvas-modular/full §4.2 run · CD `@keyframes sipulse`).
+   **running 에만** 붙인다 — 실패·멈춤·대기에 깜빡임이 남으면 유령 상태이고,
+   번들 §11 Done-when 이 "실패/멈춤/대기에 깜빡임 0" 을 명시한다.
+   reduced-motion 에서는 끄고 정적 점으로 남긴다(상태 색은 유지). */
+@keyframes palettePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.palette-pulse {
+  animation: palettePulse 1.4s ease-in-out infinite;
+}
+
+/* palette-ring — P1b "행을 누른 뒤": 레인 카드로 팬한 뒤 그 카드에 링
+   (2px ink + 5px 위젯 톤)을 1.2s 띄우고 페이드아웃. 링은 **포털된 카드
+   노드**에 붙인다 — 그리드 래퍼가 아니다(LEARNINGS §8-3).
+   톤은 `--palette-ring-tone` 으로 주입(위젯 헤더 톤과 같은 소스). */
+@keyframes paletteRing {
+  0% { box-shadow: 0 0 0 2px var(--ink), 0 0 0 7px var(--palette-ring-tone, var(--fill)); }
+  100% { box-shadow: 0 0 0 2px transparent, 0 0 0 7px transparent; }
+}
+.palette-ring {
+  animation: paletteRing 1.2s ease-out forwards;
+}
+
+/* palette-fade-in / palette-fade-out — 드롭 교체 크로스페이드 (§5 드롭:
+   슬롯 opacity 1→0 · 카드 0→1 **동시에** 160ms ease-out). 두 노드를 각각
+   한 방향으로만 애니메이션해 "날아가는 보간" 없이 자리에서 교체된다. */
+@keyframes paletteFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes paletteFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.palette-fade-in {
+  animation: paletteFadeIn 160ms ease-out forwards;
+}
+.palette-fade-out {
+  animation: paletteFadeOut 160ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palette-pulse,
+  .palette-ring,
+  .palette-fade-in,
+  .palette-fade-out {
+    animation: none;
+  }
 }
 
 /* completed-cta-pulse — 위젯 완료 CTA 가 처음 노출되는 순간(마운트) 3초간

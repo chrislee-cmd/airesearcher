@@ -1,21 +1,36 @@
 'use client';
 
 /* ────────────────────────────────────────────────────────────────────
-   CanvasBoard — production /canvas. 대시보드 + pan + zoom-out + 자유 reposition.
+   CanvasBoard — production /canvas. **팔레트 + 작업면** (캔버스 모듈화 Phase 1).
 
-   - 모든 위젯 항상 펼친 상태 (collapse 없음).
-   - 3×3 widget-slot 그리드 — 한 슬롯 = 한 위젯 (CELL_W 654, CELL_H 950,
-     GAP 48). 카드 자체는 widget-shell 고정 604×900. 슬롯 폭 654 = 카드
-     604 + 우측 슬랙 50 → 수평 시각 gap (654−604)+48 = 98 로 수직 gap
-     (950−900)+48 = 98 과 통일 (간격 균형). SURFACE_W = GRID_COLS × 654 +
-     (GRID_COLS−1) × 48 (고정값, viewport 따라 reactive 하게 변하지
-     않음). 위젯 메타의 expandedCols/expandedRows 는 canvas 안에서는 1×1
-     로 강제 (모달·focus mode 같은 다른 컨텍스트에서만 본래 값 사용).
-   - 디폴트 배치는 row-major — 9 위젯이면 3행에 3+3+3 로 꽉 참.
-   - 빈 cell 들도 drop target — 위젯을 빈 영역으로 자유 이동 가능.
-     다른 위젯과 겹치는 곳에 drop = 두 위젯 swap.
-   - 빈 영역 drag = pan, 휠 = zoom-out (1.0 ~ 0.4, cursor focal point).
-   - 위젯 header 영역 drag = 순서/위치 변경. localStorage 영속.
+   SSOT: `design-handoff/canvas-modular/full/README.md` (§2 규칙 · 장면
+   P0~P5 · §7 잔여 화면 · §9 레이어 · §11 Done-when).
+
+   ── 멘탈 모델 (M0~M3 사용자 확정) ───────────────────────────────────────
+   위젯은 **왼쪽 팔레트**에 있고, 작업면에는 **꺼낸 것만** 둔다. 제스처는
+   뜻이 하나씩이다 — 끌기 = 체인에 조립, 누르기 = "그 위젯이 있는 곳으로".
+   팔레트는 공급원이라 끌어가도 타일이 자리에서 빠지지 않는다(§2 규칙 1·2·3).
+
+   ── 이 PR 에서 퇴역한 것 (같은 PR · M0a 확정) ───────────────────────────
+   ① **그리드 캔버스** — 3×3 셀 배치·localStorage 좌표·셀 drop/swap·행별 헤더
+      톤·발행 배치 적용·빈 셀 힌트. 위젯은 더 이상 작업면에 펼쳐 두지 않으므로
+      "어느 셀에 있나" 라는 상태 자체가 없어진다.
+   ② **위젯 Navigator** — 위젯별 상태 pill은 팔레트 타일 둘째 줄이, 포커스
+      스크롤은 행 누르기(P1b)가 흡수했고, 숨김 eye 는 **개념이 소멸**했다
+      (작업면에 안 꺼내면 안 보이는 것이 기본값 — WRITER-ANSWERS-SCENES).
+      과도기 공존은 금지였다: 두 개가 같이 있으면 상태가 이중으로 표시된다.
+
+   ── 카드는 항상 마운트돼 있고 보이지 않는다 ──────────────────────────────
+   카드를 부모가 바뀌게 옮기면 React 가 remount 해 라이브 세션(프로빙·통역)이
+   끊긴다. 그래서 모든 카드는 **숨은 호스트**에 상시 마운트되고, 도킹된 카드만
+   레인 슬롯으로 portal 된다(레포가 전체보기에서 이미 쓰는 always-mounted +
+   portal 패턴). 포커스·키보드는 **portal 되는 노드**가 가진다 — 숨은 호스트에
+   달면 레인 안 카드를 키보드로 만질 수 없다(LEARNINGS §8-3).
+
+   ── 레이어 (§9 · 스펙 제약 4) ───────────────────────────────────────────
+   팔레트는 `[data-canvas]` 의 **형제**다 — 캔버스 transform 밖(화면 고정)이고
+   `[data-canvas-body]` cascade 밖이다. 고스트·툴팁·팝오버·온보딩은 body 포털
+   `z-overlay`.
    ──────────────────────────────────────────────────────────────────── */
 
 import {
@@ -24,12 +39,11 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
@@ -52,7 +66,6 @@ import {
   type WidgetContent,
 } from '@/components/canvas/widget-types';
 import { WidgetComingSoonGate } from '@/components/canvas/widgets/widget-coming-soon-gate';
-import { createPortal } from 'react-dom';
 import { ChainChip } from '@/components/canvas/chain/chain-chip';
 import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
 import { useChainLane } from '@/components/canvas/chain/chain-lane-provider';
@@ -66,92 +79,41 @@ import {
   type ChainStepFeature,
   type DockPosition,
 } from '@/lib/chains/view';
-import { WidgetNavigator } from './widget-navigator';
-import { LayoutPublishControl } from './layout-publish-control';
-import type { CanvasCoords } from '@/lib/admin/canvas-layout';
+import { PalettePanel } from '@/components/canvas/palette/palette-panel';
+import { WorkspaceEmpty } from '@/components/canvas/palette/workspace-empty';
+import { PaletteOnboarding } from '@/components/canvas/palette/palette-onboarding';
+import {
+  PaletteEmptyDropHint,
+  PaletteGhost,
+} from '@/components/canvas/palette/palette-portals';
+import { usePaletteDrag } from '@/components/canvas/palette/use-palette-drag';
 
-const GAP = 48;
-// CELL_W 654 — 슬롯 폭. 카드 자체는 widget-shell 고정 604 폭. 654 = 604 +
-// 우측 슬랙 50 → 수평 시각 gap = (654−604)+48 = 98. CELL_H(950) 기준 수직
-// 시각 gap = (950−900)+48 = 98 과 통일 (간격 균형, 2026-07-22). 옛 816 은
-// 수평 슬랙 212 로 수직 슬랙 50 대비 4배라 위젯 사이가 수평으로만 벌어졌음.
-// 카드 604×900 은 셸 고정 — 여기선 슬롯 폭만 축소. viewport / zoom 무관 고정.
-const CELL_W = 654;
-const CELL_H = 950;
-
-// 그리드 컬럼/행은 **위젯 개수에 맞춰 파생**한다 — 4개 이하(일반계정:
-// 프로빙·동시통역·AI UT·전사록)면 2열 → 2×2, 5개 이상(관리자 9개)이면 3열 →
-// 3×3. 예전엔 GRID_COLS=3 고정이라 위젯 4개가 3+1(3컬럼 1행 + 잔여 1)로
-// 깨졌다. row-major 채움 순서는 visibility.ts CANVAS_ORDER 를 따른다. SURFACE
-// 크기(surfaceDims)도 이 파생값에서 계산돼 fit-to-view/pan 좌표계가 맞는다.
-function gridDimsFor(count: number): { cols: number; rows: number } {
-  if (count <= 1) return { cols: 1, rows: 1 };
-  if (count <= 4) return { cols: 2, rows: Math.ceil(count / 2) };
-  return { cols: 3, rows: Math.ceil(count / 3) };
-}
-// MIN_ZOOM 0.3 — fit-to-view (9 위젯 한눈) 가 작은 viewport (1440×900 +
-// 사이드바 280px → 본문 1160×800) 에서도 clamp 없이 안착하려면 0.3 까지
-// 허용해야 함. 이전 0.4 였으나 height 축에서 ~14% 잘렸음. 위젯 안 텍스트는
-// 0.3 에서도 줌-아웃 미니맵 톤으로 판독 가능.
+// 캔버스 pan/zoom — 그리드가 사라졌어도 **작업면은 여전히 pan/zoom 면**이다
+// (레인 카드가 실치수 604×900 이라 한 체인이 뷰포트보다 넓다).
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 1.0;
 const ZOOM_FACTOR = 1.03;
-// FOCUS_THRESHOLD 0.55 — 이 scale 미만이면 "탐색 모드": 위젯 내부 컴포넌트가
-// 판독 불가한 줌아웃 상태라, 위젯 표면 아무 데나 클릭 = 그 위젯으로 focus
-// 줌인 (click-to-focus). scale 이 이 값 이상이면 "작업 모드": 오버레이 제거 →
-// 내부 인터랙션 정상. hysteresis 없이 클릭 시점 zoom 1회 판정 (spec 결정).
+// FOCUS_THRESHOLD 0.55 — 이 scale 미만이면 "탐색 모드": 레인 카드 표면 아무
+// 데나 클릭 = 그 카드로 focus 줌인(click-to-focus). 드래그 중에는 이 오버레이가
+// pointer-events none 이 된다(§5 저줌 · LEARNINGS §2-1 · §8-8).
 const FOCUS_THRESHOLD = 0.55;
-/** 체인 레인의 캔버스 내 위치(CD 장면 좌표). */
+/** 툴바는 화면 고정(§7 배치 — 캔버스 영역 기준 left 24 · top 20). */
+const TOOLBAR_LEFT = 24;
+const TOOLBAR_TOP = 20;
+/** 레인은 캔버스 안(§7 배치 — left 24 · top 78 기준). */
 const LANE_TOP = 152;
-const LANE_LEFT = 32;
+const LANE_LEFT = 24;
+/** 작업면 여백 — 레인 밖으로도 끌고 다닐 수 있는 숨 쉬는 공간. */
+const WORKSPACE_PAD = 240;
+/** surface 컨테이너의 top offset (pt-8). pan 식에 들어가므로 상수로 둔다. */
+const SURFACE_PT = 32;
 // 클릭 vs pan 드래그 구분 — pointerdown→pointerup 이동거리가 이 픽셀 미만일
-// 때만 클릭(=focus)으로 판정. 이보다 크면 드래그 pan 으로 보고 focus 안 함.
+// 때만 클릭(=focus)으로 판정.
 const CLICK_MOVE_THRESHOLD = 5;
-// v1 = 6×5, v2 = 3×3 (1·2행 3+3), v3 = 2×3 row-major. v4 = 3×3 (9 위젯, 신
-// placeholder 3장 추가). v5 = 그리드 컬럼을 위젯 개수에 맞춰 파생(일반계정 4개
-// → 2×2, 관리자 9개 → 3×3) 로 전환하며 옛 3열 고정 좌표를 버리고 재배치 강제
-// (사용자 결정: 초기화 의도 — 3+1 깨짐 수정).
-const POSITIONS_STORAGE_KEY = 'canvas:dashboard-positions:v5';
-// 개별 위젯 hide/show — 숨긴 위젯 key 목록. positions(v4) 와 분리된 신 키:
-// hide 는 렌더 필터일 뿐 positions 는 건드리지 않아 복원 시 원위치 재등장.
-// SSR-safe: 초기 빈 Set → mount 후 hydrate (probing use-hidden-defaults 패턴).
-const HIDDEN_STORAGE_KEY = 'canvas:hidden-widgets:v1';
-// 일반계정이 마지막으로 적용한 발행 배치 version. 서버 발행 version 이 이 값보다
-// 크면(=슈퍼어드민이 재발행) 발행 배치를 baseline 으로 재적용(+이 값 갱신).
-// 슈퍼어드민/unlimited(applyPublished=false)는 이 경로를 타지 않아 개인 배치 유지.
-const APPLIED_PUBLISH_VERSION_KEY = 'canvas:applied-publish-version:v1';
-const TRANSPARENT_GHOST_SRC =
-  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
-// 행별 헤더 톤 — Row 0 노란색 계열(sun) → Row 1 초록색 계열(mint) →
-// Row 2 붉은색 계열(rose). 배경은 design-system 파스텔 헤더 팔레트, border
-// 는 같은 계열의 선명한 색으로 정의를 줌. 같은 행의 두 위젯은 동일 톤.
-// wrapper 에 CSS 변수로 주입하면 widget-shell 헤더의 inline background/border
-// fallback 이 이를 참조한다. 사용자가 per-widget 색(WidgetHeaderColorPicker)을
-// 지정하면 그 inline 값이 우선하고, 미지정 위젯만 이 행 색으로 렌더된다.
-const ROW_HEADER_TONE: Record<number, { bg: string; border: string }> = {
-  0: { bg: 'var(--color-sun)', border: 'var(--surface-banner)' },
-  1: { bg: 'var(--color-mint)', border: 'var(--color-success)' },
-  2: { bg: 'var(--color-rose)', border: 'var(--color-amore)' },
-};
-
-// "전체 보기" 진입은 이제 모든 위젯이 공유 모달(아래 FullviewShell)을 연다.
-// WidgetShell 의 "전체 보기" 버튼 → onFullview → openFullview(key) → 공유
-// 모달이 그 위젯의 본문을 slot 으로 받는다. 각 위젯 본문은 자기가 currentKey
-// 일 때만 본문을 portal 하므로 단일 인스턴스가 유지되고, 카드는 모달이 열려도
-// unmount 되지 않아 실시간 세션(probing/translate)이 swap·close 후에도 보존된다
-// (옛 위젯별 `<key>:open-fullview` 이벤트 + provider hoist 불필요).
-
-type Coords = { col: number; row: number };
-type Span = { cols: number; rows: number };
-
-function expandedWidthOf(cols: number): number {
-  return cols * CELL_W + (cols - 1) * GAP;
-}
-
-function expandedHeightOf(rows: number): number {
-  return rows * CELL_H + (rows - 1) * GAP;
-}
+/** P1b — 레인 카드로 팬한 뒤 링을 띄우는 시간 (CSS `palette-ring` 1.2s + 여유). */
+const RING_MS = 1400;
+/** 레인이 없을 때의 실측값 — 상수라 파생 비교가 안정적이다. */
+const ZERO_BOX = { w: 0, h: 0 };
 
 // wheel target 의 가장 가까운 scrollable parent 를 찾는다. `data-canvas-surface`
 // marker 에 도달하면 위젯 밖 (= 캔버스 surface) 으로 간주하고 null 반환 — 캔버스
@@ -178,57 +140,10 @@ function findScrollableParent(
   return null;
 }
 
-function spanOf(_w: WidgetContent | undefined): Span {
-  // canvas 3×3 그리드에서는 한 슬롯 = 한 위젯. 위젯 메타의
-  // expandedCols/expandedRows 는 다른 컨텍스트 (모달, focus mode) 용으로
-  // 남겨두고 여기선 항상 1×1 로 강제.
-  return { cols: 1, rows: 1 };
-}
-
-// 좌측 상단부터 row-major 로 위젯을 채움 — 점유 셀을 추적해 multi-row
-// 위젯이 아래 row 를 미리 점유한 경우 그 셀들을 건너뜀.
-function defaultPositions(
-  widgets: WidgetContent[],
-  gridCols: number,
-  gridRows: number,
-): Record<string, Coords> {
-  const out: Record<string, Coords> = {};
-  const occupied = new Set<string>();
-  let col = 0;
-  let row = 0;
-  for (const w of widgets) {
-    const { cols, rows } = spanOf(w);
-    while (row < gridRows) {
-      if (col + cols > gridCols) {
-        col = 0;
-        row += 1;
-        continue;
-      }
-      if (row + rows > gridRows) break;
-      let fits = true;
-      for (let dc = 0; dc < cols && fits; dc += 1) {
-        for (let dr = 0; dr < rows && fits; dr += 1) {
-          if (occupied.has(`${col + dc},${row + dr}`)) fits = false;
-        }
-      }
-      if (fits) break;
-      col += 1;
-    }
-    out[w.key] = { col, row };
-    for (let dc = 0; dc < cols; dc += 1) {
-      for (let dr = 0; dr < rows; dr += 1) {
-        occupied.add(`${col + dc},${row + dr}`);
-      }
-    }
-    col += cols;
-  }
-  return out;
-}
-
 // 셸 헤더(§F3) + 위젯 주입 액션 bridge. 셸의 <FullviewHeader> 는 제네릭
 // 스캐폴드(타이틀·톤·닫기)만 소유하고, lang pill·End-session 등 위젯 종속
 // 슬롯은 활성 위젯 body 가 FullviewHeaderSlot 로 publish → 여기서 구독해
-// 헤더에 주입. (세션 스냅샷이 카드 subtree 라 헤더에 직접 닿지 못하는 걸 bridge.)
+// 헤더에 주입.
 function FullviewHeaderConnected({
   title,
   tone,
@@ -258,40 +173,37 @@ export function CanvasBoard({
   lockedKeys,
   hiddenBadgeKeys,
   orgId,
-  publishedLayout,
-  publishedVersion,
-  canPublish,
-  applyPublished,
+  userName,
+  onboardingPending,
 }: {
   widgets: WidgetContent[];
+  /**
+   * `?focus=<key>` 딥링크. 그리드가 퇴역해 "그 셀로 줌인" 이라는 목적지가 없어
+   * **그 위젯의 풀뷰를 연다** — 누르기 규칙의 "위치 0개 → 새 풀뷰" 와 같은 뜻이고,
+   * 기존 probing 딥링크가 이미 그렇게 동작했다.
+   */
   initialFocus?: string;
   // 일반계정에서 준비중 게이트로 막을 위젯 key 목록 (서버 page 가 계산해 전달).
-  // 비었으면(unlimited) 치환 없음 → 전부 라이브.
   lockedKeys?: string[];
   // 슈퍼어드민 전용 — 일반 유저에게 노출 off 된 위젯 key. 해당 카드에 "숨김"
-  // 뱃지를 단다(슈퍼어드민은 전 위젯을 보되 어떤 게 일반 유저에게 가려지는지
-  // 구분). 일반 유저에겐 빈 배열이라 뱃지 없음(회귀 0).
+  // 뱃지를 단다. 일반 유저에겐 빈 배열이라 뱃지 없음.
   hiddenBadgeKeys?: string[];
   // vote 저장 컨텍스트 — 활성 org id (nullable).
   orgId?: string | null;
-  // 서버에서 로드한 발행 배치 + version (없으면 null → 종전 defaultPositions
-  // 폴백, 회귀 0). widgetKey → { col, row }.
-  publishedLayout?: Record<string, CanvasCoords> | null;
-  publishedVersion?: number | null;
-  // 슈퍼어드민이면 "기본 배치로 발행" 컨트롤 노출.
-  canPublish?: boolean;
-  // 일반계정(비-슈퍼어드민·비-unlimited)이면 발행 배치를 stale-version 체크로
-  // baseline 적용. 슈퍼어드민/unlimited 는 false → 개인 localStorage 만 사용.
-  applyPublished?: boolean;
+  /** 팔레트 사용자 줄 (§4.1). 서버가 읽은 프로필 이름(없으면 이메일 local part). */
+  userName?: string | null;
+  /**
+   * 전환 온보딩 대상자인가 (P4 · §8). 그리드 캔버스를 쓴 적 있는 사용자의 첫
+   * 진입 1회만 true — 판정과 기록 모두 **사용자 단위 서버 플래그**라 기기가
+   * 바뀌어도 다시 뜨지 않는다.
+   */
+  onboardingPending?: boolean;
 }) {
   const hiddenBadgeSet = useMemo(
     () => new Set(hiddenBadgeKeys ?? []),
     [hiddenBadgeKeys],
   );
   // lockedKeys 에 든 위젯의 ExpandedBody 를 WidgetComingSoonGate 로 치환.
-  // 서버 page 는 직렬화 가능한 key 목록만 넘기고 실제 컴포넌트 치환은 여기(클라)
-  // 에서 — 서버→클라 closure 전달 제약 회피. 나머지 필드(meta/state/dimmed)는
-  // 원본 유지. lockedKeys 가 비면 rawWidgets 를 그대로 사용 → 회귀 0.
   const widgets = useMemo(() => {
     if (!lockedKeys || lockedKeys.length === 0) return rawWidgets;
     const locked = new Set(lockedKeys);
@@ -299,8 +211,6 @@ export function CanvasBoard({
       locked.has(w.key)
         ? {
             ...w,
-            // "준비중" 게이트 위젯은 dim 처리 — board 가 dimmed 플래그를 보고
-            // 셸 전체를 opacity-50 wrapper 로 감싸 라이브 위젯과 시각 구분.
             dimmed: true,
             ExpandedBody: function LockedGate() {
               return (
@@ -317,263 +227,38 @@ export function CanvasBoard({
     );
   }, [rawWidgets, lockedKeys, orgId]);
 
-  // 그리드/서피스 치수는 위젯 개수에서 파생 — 4개 이하 2×2, 9개 3×3. 원시
-  // 숫자라 매 렌더 재계산돼도 개수가 그대로면 값이 동일(Object.is stable) →
-  // 아래 effect deps 에 넣어도 불필요 재실행 없음.
-  const { cols: GRID_COLS, rows: GRID_ROWS } = gridDimsFor(widgets.length);
-  const SURFACE_W = GRID_COLS * CELL_W + (GRID_COLS - 1) * GAP;
-  const SURFACE_H_BASE = GRID_ROWS * CELL_H + (GRID_ROWS - 1) * GAP;
-
-  const [positions, setPositions] = useState<Record<string, Coords>>(() =>
-    defaultPositions(widgets, GRID_COLS, GRID_ROWS),
-  );
-
-  useEffect(() => {
-    try {
-      // 배치 소스 선택: 일반계정(applyPublished)이고 서버 발행 version 이 마지막
-      // 적용값보다 크면(=재발행) 발행 배치를 baseline 으로 채택. 그 외엔 개인
-      // localStorage. 슈퍼어드민/unlimited 는 applyPublished=false → 항상
-      // localStorage(개인 배치 유지, 회귀 0).
-      let stored: Record<string, Coords> | null = null;
-      let adoptPublished = false;
-      if (
-        applyPublished &&
-        publishedLayout &&
-        typeof publishedVersion === 'number'
-      ) {
-        let applied = 0;
-        try {
-          const rawV = window.localStorage.getItem(APPLIED_PUBLISH_VERSION_KEY);
-          const n = rawV ? Number.parseInt(rawV, 10) : 0;
-          applied = Number.isFinite(n) ? n : 0;
-        } catch {
-          applied = 0;
-        }
-        if (applied < publishedVersion) {
-          stored = publishedLayout;
-          adoptPublished = true;
-        }
-      }
-      if (!stored) {
-        const raw = window.localStorage.getItem(POSITIONS_STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as Record<string, Coords>;
-        if (typeof parsed !== 'object' || parsed === null) return;
-        stored = parsed;
-      }
-      const valid = new Set(widgets.map((w) => w.key));
-      const merged: Record<string, Coords> = {};
-      const occupied = new Set<string>();
-      // stored 좌표 채택 (valid widget + 전체 footprint 가 grid 안 +
-      // 이미 채택된 위젯과 겹치지 않을 때만). multi-row 위젯이 grid 끝
-      // 초과하는 stored 좌표 (예: 3-row 위젯이 row 13 시작 — §7 함정)
-      // 는 여기서 reject 되고 아래 fallback 으로 빠짐.
-      widgets.forEach((w) => {
-        const p = stored[w.key];
-        const { cols, rows } = spanOf(w);
-        if (
-          p &&
-          typeof p.col === 'number' &&
-          typeof p.row === 'number' &&
-          p.col >= 0 &&
-          p.col + cols <= GRID_COLS &&
-          p.row >= 0 &&
-          p.row + rows <= GRID_ROWS
-        ) {
-          let conflicts = false;
-          for (let dc = 0; dc < cols && !conflicts; dc += 1) {
-            for (let dr = 0; dr < rows && !conflicts; dr += 1) {
-              if (occupied.has(`${p.col + dc},${p.row + dr}`)) conflicts = true;
-            }
-          }
-          if (!conflicts) {
-            merged[w.key] = { col: p.col, row: p.row };
-            for (let dc = 0; dc < cols; dc += 1) {
-              for (let dr = 0; dr < rows; dr += 1) {
-                occupied.add(`${p.col + dc},${p.row + dr}`);
-              }
-            }
-          }
-        }
-      });
-      // stored 에 없거나 invalid 한 widget 은 빈 셀에 row-major 로 fallback.
-      let cursorCol = 0;
-      let cursorRow = 0;
-      widgets.forEach((w) => {
-        if (!valid.has(w.key)) return;
-        if (merged[w.key]) return;
-        const { cols, rows } = spanOf(w);
-        while (cursorRow < GRID_ROWS) {
-          if (cursorCol + cols > GRID_COLS) {
-            cursorCol = 0;
-            cursorRow += 1;
-            continue;
-          }
-          if (cursorRow + rows > GRID_ROWS) break;
-          let fits = true;
-          for (let dc = 0; dc < cols && fits; dc += 1) {
-            for (let dr = 0; dr < rows && fits; dr += 1) {
-              if (occupied.has(`${cursorCol + dc},${cursorRow + dr}`)) {
-                fits = false;
-              }
-            }
-          }
-          if (fits) {
-            merged[w.key] = { col: cursorCol, row: cursorRow };
-            for (let dc = 0; dc < cols; dc += 1) {
-              for (let dr = 0; dr < rows; dr += 1) {
-                occupied.add(`${cursorCol + dc},${cursorRow + dr}`);
-              }
-            }
-            cursorCol += cols;
-            break;
-          }
-          cursorCol += 1;
-        }
-      });
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
-      setPositions(merged);
-      // 발행 배치를 채택했으면 정규화된 merged 를 개인 localStorage 로 승격 +
-      // 적용 version 기록 → 다음 로드부터 이 배치가 개인 baseline 이 되고,
-      // 슈퍼어드민이 재발행(version++)하기 전엔 재적용하지 않는다(무한 덮어쓰기
-      // 방지). 이후 일반계정의 드래그는 종전대로 개인 localStorage 에 저장된다.
-      if (adoptPublished && typeof publishedVersion === 'number') {
-        try {
-          window.localStorage.setItem(
-            POSITIONS_STORAGE_KEY,
-            JSON.stringify(merged),
-          );
-          window.localStorage.setItem(
-            APPLIED_PUBLISH_VERSION_KEY,
-            String(publishedVersion),
-          );
-        } catch {
-          /* quota / private mode — 다음 로드에 다시 채택 시도 */
-        }
-      }
-    } catch {
-      /* localStorage 접근 실패 — default 유지 */
-    }
-  }, [
-    widgets,
-    GRID_COLS,
-    GRID_ROWS,
-    applyPublished,
-    publishedLayout,
-    publishedVersion,
-  ]);
-
-  const persist = useCallback((next: Record<string, Coords>) => {
-    try {
-      window.localStorage.setItem(
-        POSITIONS_STORAGE_KEY,
-        JSON.stringify(next),
-      );
-    } catch {
-      /* quota / private mode */
-    }
-  }, []);
-
-  // ── 개별 위젯 hide/show (localStorage 영속) ──────────────────────────
-  // hiddenWidgets: 숨긴 위젯 key Set. positions 는 그대로 두고 렌더에서만
-  // 스킵 → 복원 시 원위치 재등장. SSR-safe: 초기 빈 Set(전부 visible) →
-  // mount 후 localStorage hydrate (positions/use-hidden-defaults 동일 패턴).
-  const [hiddenWidgets, setHiddenWidgets] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const hiddenHydratedRef = useRef(false);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(HIDDEN_STORAGE_KEY);
-      hiddenHydratedRef.current = true;
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return;
-      const valid = new Set(widgets.map((w) => w.key));
-      const next = new Set(
-        parsed.filter(
-          (k): k is string => typeof k === 'string' && valid.has(k),
-        ),
-      );
-      if (next.size === 0) return;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate from storage on mount
-      setHiddenWidgets(next);
-    } catch {
-      hiddenHydratedRef.current = true;
-      /* localStorage 접근 실패 — 전부 visible 유지 */
-    }
-  }, [widgets]);
-
-  const toggleHidden = useCallback((key: string) => {
-    setHiddenWidgets((curr) => {
-      const next = new Set(curr);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      // hydrate 이전엔 저장 skip — 초기 빈 Set 이 저장값을 덮지 않도록.
-      if (hiddenHydratedRef.current) {
-        try {
-          window.localStorage.setItem(
-            HIDDEN_STORAGE_KEY,
-            JSON.stringify([...next]),
-          );
-        } catch {
-          /* quota / private mode */
-        }
-      }
-      return next;
-    });
-  }, []);
-
   const widgetByKey = useMemo(
     () => Object.fromEntries(widgets.map((w) => [w.key, w])),
     [widgets],
   );
 
-  // 화면에 렌더되는(숨기지 않은) 위젯 목록 — 카드 렌더 / focus / auto-follow
-  // 대상. 숨긴 위젯은 grid 미렌더 + focus 스킵. positions/occupiedCells 는
-  // 전체 위젯 기준 유지 → 숨긴 슬롯은 예약된 채 비어(빈 셀) 복원 시 원위치.
-  const visibleWidgets = useMemo(
-    () => widgets.filter((w) => !hiddenWidgets.has(w.key)),
-    [widgets, hiddenWidgets],
-  );
-
-  // ── 공유 전체보기 모달 (shared fullview shell) ──────────────────────
-  // 단일 <Modal> + 좌측 SidebarNav + 우측 본문 slot. 각 위젯 ExpandedBody
-  // 가 자기가 currentKey 일 때만 본문을 slot 으로 portal (fullview-shell-
-  // context). 카드는 모달이 열려도 unmount 되지 않으므로 실시간 세션
-  // (probing / translate) 이 위젯 swap·모달 close 후에도 보존된다. close
-  // 시 currentKey 는 보존 → 다음 open 때 마지막 본 위젯으로 복귀.
+  // ── 공유 전체보기 (모달 / 리스트 상세) ──────────────────────────────
   const [fullviewOpen, setFullviewOpen] = useState(false);
   const [currentWidgetKey, setCurrentWidgetKey] = useState<string | null>(null);
   const [fullviewSlotEl, setFullviewSlotEl] = useState<HTMLElement | null>(
     null,
   );
-  // ── 뷰 모드 (캔버스 ⇄ 리스트) ────────────────────────────────────────
-  // 라이트/다크처럼 유저 선호 뷰. 'list' 면 캔버스 보드 대신 좌 SidebarNav +
-  // 우 단일 위젯 상세(fullview 셸의 풀페이지 버전)를 렌더한다.
-  //
-  // 세션 유지 핵심: board⇄list 토글이 위젯 트리를 remount 하면 라이브 세션
-  // (probing/translate)이 끊긴다. 그래서 리스트 모드에서도 캔버스 surface 를
-  // unmount 하지 않고 display:none 으로 숨기기만 한다 — 카드(ExpandedBody)는
-  // 계속 마운트돼 세션 hook 이 살아 있고, 선택된 위젯만 자기 본문을 리스트
-  // 상세 slot 으로 portal 한다(모달 slot 과 동형). 즉 always-mounted 카드 +
-  // portal 패턴을 그대로 리스트로 이식한다.
   const { mode: viewMode } = useViewMode();
   const isList = viewMode === 'list';
   const tRoot = useTranslations();
   const tChain = useTranslations('Chain');
-  // 리스트 상세 pane(우측) DOM — 리스트 모드에서 위젯 본문이 portal 될 대상.
+  const tDrag = useTranslations('Canvas.drag');
+  const tPalette = useTranslations('Canvas.palette');
   const [listSlotEl, setListSlotEl] = useState<HTMLElement | null>(null);
 
   const openFullview = useCallback((key: string) => {
     setCurrentWidgetKey(key);
     setFullviewOpen(true);
   }, []);
+  const switchFullview = useCallback((key: string) => {
+    setCurrentWidgetKey(key);
+  }, []);
+  const closeFullview = useCallback(() => {
+    setFullviewOpen(false);
+  }, []);
 
-  // 위젯 체인 — 카드 서브바 칩. 컨테이너(WidgetChainProvider)가 체인 전체 상태를
-  // 단일 소유하므로 카드마다 새 fetch 가 없다. 체인 밖 위젯은 null.
-  const { chipFor: chainChipFor } = useWidgetChain();
+  // ── 체인 / 레인 ─────────────────────────────────────────────────────
+  const { view, hydrating, chipFor: chainChipFor } = useWidgetChain();
   const {
     lane,
     locked: laneLocked,
@@ -583,15 +268,12 @@ export function CanvasBoard({
     evaluateUndock,
     dock: dockCard,
     undock: undockCard,
+    createLane,
     dockTargets,
     laneBodyRef,
-    restored: laneRestored,
-    flipFrom,
-    clearFlip,
   } = useChainLane();
 
-  // 도킹된 위젯 key ← 단계 key. 카드는 **그리드에서 빠지고** 레인 슬롯으로
-  // portal 된다(remount 금지 — 라이브 세션 보존).
+  /** 도킹된 위젯 key ← 단계 key. 카드 본체는 레인 슬롯으로 portal 된다. */
   const dockedKeys = useMemo(
     () =>
       new Map<string, ChainStepFeature>(
@@ -600,23 +282,7 @@ export function CanvasBoard({
     [lane],
   );
 
-  // 레인 높이 — 그리드를 그만큼 아래로 민다(CD L0 "기존 그리드는 아래로 밀림").
-  const [laneEl, setLaneEl] = useState<HTMLDivElement | null>(null);
-  const [laneH, setLaneH] = useState(0);
-  useEffect(() => {
-    if (!laneEl) return;
-    // ResizeObserver 는 observe 직후 1회 발화하므로 초기값도 여기서 들어온다
-    // (effect 본문에서 동기 setState 하지 않는다 — react-hooks 규칙).
-    const ro = new ResizeObserver(() => setLaneH(laneEl.offsetHeight));
-    ro.observe(laneEl);
-    return () => ro.disconnect();
-  }, [laneEl]);
-  // CD 장면 좌표: 레인은 캔버스 안에서 left 32 · top 152 에 놓인다. 0,0 에
-  // 두면 화면 고정 툴바("+ 새 체인" · 요약 pill)가 레인 헤더를 덮는다
-  // (프리뷰 실측 — 헤더의 상태·비용·해체가 전부 가려졌다).
-  const laneOffsetY = lane ? LANE_TOP + laneH + GAP : 0;
-  // 위젯 key → 체인 단계 key 역매핑. 체인 미지원 위젯은 undefined 라
-  // canDock 이 `unknown_step` 으로 거절하고 슬롯이 사유를 보여준다(CD 결정 4).
+  /** 위젯 key → 체인 단계 key. 체인 미지원 위젯은 없다. */
   const stepOfWidget = useMemo(() => {
     const m = new Map<string, ChainStepFeature>();
     (Object.keys(CHAIN_STEP_WIDGET_KEY) as ChainStepFeature[]).forEach((f) => {
@@ -624,40 +290,207 @@ export function CanvasBoard({
     });
     return m;
   }, []);
-  // surface 높이도 레인만큼 늘어난다(그리드가 아래로 밀리므로).
-  const SURFACE_H = SURFACE_H_BASE + laneOffsetY;
 
-  // 그리드 좌표 — 도킹된 카드는 그리드에서 빠지고, **남은 카드가 빈자리를 메운다**
-  // (CD 결정 5). 재압축은 **렌더 레이어에서만** 한다: 발행 배치(positions)는
-  // 그대로 두고 해체 시 originIndex 로 되돌린다(발행 baseline 변이 금지).
-  const gridPositions = useMemo(() => {
-    if (dockedKeys.size === 0) return positions;
-    const remaining = visibleWidgets
-      .filter((w) => !dockedKeys.has(w.key))
-      .map((w) => ({ key: w.key, pos: positions[w.key] }))
-      .filter((x) => !!x.pos)
-      .sort((a, b) => a.pos.row - b.pos.row || a.pos.col - b.pos.col);
-    const next: Record<string, Coords> = { ...positions };
-    remaining.forEach((item, i) => {
-      next[item.key] = {
-        col: i % GRID_COLS,
-        row: Math.floor(i / GRID_COLS),
-      };
+  const stepOfWidgetStrings = useMemo(
+    () => new Map<string, string>(stepOfWidget),
+    [stepOfWidget],
+  );
+  const dockedKeyStrings = useMemo(
+    () => new Map<string, string>(dockedKeys),
+    [dockedKeys],
+  );
+  const isChainable = useCallback(
+    (key: string) => stepOfWidget.has(key),
+    [stepOfWidget],
+  );
+  /** fit 칩 "→ n단계" — 지금 끌어 넣으면 몇 번째 카드가 되는가. */
+  const nextStepNumber = (lane?.cards.length ?? 0) + 1;
+  /** 레인이 있고 구성을 바꿀 수 있는가 — 드래그·fit 의 전제. */
+  const laneActive = !!lane && !laneLocked;
+
+  // ── pan / zoom ──────────────────────────────────────────────────────
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // 레인 실측 — 작업면 크기가 레인에서 파생된다(그리드가 없으므로).
+  const [laneEl, setLaneEl] = useState<HTMLDivElement | null>(null);
+  const [laneBox, setLaneBox] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!laneEl) return;
+    // ResizeObserver 는 observe 직후 1회 발화하므로 초기값도 여기서 들어온다
+    // (effect 본문에서 동기 setState 하지 않는다 — react-hooks 규칙).
+    const ro = new ResizeObserver(() =>
+      setLaneBox({ w: laneEl.offsetWidth, h: laneEl.offsetHeight }),
+    );
+    ro.observe(laneEl);
+    return () => ro.disconnect();
+  }, [laneEl]);
+  // 레인이 없으면 0 — **파생**으로 둔다(해체 때 effect 에서 되돌리면 그게
+  // 곧 effect 안 동기 setState 다).
+  const laneSize = laneEl ? laneBox : ZERO_BOX;
+
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() =>
+      setContainerSize({ w: el.clientWidth, h: el.clientHeight }),
+    );
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // 작업면 크기 — 레인을 담고 그 바깥으로 여백을 둔다. 레인이 없으면 컨테이너
+  // 크기(= 팬할 것이 없는 빈 작업면).
+  const SURFACE_W = Math.max(
+    containerSize.w,
+    laneSize.w + LANE_LEFT * 2 + WORKSPACE_PAD,
+  );
+  const SURFACE_H = Math.max(
+    containerSize.h,
+    LANE_TOP + laneSize.h + WORKSPACE_PAD,
+  );
+
+  // ── 팔레트 드래그 (P2) ──────────────────────────────────────────────
+  const [paletteRect, setPaletteRect] = useState<DOMRect | null>(null);
+  const onPaletteRectChange = useCallback(
+    (rect: DOMRect | null) => setPaletteRect(rect),
+    [],
+  );
+  const isPaletteRect = useCallback(
+    (x: number, y: number) => {
+      const r = paletteRect;
+      if (!r) return false;
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    },
+    [paletteRect],
+  );
+
+  /** P1b — 레인 카드로 팬 240ms + 링 1.2s + 포커스 이동. */
+  const [ringKey, setRingKey] = useState<string | null>(null);
+  const ringTimerRef = useRef(0);
+  const focusLaneCard = useCallback(
+    (widgetKey: string) => {
+      const feature = dockedKeys.get(widgetKey);
+      const container = containerRef.current;
+      const target = feature ? dockTargets[feature] : null;
+      if (!container || !target) return;
+      const cr = container.getBoundingClientRect();
+      const tr = target.getBoundingClientRect();
+      // 카드가 이미 화면 안이면 팬하지 않는다(P1b 이동).
+      const visible =
+        tr.left >= cr.left &&
+        tr.right <= cr.right &&
+        tr.top >= cr.top &&
+        tr.bottom <= cr.bottom;
+      if (!visible) {
+        // pan 은 scale **앞**에 적용되므로 화면 좌표 델타가 곧 pan 델타다
+        // (translate3d(pan) scale(zoom) — d(screen)/d(pan) = 1).
+        const dx = cr.left + cr.width / 2 - (tr.left + tr.width / 2);
+        const dy = cr.top + cr.height / 2 - (tr.top + tr.height / 2);
+        setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+      }
+      setRingKey(widgetKey);
+      if (ringTimerRef.current) window.clearTimeout(ringTimerRef.current);
+      ringTimerRef.current = window.setTimeout(() => {
+        setRingKey(null);
+        ringTimerRef.current = 0;
+      }, RING_MS);
+      // 포커스는 **portal 되는 노드**로 — 숨은 호스트가 아니다(LEARNINGS §8-3).
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>(`[data-widget-node="${widgetKey}"]`)
+          ?.focus();
+      });
+    },
+    [dockedKeys, dockTargets],
+  );
+
+  const onDropped = useCallback(
+    (widgetKey: string, _position: DockPosition) => {
+      void _position;
+      // 드롭 직후 포커스는 새 카드로 (§5 키보드 완료 · P2d).
+      requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>(`[data-widget-node="${widgetKey}"]`)
+          ?.focus();
+      });
+    },
+    [],
+  );
+
+  const panToLane = useCallback(() => {
+    const container = containerRef.current;
+    const body = laneBodyRef.current;
+    if (!container || !body) return;
+    const cr = container.getBoundingClientRect();
+    const br = body.getBoundingClientRect();
+    if (br.top >= cr.top && br.bottom <= cr.bottom) return;
+    setPan((p) => ({
+      x: p.x,
+      y: p.y + (cr.top + cr.height / 2 - (br.top + br.height / 2)),
+    }));
+  }, [laneBodyRef]);
+
+  const dockByFeature = useCallback(
+    (feature: string, position: DockPosition) => {
+      dockCard(feature as ChainStepFeature, position);
+    },
+    [dockCard],
+  );
+
+  const paletteDrag = usePaletteDrag({
+    laneActive,
+    evaluate: evaluateDock,
+    dock: dockByFeature,
+    onDropped,
+    onPanToLane: panToLane,
+    isPaletteRect,
+  });
+
+  // 레인 슬롯이 수용/거절 외형을 그리려면 provider 의 `drag` 를 봐야 한다 —
+  // 판정 소유자는 팔레트 드래그 훅 하나이고, 여기서 레인 쪽으로 **투영**만 한다
+  // (두 곳이 각자 판정하면 슬롯이 말하는 사유와 고스트 라벨이 갈라진다).
+  const pDrag = paletteDrag.drag;
+  useEffect(() => {
+    if (!pDrag) {
+      // 언도킹 판정(카드 쪽)이 떠 있는 동안에는 지우지 않는다.
+      setLaneDrag(null);
+      return;
+    }
+    setLaneDrag({
+      feature: pDrag.feature,
+      over: pDrag.over,
+      valid: !!pDrag.verdict?.ok,
+      verdict: pDrag.verdict,
+      undocking: null,
     });
-    return next;
-  }, [positions, dockedKeys, visibleWidgets, GRID_COLS]);
-  const switchFullview = useCallback((key: string) => {
-    setCurrentWidgetKey(key);
-  }, []);
-  const closeFullview = useCallback(() => {
-    setFullviewOpen(false);
+  }, [pDrag, setLaneDrag]);
+
+  // ── 전환 온보딩 (P4 · §8) ───────────────────────────────────────────
+  const [onboardingOpen, setOnboardingOpen] = useState(!!onboardingPending);
+  const dismissOnboarding = useCallback(() => {
+    setOnboardingOpen((open) => {
+      if (!open) return false;
+      // 사용자 단위 서버 플래그 — 기기가 바뀌어도 재노출 0 (§11 Done-when).
+      // 실패해도 이번 세션에서는 닫는다(안내가 다시 튀어나오는 쪽이 더 나쁘다).
+      void fetch('/api/account/canvas-onboarding', { method: 'POST' }).catch(
+        () => {},
+      );
+      return false;
+    });
   }, []);
 
-  // ── 위젯 영상 가이드 모달 (CD §4) ─────────────────────────────────────
-  // 카드 헤더 툴바 `?` → onGuide(key) → 공유 <WidgetGuideModal>. fullview 와
-  // 동형: 카드는 열려도 unmount 되지 않으므로 라이브 세션(probing/translate)이
-  // 모달 open/close 후에도 보존된다. close 후에도 guideKey 를 유지해 exit
-  // 애니메이션 동안 내용이 남는다.
+  // ── 위젯 영상 가이드 모달 ────────────────────────────────────────────
   const [guideKey, setGuideKey] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
   const openGuide = useCallback((key: string) => {
@@ -668,16 +501,8 @@ export function CanvasBoard({
     setGuideOpen(false);
   }, []);
 
-  // 리스트 모드는 항상 한 위젯을 상세로 보여준다 — 아직 선택 이력이 없으면
-  // 첫 위젯으로 폴백(모든 위젯이 renderInSlot 을 구현하므로 locked 위젯이어도
-  // "준비중" hero 가 뜬다).
   const effectiveCurrentKey =
     currentWidgetKey ?? (isList ? (widgets[0]?.key ?? null) : null);
-
-  // 풀뷰 V2 opt-in — 현재 위젯 meta 의 fullviewV2 플래그. true 면 캔버스 모드
-  // 전체보기를 레거시 <Modal>+SidebarNav 대신 신규 <FullviewShell> 로 렌더한다.
-  // 셸 PR 은 플래그 위젯 0건 → 항상 레거시 경로 → 회귀 0. (리스트 모드는 아직
-  // 레거시 SidebarNav 를 공유하며, 위젯 전환 후 별도 PR 에서 정리.)
   const currentWidget = currentWidgetKey
     ? (widgetByKey[currentWidgetKey] ?? null)
     : null;
@@ -686,9 +511,7 @@ export function CanvasBoard({
   const fullviewValue = useMemo(
     () => ({
       currentKey: effectiveCurrentKey,
-      // 리스트 모드는 모달 open 여부와 무관하게 항상 상세를 노출한다.
       open: isList ? true : fullviewOpen,
-      // 리스트 모드면 상세 slot, 캔버스 모드면 모달 slot.
       slotEl: isList ? listSlotEl : fullviewSlotEl,
       chrome: (isList ? 'page' : 'modal') as 'page' | 'modal',
       openFullview,
@@ -707,8 +530,7 @@ export function CanvasBoard({
     ],
   );
 
-  // 사이드바 단축키 1-N — 모달 open 시에만 (canvas pan/zoom 단축키와 충돌
-  // 회피). 모달 안 input / textarea / contenteditable 입력 중에는 무시.
+  // 사이드바 단축키 1-N — 모달 open 시에만.
   useEffect(() => {
     if (!fullviewOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -734,284 +556,61 @@ export function CanvasBoard({
     return () => window.removeEventListener('keydown', onKey);
   }, [fullviewOpen, widgets]);
 
-  // 점유 셀 Set — 빈 셀 렌더 + 충돌 감지에 사용. multi-row 위젯은
-  // cols × rows footprint 의 모든 셀이 점유로 표시됨.
-  // 점유 맵은 **화면에 보이는 배치**(gridPositions)를 따른다 — 레인이 있으면
-  // 남은 카드가 재압축돼 발행 배치(positions)와 어긋나므로, 발행값으로 그리면
-  // 빈 셀 힌트와 드롭 타깃이 실제 카드 위치와 틀어진다. 도킹된 카드는 그리드에
-  // 없으니 점유도 하지 않는다(그 자리에 언도킹 드롭을 받을 수 있어야 한다).
-  const occupiedCells = useMemo(() => {
-    const occ = new Map<string, string>(); // "c,r" → widget key
-    Object.entries(gridPositions).forEach(([k, p]) => {
-      if (dockedKeys.has(k)) return;
-      const { cols, rows } = spanOf(widgetByKey[k]);
-      for (let dc = 0; dc < cols; dc += 1) {
-        for (let dr = 0; dr < rows; dr += 1) {
-          occ.set(`${p.col + dc},${p.row + dr}`, k);
+  // ── 도킹 카드 키보드 언도킹 (v3 상호작용 보존) ──────────────────────
+  // 끌어내 빼는 경로는 **목적지(그리드 셀)가 퇴역**해 사라졌다. 대체 목적지를
+  // 발명하지 않고, 키보드 경로만 남긴다: Space 로 들어 판정을 띄우고(거절이면
+  // 레인이 사유를 보여준다) 한 번 더 Space 로 뺀다. Esc 로 취소.
+  const [liftedCard, setLiftedCard] = useState<string | null>(null);
+  const onCardKeyDown = useCallback(
+    (key: string) => (e: ReactKeyboardEvent<HTMLElement>) => {
+      if (e.target !== e.currentTarget) return;
+      const feature = dockedKeys.get(key);
+      if (!feature) return;
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (liftedCard === key) {
+          if (evaluateUndock(feature).ok) undockCard(feature);
+          setLiftedCard(null);
+          setLaneDrag(null);
+          return;
         }
-      }
-    });
-    return occ;
-  }, [gridPositions, widgetByKey, dockedKeys]);
-
-  // pan / zoom
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const panRef = useRef<{
-    startX: number;
-    startY: number;
-    panX: number;
-    panY: number;
-  } | null>(null);
-  const [isPanning, setIsPanning] = useState(false);
-  // 빈 영역 drag 가 즉시 pan 을 시작하면 텍스트 선택·셀 클릭 같은 자연스러운
-  // 마우스 동작이 막힌다. 스페이스바를 누르고 있을 때만 pan 모드로 전환
-  // (Figma·Miro 류 표준). 커서: 평소 default(arrow), space-held 시 grab,
-  // drag 중엔 grabbing.
-  const [isSpaceHeld, setIsSpaceHeld] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // dnd
-  const [dragKey, setDragKey] = useState<string | null>(null);
-  const [hoverCell, setHoverCell] = useState<string | null>(null);
-  const ghostRef = useRef<HTMLImageElement | null>(null);
-  useEffect(() => {
-    const img = new window.Image();
-    img.src = TRANSPARENT_GHOST_SRC;
-    ghostRef.current = img;
-  }, []);
-
-  // 드래그 라벨 pill 위치 — CD 는 커서 옆에 "체인 n단계" / "놓을 수 없음" 을
-  // 띄운다. HTML5 drag 이벤트만 좌표를 주므로(마우스 이벤트는 드래그 중 안 옴)
-  // window `dragover` 로 받는다. 레포의 카드 고스트는 투명 이미지 + 원본 0.4
-  // 디밍이 기존 제스처 언어라 그대로 두고, **체인 정보를 나르는 라벨만** 더한다.
-  const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(
-    null,
-  );
-  useEffect(() => {
-    if (!dragKey) return;
-    const onOver = (e: globalThis.DragEvent) => {
-      setDragPoint({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('dragover', onOver);
-    return () => {
-      window.removeEventListener('dragover', onOver);
-      setDragPoint(null);
-    };
-  }, [dragKey]);
-
-  // ── 키보드 도킹 (CD Interactions) ───────────────────────────────────
-  // Space 로 들기 → ←/→ 로 레인 자리 선택 → Space 로 놓기 / Esc 로 취소.
-  // 캔버스의 Space-hold(pan)와 겹치므로 **카드 래퍼에 포커스가 있을 때만**
-  // 들기로 해석한다(아래 pan 핸들러에서 같은 조건으로 양보). 래퍼를 포커스
-  // 가능하게 만든 것은 보드 레이어의 요소라 위젯 셸 diff 가 0이다.
-  const [lifted, setLifted] = useState<{
-    key: string;
-    position: DockPosition;
-  } | null>(null);
-
-  const liftAnnounce = useMemo(() => {
-    if (!lifted || !laneDrag) return '';
-    if (laneDrag.undocking) {
-      return laneDrag.undocking.ok
-        ? tChain('lane.restored')
-        : tChain(
-            `dock.${laneDrag.undocking.error === 'locked' ? 'locked' : 'middleUndock'}`,
-          );
-    }
-    if (laneDrag.valid) {
-      const n = lifted.position === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
-      return tChain('lane.slotValidTitle', { n });
-    }
-    return dockReason(laneDrag.verdict, laneDrag.feature, tChain, tRoot);
-  }, [lifted, laneDrag, lane, tChain, tRoot]);
-
-  const liftTo = useCallback(
-    (key: string, position: DockPosition) => {
-      const feature = stepOfWidget.get(key) ?? key;
-      const docked = dockedKeys.get(key) ?? null;
-      if (docked) {
+        setLiftedCard(key);
         setLaneDrag({
           feature,
           over: null,
           valid: false,
           verdict: null,
-          undocking: evaluateUndock(docked),
+          undocking: evaluateUndock(feature),
         });
         return;
       }
-      const verdict = evaluateDock(feature, position);
-      setLaneDrag({
-        feature,
-        over: position,
-        valid: verdict.ok,
-        verdict,
-        undocking: null,
-      });
-    },
-    [stepOfWidget, dockedKeys, evaluateUndock, evaluateDock, setLaneDrag],
-  );
-
-  const cancelLift = useCallback(() => {
-    setLifted(null);
-    setLaneDrag(null);
-  }, [setLaneDrag]);
-
-  const commitLift = useCallback(() => {
-    if (!lifted) return;
-    const { key, position } = lifted;
-    const docked = dockedKeys.get(key);
-    if (docked) {
-      // 언도킹 — 거절이면 카드는 레인에 남고 사유는 이미 읽어줬다.
-      if (evaluateUndock(docked).ok) undockCard(docked);
-      cancelLift();
-      return;
-    }
-    const feature = stepOfWidget.get(key);
-    const origin = positions[key];
-    if (feature && origin && evaluateDock(feature, position).ok) {
-      dockCard(feature, position, origin);
-    }
-    cancelLift();
-  }, [
-    lifted,
-    dockedKeys,
-    evaluateUndock,
-    undockCard,
-    stepOfWidget,
-    positions,
-    evaluateDock,
-    dockCard,
-    cancelLift,
-  ]);
-
-  const onCardKeyDown = useCallback(
-    (key: string) => (e: ReactKeyboardEvent<HTMLElement>) => {
-      // 카드 **안쪽** 컨트롤에서 올라온 키는 그 컨트롤의 것이다.
-      if (e.target !== e.currentTarget) return;
-      if (e.key === ' ' || e.key === 'Spacebar') {
-        if (!lane) return; // 레인이 없으면 평소 캔버스 동작(pan)에 양보.
+      if (liftedCard === key && e.key === 'Escape') {
         e.preventDefault();
-        e.stopPropagation();
-        if (lifted?.key === key) commitLift();
-        else {
-          setLifted({ key, position: 'append' });
-          liftTo(key, 'append');
-        }
-        return;
-      }
-      if (!lifted || lifted.key !== key) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelLift();
-        return;
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        // 파일럿의 받을 수 있는 자리는 둘(앞 / 끝)이라 토글이다.
-        const next: DockPosition =
-          e.key === 'ArrowLeft' ? 'prepend' : 'append';
-        setLifted({ key, position: next });
-        liftTo(key, next);
+        setLiftedCard(null);
+        setLaneDrag(null);
       }
     },
-    [lane, lifted, commitLift, cancelLift, liftTo],
+    [dockedKeys, liftedCard, evaluateUndock, undockCard, setLaneDrag],
   );
 
-  // ── 해체 복귀 애니메이션 (FLIP) ─────────────────────────────────────
-  // CD: 카드별로 원래 자리로 220ms, 40ms stagger, 그 다음 레인이 사라진다.
-  // 카드는 레인 슬롯 → 그리드로 **부모가 바뀌므로** left/top transition 으로는
-  // 이을 수 없다. 그래서 FLIP: 사라진 직후의 새 자리에서 옛 자리로 역변환을
-  // 걸고(transition 없음), 다음 프레임에 0 으로 풀어 되돌아가는 것처럼 보인다.
-  useEffect(() => {
-    if (!flipFrom) return;
-    const entries = Object.entries(flipFrom);
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      clearFlip();
-      return;
-    }
-    const nodes: HTMLElement[] = [];
-    entries.forEach(([feature, from], i) => {
-      const key = CHAIN_STEP_WIDGET_KEY[feature as ChainStepFeature];
-      const el = document.querySelector<HTMLElement>(
-        `[data-widget-key="${key}"]`,
-      );
-      if (!el) return;
-      const to = el.getBoundingClientRect();
-      const dx = from.x - to.left;
-      const dy = from.y - to.top;
-      if (dx === 0 && dy === 0) return;
-      el.style.transition = 'none';
-      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-      nodes.push(el);
-      // 다음 프레임에 풀어야 브라우저가 시작 상태를 한 번 그린다.
-      requestAnimationFrame(() => {
-        el.style.transition = `transform 220ms ease-out ${i * 40}ms`;
-        el.style.transform = 'translate3d(0, 0, 0)';
-      });
-    });
-    const total = 220 + entries.length * 40 + 60;
-    const timer = window.setTimeout(() => {
-      nodes.forEach((el) => {
-        el.style.transition = '';
-        el.style.transform = '';
-      });
-      clearFlip();
-    }, total);
-    return () => window.clearTimeout(timer);
-  }, [flipFrom, clearFlip]);
+  const undockAnnounce = useMemo(() => {
+    if (!liftedCard || !laneDrag?.undocking) return '';
+    return laneDrag.undocking.ok
+      ? tChain('lane.dissolve')
+      : dockReason(laneDrag.verdict, laneDrag.feature, tChain, tRoot) ||
+          tChain(
+            `dock.${laneDrag.undocking.error === 'locked' ? 'locked' : 'middleUndock'}`,
+          );
+  }, [liftedCard, laneDrag, tChain, tRoot]);
 
-  // ── 드래그 피드백 파생값 (CD Geometry: 고스트 라벨 · 원래 자리 윤곽) ──
-  // 라벨은 **체인 정보**만 말한다: 받을 수 있으면 몇 단계로 들어가는지, 없으면
-  // "놓을 수 없음". 레인과 무관한 평소 카드 이동에는 라벨이 없다.
-  const dragLabel = useMemo((): { text: string; valid: boolean } | null => {
-    if (!laneDrag) return null;
-    if (laneDrag.undocking) {
-      return laneDrag.undocking.ok
-        ? null // 뺄 수 있는 카드 — 평소 카드 이동과 같게 둔다.
-        : { text: tChain('dock.ghostInvalid'), valid: false };
-    }
-    if (laneDrag.over === null) return null;
-    if (!laneDrag.valid) {
-      return { text: tChain('dock.ghostInvalid'), valid: false };
-    }
-    const n =
-      laneDrag.over === 'prepend' ? 1 : (lane?.cards.length ?? 0) + 1;
-    return { text: tChain('dock.ghostValid', { n }), valid: true };
-  }, [laneDrag, lane, tChain]);
-
-  // 복귀 배지 대상 — 단계 key → 위젯 key.
-  const restoredKeys = useMemo(
-    () =>
-      new Set(
-        laneRestored
-          .map((f) => CHAIN_STEP_WIDGET_KEY[f as ChainStepFeature])
-          .filter(Boolean),
-      ),
-    [laneRestored],
-  );
-
-  // 끌고 있는 도킹 카드가 해체 때 돌아갈 자리.
-  // **복원된 레인**(새로고침 뒤 체인 행에서 투영된 것)은 originIndex 가 비어
-  // 있다 — 이 탭에서 도킹한 기록이 없기 때문이다. 그때는 **발행 배치**가 곧
-  // 돌아갈 자리다(해체 복귀도 positions 를 기준으로 그린다).
-  const originOutline = useMemo((): Coords | null => {
-    if (!dragKey || !lane) return null;
-    const feature = dockedKeys.get(dragKey);
-    if (!feature) return null;
-    return lane.originIndex[feature] ?? positions[dragKey] ?? null;
-  }, [dragKey, lane, dockedKeys, positions]);
-
-  // 스페이스바 hold → pan 모드. input/textarea/contenteditable 안에서는 무시.
-  // 카드 래퍼에 포커스가 있으면 **Space 는 체인 들기**다(위 onCardKeyDown) —
-  // 같은 키를 두 뜻으로 쓰므로 여기서 양보한다. 포커스가 래퍼 자신일 때만
-  // 양보해, 카드 안쪽에서 스페이스를 눌렀을 때의 기존 동작은 그대로 둔다.
+  // ── 스페이스바 hold → pan 모드 ──────────────────────────────────────
   useEffect(() => {
     const isEditableTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
       const tag = el.tagName;
       if (el.hasAttribute('data-widget-node')) return true;
+      if (el.hasAttribute('data-palette-handle')) return true;
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1036,11 +635,8 @@ export function CanvasBoard({
     };
   }, []);
 
-  // Figma/Miro 표준 wheel 분기. React 의 synthetic onWheel 은 환경에 따라
-  // passive 로 등록될 수 있어 preventDefault() 가 무시되므로 — trackpad
-  // pinch (ctrlKey=true) 와 Cmd+wheel 의 browser-level page zoom 을 확실히
-  // 막으려면 native 리스너를 { passive: false } 로 직접 부착한다. 핸들러는
-  // 한 번만 부착하고 최신 zoom/pan 은 ref 로 읽어와 stale closure 회피.
+  // Figma/Miro 표준 wheel 분기 — native 리스너를 { passive: false } 로 붙여야
+  // trackpad pinch / Cmd+wheel 의 브라우저 page zoom 을 확실히 막는다.
   const zoomRef = useRef(zoom);
   const panRefValue = useRef(pan);
   useEffect(() => {
@@ -1049,9 +645,6 @@ export function CanvasBoard({
   useEffect(() => {
     panRefValue.current = pan;
   }, [pan]);
-  // 위젯 헤더 mouseDown/dragStart 안에서 최신 isSpaceHeld 를 읽기 위한 ref.
-  // dragHandleProps 는 widget 별로 spread 되므로 state 직접 참조 시 stale
-  // closure 위험 — ref 로 우회.
   const isSpaceHeldRef = useRef(isSpaceHeld);
   useEffect(() => {
     isSpaceHeldRef.current = isSpaceHeld;
@@ -1060,12 +653,7 @@ export function CanvasBoard({
     const container = containerRef.current;
     if (!container) return;
     const handler = (e: WheelEvent) => {
-      // 위젯 안 scrollable 영역의 wheel 이면 native browser scroll 양보 —
-      // preventDefault / pan / zoom 모두 skip. shift+wheel · cmd+wheel 도
-      // 위젯 안에선 native 동작 (위젯 안 수평 scroll 등) 으로 위임.
       if (findScrollableParent(e.target, container)) return;
-      // ctrlKey: 명시적 Ctrl 또는 trackpad pinch (브라우저가 ctrlKey=true 로
-      // emit). metaKey: Cmd (macOS).
       const isZoomGesture = e.ctrlKey || e.metaKey;
       e.preventDefault();
       if (isZoomGesture) {
@@ -1099,9 +687,6 @@ export function CanvasBoard({
 
   const onMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
-      // 스페이스바를 누르고 있을 때만 pan 시작. 그 외엔 위젯/셀 클릭 등 자연스러운
-      // 마우스 동작을 막지 않는다 (위젯 헤더 drag-reposition 은 widget-shell 이
-      // 자체 stopPropagation 으로 처리).
       if (!isSpaceHeld) return;
       panRef.current = {
         startX: e.clientX,
@@ -1122,457 +707,118 @@ export function CanvasBoard({
     });
   }, []);
 
-  const onMouseUp = useCallback(() => {
+  const endPan = useCallback(() => {
     panRef.current = null;
     setIsPanning(false);
   }, []);
 
-  // ── dnd reposition ──────────────────────────────────────────────────
-  const onHandleDragStart = useCallback(
-    (key: string) => (e: ReactDragEvent<HTMLElement>) => {
-      e.stopPropagation();
-      if (ghostRef.current) {
-        try {
-          e.dataTransfer.setDragImage(ghostRef.current, 0, 0);
-        } catch {
-          /* Firefox 일부 */
-        }
-      }
-      e.dataTransfer.setData('text/plain', key);
-      e.dataTransfer.effectAllowed = 'move';
-      setDragKey(key);
-      // 레인 드래그 상태 시작 — 판정은 레인 위 좌표에서만 한다(아래 onLaneDragOver).
-      // 이미 도킹된 카드라면 방향이 반대다(언도킹): 판정을 **끌기 시작 시점에**
-      // 한 번 내고 드래그 내내 들고 간다 — 가운데 카드는 어디에 놓아도 거절이고,
-      // 그 사유를 자기 슬롯 위에 바로 띄워야 하기 때문이다(CD Interactions).
-      const docked = dockedKeys.get(key) ?? null;
-      setLaneDrag({
-        feature: stepOfWidget.get(key) ?? key,
-        over: null,
-        valid: false,
-        verdict: null,
-        undocking: docked ? evaluateUndock(docked) : null,
-      });
-    },
-    [setLaneDrag, stepOfWidget, dockedKeys, evaluateUndock],
-  );
+  // 팬 종료는 **window pointerup** 으로 받는다. 컨테이너의 mouseleave 로
+  // 끊으면 (가) 밖에서 손을 떼는 흔한 경로에서 팬이 멈추지 않고 (나) 캔버스
+  // 표면에 enter/leave 리스너가 남아 §11 Done-when 의 "기하 판정만" 기계
+  // 확인에 걸린다. 팬 중에만 청취한다.
+  useEffect(() => {
+    if (!isPanning) return;
+    window.addEventListener('pointerup', endPan);
+    window.addEventListener('pointercancel', endPan);
+    return () => {
+      window.removeEventListener('pointerup', endPan);
+      window.removeEventListener('pointercancel', endPan);
+    };
+  }, [isPanning, endPan]);
 
-  // ── 레인 도킹 — **좌표 판정** ─────────────────────────────────────
-  // dragenter/dragleave 는 기하가 아니라 DOM 포함 관계로 판정해 자식에 들어갈
-  // 때마다 오발화한다(LEARNINGS §2-2 의 확장). dragover 는 포인터 좌표를 계속
-  // 주므로, 레인 rect 와 카드 rect 만 보고 append/prepend 를 정한다.
-  const onLaneDragOver = useCallback(
-    (e: ReactDragEvent<HTMLElement>) => {
-      if (!dragKey || !lane || laneLocked) return;
-      // 이미 레인 안에 있는 카드를 레인 위에서 끌고 있을 뿐이다 — 재도킹 판정
-      // (duplicate_step)을 띄우면 "이미 체인에 있어요" 가 거절처럼 보인다.
-      if (dockedKeys.has(dragKey)) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      const body = laneBodyRef.current;
-      const feature = stepOfWidget.get(dragKey) ?? dragKey;
-      let position: DockPosition = 'append';
-      if (body && lane.cards.length > 0) {
-        const first = body.querySelector<HTMLElement>('[data-chain-dock]');
-        if (first) {
-          const r = first.getBoundingClientRect();
-          position = e.clientX < r.left + r.width / 2 ? 'prepend' : 'append';
-        }
-      }
-      const verdict = evaluateDock(feature, position);
-      setLaneDrag({ feature, over: position, valid: verdict.ok, verdict });
-    },
-    [
-      dragKey,
-      lane,
-      laneLocked,
-      laneBodyRef,
-      stepOfWidget,
-      evaluateDock,
-      setLaneDrag,
-      dockedKeys,
-    ],
-  );
-
-  const onLaneDrop = useCallback(
-    (e: ReactDragEvent<HTMLElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const key = e.dataTransfer.getData('text/plain') || dragKey;
-      const current = laneDrag;
-      setLaneDrag(null);
-      setDragKey(null);
-      if (!key || dockedKeys.has(key)) return;
-      if (!current?.valid || !current.over) return;
-      const feature = stepOfWidget.get(key);
-      const origin = positions[key];
-      if (!feature || !origin) return;
-      dockCard(feature, current.over, origin);
-    },
-    [dragKey, laneDrag, setLaneDrag, stepOfWidget, positions, dockCard, dockedKeys],
-  );
-
-  // 레인 **안의 카드 위**에 떨어뜨린 드롭 — portal 때문에 레인까지 못 간다.
-  // React 의 합성 이벤트는 **DOM 트리가 아니라 컴포넌트 트리**를 타고 올라가므로,
-  // 레인 슬롯에 portal 된 카드에서 발생한 drop 은 레인 행(onLaneDrop)이 아니라
-  // 그 카드의 **그리드 래퍼**(onCellDrop)로 간다. 그래서 레인이 2장 이상이 되면
-  // 오른쪽 끝이 카드에 덮여 세 번째 카드를 받을 수 없었다(실측: 슬롯은 valid
-  // 인데 드롭이 무시됨). 도킹 카드에 레인과 같은 판정을 달아 그 구멍을 막는다.
-  const onDockedCardDragOver = useCallback(
-    (e: ReactDragEvent<HTMLElement>) => {
-      onLaneDragOver(e);
-    },
-    [onLaneDragOver],
-  );
-
-  const onDockedCardDrop = useCallback(
-    (e: ReactDragEvent<HTMLElement>) => {
-      // 그리드 래퍼(onCellDrop)까지 올라가면 **언도킹**으로 오해된다 — 레인 안에
-      // 떨어뜨린 것은 언도킹이 아니다. 여기서 끊는다.
-      e.stopPropagation();
-      const key = e.dataTransfer.getData('text/plain') || dragKey;
-      if (key && dockedKeys.has(key)) {
-        // 이미 레인에 있는 카드를 레인 안에 놓았다 — 아무 일도 없다.
-        e.preventDefault();
-        setLaneDrag(null);
-        setDragKey(null);
-        return;
-      }
-      onLaneDrop(e);
-    },
-    [dragKey, dockedKeys, onLaneDrop, setLaneDrag],
-  );
-
-  const onCellDragOver = useCallback(
-    (col: number, row: number) =>
-      (e: ReactDragEvent<HTMLElement>) => {
-        if (!dragKey) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const cell = `${col},${row}`;
-        if (hoverCell !== cell) setHoverCell(cell);
-      },
-    [dragKey, hoverCell],
-  );
-
-  const onCellDragLeave = useCallback(
-    (col: number, row: number) => () => {
-      const cell = `${col},${row}`;
-      if (hoverCell === cell) setHoverCell(null);
-    },
-    [hoverCell],
-  );
-
-  const onCellDrop = useCallback(
-    (col: number, row: number) => (e: ReactDragEvent<HTMLElement>) => {
-      e.preventDefault();
-      const sourceKey = e.dataTransfer.getData('text/plain') || dragKey;
-      setDragKey(null);
-      setHoverCell(null);
-      setLaneDrag(null);
-      if (!sourceKey) return;
-      const sourceWidget = widgetByKey[sourceKey];
-      if (!sourceWidget) return;
-      // 레인 안 카드를 캔버스에 놓으면 **언도킹**이다. 양 끝만 되고, 거절이면
-      // 카드는 레인에 그대로 남는다(판정 소유자 = evaluateUndock).
-      const dockedFeature = dockedKeys.get(sourceKey);
-      if (dockedFeature) {
-        if (evaluateUndock(dockedFeature).ok) undockCard(dockedFeature);
-        return;
-      }
-      // 레인이 있는 동안 남은 카드의 배치는 **파생값**이다(재압축). 그때의 자리
-      // 변경을 발행 배치에 쓰면 해체 때 되돌릴 기준이 오염된다 — 그래서 레인이
-      // 있는 동안 비도킹 카드의 셀 이동은 받지 않는다(드래그 자체는 도킹용으로
-      // 계속 동작). 해체하면 평소 자리 변경이 그대로 돌아온다.
-      if (lane) return;
-      const sourceSpan = spanOf(sourceWidget);
-      // span 이 grid 끝 초과하지 않게 col/row clamp.
-      const targetCol = Math.max(
-        0,
-        Math.min(GRID_COLS - sourceSpan.cols, col),
-      );
-      const targetRow = Math.max(
-        0,
-        Math.min(GRID_ROWS - sourceSpan.rows, row),
-      );
-      setPositions((curr) => {
-        const sourcePos = curr[sourceKey];
-        if (!sourcePos) return curr;
-        if (sourcePos.col === targetCol && sourcePos.row === targetRow)
-          return curr;
-        const next = { ...curr };
-        // target footprint (cols × rows) 안에 다른 widget 점유 셀이 있는지
-        // 확인 — 단일 widget 만 겹치면 그 widget 을 source 의 옛 자리로 swap.
-        const overlapKeys = new Set<string>();
-        for (let dc = 0; dc < sourceSpan.cols; dc += 1) {
-          for (let dr = 0; dr < sourceSpan.rows; dr += 1) {
-            const cellKey = `${targetCol + dc},${targetRow + dr}`;
-            const occupant = occupiedCells.get(cellKey);
-            if (occupant && occupant !== sourceKey) overlapKeys.add(occupant);
-          }
-        }
-        if (overlapKeys.size === 1) {
-          const [overlapKey] = Array.from(overlapKeys);
-          const overlapSpan = spanOf(widgetByKey[overlapKey]);
-          // overlap widget 의 footprint 가 source 옛 자리에서 grid 밖으로
-          // 나가면 swap 불가 — 거부.
-          if (
-            sourcePos.col + overlapSpan.cols > GRID_COLS ||
-            sourcePos.row + overlapSpan.rows > GRID_ROWS
-          ) {
-            return curr;
-          }
-          next[overlapKey] = { ...sourcePos };
-        } else if (overlapKeys.size > 1) {
-          // 여러 widget 겹침 — drop 거부 (간단 정책).
-          return curr;
-        }
-        next[sourceKey] = { col: targetCol, row: targetRow };
-        persist(next);
-        return next;
-      });
-    },
-    [
-      dragKey,
-      persist,
-      widgetByKey,
-      occupiedCells,
-      GRID_COLS,
-      GRID_ROWS,
-      dockedKeys,
-      evaluateUndock,
-      undockCard,
-      setLaneDrag,
-      lane,
-    ],
-  );
-
-  const onHandleDragEnd = useCallback(() => {
-    setLaneDrag(null);
-    setDragKey(null);
-    setHoverCell(null);
-  }, [setLaneDrag]);
-
-  // ── focus (Navigator click / ?focus= query / 자동 갱신) ─────────────
-  // focusedKey: 현재 시각적 중심에 있는 위젯 (Navigator highlight 용).
-  // wheel pan/zoom 시 자동 갱신 — 클릭이 아니라 단순 derived state.
-  const [focusedKey, setFocusedKey] = useState<string | null>(
-    initialFocus && widgetByKey[initialFocus] ? initialFocus : null,
-  );
-
-  // click-to-focus 오버레이의 pointerdown 좌표 — pointerup 시점에 이동거리를
-  // 재서 클릭(=focus) vs 드래그 pan 을 구분. 동시 포인터 1개만 가정 (단일 ref).
+  // click-to-focus 의 pointerdown 좌표 — pointerup 에서 이동거리로 클릭 판정.
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  // 위젯 키 → 위젯이 surface 안에서 차지하는 center (x, y). pan/zoom 무관한
-  // 순수 좌표 — 자동 갱신과 click focus 양쪽에서 공유.
-  const widgetCenter = useCallback(
-    (key: string) => {
-      const pos = positions[key];
-      if (!pos) return null;
-      const span = spanOf(widgetByKey[key]);
-      return {
-        x:
-          pos.col * (CELL_W + GAP) +
-          (span.cols * CELL_W + (span.cols - 1) * GAP) / 2,
-        y:
-          pos.row * (CELL_H + GAP) +
-          (span.rows * CELL_H + (span.rows - 1) * GAP) / 2,
-      };
-    },
-    [positions, widgetByKey],
-  );
-
-  // 클릭 jump — 위젯이 화면에 완전히 들어가는 fit zoom 계산 + 중앙 정렬.
-  // 예전엔 targetZoom = 1.0 하드코딩이라 위젯(654×950)이 container 보다 크면
-  // 짤리고 "너무 클로즈업" 됐다. 이제 위젯 실 픽셀 크기 대비 container 비율로
-  // 축소해 전체를 노출한다.
-  // 좌표계: surface 는 flex 로 컨테이너 가로 중앙에 배치되고 transformOrigin
-  // 은 'center top'. 따라서 widget 중심을 컨테이너 중심으로 끌어오는 pan 은
-  //   pan.x = (SURFACE_W/2 - widgetX) * targetZoom
-  //   pan.y = containerHeight/2 - SURFACE_PT - widgetY * targetZoom
-  // (transformOrigin 미적용 시 식이 다른 함정 — §7 의 transformOrigin 함정).
-  const focusWidget = useCallback(
-    (key: string) => {
-      const center = widgetCenter(key);
-      const widget = widgetByKey[key];
+  /** 저줌에서 레인 카드를 클릭하면 그 카드로 줌인 (click-to-focus). */
+  const focusCardZoom = useCallback(
+    (widgetKey: string) => {
+      const feature = dockedKeys.get(widgetKey);
       const container = containerRef.current;
-      // 숨긴 위젯은 grid 미렌더 → focus 대상 아님 (deep-link 방어).
-      if (!center || !widget || !container || hiddenWidgets.has(key)) return;
-      const rect = container.getBoundingClientRect();
-      const SURFACE_PT = 32; // pt-8 = 32px (surface 컨테이너의 top offset)
-
-      // 위젯이 surface 안에서 차지하는 실제 픽셀 크기. widgetCenter 와 동일한
-      // spanOf + CELL/GAP 좌표계 — 스펙 예시의 widget.width/height 는 이 코드엔
-      // 없어 spanOf 기반으로 보수적으로 계산 (현재 spanOf = 항상 1×1 → 654×950).
-      const span = spanOf(widget);
-      const widgetW = span.cols * CELL_W + (span.cols - 1) * GAP;
-      const widgetH = span.rows * CELL_H + (span.rows - 1) * GAP;
-
-      // 위젯이 container 안에 15% 여백(PADDING) 두고 완전히 들어가는 최대 zoom.
-      // max 1.0 = 작은 위젯도 100% 초과 확대 안 함. min 0.3 = 극단 축소 방지.
+      const target = feature ? dockTargets[feature] : null;
+      if (!container || !target) return;
+      const cr = container.getBoundingClientRect();
+      const tr = target.getBoundingClientRect();
+      if (tr.width === 0 || tr.height === 0) return;
       const PADDING = 0.85;
-      const containerW = rect.width;
-      const containerH = rect.height - SURFACE_PT;
-      const fitZoom = Math.min(
-        (containerW / widgetW) * PADDING,
-        (containerH / widgetH) * PADDING,
-        1.0,
+      // 지금 화면 크기에서 목표 줌으로 가는 비율 — rect 는 이미 줌이 반영된 값이다.
+      const ratio = Math.min(
+        (cr.width / tr.width) * PADDING,
+        (cr.height / tr.height) * PADDING,
       );
-      const targetZoom = Math.max(0.3, fitZoom);
-
-      const targetPan = {
-        x: (SURFACE_W / 2 - center.x) * targetZoom,
-        y: rect.height / 2 - SURFACE_PT - center.y * targetZoom,
-      };
-      setZoom(targetZoom);
-      setPan(targetPan);
-      setFocusedKey(key);
+      const nextZoom = Math.max(
+        MIN_ZOOM,
+        Math.min(MAX_ZOOM, zoom * ratio),
+      );
+      const scale = nextZoom / zoom;
+      // 카드 중심을 컨테이너 중심에 맞춘다 — 줌 중심이 컨테이너 중심이므로
+      // 새 pan = 중심 보정 + 기존 pan 의 스케일.
+      const cardCx = tr.left + tr.width / 2 - cr.left;
+      const cardCy = tr.top + tr.height / 2 - cr.top;
+      setPan((p) => ({
+        x: p.x + (cr.width / 2 - cardCx) * scale,
+        y: p.y + (cr.height / 2 - cardCy) * scale,
+      }));
+      setZoom(nextZoom);
     },
-    [widgetCenter, widgetByKey, hiddenWidgets, SURFACE_W],
+    [dockedKeys, dockTargets, zoom],
   );
 
-  // mount 시 ?focus= query 가 있으면 자동 focus (deep-link). 단 한 번만 fire —
-  // localStorage 좌표 hydration effect 가 positions 를 update 한 뒤에 정확한
-  // 좌표로 jump 하도록 positions/focusWidget 를 deps 에 포함하고 ref 로 latch.
-  // probing 만 특별 — focus + 모달 자동 open + URL `focus=probing` 제거.
-  // 이유: probing 위젯의 "전체보기" 는 풀-모달 인터랙션이라 URL 에
-  // `focus=probing` 이 남아 있으면 사용자가 모달을 페이지로 오인하고
-  // 브라우저 백버튼을 누르면 canvas 밖으로 navigate 되어 컨텍스트를
-  // 잃는다. replaceState 로 즉시 정리하면 모달 닫기 = ESC/✕/backdrop,
-  // 백버튼 = canvas 진입 이전으로 깨끗하게 분리.
-  const didInitialFocusRef = useRef(false);
-  useEffect(() => {
-    if (didInitialFocusRef.current) return;
-    if (!initialFocus) {
-      didInitialFocusRef.current = true;
-      return;
-    }
-    if (!widgetByKey[initialFocus] || !positions[initialFocus]) return;
-    didInitialFocusRef.current = true;
-    const id = requestAnimationFrame(() => {
-      focusWidget(initialFocus);
-      if (initialFocus === 'probing') {
-        openFullview('probing');
-        try {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('focus');
-          const next = url.pathname + (url.search || '') + url.hash;
-          window.history.replaceState(window.history.state, '', next);
-        } catch {
-          /* URL 조작 실패 — 모달은 open, URL 만 더러운 채로 진행 */
-        }
-      }
-    });
-    return () => cancelAnimationFrame(id);
-  }, [initialFocus, widgetByKey, positions, focusWidget, openFullview]);
-
-  // ── fit-to-view default zoom ─────────────────────────────────────────
-  // 로그인 후 /canvas 진입 시 surface 부분만 보이던 zoom=1.0 default 를
-  // 위젯 bounding box 가 한 화면에 들어가는 scale 로 자동 조정. 한 mount =
-  // 한 번만 fire (ref latch). `?focus=` query 가 있으면 fit 생략 — 위 effect
-  // 의 focusWidget 가 pan/zoom 직접 세팅. localStorage 좌표 hydration 이
-  // setPositions 로 positions 를 갱신하면 rAF 콜백이 그 시점 positions 를
-  // 읽도록 effect 가 positions 변화에 재실행되지만 latch 로 단발 보장.
+  // ── 초기 fit — 레인이 있으면 한눈에 들어오게 (mount 1회 latch) ───────
   const didInitialFitRef = useRef(false);
   useEffect(() => {
     if (didInitialFitRef.current) return;
-    // 리스트 모드로 진입하면 surface 가 display:none 이라 rect 가 0 → fit 계산
-    // 불가. latch 하지 않고 대기했다가, 캔버스로 전환되면 이 effect 가 다시
-    // 돌아 그때 fit 한다 (isList 를 deps 에 포함).
-    if (isList) return;
-    if (initialFocus) {
-      didInitialFitRef.current = true;
-      return;
-    }
-    const container = containerRef.current;
-    if (!container) return;
+    if (isList) return; // surface 가 display:none 이라 rect 가 0
+    if (!lane || laneSize.w === 0 || containerSize.w === 0) return;
+    didInitialFitRef.current = true;
+    // rAF — 레인 생성 직후의 전이(0.28s)가 가라앉기 전에 좌표를 쓰면 엉뚱한
+    // 곳에 안착한다(LEARNINGS §8-8). effect 본문 동기 setState 도 피한다.
     const id = requestAnimationFrame(() => {
-      if (didInitialFitRef.current) return;
-      const rect = container.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-
-      // 현재 positions 의 widget bounding box. 9 위젯 3×3 default 면
-      // 0..2 col × 0..2 row = 2058 × 2946 (3행 모두 채워짐).
-      let minCol = GRID_COLS;
-      let maxCol = -1;
-      let minRow = GRID_ROWS;
-      let maxRow = -1;
-      widgets.forEach((w) => {
-        const pos = positions[w.key];
-        if (!pos) return;
-        const { cols, rows } = spanOf(w);
-        if (pos.col < minCol) minCol = pos.col;
-        if (pos.col + cols - 1 > maxCol) maxCol = pos.col + cols - 1;
-        if (pos.row < minRow) minRow = pos.row;
-        if (pos.row + rows - 1 > maxRow) maxRow = pos.row + rows - 1;
-      });
-      if (maxCol < 0 || maxRow < 0) return; // 위젯 0개 → skip
-
-      const colSpan = maxCol - minCol + 1;
-      const rowSpan = maxRow - minRow + 1;
-      const boxWidth = colSpan * CELL_W + (colSpan - 1) * GAP;
-      const boxHeight = rowSpan * CELL_H + (rowSpan - 1) * GAP;
-      const boxCenterX = minCol * (CELL_W + GAP) + boxWidth / 2;
-      const boxCenterY = minRow * (CELL_H + GAP) + boxHeight / 2;
-
-      const PADDING = 64; // 양옆/위아래 여백
-      const SURFACE_PT = 32; // pt-8 (surface 컨테이너 top offset)
-      const scaleX = (rect.width - PADDING * 2) / boxWidth;
-      const scaleY = (rect.height - PADDING * 2) / boxHeight;
+      const PADDING = 64;
+      const boxW = laneSize.w;
+      const boxH = laneSize.h;
       const fitZoom = Math.max(
         MIN_ZOOM,
-        Math.min(scaleX, scaleY, MAX_ZOOM),
+        Math.min(
+          (containerSize.w - PADDING * 2) / boxW,
+          (containerSize.h - PADDING * 2) / boxH,
+          MAX_ZOOM,
+        ),
       );
-
-      // surface 는 flex 로 컨테이너 가로 중앙 배치 + transformOrigin
-      // 'center top'. focusWidget 와 동일 좌표식 — bounding box 중심을
-      // 컨테이너 중심으로 끌어옴.
-      const targetPan = {
-        x: (SURFACE_W / 2 - boxCenterX) * fitZoom,
-        y: rect.height / 2 - SURFACE_PT - boxCenterY * fitZoom,
-      };
+      // surface 는 flex 로 컨테이너 가로 중앙 배치 + transformOrigin 'center top'.
+      const boxCx = LANE_LEFT + boxW / 2;
+      const boxCy = LANE_TOP + boxH / 2;
       setZoom(fitZoom);
-      setPan(targetPan);
-      didInitialFitRef.current = true;
+      setPan({
+        x: (SURFACE_W / 2 - boxCx) * fitZoom,
+        y: containerSize.h / 2 - SURFACE_PT - boxCy * fitZoom,
+      });
     });
     return () => cancelAnimationFrame(id);
-  }, [initialFocus, widgets, positions, isList, GRID_COLS, GRID_ROWS, SURFACE_W]);
+  }, [isList, lane, laneSize, containerSize, SURFACE_W]);
 
-  // 자동 갱신 — pan/zoom 가 바뀔 때마다 컨테이너 중심에 가장 가까운 위젯을
-  // focusedKey 로 설정. 사용자가 wheel pan/zoom 으로 다른 위젯에 가면
-  // Navigator highlight 가 따라옴.
+  // mount 시 `?focus=` 딥링크 → 그 위젯의 풀뷰. URL 은 즉시 정리한다 — 남아
+  // 있으면 사용자가 모달을 페이지로 오인하고 백버튼으로 캔버스를 떠난다.
+  const didInitialFocusRef = useRef(false);
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const SURFACE_PT = 32;
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    let bestKey: string | null = null;
-    let bestDist = Infinity;
-    visibleWidgets.forEach((w) => {
-      const c = widgetCenter(w.key);
-      if (!c) return;
-      // widget 의 화면상 중심 좌표 (transformOrigin: 'center top' 보정)
-      const sx = centerX + (c.x - SURFACE_W / 2) * zoom + pan.x;
-      const sy = SURFACE_PT + c.y * zoom + pan.y;
-      const dist = Math.hypot(sx - centerX, sy - centerY);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestKey = w.key;
+    if (didInitialFocusRef.current) return;
+    didInitialFocusRef.current = true;
+    if (!initialFocus || !widgetByKey[initialFocus]) return;
+    const id = requestAnimationFrame(() => {
+      openFullview(initialFocus);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('focus');
+        const next = url.pathname + (url.search || '') + url.hash;
+        window.history.replaceState(window.history.state, '', next);
+      } catch {
+        /* URL 조작 실패 — 모달은 open, URL 만 더러운 채로 진행 */
       }
     });
-    if (bestKey && bestKey !== focusedKey) {
-      setFocusedKey(bestKey);
-    }
-  }, [pan, zoom, visibleWidgets, widgetCenter, focusedKey, SURFACE_W]);
+    return () => cancelAnimationFrame(id);
+  }, [initialFocus, widgetByKey, openFullview]);
 
-  // pan 모드 cursor 강제. JSX 안에 <style> 블록을 두면 매 렌더마다 React 가
-  // 처리하면서 일시적으로 적용이 끊기는 frame 이 생겨 마우스 이동 중 flicker
-  // 가 발생 (PR #391 회귀). 대신 useEffect 로 document.head 에 <style> 을
-  // 한 번만 주입하고 body cursor 도 직접 세팅 — pan 모드 활성 동안 모든
-  // 엘리먼트가 universal selector + !important 로 단일 cursor 를 유지.
+  // pan 모드 cursor 강제 — JSX 안 <style> 은 매 렌더 flicker 를 만들어(#391)
+  // document.head 에 한 번만 주입한다.
   useEffect(() => {
     if (!isPanning && !isSpaceHeld) return;
     const cursor = isPanning ? 'grabbing' : 'grab';
@@ -1588,342 +834,240 @@ export function CanvasBoard({
     };
   }, [isPanning, isSpaceHeld]);
 
+  useEffect(
+    () => () => {
+      if (ringTimerRef.current) window.clearTimeout(ringTimerRef.current);
+    },
+    [],
+  );
+
+  const ghostWidget = pDrag ? widgetByKey[pDrag.widgetKey] : null;
+  const ghostLabel = useMemo(() => {
+    if (!pDrag || pDrag.mode !== 'pointer' || pDrag.over === null) return null;
+    if (pDrag.verdict?.ok) {
+      return {
+        text: tChain('dock.ghostValid', { n: nextStepNumber }),
+        valid: true,
+      };
+    }
+    return { text: tChain('dock.ghostInvalid'), valid: false };
+  }, [pDrag, tChain, nextStepNumber]);
+
   return (
     <WidgetStatesMapProvider>
     <WidgetGateProvider>
     <FullviewShellProvider value={fullviewValue}>
     <FullviewHeaderSlotProvider>
+    {/* 팔레트와 작업면 — 팔레트는 `[data-canvas]` 의 **형제**다(제약 4 · §9). */}
     <div
-      ref={containerRef}
-      data-canvas
-      className="relative h-full overflow-hidden"
-      // 리스트 모드에선 캔버스 surface 를 unmount 하지 않고 숨기기만 한다 —
-      // 카드(ExpandedBody)가 계속 마운트돼 라이브 세션이 보존된다. data-canvas
-      // 는 DOM 에 남아 layout 의 full-bleed(p-0) 규칙도 유지된다.
+      className="flex h-full min-h-0"
       style={{ display: isList ? 'none' : undefined }}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
     >
-      {/* 그리드 시각 노출 X — 사용자 피드백: "그리드가 UI적으로 보이지
-          않도록". dot grid / 빈 cell border 모두 평소엔 안 보임. 드래그
-          중에만 빈 cell 에 faint hint 노출 (아래 cell render 참고). */}
-      <WidgetNavigator
+      <PalettePanel
         widgets={widgets}
-        focusedKey={focusedKey}
-        onFocus={focusWidget}
-        hiddenKeys={hiddenWidgets}
-        onToggleHidden={toggleHidden}
+        userName={userName ?? null}
+        laneActive={laneActive}
+        view={view}
+        dockedSteps={dockedKeyStrings}
+        stepOfWidget={stepOfWidgetStrings}
+        nextStepNumber={nextStepNumber}
+        isChainable={isChainable}
+        drag={paletteDrag}
+        onOpenWidget={openFullview}
+        onFocusLaneCard={focusLaneCard}
+        onFirstInteraction={dismissOnboarding}
+        onRectChange={onPaletteRectChange}
       />
-      {canPublish && (
-        <LayoutPublishControl
-          positions={positions}
-          onPublished={(version) => {
-            try {
-              window.localStorage.setItem(
-                APPLIED_PUBLISH_VERSION_KEY,
-                String(version),
-              );
-            } catch {
-              /* quota / private mode */
-            }
-          }}
-        />
-      )}
-      {/* 체인 툴바 — 변환 레이어 **밖**(캔버스를 pan/zoom 해도 화면에 남는다).
-          진입점은 이 버튼 하나다(CD 결정 2). */}
-      <ChainToolbarHost onFocusLane={() => setPan((prev) => ({ ...prev, y: 0 }))} />
-      {/* 키보드 도킹 안내 — 받을 수 없는 자리의 사유를 읽어준다(CD Interactions).
-          시각 피드백은 슬롯이 이미 하므로 화면에는 보이지 않는다. */}
-      <div aria-live="polite" className="sr-only">
-        {liftAnnounce}
-      </div>
-      {/* 드래그 라벨 pill — 커서 옆. 변환 레이어 밖 + fixed 라 줌/팬과 무관하게
-          실제 커서를 따라간다(CD Geometry "커서 옆 라벨 pill"). */}
-      {dragLabel && dragPoint && (
+
+      <div
+        ref={containerRef}
+        data-canvas
+        // 드래그 중에만 click-to-focus 오버레이를 투과시킨다(§5 저줌).
+        data-palette-dragging={pDrag && !pDrag.returning ? 'true' : undefined}
+        className="relative h-full min-w-0 flex-1 overflow-hidden"
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+      >
+        {/* 툴바 — 화면 고정(변환 레이어 밖). Navigator 가 사라져 좌상단 충돌이
+            없어졌으므로 CD 좌표(left 24 · top 20)를 그대로 쓴다(§7 배치). */}
         <div
-          data-chain="drag-label"
-          aria-live="polite"
-          style={{ left: dragPoint.x + 18, top: dragPoint.y + 18 }}
-          className={`pointer-events-none fixed z-overlay inline-flex items-center rounded-pill border-2 border-ink px-4 py-2 text-2xl font-extrabold shadow-memphis-sm-faint ${
-            dragLabel.valid ? 'bg-ink text-paper' : 'bg-error-bg text-error-text'
-          }`}
+          style={{ left: TOOLBAR_LEFT, top: TOOLBAR_TOP }}
+          // z-overlay — 저줌에서 카드마다 깔리는 click-to-focus 오버레이와 같은
+          // 층이어야 "+ 새 체인" 이 묻히지 않는다(LEARNINGS §2-1).
+          className="pointer-events-none absolute z-overlay"
         >
-          {dragLabel.text}
+          <ChainToolbarHost onFocusLane={panToLane} />
         </div>
-      )}
-      <div className="absolute inset-0 flex items-start justify-center pt-8">
-        <div
-          data-canvas-surface
-          // shrink-0 필수 — surface 의 자식(위젯 카드·빈 셀)이 전부 absolute
-          // 라 min-content 폭이 0. flex-shrink 기본 1 이면 컨테이너가 SURFACE_W
-          // (2058) 보다 좁을 때 surface 실제 렌더 폭이 컨테이너 폭으로 축소되고,
-          // transformOrigin 'center top' 의 center 가 SURFACE_W/2 가 아니게 되어
-          // focusWidget / initialFit / wheel focal point 의 pan 계산이 전부
-          // 좌측으로 어긋난다 (click-to-focus 좌상단 쏠림 회귀의 root cause).
-          className="relative shrink-0"
-          style={{
-            width: SURFACE_W,
-            height: SURFACE_H,
-            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
-            transformOrigin: 'center top',
-            transition: isPanning ? 'none' : 'transform 0.28s ease-out',
-          }}
-        >
-          {/* 체인 레인 — 캔버스 맨 위 고정 행(CD 결정 5). 카드보다 먼저 그려
-              뒤 레이어가 되고, 도킹 카드는 아래에서 portal 로 얹힌다. */}
-          {lane && (
-            <div
-              ref={setLaneEl}
-              data-chain="lane-row"
-              className="absolute"
-              // 레인은 캔버스 폭 안에 머문다 — 체인이 길어지면 레인이 surface
-              // 밖으로 자라는 대신 **본문이 가로로 스크롤**된다(CD 열린 항목 2:
-              // 2,850px 레인 + 줌 동시 동작). 폭 제한이 없으면 inline-flex 가
-              // 내용만큼 늘어나 overflow-x-auto 가 영영 걸리지 않는다(실측:
-              // scrollWidth == clientWidth == 2484).
-              style={{
-                top: LANE_TOP,
-                left: LANE_LEFT,
-                maxWidth: SURFACE_W - LANE_LEFT * 2,
-              }}
-              onDragOver={onLaneDragOver}
-              onDrop={onLaneDrop}
-            >
-              <ChainLaneHost onOpenWidget={openFullview} />
-            </div>
-          )}
-          {/* 원래 자리 윤곽 — 도킹된 카드를 끌 때만. 그 카드는 그리드에서
-              빠져 있어(portal) 어디로 돌아갈지 화면에 단서가 없기 때문이다.
-              비도킹 카드는 원본이 그 자리에 0.4 로 남아 있어 윤곽이 중복된다. */}
-          {originOutline && (
-            <div
-              data-chain="origin-outline"
-              className="absolute flex items-center justify-center rounded-md border-[2.5px] border-dashed border-line-empty"
-              style={{
-                left: originOutline.col * (CELL_W + GAP),
-                top: originOutline.row * (CELL_H + GAP) + laneOffsetY,
-                width: CELL_W,
-                height: CELL_H,
-              }}
-            >
-              <span className="text-2xl font-bold text-faint">
-                {tChain('dock.originSlot')}
-              </span>
-            </div>
-          )}
-          {/* 빈 셀 — 드래그 중일 때만 시각화. 모든 cell 을 drop target 으로
-              렌더 (점유 cell 의 drop event 는 그 위 widget card 가 먼저
-              잡음). */}
-          {Array.from({ length: GRID_ROWS }).flatMap((_, r) =>
-            Array.from({ length: GRID_COLS }).map((__, c) => {
-              const cellKey = `${c},${r}`;
-              const isOccupied = occupiedCells.has(cellKey);
-              if (isOccupied) return null;
-              const isHover = hoverCell === cellKey && dragKey !== null;
-              const showHint = dragKey !== null;
-              return (
-                <div
-                  key={`empty-${cellKey}`}
-                  data-canvas-cell
-                  onDragOver={onCellDragOver(c, r)}
-                  onDragLeave={onCellDragLeave(c, r)}
-                  onDrop={onCellDrop(c, r)}
-                  className="absolute rounded-md"
-                  style={{
-                    left: c * (CELL_W + GAP),
-                    top: r * (CELL_H + GAP) + laneOffsetY,
-                    width: CELL_W,
-                    height: CELL_H,
-                    // 평소엔 완전 투명 (점 grid 가 그대로 보임).
-                    // 드래그 중에만 dashed border 로 drop 가능 영역 hint.
-                    border: showHint
-                      ? '1.5px dashed rgba(0, 0, 0, 0.35)'
-                      : '1px solid transparent',
-                    boxShadow: isHover
-                      ? 'inset 0 0 0 3px var(--canvas-accent)'
-                      : 'none',
-                    transition: 'box-shadow 0.12s ease-out',
-                  }}
-                />
-              );
-            }),
-          )}
-          {/* 위젯 카드 — 절대 좌표 배치, expandedCols × expandedRows 만큼 span.
-              숨긴 위젯은 visibleWidgets 에서 제외돼 미렌더 (positions 는 보존
-              → 복원 시 원위치). 숨긴 슬롯은 occupiedCells 에 남아 예약되므로
-              빈 셀 drop target 도, empty-cell hint 도 뜨지 않는다. */}
-          {visibleWidgets.map((w) => {
-            const pos = gridPositions[w.key];
-            if (!pos) return null;
-            const { cols, rows } = spanOf(w);
-            const width = expandedWidthOf(cols);
-            const height = expandedHeightOf(rows);
-            const isDragSource = dragKey === w.key;
-            // 행별 헤더 톤 — 실제 시각적 행(pos.row) 기준. 위젯을 다른 행으로
-            // 드래그하면 새 행 색을 따라간다 (위젯 정체성이 아니라 위치 기준).
-            const tone = ROW_HEADER_TONE[pos.row] ?? ROW_HEADER_TONE[0];
-            return (
+
+        {/* P3a 빈 작업면 — 레인이 없을 때. 요약 pill 도, 옛 그리드 자리표시도
+            그리지 않는다(§7 P3a).
+
+            `hydrating`(체인 첫 조회) 중에는 띄우지 않는다. 그 구간은 "레인이
+            있는지 **모르는** 구간" 이라, (가) 복원될 레인 위에 "비어 있어요" 가
+            한 번 깜빡이고 (나) 그 사이 CTA 를 누르면 복원될 레인 위에 빈 레인을
+            덮어쓴다(LEARNINGS §9 — 돌고 있는 체인을 가리는 그 경로). 툴바가
+            같은 이유로 `busy={hydrating}` 로 잠긴다. */}
+        {!lane && !hydrating && <WorkspaceEmpty onNewChain={createLane} />}
+
+        {/* 언도킹 키보드 안내 — 시각 피드백은 레인이 이미 한다. */}
+        <div aria-live="polite" className="sr-only">
+          {undockAnnounce}
+        </div>
+
+        <div className="absolute inset-0 flex items-start justify-center pt-8">
+          <div
+            data-canvas-surface
+            // shrink-0 필수 — 자식이 absolute 라 min-content 폭이 0이고,
+            // flex-shrink 기본 1 이면 surface 실폭이 컨테이너로 줄어 'center top'
+            // 의 center 가 SURFACE_W/2 가 아니게 되어 pan 계산이 전부 어긋난다.
+            className="relative shrink-0"
+            style={{
+              width: SURFACE_W,
+              height: SURFACE_H,
+              transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+              transformOrigin: 'center top',
+              // P1b 이동 = 240ms ease-out (팬 중에는 전이 없음).
+              transition: isPanning ? 'none' : 'transform 240ms ease-out',
+            }}
+          >
+            {lane && (
               <div
-                key={w.key}
-                data-canvas-card
-                data-widget-key={w.key}
-                data-canvas-row={pos.row}
-                data-chain-docked={dockedKeys.has(w.key) ? 'true' : 'false'}
+                ref={setLaneEl}
+                data-chain="lane-row"
                 className="absolute"
-                onDragOver={onCellDragOver(pos.col, pos.row)}
-                onDragLeave={onCellDragLeave(pos.col, pos.row)}
-                onDrop={onCellDrop(pos.col, pos.row)}
-                style={
-                  {
-                    // 도킹된 카드는 그리드에서 사라진다(본체는 레인으로 portal).
-                    display: dockedKeys.has(w.key) ? 'none' : undefined,
-                    left: pos.col * (CELL_W + GAP),
-                    top: pos.row * (CELL_H + GAP) + laneOffsetY,
-                    width,
-                    height,
-                    opacity: isDragSource || lifted?.key === w.key ? 0.4 : 1,
-                    transition: 'opacity 0.15s ease-out',
-                    '--widget-header-row-bg': tone.bg,
-                    '--widget-header-row-border': tone.border,
-                  } as CSSProperties
-                }
+                // 레인은 작업면 폭 안에 머문다 — 체인이 길어지면 레인 **본문이**
+                // 가로로 스크롤된다(v3 결정 1). 폭 제한이 없으면 inline-flex 가
+                // 내용만큼 늘어나 overflow-x-auto 가 영영 걸리지 않는다.
+                style={{
+                  top: LANE_TOP,
+                  left: LANE_LEFT,
+                  maxWidth: SURFACE_W - LANE_LEFT * 2,
+                }}
               >
-                {/* dimmed placeholder 위젯 ("준비 중") — 셸 전체를 반투명
-                    처리해 옛 실기능 위젯과 시각 구분. 클릭은 차단하지 않는다
-                    — 헤더의 "전체 보기" 로 기능 소개 hero (ComingSoonBody)
-                    진입이 가능해야 하므로. wrapper 만 감싸므로 카드가
-                    활성화되면 card 의 dimmed 플래그만 빠지면 정상 렌더. */}
-                {/* 도킹된 카드는 **레인 슬롯으로 portal** 한다 — 부모를 바꾸면
-                    React 가 remount 해 라이브 세션(프로빙·통역)이 끊기기 때문.
-                    레포가 전체보기에서 이미 쓰는 always-mounted + portal 패턴. */}
-                {(() => {
-                  const dockFeature = dockedKeys.get(w.key);
-                  const target = dockFeature ? dockTargets[dockFeature] : null;
-                  const node = (
-                    // 포커스·키보드 도킹·복귀 배지는 **portal 되는 이 노드**가
-                    // 가진다. 바깥 래퍼는 도킹 중 `display:none` 이라(본체가
-                    // 레인으로 옮겨가므로) 거기에 두면 정작 레인 안 카드를
-                    // 키보드로 뺄 수 없다 — 프리뷰 실측에서 드러난 구멍이다.
-                    <div
-                      data-widget-node={w.key}
-                      data-chain-lifted={lifted?.key === w.key ? 'true' : undefined}
-                      {...(dockFeature
-                        ? {
-                            onDragOver: onDockedCardDragOver,
-                            onDrop: onDockedCardDrop,
-                          }
-                        : null)}
-                      tabIndex={0}
-                      aria-label={tRoot(`Sidebar.${w.key}`)}
-                      onKeyDown={onCardKeyDown(w.key)}
-                      className={`relative focus-visible:outline-none focus-visible:shadow-focus-ring ${w.dimmed ? 'h-full opacity-50' : 'h-full'}`}
-                    >
-                      {restoredKeys.has(w.key) && (
-                        <div
-                          data-chain="restored-badge"
-                          aria-live="polite"
-                          className="pointer-events-none absolute top-4 left-1/2 z-overlay -translate-x-1/2 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-2xl font-extrabold text-ink shadow-memphis-sm-faint"
-                        >
-                          {tChain('lane.restored')}
-                        </div>
-                      )}
-                <WidgetShell
-                  content={w}
-                  dashboardMode
-                  // 체인 칩 — 체인에 묶인 카드만 슬롯을 받는다(비체인 카드는
-                  // undefined → 서브바 행 자체가 안 그려진다).
-                  subbarEnd={(() => {
-                    const chip = chainChipFor(w.key);
-                    return chip ? <ChainChip {...chip} /> : undefined;
-                  })()}
-                  onFullview={() => openFullview(w.key)}
-                  hasGuide={widgetGuide(w.key) != null}
-                  onGuide={openGuide}
-                  dragHandleProps={{
-                    draggable: true,
-                    onDragStart: (e) => {
-                      // 스페이스바 hold 면 헤더 drag 중단 → 캔버스 pan 우선
-                      // (Figma/Miro 표준). HTML5 dragstart 는 mouseDown 과
-                      // 별개 fire 가능하므로 preventDefault 로 차단.
-                      if (isSpaceHeldRef.current) {
-                        e.preventDefault();
-                        return;
-                      }
-                      onHandleDragStart(w.key)(e);
-                    },
-                    onDragEnd: onHandleDragEnd,
-                    onMouseDown: (e) => {
-                      // 스페이스바 hold 면 stopPropagation 생략 → 이벤트가
-                      // 상위 캔버스로 버블링되어 pan 이 시작.
-                      if (isSpaceHeldRef.current) return;
-                      e.stopPropagation();
-                    },
-                  }}
-                />
-                    </div>
-                  );
-                  return dockFeature && target
-                    ? createPortal(node, target)
-                    : dockFeature
-                      ? null
-                      : node;
-                })()}
-                {/* "숨김" 뱃지 — 슈퍼어드민 캔버스에서 일반 유저에게 노출 off 인
-                    위젯 표시(hiddenBadgeSet). 일반 유저는 set 이 비어 미노출.
-                    카드 우상단에 얹되 pointer-events-none 로 인터랙션 방해 X. */}
-                {hiddenBadgeSet.has(w.key) && (
-                  <div className="pointer-events-none absolute right-3 top-3 z-fab">
-                    <Badge variant="subtle" size="sm">
-                      {tRoot('Shell.hidden')}
-                    </Badge>
-                  </div>
-                )}
-                {/* click-to-focus 오버레이 — scale < FOCUS_THRESHOLD (탐색
-                    모드) 에서만 활성. 위젯 표면 전체를 덮어 (1) 내부 컴포넌트로
-                    클릭 전달 차단 (멀리서 안 보이는 버튼 오조작 방지), (2) 클릭
-                    = 그 위젯으로 fit 줌인. z-overlay 로 위젯 내부 FAB/CTA 위에
-                    확실히 얹는다. pointer 이동 <5px 만 클릭 판정 = pan 드래그
-                    회귀 방지. space-hold pan 모드면 focus 대신 pan 우선. */}
-                {zoom < FOCUS_THRESHOLD && (
-                  <div
-                    data-canvas-focus-overlay
-                    className="absolute inset-0 z-overlay cursor-zoom-in"
-                    onPointerDown={(e) => {
-                      clickStartRef.current = { x: e.clientX, y: e.clientY };
-                    }}
-                    onPointerUp={(e) => {
-                      const start = clickStartRef.current;
-                      clickStartRef.current = null;
-                      // space-hold = 캔버스 pan 모드 → focus 트리거 X
-                      if (!start || isSpaceHeldRef.current) return;
-                      const moved = Math.hypot(
-                        e.clientX - start.x,
-                        e.clientY - start.y,
-                      );
-                      if (moved <= CLICK_MOVE_THRESHOLD) focusWidget(w.key);
-                    }}
-                  />
-                )}
+                <ChainLaneHost onOpenWidget={openFullview} />
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
       </div>
     </div>
 
+    {/* ── 카드 호스트 — 항상 마운트, 보이지 않음 ────────────────────────
+        위젯은 **꺼낸 것만** 작업면에 보인다(§2 규칙 3 · P3c). 그러나 카드를
+        unmount 하면 라이브 세션(프로빙·통역)이 끊기므로 여기에 상시 마운트해
+        두고, 도킹된 카드만 레인 슬롯으로 portal 한다. 포커스·키보드는 portal
+        되는 노드가 들고 다닌다(LEARNINGS §8-3). */}
+    <div data-canvas-card-host style={{ display: 'none' }}>
+      {widgets.map((w) => {
+        const dockFeature = dockedKeys.get(w.key);
+        const target = dockFeature ? dockTargets[dockFeature] : null;
+        const tone = `var(--widget-header-bg-${w.meta.accent})`;
+        const node = (
+          <div
+            key={w.key}
+            data-widget-node={w.key}
+            data-chain-docked={dockFeature ? 'true' : 'false'}
+            data-chain-lifted={liftedCard === w.key ? 'true' : undefined}
+            tabIndex={0}
+            aria-label={tRoot(`Sidebar.${w.key}`)}
+            onKeyDown={onCardKeyDown(w.key)}
+            style={
+              ringKey === w.key
+                ? ({ '--palette-ring-tone': tone } as React.CSSProperties)
+                : undefined
+            }
+            className={`relative h-full focus-visible:outline-none focus-visible:shadow-soft-focus-ring ${
+              w.dimmed ? 'opacity-50' : ''
+            } ${ringKey === w.key ? 'palette-ring' : ''}`}
+          >
+            <WidgetShell
+              content={w}
+              dashboardMode
+              // 체인 칩 — 체인에 묶인 카드만 슬롯을 받는다(비체인 카드는
+              // undefined → 서브바 행 자체가 안 그려진다). 셸의 subbarEnd 는
+              // 바디 래퍼 **밖**이라 cascade 함정이 없다(LEARNINGS §5).
+              subbarEnd={(() => {
+                const chip = chainChipFor(w.key);
+                return chip ? <ChainChip {...chip} /> : undefined;
+              })()}
+              onFullview={() => openFullview(w.key)}
+              hasGuide={widgetGuide(w.key) != null}
+              onGuide={openGuide}
+            />
+            {/* "숨김" 뱃지 — 슈퍼어드민 캔버스에서 일반 유저에게 노출 off 인
+                위젯 표시. 일반 유저는 set 이 비어 미노출. */}
+            {hiddenBadgeSet.has(w.key) && (
+              <div className="pointer-events-none absolute top-3 right-3 z-fab">
+                <Badge variant="subtle" size="sm">
+                  {tRoot('Shell.hidden')}
+                </Badge>
+              </div>
+            )}
+            {/* click-to-focus 오버레이 — 저줌(탐색 모드)에서만. 드래그 중에는
+                globals.css 가 `pointer-events: none` 을 줘 드롭이 성립한다
+                (§5 저줌 · LEARNINGS §2-1 · §8-8). */}
+            {dockFeature && zoom < FOCUS_THRESHOLD && (
+              <div
+                data-canvas-focus-overlay
+                className="absolute inset-0 z-overlay cursor-zoom-in"
+                onPointerDown={(e) => {
+                  clickStartRef.current = { x: e.clientX, y: e.clientY };
+                }}
+                onPointerUp={(e) => {
+                  const start = clickStartRef.current;
+                  clickStartRef.current = null;
+                  if (!start || isSpaceHeldRef.current) return;
+                  const moved = Math.hypot(
+                    e.clientX - start.x,
+                    e.clientY - start.y,
+                  );
+                  if (moved <= CLICK_MOVE_THRESHOLD) focusCardZoom(w.key);
+                }}
+              />
+            )}
+          </div>
+        );
+        return dockFeature && target ? createPortal(node, target, w.key) : node;
+      })}
+    </div>
+
+    {/* ── 팔레트 포털 레이어 (§9) ──────────────────────────────────── */}
+    {pDrag && pDrag.mode === 'pointer' && pDrag.ghost && ghostWidget && (
+      <PaletteGhost
+        x={pDrag.ghost.x}
+        y={pDrag.ghost.y}
+        returning={pDrag.returning}
+        widgetKey={ghostWidget.key}
+        name={resolveWidgetLabel(tRoot, ghostWidget.meta)}
+        credits={
+          typeof ghostWidget.meta.cost === 'number'
+            ? tPalette('credits', { n: ghostWidget.meta.cost })
+            : tPalette('creditsNone')
+        }
+        accent={ghostWidget.meta.accent}
+        label={ghostLabel}
+      />
+    )}
+    {paletteDrag.emptyHint && (
+      <PaletteEmptyDropHint
+        x={paletteDrag.emptyHint.x}
+        y={paletteDrag.emptyHint.y}
+        text={tDrag('emptyDropHint')}
+      />
+    )}
+    {onboardingOpen && !isList && paletteRect && (
+      <PaletteOnboarding
+        anchorX={paletteRect.right}
+        anchorY={paletteRect.top + 92}
+        onDismiss={dismissOnboarding}
+      />
+    )}
+
     {/* ── 리스트 뷰 (풀페이지 셸) ─────────────────────────────────────
         캔버스 보드 없이 좌 SidebarNav + 우 단일 위젯 상세. 상세 slot 은
-        위 surface 의 (숨겨졌지만 계속 마운트된) 카드 본문이 portal 되는
-        대상 — currentKey 위젯만 여기로 그려진다. 모달 chrome 이 아니라
-        본문 영역을 통째로 차지하는 풀페이지 레이아웃(닫기 × 는 page
-        chrome 이라 WidgetFullviewPanel 이 감춤). */}
+        (숨겨졌지만 계속 마운트된) 카드 본문이 portal 되는 대상이다. */}
     {isList && (
-      <div
-        data-canvas-list
-        className="flex h-full min-h-0 overflow-hidden"
-      >
+      <div data-canvas-list className="flex h-full min-h-0 overflow-hidden">
         <SidebarNav
           widgets={widgets}
           current={effectiveCurrentKey}
@@ -1937,13 +1081,7 @@ export function CanvasBoard({
       </div>
     )}
 
-    {/* ── 공유 전체보기 모달 (레거시 경로) ───────────────────────────
-        단일 Modal: 좌 SidebarNav (위젯 전환) + 우 slot (현재 위젯 본문이
-        portal 됨). 헤더(제목/닫기×)는 각 위젯의 WidgetFullviewPanel 이
-        소유 → 동적 subtitle 유지. size="wide" — 90vw×90vh, Memphis 팝업
-        (backdrop 보이는 모달, 프로빙 어시스턴트 원래 톤). backdrop /
-        Esc 닫기는 Modal 이 처리. 리스트 모드에선 상세가 이미 풀페이지라
-        모달은 열지 않는다. fullviewV2 위젯은 아래 신규 셸로 분기. */}
+    {/* ── 공유 전체보기 모달 (레거시 경로) ─────────────────────────── */}
     {!currentFullviewV2 && (
       <Modal
         open={!isList && fullviewOpen && !!currentWidgetKey}
@@ -1965,15 +1103,7 @@ export function CanvasBoard({
       </Modal>
     )}
 
-    {/* ── 공유 전체보기 셸 V2 (fullviewV2 opt-in 위젯) ─────────────────
-        신규 <FullviewShell> — 프레임+240px 사이드바+헤더 스캐폴드
-        (design-handoff/FULLVIEW-SHELL.md §F1~F3). 헤더는 위젯 라벨/톤으로
-        스캐폴드하고, lang pill·End-session 등 위젯 종속 슬롯은 활성 위젯
-        body 가 FullviewHeaderSlot 로 publish → FullviewHeaderConnected 가
-        구독해 주입. 본문은 레거시와 동형 portal slot(setFullviewSlotEl) —
-        translate 는 fresh <InterpreterFullview>(CD state 03)를 portal.
-        현재 fullviewV2 위젯 = translate(Interpreter). 나머지 위젯은 아직
-        레거시 wide 모달 경로. */}
+    {/* ── 공유 전체보기 셸 V2 (fullviewV2 opt-in 위젯) ──────────────── */}
     {currentFullviewV2 && currentWidget && (
       <FullviewShell
         open={!isList && fullviewOpen && !!currentWidgetKey}
@@ -2003,10 +1133,7 @@ export function CanvasBoard({
       </FullviewShell>
     )}
 
-    {/* ── 위젯 영상 가이드 모달 (CD §4) ─────────────────────────────────
-        카드 툴바 `?` 가 여는 per-위젯 how-to 영상. portal Modal 이라 항상
-        렌더하고 open 으로 자체 게이트. 헤더 톤 = 위젯 meta.accent(카드와
-        자동 일치), 타이틀·blurb 는 i18n. */}
+    {/* ── 위젯 영상 가이드 모달 ─────────────────────────────────────── */}
     {(() => {
       const gw = guideKey ? (widgetByKey[guideKey] ?? null) : null;
       const g = guideKey ? widgetGuide(guideKey) : null;

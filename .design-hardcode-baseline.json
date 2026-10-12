@@ -1,5 +1,4 @@
 {
-  "src/app/[locale]/(app)/canvas/widget-navigator.tsx": 2,
   "src/app/[locale]/(app)/credits/page.tsx": 2,
   "src/components/admin-api-usage.tsx": 2,
   "src/components/canvas/shell/widget-outputs.tsx": 2,

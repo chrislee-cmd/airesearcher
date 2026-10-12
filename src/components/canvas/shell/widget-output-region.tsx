@@ -8,7 +8,7 @@
    ★ 왜 px-5 만으론 안 맞는가 (2026-07-09):
    ControlBoardPanel wrapper 는 `items-center` + 클러스터 `w-full max-w-2xl` 라
    컨트롤 콘텐츠가 프레임 안에서 **수평 중앙 정렬**된다. canvas 카드 한 장 폭은
-   CELL_W=816px(expandedCols=3) 라 프레임 내부 폭(≈747px) > max-w-2xl(672px) →
+   넓은 위젯(옛 expandedCols=3 ≈ 816px)은 프레임 내부 폭(≈747px) > max-w-2xl(672px) →
    컨트롤 좌측 끝은 px-5(20px)가 아니라 중앙정렬 오프셋(≈37px)만큼 안쪽이다.
    산출물을 px-5 full-width 로 두면 컨트롤보다 ~37px 왼쪽으로 튀어나온다
    (인터뷰 "핵심 요약" 회귀 root cause). 따라서 산출물도 컨트롤과 **동일한 컬럼**
