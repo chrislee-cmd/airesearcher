@@ -336,6 +336,12 @@ export function usePaletteDrag({
     (widgetKey: string, feature: string, canDrag: boolean) =>
       (e: ReactPointerEvent<HTMLElement>) => {
         if (e.button !== 0 && e.pointerType === 'mouse') return;
+        // 새 제스처가 시작됐다 — 직전 제스처의 "드래그였음" 표시를 비운다.
+        // 비우지 않으면 **드롭 성공 직후의 다음 누르기가 통째로 삼켜진다**:
+        // `commitDrop` 은 성공 경로라 플래그를 소비하는 click 이 따라오지 않고,
+        // 그 다음 타일 click 이 "이건 드래그였다" 로 오인된다(프리뷰 오라클
+        // 실측: 드롭 후 chain 타일을 눌러도 P1b 팬·링이 안 돌았다).
+        draggedClickRef.current = false;
         // press 피드백은 **항상** 준다 — 누르는 중이라는 사실은 끌 수 있는지와
         // 무관하다(§4.2 press). 아래 pending 무장만 조건부다.
         setPressedKey(widgetKey);

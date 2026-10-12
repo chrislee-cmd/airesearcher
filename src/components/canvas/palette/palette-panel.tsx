@@ -375,9 +375,15 @@ export function PalettePanel({
               style={{ width: 22, height: 22 }}
               className="shrink-0 rounded-chip bg-ink"
             />
+            {/* 워드마크 — CD 는 16/700 이고 우리 스케일에선 text-2xl(18)이 그
+                밴드다. 다만 레포 브랜드명("Research-Canvas")이 컴프의 한글
+                워드마크보다 길어 240 폭에서 18px 은 잘린다(프리뷰 실측). 같은
+                CD 밴드 안의 text-xl(15)로 내려 **잘리지 않게** 한다 —
+                가장 가까운 DS 값으로 굽힌 것이 아니라 CD 가 못 본 제약
+                (브랜드명 길이)에 맞춘 것이다. */}
             <span
               style={{ fontFamily: 'var(--font-display)' }}
-              className="truncate text-2xl font-bold text-ink"
+              className="truncate text-xl font-bold text-ink"
             >
               {tRoot('Brand.name')}
             </span>
