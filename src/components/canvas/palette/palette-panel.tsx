@@ -194,37 +194,43 @@ export function PalettePanel({
   const lastRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef(0);
 
+  // 포인터 좌표 하나로 "지금 어느 타일 위인가" 를 판정한다. 팔레트 rect 를 먼저
+  // 보고(싼 검사) 벗어났으면 청취를 끈다 — "필요할 때만 청취".
+  const flushHover = useCallback(() => {
+    rafRef.current = 0;
+    const el = rootRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const { x, y } = lastRef.current;
+    const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    if (!inside) {
+      setHover(null);
+      setTracking(false);
+      return;
+    }
+    let hit: Hover = null;
+    el.querySelectorAll<HTMLElement>('[data-palette-tile]').forEach((tile) => {
+      if (hit) return;
+      const tr = tile.getBoundingClientRect();
+      if (x >= tr.left && x <= tr.right && y >= tr.top && y <= tr.bottom) {
+        const key = tile.dataset.paletteTile;
+        if (key) hit = { key, rect: tr };
+      }
+    });
+    setHover(hit);
+  }, []);
+
+  const scheduleHover = useCallback(() => {
+    // rAF 스로틀 — rect 읽기를 프레임당 1회로 묶는다.
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(flushHover);
+  }, [flushHover]);
+
   useEffect(() => {
     if (!tracking) return;
-    const flush = () => {
-      rafRef.current = 0;
-      const el = rootRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const { x, y } = lastRef.current;
-      const inside =
-        x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-      if (!inside) {
-        setHover(null);
-        setTracking(false);
-        return;
-      }
-      let hit: Hover = null;
-      el.querySelectorAll<HTMLElement>('[data-palette-tile]').forEach((tile) => {
-        if (hit) return;
-        const tr = tile.getBoundingClientRect();
-        if (x >= tr.left && x <= tr.right && y >= tr.top && y <= tr.bottom) {
-          const key = tile.dataset.paletteTile;
-          if (key) hit = { key, rect: tr };
-        }
-      });
-      setHover(hit);
-    };
     const onMove = (e: PointerEvent) => {
       lastRef.current = { x: e.clientX, y: e.clientY };
-      // rAF 스로틀 — rect 읽기를 프레임당 1회로 묶는다.
-      if (rafRef.current) return;
-      rafRef.current = requestAnimationFrame(flush);
+      scheduleHover();
     };
     window.addEventListener('pointermove', onMove);
     return () => {
@@ -234,12 +240,20 @@ export function PalettePanel({
         rafRef.current = 0;
       }
     };
-  }, [tracking]);
+  }, [tracking, scheduleHover]);
 
-  const onPointerMove = useCallback((e: ReactPointerEvent<HTMLElement>) => {
-    lastRef.current = { x: e.clientX, y: e.clientY };
-    setTracking(true);
-  }, []);
+  // **이 핸들러도 판정을 예약한다.** 예약 없이 `tracking` 만 켜면, 팔레트에
+  // 처음 들어온 pointermove 가 window 리스너가 붙기 **전** 이벤트라 그 프레임이
+  // 영영 flush 되지 않는다 → 포인터가 한 번 더 움직여야 hover 가 켜진다
+  // (프리뷰 오라클 실측: 첫 타일만 hover=null 로 남아 fit 칩이 안 떴다).
+  const onPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLElement>) => {
+      lastRef.current = { x: e.clientX, y: e.clientY };
+      setTracking(true);
+      scheduleHover();
+    },
+    [scheduleHover],
+  );
 
   // 팔레트 rect 를 보드에 올려 보낸다 — 취소 사유 구분(§5)과 온보딩 꼬리 위치.
   useEffect(() => {
@@ -316,6 +330,7 @@ export function PalettePanel({
       : dockReason(d.verdict, d.feature, tChainRaw, tRoot);
     return tDrag('liftedAnnounce', {
       widget,
+      // i18n-allow-korean -- josa 쌍 식별자(문법 테이블 키). UI 카피가 아니라 korean-particle.ts 의 JosaPair 리터럴이라 messages/*.json 으로 옮길 수 없다 — ko 문구의 {josa} 자리를 채우는 값이고 en/ja/th 문구에는 그 자리가 없다.
       josa: josa(widget, '을를'),
       slot,
     });
