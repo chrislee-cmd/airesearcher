@@ -3,16 +3,19 @@
 /* ────────────────────────────────────────────────────────────────────
    PickerTrigger · PickerGroup — 패널을 여는 버튼과 세그먼트 그룹 (BUILD-SPEC §1).
 
-   Grouping 룰(드리프트 버그의 fix): 형제 픽커 2+ 는 한 세그먼트 컨트롤로 묶는다
-   — 단일 1.5px ink 보더 · radius 10 · shadow · overflow hidden · 셀을 1.5px ink
-   디바이더로 분할. 단독 픽커는 standalone 트리거. free-floating pill 금지.
+   Grouping 룰(드리프트 버그의 fix): 형제 픽커 2+ 는 한 세그먼트 컨트롤로 묶는다.
+   단독 픽커는 standalone 트리거. free-floating pill 금지.
 
-   상태 6종(§1, 모든 표면 동일): default paper · hover paper-soft(단독) /
-   line-soft(그룹 셀, 597 동일) · open ink fill+white+▲ · applied amore 배지 ·
-   focus 가시 링(G6) · disabled surface-disabled+faint+no shadow+비포커스.
-
-   토큰: radius-picker-trigger(10)/-option(8) · shadow-memphis-sm(md)/-xs(sm) ·
-   control-h-md/-sm · focus-ring. raw hex/px 없음(AUTHORITY: CD 값 = Phase 0 토큰).
+   **Soft Identity 리브랜드 1단계** — 셸 ④. 핵심규칙 6 "세그먼트/필터 토글은
+   `--fill` 트랙 + 흰 선택 칩(그림자 `--sh-chip`). **검정 채움 세그먼트는 쓰지
+   않는다**" + 변환표 "입력/피커 트리거: border 1 `--line` · radius 10 · focus =
+   border ink + `--focus-ring`". 그래서:
+     · 그룹 트랙 = `--fill` pill, 보더·ink 디바이더 없음(셀 간 선은 트랙이 흡수).
+     · 그룹 셀 open = **흰 칩** + `--sh-chip`(옛 ink 채움 아님).
+     · 단독 트리거 = 흰 면 + 1px `--line` + radius 10, 그림자 없음 · open =
+       border ink + `--focus-ring`.
+     · applied 배지 = ink pill(원색 amore 채움 → 중립 ink, 작은 면).
+   상태 6종(default/hover/open/applied/focus/disabled)과 치수(패딩·높이)는 불변.
    ──────────────────────────────────────────────────────────────────── */
 
 import {
@@ -28,18 +31,18 @@ import type { PickerSize } from './types';
 type GroupCtx = { grouped: boolean; size: PickerSize };
 const PickerGroupContext = createContext<GroupCtx | null>(null);
 
-/* 단독 트리거 focus 링 = DS focus-ring 토큰(§5). 그룹 셀은 부모 overflow-hidden
-   이 box-shadow 링을 잘라먹으므로 clip 되지 않는 inset outline 로 대체(둘 다 G6
-   "가시 focus" 충족). */
+/* 단독 트리거 focus = border ink + --focus-ring. 그룹 셀은 트랙 안에 꼭 맞게
+   들어가 링이 이웃 셀과 겹치므로 clip 되지 않는 inset outline(ink 1px)로 대체
+   (둘 다 G6 "가시 focus" 충족). */
 const STANDALONE_FOCUS =
-  'outline-none focus-visible:shadow-focus-ring';
+  'outline-none focus-visible:border-ink focus-visible:shadow-soft-focus-ring';
 const CELL_FOCUS =
-  'outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amore';
+  'outline-none focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-2 focus-visible:outline-ink';
 
 export type PickerTriggerProps = {
-  /** 열림 상태 — open 이면 ink fill + caret ▲. */
+  /** 열림 상태 — open 이면 흰 칩(그룹) / border ink(단독) + caret ▲. */
   open?: boolean;
-  /** 적용된 값 수 — >0 이면 amore 카운트 배지(§1 applied 상태). */
+  /** 적용된 값 수 — >0 이면 ink 카운트 배지(§1 applied 상태). */
   appliedCount?: number;
   /** 좌측 아이콘 렌더 — on(open) 을 받아 stroke 색 반전. */
   icon?: (on: boolean) => ReactNode;
@@ -67,11 +70,11 @@ export const PickerTrigger = forwardRef<HTMLButtonElement, PickerTriggerProps>(
         {icon?.(open)}
         <span className={grouped ? '' : 'truncate'}>{children}</span>
         {appliedCount > 0 && (
-          <span className="inline-flex items-center justify-center rounded-full bg-amore px-1.5 font-mono text-xs-soft font-bold text-white">
+          <span className="inline-flex items-center justify-center rounded-pill bg-ink px-1.5 font-soft-mono text-xs-soft font-bold text-soft-surface">
             {appliedCount}
           </span>
         )}
-        <span className="text-xs text-mute-soft" aria-hidden>
+        <span className="text-xs text-soft-faint" aria-hidden>
           {open ? '▲' : '▼'}
         </span>
       </>
@@ -87,31 +90,32 @@ export const PickerTrigger = forwardRef<HTMLButtonElement, PickerTriggerProps>(
     };
 
     if (grouped) {
-      // 세그먼트 셀 — 보더/radius/shadow 는 PickerGroup 이 소유. 셀은 padding +
-      // 상태 배경만.
+      // 세그먼트 셀 — 트랙(--fill)은 PickerGroup 소유. 선택(open) 셀만 흰 칩
+      // (+ --sh-chip)으로 떠오르고, 비선택은 트랙색 위 투명이다(핵심규칙 6).
       return (
         <button
           {...commonAria}
-          className={`inline-flex items-center gap-[7px] ${sm ? 'px-2.5 py-[5px] text-sm' : 'px-3 py-[7px] text-md'} font-bold transition-colors ${CELL_FOCUS} ${
+          className={`inline-flex items-center gap-[7px] rounded-pill ${sm ? 'px-2.5 py-[5px] text-sm' : 'px-3 py-[7px] text-md'} font-bold transition-colors ${CELL_FOCUS} ${
             open
-              ? 'bg-ink text-white'
-              : 'text-ink hover:bg-line-soft/40'
-          } disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-faint ${className}`}
+              ? 'bg-soft-surface text-ink shadow-soft-chip'
+              : 'text-soft-mute hover:text-ink'
+          } disabled:cursor-not-allowed disabled:bg-transparent disabled:text-soft-disabled ${className}`}
         >
           {label}
         </button>
       );
     }
 
-    // Standalone — 전체 chrome. default paper · hover paper-soft · open ink.
+    // Standalone — 전체 chrome. default 흰 면 + 1px --line · hover border 진하게
+    // · open border ink + --focus-ring(검정 채움 금지 — 핵심규칙 6).
     return (
       <button
         {...commonAria}
-        className={`inline-flex items-center gap-[7px] border-[1.5px] ${sm ? 'rounded-picker-option px-2.5 py-[5px] text-sm shadow-memphis-xs' : 'rounded-picker-trigger px-3 py-[7px] text-md shadow-memphis-sm'} font-bold transition-colors ${STANDALONE_FOCUS} ${
+        className={`inline-flex items-center gap-[7px] border ${sm ? 'rounded-nav px-2.5 py-[5px] text-sm' : 'rounded-control px-3 py-[7px] text-md'} bg-soft-surface font-bold text-ink transition-colors ${STANDALONE_FOCUS} ${
           open
-            ? 'border-ink bg-ink text-white'
-            : 'border-ink bg-paper text-ink hover:bg-paper-soft'
-        } disabled:cursor-not-allowed disabled:border-ink/[0.18] disabled:bg-surface-disabled disabled:text-faint disabled:shadow-none ${className}`}
+            ? 'border-ink shadow-soft-focus-ring'
+            : 'border-soft-line hover:border-soft-line-hover hover:bg-soft-surface-2'
+        } disabled:cursor-not-allowed disabled:border-transparent disabled:bg-soft-fill disabled:text-soft-disabled ${className}`}
       >
         {label}
       </button>
@@ -127,8 +131,9 @@ export type PickerGroupProps = {
 };
 
 /**
- * 형제 트리거 2+ 를 한 세그먼트 컨트롤로 묶는다(§1 Grouping). 자식 사이에
- * 1.5px ink 디바이더를 자동 삽입. ref 는 앵커(usePopoverBase.triggerRef)로 사용.
+ * 형제 트리거 2+ 를 한 세그먼트 컨트롤로 묶는다(§1 Grouping). Soft 에서는
+ * `--fill` 트랙 하나 안에 셀들이 들어가고 **디바이더가 없다**(선택 칩이 구분을
+ * 담당 — 핵심규칙 6). ref 는 앵커(usePopoverBase.triggerRef)로 사용.
  */
 export const PickerGroup = forwardRef<HTMLDivElement, PickerGroupProps>(
   function PickerGroup({ children, size = 'md', className = '' }, ref) {
@@ -138,14 +143,12 @@ export const PickerGroup = forwardRef<HTMLDivElement, PickerGroupProps>(
       <PickerGroupContext.Provider value={{ grouped: true, size }}>
         <div
           ref={ref}
-          className={`inline-flex items-stretch overflow-hidden border-[1.5px] border-ink bg-paper ${size === 'sm' ? 'rounded-picker-option shadow-memphis-xs' : 'rounded-picker-trigger shadow-memphis-sm'} ${className}`}
+          className={`inline-flex items-stretch gap-0.5 rounded-pill bg-soft-fill p-0.5 ${className}`}
         >
           {cells.map((cell, i) => (
-            // 셀 사이 1.5px ink 디바이더. 정적 자식 목록이라 index key 안정.
-            <Fragment key={i}>
-              {i > 0 && <div className="w-[1.5px] shrink-0 bg-ink" aria-hidden />}
-              {cell}
-            </Fragment>
+            // 디바이더 없음 — 트랙 + 흰 선택 칩이 구분을 담당. 정적 자식 목록
+            // 이라 index key 안정.
+            <Fragment key={i}>{cell}</Fragment>
           ))}
         </div>
       </PickerGroupContext.Provider>

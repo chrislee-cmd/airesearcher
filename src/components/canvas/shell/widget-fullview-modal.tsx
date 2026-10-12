@@ -19,7 +19,8 @@ import { CloseButton } from '@/components/ui/close-button';
 //   so the chrome fills the panel edge-to-edge.
 //
 // Behavior inherited from <Modal>: Esc closes · backdrop click closes ·
-// body scroll lock · focus restore · z-modal(50) · Memphis outer border.
+// body scroll lock · focus restore · z-modal(50) · Soft 외곽(1px --line +
+// --sh-modal — 리브랜드 1단계에서 Modal primitive 가 전환됨).
 //
 // size:
 //   'wide' (default) — 90vw × 90vh, capped 1600×900. Reads as a modal.
@@ -55,13 +56,13 @@ export function WidgetFullviewModal({
   const resolvedCloseLabel = closeLabel ?? tCommon('close');
   return (
     <Modal open={open} onClose={onClose} size={size} dsPrimitive="WidgetFullviewModal">
-      <header className="flex shrink-0 items-center justify-between border-b-[2px] border-ink px-6 py-3">
+      <header className="flex shrink-0 items-center justify-between border-b border-soft-hair px-6 py-3">
         <div className="min-w-0">
-          <h2 className="truncate text-2xl font-semibold tracking-[-0.01em] text-ink-2">
+          <h2 className="truncate text-2xl font-bold tracking-[-0.01em] text-ink">
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-0.5 truncate text-md text-mute">{subtitle}</p>
+            <p className="mt-0.5 truncate text-md text-soft-mute">{subtitle}</p>
           ) : null}
         </div>
         <CloseButton
@@ -75,7 +76,7 @@ export function WidgetFullviewModal({
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
 
       {footer ? (
-        <footer className="flex shrink-0 items-center justify-end gap-2 border-t-[2px] border-ink px-6 py-3">
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-soft-hair px-6 py-3">
           {footer}
         </footer>
       ) : null}

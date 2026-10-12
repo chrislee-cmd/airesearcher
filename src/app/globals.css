@@ -521,6 +521,113 @@
 }
 
 /* =========================================================================
+   Soft Identity — 리브랜드 토큰 (design-handoff/soft-identity/tokens.css 등재)
+
+   리브랜드 1단계(2026-10-12, 사용자 확정 "지금 디자인은 전반적으로 정신없음").
+   SSOT = `design-handoff/soft-identity/` — README 핵심규칙 6 · Memphis→Soft
+   변환표 · `soft-identity-product.dc.html`(비주얼 SSOT) · `tokens.css`(값 전부).
+   이 블록은 tokens.css 를 그 이름·그 값으로 등재한 것이고, 아래 @theme 가
+   Tailwind util(`bg-tint-*` · `shadow-soft-*` · `border-soft-line` …)로 노출한다.
+
+   ── Memphis 공존 (WRITER-ANSWERS §2) ───────────────────────────────────────
+   위 Layer 1~3(pop/editorial/audit · --raw-* · --canvas-* · --fv-* ·
+   shadow-memphis-*)은 **한 줄도 건드리지 않는다.** 1단계는 공유 셸 4계층만 Soft
+   로 바꾸고, 위젯 본문 7종·보고서 블록·공개 표면은 2단계 소유다. Memphis 토큰
+   삭제는 2단계 마지막(CD README "작업 순서" 6번) — 그때까지 두 팔레트가 동시에
+   살아 있는 것이 정상이다.
+
+   theme-agnostic — CD 는 단일 톤 대체를 제공하므로 [data-theme] 분기를 두지
+   않는다(--fv-* · tokens.json 2.0 리터럴 선례).
+
+   ── radius: 신규 토큰 0 ─────────────────────────────────────────────────────
+   CD `--r-*` 스케일이 이미 등재된 tokens.json 2.0 radius 와 **값까지 1:1** 이라
+   별도 util 을 만들지 않는다(과잉 토큰 금지). 소비 매핑:
+     --r-control 8  → rounded-nav        --r-panel 12 → rounded-panel
+     --r-inner  10  → rounded-control    --r-card  16 → rounded-panel-lg
+     --r-modal  18  → rounded-modal      --r-pill 999 → rounded-pill
+     --r-widget 20  → --widget-card-frame-radius(기존 20px, 위젯 카드 전용)
+   `--r-*` 자체는 CD 대조(픽셀 diff·2단계)용 SSOT 로 등재해 둔다.
+
+   ── tokens.css 와의 유일한 차이: mono 폰트 이름 ────────────────────────────
+   CD 는 `--font-mono` 로 적었으나, 그 이름은 Tailwind v4 기본 theme 변수라
+   :root 에 재선언하면 기존 `font-mono` util 이 **앱 전역**(= 미전환 2단계
+   표면 포함) JetBrains 로 조용히 갈린다. 1단계 범위(셸)를 넘으므로
+   `--font-mono-soft` 로 네임스페이스하고, 2단계 Memphis 삭제 시 canonical
+   `--font-mono` 로 합친다. 값은 CD 그대로.
+   ========================================================================= */
+:root {
+  /* neutrals */
+  --ink: #1d1b20;
+  --ink-2: #3a3640;
+  --mute: #6e6a75;
+  --faint: #9a96a1;
+  --disabled-fg: #c4c1c9;
+  --line: #e7e5ea;          /* 1px borders: cards, inputs, secondary buttons */
+  --hair: #efedf1;          /* 1px dividers inside surfaces */
+  --fill: #f4f3f6;          /* segmented track, neutral chips, hover rows */
+  /* hover 원자 2종 — tokens.css 에는 없고 README §Interactions 가 리터럴로
+     지정한 CD 절대값(주 버튼 hover bg #2e2b33 · 보조 버튼 hover border
+     #d6d4da = 점선 빈 자리와 같은 값). 가장 가까운 기존 토큰(--ink-2 #3a3640)
+     으로 굽히지 않고 전용 원자로 승격한다(AUTHORITY). */
+  --ink-hover: #2e2b33;     /* primary button hover fill */
+  --line-hover: #d6d4da;    /* secondary button hover border · 1.5 dashed empty */
+  --surface: #ffffff;
+  --surface-2: #fafafa;     /* sidebar, muted panels */
+  --canvas: #f7f7f8;        /* workspace background */
+  --canvas-dot: #e2e1e6;    /* 1px dot grid, 22px pitch */
+
+  /* widget identity — tone = small surfaces only (icon tiles, dots); tint = large surfaces.
+     tone 7종은 기존 --raw-pastel-*(= bg-sky/sun/mint/lav/rose/peach/aqua) 와 값이
+     동일해 신규 util 을 만들지 않는다(§A4 aqua 선례와 같은 "같은 값 = 같은 토큰").
+     tint 7종은 신규 값이라 아래 @theme 에서 bg-tint-* 로 노출. */
+  --tone-aqua: #bfe9ef;  --tint-aqua: #effafc;   /* 데스크 리서치 */
+  --tone-sun: #ffe8a8;   --tint-sun: #fffaeb;    /* 리크루팅 */
+  --tone-sky: #cfe6ff;   --tint-sky: #f2f8ff;    /* 인터뷰 어시스턴트(프로빙) */
+  --tone-mint: #cdebd9;  --tint-mint: #f1f9f4;   /* 라이브 통역 */
+  --tone-lav: #e7defe;   --tint-lav: #f7f4ff;    /* 전사록 생성기 */
+  --tone-rose: #ffd0e2;  --tint-rose: #fff4f8;   /* 인터뷰 결과 생성기 */
+  --tone-peach: #ffd9be; --tint-peach: #fff6ef;  /* AI UT */
+  --rose-text: #b8325a;  /* eyebrow / accent text on rose surfaces */
+  /* aqua 의 레거시 별칭 — 데스크 위젯의 `accent` 값이 아직 `cyan` 이다(정식
+     이름은 aqua, 동일값 — tokens.json 2.0 §A4 + --widget-header-bg-aqua 선례).
+     셸이 `var(--tint-{accent})` 로 조립하므로 별칭이 없으면 데스크 카드만
+     틴트가 비어 폴백된다. accent 이름 정리는 별 PR. */
+  --tint-cyan: var(--tint-aqua);
+
+  /* signals — badge = bg + fg, no border; dot = solid */
+  --ok-bg: #eaf7ef;   --ok-fg: #13803d;   --ok-dot: #16a34a;
+  --run-bg: #f4f0ff;  --run-fg: #5b44c4;  --run-dot: #7c5cf0;  --run-track: #e6dffb;
+  --warn-bg: #fff6e5; --warn-fg: #93640c; --warn-dot: #d29a1f;
+  --err-bg: #fdf0f0;  --err-fg: #b33a3a;  --err-dot: #dc4444;  --err-line: #f6d6d6;
+  --danger: #c2334f;  /* destructive button fill / destructive text action */
+
+  /* radius */
+  --r-control: 8px;   /* inputs, picker rows, small tiles */
+  --r-inner: 10px;    /* rows inside cards, icon tiles 32–40 */
+  --r-panel: 12px;    /* panels, popovers, lane cards, stat boxes */
+  --r-card: 16px;     /* frames, report boxes, lane container */
+  --r-widget: 20px;   /* 604×900 widget card only */
+  --r-modal: 18px;
+  --r-pill: 999px;    /* all buttons, badges, segmented */
+
+  /* shadow — 4 levels only */
+  --sh-card: 0 1px 0 rgba(29,27,32,.04), 0 6px 18px rgba(29,27,32,.05);
+  --sh-popover: 0 12px 32px rgba(29,27,32,.12);
+  --sh-modal: 0 24px 64px rgba(29,27,32,.18);
+  --sh-frame: 0 2px 4px rgba(29,27,32,.04), 0 24px 48px rgba(29,27,32,.08);
+  --focus-ring: 0 0 0 3px rgba(29,27,32,.08);  /* + border 1px var(--ink) */
+  /* 세그먼트 선택 칩 리프트 — tokens.css 에는 없고 README 핵심규칙 6 이 리터럴로
+     지정한 CD 절대값("--fill 트랙 + 흰 선택 칩(그림자 0 1px 2px rgba(29,27,32,.08))").
+     4단계 그림자 중 어느 것도 이 값이 아니라 전용 원자로 승격한다(AUTHORITY). */
+  --sh-chip: 0 1px 2px rgba(29,27,32,.08);
+
+  /* type */
+  --font-display: 'Bricolage Grotesque', 'Pretendard Variable', 'Pretendard', sans-serif; /* titles; Korean falls back to Pretendard (의도) */
+  --font-body: 'Pretendard Variable', 'Pretendard', sans-serif;
+  --font-mono-soft: 'JetBrains Mono', ui-monospace, monospace;      /* numbers, times, IDs, eyebrows only */
+}
+
+/* =========================================================================
    Tailwind v4 @theme — utility 생성 source.
    기존 토큰 이름·utility (bg-amore, text-ink, border-line ...) 보존.
    값은 raw layer 참조 → [data-theme] swap 시 자동 따라감.
@@ -813,6 +920,76 @@
      네임스페이스 밖이라 h-[var(--control-h-md)] 로 소비. */
   --control-h-md: 34px;
   --control-h-sm: 28px;
+
+  /* =======================================================================
+     Soft Identity utils (리브랜드 1단계) — 위 Soft :root 블록을 Tailwind util
+     로 노출. 값 SSOT 는 `design-handoff/soft-identity/tokens.css`.
+
+     네임스페이스가 `soft-`/`tint-` 인 이유: 같은 의미의 기존 util 과 **값이
+     다르다**(border-line = ink/10 vs --line #e7e5ea · shadow-popover =
+     4px4px0 하드 vs --sh-popover 블러 · shadow-frame = 8px8px0 하드 vs
+     --sh-frame 블러). 기존 이름에 덮어쓰면 아직 Memphis 인 표면(위젯 본문·
+     보고서 블록·공개 표면 = 2단계 소유)이 같이 끌려가 "셸만 Soft" 경계가
+     깨진다. 2단계에서 Memphis 를 삭제할 때 canonical 이름으로 합친다.
+
+     tone 7종(--tone-*)·radius(--r-*) 는 기존 토큰과 값이 1:1 이라 util 을
+     새로 만들지 않는다 — 위 Soft 블록 주석의 매핑표 참고(과잉 토큰 금지).
+     ======================================================================= */
+  /* neutrals — ink(#1d1b20)는 기존 --color-ink 와 동일값이라 text-ink 재사용. */
+  --color-soft-ink-2: var(--ink-2);              /* #3a3640 — 본문 2차 (vs ink-2 #2a262f) */
+  --color-soft-mute: var(--mute);                /* #6e6a75 */
+  --color-soft-faint: var(--faint);              /* #9a96a1 */
+  --color-soft-disabled: var(--disabled-fg);     /* #c4c1c9 — 잠금 글자(opacity 금지) */
+  --color-soft-line: var(--line);                /* #e7e5ea — 1px 바깥 테두리 */
+  --color-soft-ink-hover: var(--ink-hover);      /* #2e2b33 — 주 버튼 hover */
+  --color-soft-line-hover: var(--line-hover);    /* #d6d4da — 보조 버튼 hover 보더 */
+  --color-soft-hair: var(--hair);                /* #efedf1 — 표면 안 구분선 */
+  --color-soft-fill: var(--fill);                /* #f4f3f6 — 세그 트랙·중립 칩·hover 행 */
+  --color-soft-surface: var(--surface);          /* #ffffff */
+  --color-soft-surface-2: var(--surface-2);      /* #fafafa — 사이드바·muted 패널 */
+  --color-soft-canvas: var(--canvas);            /* #f7f7f8 — 작업면 바탕 */
+  --color-soft-canvas-dot: var(--canvas-dot);    /* #e2e1e6 — dot grid 22px */
+
+  /* identity tint — 넓은 면(헤더 띠·선택 행·요약 박스) 전용. 원색(--tone-*)은
+     아이콘 타일·상태 점·사이드바 표시 같은 작은 면에만(핵심규칙 3). */
+  --color-tint-aqua: var(--tint-aqua);
+  --color-tint-sun: var(--tint-sun);
+  --color-tint-sky: var(--tint-sky);
+  --color-tint-mint: var(--tint-mint);
+  --color-tint-lav: var(--tint-lav);
+  --color-tint-rose: var(--tint-rose);
+  --color-tint-peach: var(--tint-peach);
+  --color-soft-rose-text: var(--rose-text);      /* #b8325a — rose 면 위 eyebrow */
+
+  /* signals — 배지 = 틴트 면 + 진한 글자 + 점, **테두리 없음**(핵심규칙 4). */
+  --color-soft-ok-bg: var(--ok-bg);
+  --color-soft-ok-fg: var(--ok-fg);
+  --color-soft-ok-dot: var(--ok-dot);
+  --color-soft-run-bg: var(--run-bg);
+  --color-soft-run-fg: var(--run-fg);
+  --color-soft-run-dot: var(--run-dot);
+  --color-soft-run-track: var(--run-track);
+  --color-soft-warn-bg: var(--warn-bg);
+  --color-soft-warn-fg: var(--warn-fg);
+  --color-soft-warn-dot: var(--warn-dot);
+  --color-soft-err-bg: var(--err-bg);
+  --color-soft-err-fg: var(--err-fg);
+  --color-soft-err-dot: var(--err-dot);
+  --color-soft-err-line: var(--err-line);
+  --color-soft-danger: var(--danger);            /* #c2334f — 파괴 확정/텍스트 액션 */
+
+  /* shadow — 4단계 + 포커스 링. 하드 오프셋(Npx Npx 0)은 Soft 표면에서 0건. */
+  --shadow-soft-card: var(--sh-card);            /* 위젯 카드·체인 레인 */
+  --shadow-soft-popover: var(--sh-popover);      /* 팝오버·피커 패널·드롭다운 */
+  --shadow-soft-modal: var(--sh-modal);          /* 모달 */
+  --shadow-soft-frame: var(--sh-frame);          /* 풀뷰·라이브러리 프레임 */
+  --shadow-soft-focus-ring: var(--focus-ring);   /* + border 1px var(--ink) */
+  --shadow-soft-chip: var(--sh-chip);            /* 세그먼트 흰 선택 칩(핵심규칙 6) */
+
+  /* type — 제목 Bricolage(한글은 Pretendard 폴백 = 의도) · 숫자/시각/ID mono. */
+  --font-soft-display: var(--font-display);
+  --font-soft-body: var(--font-body);
+  --font-soft-mono: var(--font-mono-soft);
 }
 
 /* =========================================================================

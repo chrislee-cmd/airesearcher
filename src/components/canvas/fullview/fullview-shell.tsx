@@ -10,8 +10,9 @@
    (flex-1) — 우 슬롯은 헤더 스캐폴드(§F3, FullviewHeader) + 본문.
 
    프레임(§F1): outer W/H = 컨테이너 소유(§F7.2 — 기존 wide 모달 슬롯
-   90vw×90vh·max 1600×900 유지). 내부: border-3px ink · rounded-sm ·
-   fv-frame-shadow · bg-surface-canvas · overflow hidden · flex row.
+   90vw×90vh·max 1600×900 유지 = 치수 불변). 내부는 **Soft Identity 리브랜드
+   1단계**로 교체 — 변환표 "풀뷰/라이브러리 프레임: border 1 `--line` ·
+   radius 16 · `--sh-frame`"(기존 border 3 ink · radius 14 · 8px8px0 하드).
 
    메커니즘 재사용(fresh 빌드, 로직만): `<Modal bare>` 가 포털·backdrop·Esc·
    focus trap·scroll lock 을 제공하고, 프레임 비주얼은 이 셸이 소유한다
@@ -58,7 +59,7 @@ export function FullviewShell({
   return (
     <Modal open={open} onClose={onClose} size={tall ? 'wide-tall' : 'wide'} bare>
       {/* §F1 프레임 — 유일한 비주얼 박스 (bare Modal 위) */}
-      <div className="flex h-full w-full overflow-hidden rounded-sm border-[3px] border-ink bg-surface-canvas shadow-[var(--fv-frame-shadow)]">
+      <div className="flex h-full w-full overflow-hidden rounded-panel-lg border border-soft-line bg-soft-canvas shadow-soft-frame">
         <FullviewSidebar
           widgets={widgets}
           activeKey={activeKey}

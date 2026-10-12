@@ -9,10 +9,16 @@
    ("셸은 스캐폴드"). 재사용 가능한 프레젠테이션 조각(pill/chip/end-session)
    은 CD 클래스맵대로 여기서 export — 후속 위젯 전환 PR 이 그대로 조합한다.
 
-   band: border-b-2 ink · pad 13/24 · bg = per-widget 파스텔(tone prop).
-   title: Outfit 800 · --fv-title-size(22) · ls -0.5 (29px 카드 타이틀 아님).
-   close ✕: <CloseButton variant="dialog-close"> (32px · radius-icon(9) ·
-   border 1.5 ink · memphis-sm — CD 토큰과 1:1).
+   **Soft Identity 리브랜드 1단계** — 셸 ②. 변환표 "기능 헤더 하단선 2px ink →
+   1px `--hair`" + 핵심규칙 3(넓은 면은 틴트):
+   band: border-b 1 `--hair` · pad 13/24(불변) · bg = per-widget 파스텔의 **틴트**.
+     tone prop 계약은 그대로 둔다(소비처 = 위젯 본문 = 2단계 소유) — 셸이 받은
+     원색을 흰색에 25% 섞어 그 톤의 틴트를 만든다(CD `--tint-*` 값과 근사 일치:
+     rose 원색 #ffd0e2 → #fff3f8 vs CD #fff4f8). 원색은 `--widget-tone` 으로
+     계속 노출돼 pill 듀오톤 채움이 쓴다(작은 면 = 원색 OK).
+   title: Bricolage 700 · --fv-title-size(22) · ls -0.5 (카드 타이틀 24 와 구분).
+   close ✕: <CloseButton variant="dialog-close"> — primitive 가 Soft 로 전환됨
+     (테두리 없는 원형 · 핵심규칙 5).
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
@@ -26,12 +32,13 @@ import { CloseButton } from '@/components/ui/close-button';
 import { isComposingEnter } from '@/components/ui/chip-input';
 import { useToast } from '@/components/toast-provider';
 
-// 타이틀은 카드(29px) 와 구분되는 풀뷰 전용 타입 — Outfit 800 / --fv-title-size
-// / ls -0.5. font-family 는 widget-shell 카드 타이틀과 동일한 런타임 var 소비.
+// 타이틀은 카드(24px) 와 구분되는 풀뷰 전용 타입 — Bricolage 700 /
+// --fv-title-size / ls -0.5. font-family 는 widget-shell 카드 타이틀과 동일한
+// 런타임 var(--font-display) 소비.
 const FV_TITLE_STYLE = {
-  fontFamily: 'var(--font-outfit), var(--font-sans)',
+  fontFamily: 'var(--font-display)',
   fontSize: 'var(--fv-title-size)',
-  fontWeight: 800,
+  fontWeight: 700,
   letterSpacing: '-0.5px',
   lineHeight: 1.1,
 } as const;
@@ -65,18 +72,23 @@ export function FullviewHeader({
   const tCommon = useTranslations('Common');
   const resolvedCloseLabel = closeLabel ?? tCommon('close');
   return (
-    // 밴드 = border-b-2 ink + per-widget 파스텔 톤. row-1(액션) 은 항상,
-    // row-2(탭) 는 tabs 주입 시에만. 탭이 밴드 하단 border 를 -2px 로 덮어
-    // 폴더 오버랩(active=surface-canvas)을 만든다(CD).
+    // 밴드 = border-b 1 --hair + per-widget 틴트. row-1(액션) 은 항상,
+    // row-2(탭) 는 tabs 주입 시에만. 탭 오버랩 메커니즘(탭이 밴드 하단선을
+    // 덮어 폴더처럼 이어붙는 것)은 그대로 — 선 두께만 얇아졌다.
     <header
-      className="shrink-0 border-b-2 border-ink"
+      className="shrink-0 border-b border-soft-hair"
       // tone 은 배경이자, 헤더 하위 DuotoneIcon(프로젝트 pill 등)의 채움 소스.
       // `--widget-tone` 을 여기서 노출하면 pill 아이콘이 각 위젯 헤더 톤을
       // 상속한다(widget-shell 카드의 헤더↔아이콘 매칭과 동일 단일 소스). 미지정
       // 시 DuotoneIcon 기본 폴백(rose 파스텔).
       style={
         tone
-          ? ({ background: tone, '--widget-tone': tone } as CSSProperties)
+          ? ({
+              // 띠는 틴트(넓은 면), `--widget-tone` 은 원색 그대로 — 헤더 안
+              // 듀오톤 아이콘/pill 채움이 계속 원색을 상속한다.
+              background: `color-mix(in srgb, ${tone} 25%, var(--surface))`,
+              '--widget-tone': tone,
+            } as CSSProperties)
           : undefined
       }
     >
@@ -92,9 +104,9 @@ export function FullviewHeader({
         {statusChip}
         {actions}
         {onClose ? (
-          // CD §F3 close ✕ = 32px · radius-icon(9, --fv-radius-close 과 동치) ·
-          // border 1.5 ink · memphis 하드 그림자 → <CloseButton variant="dialog-close">
-          // 의 토큰과 1:1. 셸이 자기 chrome 을 들고 있을 이유가 없어졌다.
+          // close ✕ = <CloseButton variant="dialog-close">. 셸은 chrome 을 들고
+          // 있지 않고 primitive 가 SSOT — Soft 전환도 primitive 한 곳에서 끝난다
+          // (테두리 없는 32 원 · ✕ 는 --mute 글리프).
           <CloseButton
             variant="dialog-close"
             onClick={onClose}
@@ -132,8 +144,9 @@ const ARCHIVE_ICON = (
   </svg>
 );
 
-// 프로젝트 pill — project 듀오톤 아이콘 + 이름 + ▾. paper · border 1.5 ink ·
-// radius-pill · memphis-sm. (아이콘은 헤더 --widget-tone 상속 — §6-5c.)
+// 프로젝트 pill — project 듀오톤 아이콘 + 이름 + ▾. Soft 보조 버튼 체계:
+// `--surface` · border 1 `--line` · radius-pill · 그림자 없음.
+// (아이콘은 헤더 --widget-tone 상속 — §6-5c.)
 //
 // 두 모드 (CD closed-state 비주얼은 동일, 동작만 위젯 소유 — BUILD-SPEC §26
 // "project dropdown = worker owns"):
@@ -208,7 +221,7 @@ export function FullviewProjectPill({
     !!onSelect && !!projects && (projects.length > 0 || !!onCreateProject);
   if (!interactive) {
     return (
-      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm">
+      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border border-soft-line bg-soft-surface px-3 py-[5px]">
         {content}
       </span>
     );
@@ -311,13 +324,13 @@ export function FullviewProjectPill({
         items={items}
         align="start"
         trigger={({ onClick, ...aria }) => (
-          // eslint-disable-next-line react/forbid-elements -- 프로젝트 pill 은 CD §F3 전용 chrome(📁 + 이름 + ▾ · radius-pill · border 1.5 ink · memphis-sm)으로 Button primitive variant(고정 radius·형태)와 불일치. 셸 close ✕ / End-session pill 과 동일 선례(native chrome).
+          // eslint-disable-next-line react/forbid-elements -- 프로젝트 pill 은 CD §F3 전용 chrome(📁 + 이름 + ▾ · radius-pill · Soft 1px --line)으로 Button primitive variant(고정 radius·형태)와 불일치. 셸 close ✕ / End-session pill 과 동일 선례(native chrome).
           <button
             type="button"
             onClick={onClick}
             aria-label={menuLabel}
             {...aria}
-            className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-3 py-[5px] shadow-memphis-sm transition-colors hover:bg-paper-soft focus:outline-none focus-visible:bg-paper-soft"
+            className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border border-soft-line bg-soft-surface px-3 py-[5px] transition-colors hover:border-soft-faint focus:outline-none focus-visible:shadow-soft-focus-ring"
           >
             {content}
           </button>
@@ -326,7 +339,7 @@ export function FullviewProjectPill({
       {creating ? (
         // floating 인라인 생성행 — pill 아래 anchor. 헤더 레이아웃(pill 외형)을
         // 건드리지 않도록 absolute + z-overlay(드롭다운과 동일 레이어).
-        <div className="absolute left-0 top-full z-overlay mt-1 flex min-w-[240px] flex-col gap-1.5 rounded-sm border-2 border-ink bg-paper p-2 shadow-memphis-md">
+        <div className="absolute left-0 top-full z-overlay mt-1 flex min-w-[240px] flex-col gap-1.5 rounded-panel border border-soft-line bg-soft-surface p-2 shadow-soft-popover">
           <div className="flex items-center gap-2">
             <Input
               value={draftName}
@@ -369,7 +382,7 @@ export function FullviewProjectPill({
             </IconButton>
           </div>
           {createError ? (
-            <p className="text-xs text-warning">{tPicker('createFailed')}</p>
+            <p className="text-xs text-soft-err-fg">{tPicker('createFailed')}</p>
           ) : null}
         </div>
       ) : null}
@@ -377,8 +390,9 @@ export function FullviewProjectPill({
   );
 }
 
-// 상태 chip — mono 11/700, dot(live=amore · rec=rec). paper · border 1.5 ink
-// · radius-pill.
+// 상태 chip — mono 11/700 + 6px 점. Soft 배지 규칙(핵심규칙 4): 틴트 면 +
+// 진한 글자, **테두리 없음**. live = `--run-*`(진행), rec = `--err-*`(녹음 =
+// 빨강 계열 — 기존 amore/rec 구분을 시그널 쌍으로 옮긴 것).
 export function FullviewStatusChip({
   label,
   tone = 'live',
@@ -387,11 +401,17 @@ export function FullviewStatusChip({
   tone?: 'live' | 'rec';
 }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill px-[11px] py-1 font-soft-mono text-sm font-bold ${
+        tone === 'rec'
+          ? 'bg-soft-err-bg text-soft-err-fg'
+          : 'bg-soft-run-bg text-soft-run-fg'
+      }`}
+    >
       <span
         aria-hidden
         className={`h-[7px] w-[7px] rounded-full ${
-          tone === 'rec' ? 'bg-rec' : 'bg-amore'
+          tone === 'rec' ? 'bg-soft-err-dot' : 'bg-soft-run-dot'
         }`}
       />
       {label}
@@ -399,15 +419,15 @@ export function FullviewStatusChip({
   );
 }
 
-// Done 배지 — 완료 상태 표시(§F3 Done badge / CD state 05 헤더). bg success-bg
-// · border 1.4 success-line · text success-text · ✓ in success circle. 상태
-// chip 과 달리 dot 이 아니라 ✓ 원형. 세션/상태 없는 정적 완료 표식.
+// Done 배지 — 완료 상태 표시(§F3 Done badge / CD state 05 헤더). Soft:
+// `--ok-bg` 면 + `--ok-fg` 글자 + `--ok-dot` ✓ 원형, 테두리 없음. 상태 chip
+// 과 달리 점이 아니라 ✓ 원형. 세션/상태 없는 정적 완료 표식.
 export function FullviewDoneBadge({ label }: { label: ReactNode }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.4px] border-success-line bg-success-bg px-3 py-[5px] text-sm font-bold text-success-text">
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-soft-ok-bg px-3 py-[5px] text-sm font-bold text-soft-ok-fg">
       <span
         aria-hidden
-        className="inline-flex h-[15px] w-[15px] items-center justify-center rounded-full bg-success text-xs text-paper"
+        className="inline-flex h-[15px] w-[15px] items-center justify-center rounded-full bg-soft-ok-dot text-xs text-soft-surface"
       >
         ✓
       </span>
@@ -416,8 +436,10 @@ export function FullviewDoneBadge({ label }: { label: ReactNode }) {
   );
 }
 
-// End-session 버튼 — border 2 amore-deep · text amore-deep · radius-pill ·
-// fv-shadow-crimson. behavior(위젯 stop 액션 미러)는 소비처가 onClick 으로.
+// End-session 버튼 — Soft: 흰 pill + 1px `--line` + `--danger` 글자, 그림자
+// 없음. 변환표의 "파괴 확정 `--danger` 채움"은 **모달 안에서 하나만**(핵심규칙
+// 5)이라 헤더 액션은 danger 텍스트 쪽으로 간다(보수적 해석).
+// behavior(위젯 stop 액션 미러)는 소비처가 onClick 으로.
 export function FullviewEndSessionButton({
   onClick,
   label,
@@ -426,15 +448,15 @@ export function FullviewEndSessionButton({
   label: ReactNode;
 }) {
   return (
-    // eslint-disable-next-line react/forbid-elements -- CD §F3 End-session 은 amore-deep pill(border 2·text·fv-shadow-crimson) 전용 chrome 으로 Button primitive variant 와 불일치. destructive variant 는 solid fill 이라 CD 의 outline+crimson-memphis 와 다름.
+    // eslint-disable-next-line react/forbid-elements -- CD §F3 End-session 은 danger 텍스트 pill 전용 chrome 으로 Button primitive variant 와 불일치(destructive variant 는 solid fill).
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-2 border-amore-deep bg-paper px-3.5 py-1.5 text-md font-extrabold text-amore-deep shadow-[var(--fv-shadow-crimson)]"
+      className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border border-soft-line bg-soft-surface px-3.5 py-1.5 text-md font-bold text-soft-danger transition-colors hover:border-soft-danger"
     >
       <span
         aria-hidden
-        className="inline-block h-2.5 w-2.5 rounded-2xs bg-amore-deep"
+        className="inline-block h-2.5 w-2.5 rounded-2xs bg-soft-danger"
       />
       {label}
     </button>

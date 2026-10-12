@@ -103,7 +103,7 @@ export function SingleSelectPanel({
       ariaLabel={ariaLabel ?? sectionLabel}
     >
       <div
-        className={`border-b-[1.5px] border-ink/[0.12] px-[13px] py-[9px] ${PICKER_SECTION_LABEL_CLASS}`}
+        className={`border-b border-soft-hair px-[13px] py-[9px] ${PICKER_SECTION_LABEL_CLASS}`}
       >
         {sectionLabel}
       </div>
@@ -125,10 +125,10 @@ export function SingleSelectPanel({
       </div>
 
       {direction && (
-        <div className="flex items-center gap-[9px] border-t-[1.5px] border-ink/[0.12] px-[13px] py-2.5">
+        <div className="flex items-center gap-[9px] border-t border-soft-hair px-[13px] py-2.5">
           <span className={PICKER_SECTION_LABEL_CLASS}>{orderLabel}</span>
           <div
-            className={`ml-auto inline-flex overflow-hidden rounded-full border-[1.5px] border-ink shadow-memphis-sm ${
+            className={`ml-auto inline-flex gap-0.5 rounded-pill bg-soft-fill p-0.5 ${
               directionDisabled ? 'pointer-events-none opacity-40' : ''
             }`}
           >
@@ -140,10 +140,11 @@ export function SingleSelectPanel({
                   type="button"
                   aria-pressed={on}
                   onClick={() => onDirectionChange?.(dir)}
-                  className={`px-[13px] py-[5px] text-sm outline-none transition-colors focus-visible:bg-line-soft/40 ${
+                  // 세그먼트 셀 — 핵심규칙 6: --fill 트랙 + 흰 선택 칩.
+                  className={`rounded-pill px-[13px] py-[5px] text-sm outline-none transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-2 focus-visible:outline-ink ${
                     on
-                      ? 'bg-ink font-extrabold text-white'
-                      : 'bg-paper font-semibold text-mute'
+                      ? 'bg-soft-surface font-bold text-ink shadow-soft-chip'
+                      : 'font-medium text-soft-mute hover:text-ink'
                   }`}
                 >
                   {dir === 'asc' ? ascLabel : descLabel}

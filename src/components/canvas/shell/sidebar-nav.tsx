@@ -3,8 +3,12 @@
 /* ────────────────────────────────────────────────────────────────────
    SidebarNav — 공유 전체보기 모달의 좌측 위젯 네비게이션 (240px).
 
+   Soft Identity 리브랜드 1단계 — FullviewSidebar(V2)와 같은 변환표 규칙:
+   `--surface-2` · border-r 1 `--hair` · 활성 = 흰 bg + 1px `--line` + 700 ·
+   배지는 틴트 면 + 진한 글자 + 점(테두리/그림자 0). 폭 240·패딩 불변.
+
    - canvas 순서(CANVAS_ORDER 필터)대로 위젯을 세로 나열.
-   - 활성 항목 = Memphis 박스 (border + offset shadow).
+   - 활성 항목 = 흰 면 + 1px `--line`.
    - 각 항목: accent 도트 + 라벨 + 실시간 state badge (running/done/error).
      라벨은 flex-1 로 남는 폭을 차지하고 badge 는 shrink-0 우측 고정 —
      라벨이 badge 에 가려지지 않게.
@@ -31,20 +35,22 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
     // bounce). .pop-in 은 globals.css 에서 reduced-motion 을 독립 존중.
     <span
       key={state.kind}
-      className="pop-in inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
+      className="pop-in inline-flex shrink-0 items-center gap-1.5 px-2 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
       style={{
         background: visual.background,
         color: visual.color,
-        border: visual.border,
-        borderRadius: 4,
+        borderRadius: 'var(--r-pill)',
+        fontFamily: 'var(--font-mono-soft)',
       }}
       aria-live={state.kind === 'running' ? 'polite' : undefined}
     >
-      {state.kind === 'running' && (
-        <span aria-hidden className="animate-pulse">
-          ●
-        </span>
-      )}
+      <span
+        aria-hidden
+        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full${
+          state.kind === 'running' ? ' animate-pulse' : ''
+        }`}
+        style={{ background: visual.dot }}
+      />
       {visual.label}
     </span>
   );
@@ -52,13 +58,13 @@ function WidgetStateBadge({ widgetKey }: { widgetKey: string }) {
 
 // locked(준비중) 위젯 행에 붙는 정적 배지. state badge 자리를 재사용 —
 // locked 위젯은 idle 이라 WidgetStateBadge 가 null 이므로 자리 충돌 없음.
-// 색은 design-system 토큰만 (중립 line-soft 테두리 + mute 텍스트) — 라이브
-// 위젯의 amore/mint 강조와 시각 구분.
+// 색은 Soft 중립 토큰만 (--fill 면 + --faint 글자) — 라이브 위젯의 시그널
+// 틴트 배지와 시각 구분.
 function WidgetLockedBadge() {
   const t = useTranslations('Shell');
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-xs border-[2px] border-line-soft bg-paper-soft px-1.5 py-0.5 text-xs font-semibold text-mute-soft"
+      className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-soft-fill px-2 py-0.5 font-soft-mono text-xs font-semibold text-soft-faint"
       aria-label={t('locked')}
     >
       {t('locked')}
@@ -68,30 +74,30 @@ function WidgetLockedBadge() {
 
 function badgeVisual(
   state: WidgetStateInfo,
-): { label: string; background: string; color: string; border: string } | null {
+): { label: string; background: string; color: string; dot: string } | null {
   switch (state.kind) {
     case 'running': {
       const label = (state.label ?? 'RUNNING').toUpperCase();
       return {
         label,
-        background: 'var(--color-amore)',
-        color: 'var(--canvas-card-bg)',
-        border: '2px solid var(--color-ink)',
+        background: 'var(--run-bg)',
+        color: 'var(--run-fg)',
+        dot: 'var(--run-dot)',
       };
     }
     case 'done':
       return {
         label: 'DONE',
-        background: 'var(--color-mint, var(--canvas-card-bg))',
-        color: 'var(--color-ink)',
-        border: '2px solid var(--color-ink)',
+        background: 'var(--ok-bg)',
+        color: 'var(--ok-fg)',
+        dot: 'var(--ok-dot)',
       };
     case 'error':
       return {
         label: 'ERR',
-        background: 'var(--color-warning-bg)',
-        color: 'var(--color-warning)',
-        border: '2px solid var(--color-warning)',
+        background: 'var(--err-bg)',
+        color: 'var(--err-fg)',
+        dot: 'var(--err-dot)',
       };
     case 'idle':
     default:
@@ -118,22 +124,22 @@ export function SidebarNav({
   return (
     <nav
       aria-label={t('navLabel')}
-      className="flex w-60 shrink-0 flex-col gap-1.5 overflow-y-auto border-r-[2px] border-ink bg-paper-soft p-3"
+      className="flex w-60 shrink-0 flex-col gap-1.5 overflow-y-auto border-r border-soft-hair bg-soft-surface-2 p-3"
     >
       {widgets.map((w) => {
         const active = w.key === current;
         const isLocked = locked?.has(w.key) ?? false;
         return (
-          // eslint-disable-next-line react/forbid-elements -- 좌측 nav 항목은 Button primitive 의 어떤 variant 와도 맞지 않는 rich 레이아웃(accent 도트 + 라벨 + state badge + Memphis 활성 박스)이라 native <button> 사용. 전용 nav primitive 는 별 PR.
+          // eslint-disable-next-line react/forbid-elements -- 좌측 nav 항목은 Button primitive 의 어떤 variant 와도 맞지 않는 rich 레이아웃(accent 도트 + 라벨 + state badge + 활성 박스)이라 native <button> 사용. 전용 nav primitive 는 별 PR.
           <button
             key={w.key}
             type="button"
             onClick={() => onSwitch(w.key)}
             aria-current={active ? 'page' : undefined}
-            className={`flex w-full items-center justify-between gap-2 rounded-xs border-[2px] px-3 py-2 text-left text-sm font-medium transition-colors ${
+            className={`flex w-full items-center justify-between gap-2 rounded-nav border px-3 py-2 text-left text-sm transition-colors ${
               active
-                ? 'border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)]'
-                : 'border-transparent text-mute-soft hover:bg-paper hover:text-ink'
+                ? 'border-soft-line bg-soft-surface font-bold text-ink'
+                : 'border-transparent font-medium text-soft-mute hover:bg-soft-surface hover:text-ink'
             }`}
           >
             <span

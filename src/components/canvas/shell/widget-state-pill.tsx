@@ -8,14 +8,17 @@
    얇은 래퍼)가 담당하고, 이 primitive 는 넘어온 state 만 그린다. 덕분에
    카탈로그에서도 context 없이 각 상태를 standalone 데모할 수 있다.
 
-   상태별 시각 (design-system token 만):
-     - idle    → "READY" · 흰 bg + 검은 border (기본 Memphis pill)
-     - running → "<LABEL> NN%" · amore 핑크 bg + 흰 텍스트 + 깜빡이는 도트
-     - done    → "DONE" · mint bg + 검은 텍스트
-     - error   → "ERR" · warning bg/텍스트/border (message 는 title 로)
+   **Soft Identity 리브랜드 1단계** — 셸 ① 의 상태 배지. 핵심규칙 4:
+   "상태 배지는 테두리가 없다 — 틴트 면(--*-bg) + 진한 글자(--*-fg) + 6px 점",
+   핵심규칙 2 "배지에 그림자 없음", 핵심규칙 5 "pill".
 
-   시각 회귀 0 — 추출 전 인라인 값 (className / inline style / shadow /
-   radius) 을 그대로 보존.
+   상태별 시각 (Soft 토큰만):
+     - idle    → "READY" · --fill 면 + --mute 글자 + --faint 점
+     - running → "<LABEL> NN%" · --run-bg 면 + --run-fg 글자 + 깜빡이는 --run-dot
+     - done    → "DONE" · --ok-bg 면 + --ok-fg 글자 + --ok-dot 점
+     - error   → "ERR" · --err-bg 면 + --err-fg 글자 + --err-dot 점 (message=title)
+
+   라벨 계산(widgetStatePillLabel)·상태 계약·aria 는 불변 — 시각 값만 교체.
    ──────────────────────────────────────────────────────────────────── */
 
 import type { WidgetStateInfo } from '../widget-types';
@@ -43,40 +46,37 @@ export function widgetStatePillLabel(state: WidgetStateInfo): string {
   }
 }
 
-// state 별 시각. idle = 흰 bg + 검은 border (기본 Memphis pill).
-// running = amore 핑크 bg + 흰 텍스트 + 좌측 깜빡이는 도트.
-// done = mint bg + 검은 텍스트. error = warning bg + warning 텍스트 +
-//   warning border. 모두 design-system token 만.
+// state 별 시각 — Soft 시그널 쌍(bg + fg + dot). 테두리/그림자 없음.
 function pillVisual(kind: WidgetStateInfo['kind']): {
   background: string;
   color: string;
-  border: string;
+  dot: string;
 } {
   switch (kind) {
     case 'running':
       return {
-        background: 'var(--color-amore)',
-        color: 'var(--canvas-card-bg)',
-        border: '2px solid var(--canvas-card-border)',
+        background: 'var(--run-bg)',
+        color: 'var(--run-fg)',
+        dot: 'var(--run-dot)',
       };
     case 'done':
       return {
-        background: 'var(--color-mint, var(--canvas-card-bg))',
-        color: 'var(--canvas-card-border)',
-        border: '2px solid var(--canvas-card-border)',
+        background: 'var(--ok-bg)',
+        color: 'var(--ok-fg)',
+        dot: 'var(--ok-dot)',
       };
     case 'error':
       return {
-        background: 'var(--color-warning-bg)',
-        color: 'var(--color-warning)',
-        border: '2px solid var(--color-warning)',
+        background: 'var(--err-bg)',
+        color: 'var(--err-fg)',
+        dot: 'var(--err-dot)',
       };
     case 'idle':
     default:
       return {
-        background: 'var(--canvas-card-bg)',
-        color: 'var(--canvas-card-border)',
-        border: '2px solid var(--canvas-card-border)',
+        background: 'var(--fill)',
+        color: 'var(--mute)',
+        dot: 'var(--faint)',
       };
   }
 }
@@ -93,22 +93,25 @@ export function WidgetStatePill({ state }: WidgetStatePillProps) {
   return (
     <span
       data-ds-primitive="WidgetStatePill"
-      className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
+      className="inline-flex shrink-0 items-center gap-1.5 px-2 py-[3px] text-xs font-bold uppercase tracking-wider tabular-nums"
       style={{
         background: visual.background,
         color: visual.color,
-        border: visual.border,
-        borderRadius: 4,
-        boxShadow: '2px 2px 0 var(--canvas-card-border)',
+        borderRadius: 'var(--r-pill)',
+        fontFamily: 'var(--font-mono-soft)',
       }}
       title={title}
       aria-live={state.kind === 'running' ? 'polite' : undefined}
     >
-      {state.kind === 'running' && (
-        <span aria-hidden className="animate-pulse">
-          ●
-        </span>
-      )}
+      {/* 6px 점 — running 만 깜빡인다(핵심규칙: 진행 점 깜빡임은 running 한정,
+          prefers-reduced-motion 이면 globals.css 가 애니메이션을 끈다). */}
+      <span
+        aria-hidden
+        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full${
+          state.kind === 'running' ? ' animate-pulse' : ''
+        }`}
+        style={{ background: visual.dot }}
+      />
       {widgetStatePillLabel(state)}
     </span>
   );
