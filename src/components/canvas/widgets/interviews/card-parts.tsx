@@ -64,7 +64,7 @@ export function CardControlBar({ children }: { children: ReactNode }) {
   return (
     <div
       className="flex shrink-0 items-center gap-2.5 bg-paper-soft"
-      style={{ padding: '12px 22px', borderBottom: `1.5px solid ${LINE}` }}
+      style={{ padding: '12px 22px', borderBottom: `1px solid ${LINE}` }}
     >
       {children}
     </div>
@@ -164,7 +164,7 @@ export function CardFooterCta({
         }
       }}
       className={`${base} bg-ink text-paper cursor-pointer`}
-      style={{ fontSize: 13.5, padding: '11px 20px', border: `1.4px solid ${INK}` }}
+      style={{ fontSize: 13.5, padding: '11px 20px', border: `1px solid ${INK}` }}
     >
       {label}
       {trailing}
@@ -199,7 +199,7 @@ export function ProjectPillTrigger({
         }
       }}
       className="inline-flex min-w-0 items-center gap-2 rounded-pill bg-paper cursor-pointer"
-      style={{ padding: '6px 13px', border: `1.5px solid ${INK}` }}
+      style={{ padding: '6px 13px', border: `1px solid ${INK}` }}
     >
       <DuotoneIcon name="project" size={15} />
       <span
@@ -243,7 +243,7 @@ export function ProjectFieldTrigger({
         }
       }}
       className="flex w-full items-center gap-2.5 rounded-field bg-paper cursor-pointer"
-      style={{ padding: '13px 18px', border: `1.5px solid ${INK}` }}
+      style={{ padding: '13px 18px', border: `1px solid ${INK}` }}
     >
       <DuotoneIcon name="project" size={17} />
       <span
@@ -290,7 +290,7 @@ export function UploadPill({
         }
       }}
       className="ml-auto inline-flex items-center gap-1.5 rounded-pill bg-paper font-bold text-ink cursor-pointer"
-      style={{ padding: '6px 13px', fontSize: 12, border: `1.5px solid ${INK}` }}
+      style={{ padding: '6px 13px', fontSize: 12, border: `1px solid ${INK}` }}
     >
       <DuotoneIcon name="upload" size={15} />
       {label}

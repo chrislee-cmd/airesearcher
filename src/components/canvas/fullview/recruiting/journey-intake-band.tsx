@@ -11,7 +11,7 @@
 
    형태(CD §①): 카드가 아니라 유틸리티 스트립(높이 ≈110px). 헤드 = LIST SOURCES
    라벨 + 우측 `N명 등록됨` 상태. 바디 2행 = 업로드(1.5px dashed ink · 찾아보기)
-   · Google Sheets(1.5px solid line · Import ink-fill · 서브라인 = 연동 시트명
+   · Google Sheets(1px --line · Import ink-fill · 서브라인 = 연동 시트명
    mono truncate, 미연동 시 URL 입력). 카드 셸은 좌패널 3카드 공통 규격
    (border 1 --line · rounded-[var(--fv-radius-panel)](12) · 흰 면 ·
    그림자 없음) — 형제 recruiting-criteria-panel 과 동일.
@@ -276,7 +276,7 @@ export function JourneyIntakeBand({
           </button>
         </div>
 
-        {/* Sheets row — 1.5px solid line · 서브라인=연동 시트명(mono truncate)
+        {/* Sheets row — 1px --line · 서브라인=연동 시트명(mono truncate)
             또는 URL 입력 · Import(ink fill). */}
         <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border border-soft-line px-2.5 py-[7px]">
           <span aria-hidden className="shrink-0 text-md">

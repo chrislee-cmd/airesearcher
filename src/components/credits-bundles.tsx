@@ -241,7 +241,7 @@ export function CreditsBundles() {
               key={b.id}
               style={{
                 background: b.popular ? '#fff0f4' : '#ffffff',
-                border: `${b.popular ? '4px' : '3px'} solid var(--canvas-card-border)`,
+                border: '1px solid var(--canvas-card-border)',
                 borderRadius: 'var(--canvas-card-radius)',
                 boxShadow: 'var(--canvas-card-shadow)',
               }}

@@ -278,7 +278,7 @@ export function SubscriptionPlans({
               key={tier.id}
               style={{
                 background: popular ? '#fff0f4' : '#ffffff',
-                border: `${popular ? '4px' : '3px'} solid var(--canvas-card-border)`,
+                border: '1px solid var(--canvas-card-border)',
                 borderRadius: 'var(--canvas-card-radius)',
                 boxShadow: 'var(--canvas-card-shadow)',
               }}

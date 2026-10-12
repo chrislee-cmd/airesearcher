@@ -16,8 +16,6 @@ import {
 //
 // disabled(1a idle): 프로젝트 미선택 안내만, 입력 비활성 · paper-soft · opacity.
 
-const INK = 'var(--color-ink)';
-
 export function InterviewDropzone({
   title,
   helper,
@@ -52,8 +50,10 @@ export function InterviewDropzone({
         aria-disabled
         className="flex flex-col items-center gap-2.5 rounded-sm bg-paper-soft text-center"
         style={{
+          // 잠금(disabled) 빈 자리도 같은 점선 문법 — 1.5px dashed --line-hover.
+          // 래퍼 opacity 를 쓰지 않는다(README §Interactions): 글자는 --faint.
           padding: '40px 22px',
-          border: '3px dashed var(--color-line-empty)',
+          border: '1.5px dashed var(--line-hover)',
         }}
       >
         <DuotoneIcon name="upload" size={30} className="opacity-35" />
@@ -92,13 +92,14 @@ export function InterviewDropzone({
         setDragOver(false);
         emit(Array.from(e.dataTransfer.files));
       }}
-      className={`flex cursor-pointer flex-col items-center gap-3 rounded-sm bg-paper text-center transition-[transform,box-shadow] duration-[140ms] motion-reduce:transition-none ${
-        dragOver ? '-translate-x-px -translate-y-px' : ''
-      }`}
+      className="flex cursor-pointer flex-col items-center gap-3 rounded-sm bg-paper text-center transition-[border-color,box-shadow] duration-[140ms] motion-reduce:transition-none"
       style={{
+        // Soft Identity — 점선 빈 자리: 1.5px dashed --line-hover · 평소 그림자 0.
+        // drag-over(받을 수 있음) = 1px 실선 --ink + --focus-ring (FileDropZone 과
+        // 같은 처리 · README §Interactions "하드 그림자로 포커스 표시 안 함").
         padding: '44px 22px',
-        border: `3px dashed ${INK}`,
-        boxShadow: 'var(--)',
+        border: dragOver ? '1px solid var(--ink)' : '1.5px dashed var(--line-hover)',
+        boxShadow: dragOver ? 'var(--focus-ring)' : 'none',
       }}
     >
       <DuotoneIcon name="upload" size={34} />
