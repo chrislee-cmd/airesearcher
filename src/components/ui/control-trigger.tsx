@@ -8,7 +8,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 // 통일 기준 = 인터뷰 결과 생성기의 프로젝트 선택 드롭다운 (Button variant=ghost).
 //
 // 인터뷰 트리거의 정체 = Memphis "ghost" 버튼: 2.5px border-line(회색) +
-// 옅은 하드 그림자 shadow-memphis-sm-faint + rounded-sm +
+// 1px --line 보더 + 그림자 없음(Soft) + rounded-sm +
 // font-semibold + hover 시 border-ink 로 진해지며 살짝 뜨는(translate) pop.
 // 우측에 ▼ 삼각형. 이 chrome 을 그대로 CONTROL_TRIGGER_CLASS 로 박제해
 // DropdownMenu/SelectMenu/DateRangePopover 등 모든 컨트롤 트리거가 눈에

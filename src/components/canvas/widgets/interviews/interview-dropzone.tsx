@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/hidden-file-input';
 
 // ─── 인터뷰 카드 드롭존 (BUILD-SPEC §1.1, S1 1a/1b) ──────────────────────────
-// fresh CD 프레젠테이션: 3px dashed 프레임 · radius 14 · shadow-dropzone(활성).
+// fresh CD 프레젠테이션: 1.5px dashed 프레임 · radius 14 · --focus-ring(활성).
 // 드래그드롭은 div 의 dataTransfer 로, 클릭은 HiddenFileInput(ui primitive)로 OS
 // 다이얼로그를 연다 (native <input> 을 위젯에 직접 두지 않음 — forbid-elements).
 // 25MB 게이트: maxSizeBytes 로 초과 파일을 걸러 낸다(모달이 최종 재검증하지만

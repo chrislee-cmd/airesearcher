@@ -8,8 +8,8 @@
    로직/데이터만 재사용: TranslateSessionContext 스냅샷(promptedLines·
    inputLines·listeners·shareUrl·outputAudible·stop)을 read-only 로 미러.
 
-   레이아웃(§F4): 트윈 INPUT/OUTPUT 패널(flex:1 each · border-3 ink ·
-   radius-panel-lg · shadow-memphis-md) + 우측 rail 300px(출력오디오 토글 ·
+   레이아웃(§F4): 트윈 INPUT/OUTPUT 패널(flex:1 each · border 1 --line ·
+   radius-panel-lg · 그림자 없음) + 우측 rail 300px(출력오디오 토글 ·
    옵저버 링크 · 리스너 목록). INPUT 헤더 paper-soft·dot mute-soft / OUTPUT
    헤더 success-bg-soft·dot·label success.
 
@@ -410,7 +410,7 @@ function ShareMonitor({
     <div className="flex min-h-0 flex-[1.15] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-ink">
       {/* titlebar — macOS traffic lights(장식 예외) + URL pill + SHARING 뱃지.
           pad 9/13 · border-b 1.5px (#000 = border-strong) · bg ink-2 (§1). */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-soft-hair bg-ink-2 px-[13px] py-[9px]">
         {/* design-allow-hardcoded -- CD frame 10 traffic lights = literal macOS chrome (장식, 토큰 아님; aiut-live-monitor 선례) */}
         {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
           <span

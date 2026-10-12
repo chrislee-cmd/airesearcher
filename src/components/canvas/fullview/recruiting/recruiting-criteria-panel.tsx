@@ -7,8 +7,8 @@
    fresh 신규 빌드 — 레거시 recruiting/conditions-panel.tsx 는 supersede
    (편집·재사용 금지). 데이터(EditableBrief.criteria/summary)만 재사용한다.
 
-   패널 카드: border-2 ink · rounded-[var(--fv-radius-panel)](12) · paper ·
-   shadow-memphis-sm-faint. Required chip = border-amore + "필수" text-amore.
+   패널 카드: border 1 --line · rounded-[var(--fv-radius-panel)](12) · 흰 면 ·
+   그림자 없음. Required chip = border-amore(1px) + "필수" text-amore.
    비필수 chip = border-line. cat = mono-label uppercase mute-soft.
    ──────────────────────────────────────────────────────────────────── */
 

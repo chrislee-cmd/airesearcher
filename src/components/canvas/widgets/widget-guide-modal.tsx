@@ -157,7 +157,7 @@ export function WidgetGuideModal({
 
   // CD 프레임 카드 — bare 패널 안의 유일한 비주얼 박스. radius 18 / 3px border /
   // 8px offset shadow 는 CD 절대값이라 inline(토큰 매핑 없음). shadow 는 앱
-  // 모달 관례(shadow-memphis-2xl = 8px8px0 ink)를 토큰으로 재사용.
+  // 모달 관례(--sh-modal 블러)를 토큰으로 재사용.
   const cardStyle: CSSProperties = {
     maxWidth: 860,
     // p-4(16px×2) 오버레이 여백을 뺀 뷰포트 높이. 짧은 뷰포트에서 카드가

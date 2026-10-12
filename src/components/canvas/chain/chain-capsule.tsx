@@ -49,11 +49,11 @@ const TONE: Record<
     line: 'border-success-line',
   },
   neutral: {
-    frame: 'border-ink',
+    frame: 'border-soft-line',
     dot: 'bg-mute-soft',
     eyebrow: 'text-mute',
     row: 'bg-paper-soft',
-    line: 'border-ink/[0.12]',
+    line: 'border-soft-hair',
   },
 };
 
@@ -125,13 +125,13 @@ export function ChainCapsule({
       className="flex w-[400px] flex-col items-center"
     >
       <div
-        className={`w-[400px] overflow-hidden rounded-panel border-2 bg-paper shadow-popover ${c.frame}`}
+        className={`w-[400px] overflow-hidden rounded-panel border bg-paper shadow-soft-popover ${c.frame}`}
       >
         <div className="flex items-center gap-2 px-[13px] pt-[9px]">
           {glyph ? (
             <span
               aria-hidden
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-sm font-extrabold ${c.frame} ${c.row} ${c.eyebrow}`}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm font-extrabold ${c.frame} ${c.row} ${c.eyebrow}`}
             >
               {glyph}
             </span>
@@ -166,7 +166,7 @@ export function ChainCapsule({
         )}
 
         <div
-          className={`flex items-center gap-2.5 border-t-[1.5px] px-[13px] py-2 ${c.line} ${c.row}`}
+          className={`flex items-center gap-2.5 border-t px-[13px] py-2 ${c.line} ${c.row}`}
         >
           {onCancel && (
             // eslint-disable-next-line react/forbid-elements -- CD 액션 행의 "체인 종료" 는 패딩·보더·밑줄 없는 bare 텍스트(11.5/700 mute). Button variant="link" 는 size padding + hover 밑줄을 강제하고 className 되돌리기는 §7.11(컴파일 CSS 소스 순서) 때문에 불확정.
@@ -182,18 +182,18 @@ export function ChainCapsule({
           )}
           <span className="ml-auto" />
           {secondary && (
-            // eslint-disable-next-line react/forbid-elements -- CD 보조 pill 은 border 1.5 ink · radius-pill · shadow 2px2px0 ink/12 전용 chrome. Button variant="secondary" 는 border-2.5 · rounded-sm · shadow-memphis-md 고정이라 형태 불일치(규칙 2c AUTHORITY).
+            // eslint-disable-next-line react/forbid-elements -- CD 보조 pill 은 흰 면 + border 1 --line · radius-pill · 그림자 없음 전용 chrome. Button variant="secondary" 는 rounded-sm 고정이라 pill 형태와 불일치(규칙 2c AUTHORITY).
             <button
               type="button"
               data-chain-action="secondary"
               onClick={secondary.onClick}
               disabled={busy}
-              className="inline-flex shrink-0 items-center rounded-pill border-[1.5px] border-ink bg-paper px-[13px] py-1.5 text-md font-bold text-ink shadow-memphis-sm-faint transition-colors hover:bg-paper-soft disabled:opacity-40"
+              className="inline-flex shrink-0 items-center rounded-pill border border-soft-line bg-paper px-[13px] py-1.5 text-md font-bold text-ink transition-colors hover:bg-paper-soft disabled:opacity-40"
             >
               {secondary.label}
             </button>
           )}
-          {/* eslint-disable-next-line react/forbid-elements -- CD 주 버튼은 border 2 · radius-pill · shadow 2px2px0 ink/28(shadow-memphis-sm-mid) + "잠김" 상태(surface-disabled·faint·그림자 없음)를 가진다. Button primitive 에 없는 형태·상태라 native. */}
+          {/* eslint-disable-next-line react/forbid-elements -- CD 주 버튼은 ink 채움 · radius-pill · 테두리·그림자 없음 + "잠김" 상태(--fill 면 + --faint 글자)를 가진다. Button primitive 에 없는 형태·상태라 native. */}
           <button
             type="button"
             data-chain-action="primary"
@@ -202,8 +202,8 @@ export function ChainCapsule({
             disabled={primary.locked || busy}
             className={
               primary.locked
-                ? 'inline-flex shrink-0 items-center rounded-pill border-2 border-ink/[0.2] bg-surface-disabled px-[15px] py-1.5 text-md font-extrabold text-mute-soft'
-                : 'inline-flex shrink-0 items-center rounded-pill border-2 border-ink bg-ink px-[15px] py-1.5 text-md font-extrabold text-paper shadow-memphis-sm-mid disabled:opacity-40'
+                ? 'inline-flex shrink-0 items-center rounded-pill bg-soft-fill px-[15px] py-1.5 text-md font-extrabold text-soft-faint'
+                : 'inline-flex shrink-0 items-center rounded-pill bg-ink px-[15px] py-1.5 text-md font-extrabold text-paper transition-colors hover:bg-soft-ink-hover'
             }
           >
             {primary.label}

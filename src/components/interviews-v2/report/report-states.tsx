@@ -5,9 +5,9 @@
    §3 상태 매트릭스 · S2 2a/2b/2c · S4a).
 
    배너(본문 최상단, exec 위):
-   - stale(amber)  : warning-bg · shadow-memphis-md-amber · amber-text
-   - stuck(processing): lav-bg · shadow-memphis-md-processing · lav-text
-   - error         : error-bg · shadow-memphis-md-error · error-text · 코드박스
+   - stale(amber)  : warn 틴트 면 · 그림자 없음 · warn-fg
+   - stuck(processing): run 틴트 면 · 그림자 없음 · run-fg
+   - error         : err 틴트 면 · 그림자 없음 · err-fg · 코드박스
    - cancelled     : paper-soft · border line-strong · mute — **그림자 없음**(중립)
    배너엔 아이콘을 쓰지 않는다(틴트+그림자색+제목 800 으로 상태 전달, §1.5).
 

@@ -13,8 +13,8 @@
    라벨 + 우측 `N명 등록됨` 상태. 바디 2행 = 업로드(1.5px dashed ink · 찾아보기)
    · Google Sheets(1.5px solid line · Import ink-fill · 서브라인 = 연동 시트명
    mono truncate, 미연동 시 URL 입력). 카드 셸은 좌패널 3카드 공통 규격
-   (border-2 ink · rounded-[var(--fv-radius-panel)](12) · paper ·
-   shadow-memphis-sm-faint) — 형제 recruiting-criteria-panel 과 동일.
+   (border 1 --line · rounded-[var(--fv-radius-panel)](12) · 흰 면 ·
+   그림자 없음) — 형제 recruiting-criteria-panel 과 동일.
 
    이식(재구현 금지): 업로드/시트 인제스트·재동기화·에러 노출 계약을 그대로
    옮겼다 (POST /batches/[inbox]/upload 10MB 가드 · POST /import-sheet ·

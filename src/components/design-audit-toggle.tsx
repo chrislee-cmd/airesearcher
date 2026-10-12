@@ -5,7 +5,7 @@
 
    globals.css 의 [data-theme="audit"] sentinel 블록을 활성/해제한다. audit 테마는
    Layer 1 raw 토큰을 전부 형광/극단으로 오염시켜, 토큰(var(--color-*)·
-   shadow-memphis-*·radius/font 유틸)을 경유하는 요소는 전부 형광으로 변하고
+   shadow-soft-*·radius/font 유틸)을 경유하는 요소는 전부 형광으로 변하고
    인라인 #hex·arbitrary shadow-[...]·rounded-[Npx] 같은 하드코드는 그대로 남아
    시각적으로 튀게 한다("안 변한 게 범인"). 627 정적 가드의 시각 QA 보조.
 

@@ -73,17 +73,17 @@ export function ChainSlot({
 
   const frame =
     state === 'valid'
-      ? `border-[3px] border-dashed border-ink ${toneFeature ? TONE_TINT[CHAIN_STEP_TONE[toneFeature]] : 'bg-soft-surface'}`
+      ? `border-[1.5px] border-dashed border-ink ${toneFeature ? TONE_TINT[CHAIN_STEP_TONE[toneFeature]] : 'bg-soft-surface'}`
       : state === 'invalid'
-        ? 'border-[3px] border-dashed border-soft-err-dot bg-soft-err-bg'
-        : 'border-[2.5px] border-dashed border-soft-line-hover bg-soft-surface-2';
+        ? 'border-[1.5px] border-dashed border-soft-err-dot bg-soft-err-bg'
+        : 'border-[1.5px] border-dashed border-soft-line-hover bg-soft-surface-2';
 
   const tile =
     state === 'valid'
-      ? 'border-[2.5px] border-ink bg-soft-surface text-ink'
+      ? 'border border-soft-line bg-soft-surface text-ink'
       : state === 'invalid'
-        ? 'border-[2.5px] border-soft-err-dot bg-soft-surface text-soft-err-fg'
-        : 'border-[2.5px] border-dashed border-soft-line-hover bg-soft-surface text-soft-faint';
+        ? 'border border-soft-err-dot bg-soft-surface text-soft-err-fg'
+        : 'border-[1.5px] border-dashed border-soft-line-hover bg-soft-surface text-soft-faint';
 
   const glyph = state === 'valid' ? '↓' : state === 'invalid' ? '✕' : '+';
   const heading =

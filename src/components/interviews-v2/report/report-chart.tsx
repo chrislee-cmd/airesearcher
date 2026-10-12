@@ -40,7 +40,7 @@ const catBg = (i: number) => (i < 6 ? CAT_BG[i] : 'bg-mute-soft');
 const catStroke = (i: number) => (i < 6 ? CAT_STROKE[i] : 'stroke-mute-soft');
 
 // 차트 프레임 — 헤드(eyebrow + 제목) + 플롯 + (옵션) 푸터 각주. border 2 ink ·
-// radius-md-ish(12) · shadow-memphis-md-faint.
+// radius-md-ish(12) · 그림자 없음(표면 안 패널).
 function ChartFrame({
   eyebrow,
   title,

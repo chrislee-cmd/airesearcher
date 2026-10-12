@@ -34,14 +34,14 @@ export function ChainReportNode({ state }: ChainReportNodeProps) {
       style={{ width: REPORT_NODE_WIDTH, height: REPORT_NODE_HEIGHT }}
       className={`flex shrink-0 flex-col overflow-hidden rounded-panel bg-soft-surface ${
         done
-          ? 'border-[2.5px] border-soft-line shadow-soft-card'
+          ? 'border border-soft-line shadow-soft-card'
           : 'border-[1.5px] border-dashed border-soft-line-hover'
       }`}
     >
       <div
         className={
           done
-            ? 'border-b-2 border-soft-hair bg-tint-rose px-5 py-[14px]'
+            ? 'border-b border-soft-hair bg-tint-rose px-5 py-[14px]'
             : 'border-b-[1.5px] border-dashed border-soft-line-hover bg-soft-surface px-5 py-[14px]'
         }
       >

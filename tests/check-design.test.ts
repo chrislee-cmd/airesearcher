@@ -98,8 +98,8 @@ describe('scanSource — 제외 (과탐 방지)', () => {
     assert.equal(scanSource(F, '// design-allow-hardcoded -- 브랜드 SVG\nconst c = "bg-[#4285F4]";').length, 0);
   });
 
-  it('토큰 유틸 클래스(shadow-memphis-md·rounded-sm)는 무시한다', () => {
-    assert.equal(scanSource(F, 'const c = "shadow-memphis-md rounded-sm text-ink border-line";').length, 0);
+  it('토큰 유틸 클래스(shadow-soft-card·rounded-sm)는 무시한다', () => {
+    assert.equal(scanSource(F, 'const c = "shadow-soft-card rounded-sm text-ink border-line";').length, 0);
   });
 });
 

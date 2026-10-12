@@ -16,9 +16,9 @@
      의존 없이 안정 렌더.
    - DeskMarkdownBody — 공용 markdown→React 렌더러(프로즈 섹션).
 
-   레이아웃(§F4 Desk): 좌 210px scroll-spy nav(border-r-2 ink · paper-soft)
+   레이아웃(§F4 Desk): 좌 210px scroll-spy nav(border-r 1 --hair · paper-soft)
    + 우 flex-1 스크롤 스트림. 스트림 = 판단로그 카드 → 확장 키워드 → 섹션
-   카드(border-3 ink · rounded-sm · shadow-memphis-lg, 헤드 tint = kind별
+   카드(border 1 --line · rounded-sm · 그림자 없음, 헤드 tint = kind별
    rose/mint/sun/lav/neutral) → export 액션. scroll-spy 동작(Intersection
    Observer + 클릭 점프)은 워커 소유(BUILD-SPEC §4).
 
@@ -442,7 +442,7 @@ function JudgmentLog({ lines, label }: { lines: string[]; label: string }) {
   );
 }
 
-// ── 섹션 카드(§F4 Desk: border-3 ink · rounded-sm · shadow-memphis-lg) ──────
+// ── 섹션 카드(§F4 Desk: border 1 --line · rounded-sm · 그림자 없음) ─────────
 function SectionCard({
   section,
   quantClaims,
@@ -605,7 +605,7 @@ function SectionCard({
   );
 }
 
-// ── RQ 카드(§F4: border-2 ink · radius-card(11) · shadow-memphis-sm-faint) ──
+// ── RQ 카드(§F4: border 1 --line · radius-card(11) · 그림자 없음) ───────────
 function RQCard({
   rq,
   answer,

@@ -43,7 +43,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
   const labelStyle = {
     fontFamily: OUTFIT_STACK,
     fontWeight: 800,
-    color: 'var(--sidebar-border)',
+    color: 'var(--ink)',
   } as const;
 
   // <select> kept as native — react/forbid-elements only blocks

@@ -2,7 +2,7 @@
 
 /* ────────────────────────────────────────────────────────────────────
    RegenerateModal — 재생성 방향 모달 (fresh · BUILD-SPEC §1.4·§1.5 · S4b .dc.html
-   비주얼 SSOT). border 3 ink · rounded-modal(18) · shadow-iv-modal-regen(8px8px0
+   비주얼 SSOT). border 1 --line · rounded-modal(18) · --sh-modal(블러
    ink/40) · 헤더 rose + border-b 2 ink · 푸터 paper-soft + border-t 2 ink.
 
    방향 textarea(카운터 N/600 — TOPLINE_DIRECTION_MAX 공유) + 언어 6종 pill.

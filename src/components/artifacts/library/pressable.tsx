@@ -6,7 +6,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 //
 // Why not <Button>/<Checkbox> primitives? This is a design-led greenfield
 // surface (rules 2c/2d): the CD comp specifies bespoke Memphis pill/tile
-// treatments (2px vs 1.5px ink borders, shadow-memphis-sm vs -md, ink-fill
+// treatments (Soft 전환 후엔 전부 1px --line + 그림자 없음, ink-fill
 // checkbox with a white ✓) that diverge from the primitives' baked chrome.
 // Overriding a primitive's variant colours via className is the documented
 // Tailwind source-order trap (PROJECT.md §7.11). The DS native-control lint

@@ -44,7 +44,7 @@ export default async function MembersPage({
                 style={{
                   fontFamily: OUTFIT_STACK,
                   fontWeight: 800,
-                  color: 'var(--sidebar-border)',
+                  color: 'var(--ink)',
                 }}
               >
                 {t('invite')}
@@ -77,7 +77,7 @@ function MembersHeader({ title }: { title: string }) {
           fontFamily: OUTFIT_STACK,
           fontWeight: 800,
           letterSpacing: '-0.03em',
-          color: 'var(--sidebar-border)',
+          color: 'var(--ink)',
           lineHeight: 1,
         }}
       >
@@ -106,7 +106,7 @@ async function EmptyAuthCard() {
         border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
         boxShadow: 'var(--sh-card)',
-        color: 'var(--sidebar-border)',
+        color: 'var(--ink)',
         fontFamily: OUTFIT_STACK,
         fontWeight: 600,
       }}
@@ -179,7 +179,7 @@ async function MembersTable({
               style={{
                 fontFamily: OUTFIT_STACK,
                 fontWeight: 800,
-                color: 'var(--sidebar-border)',
+                color: 'var(--ink)',
               }}
             >
               {t('email')}
@@ -189,7 +189,7 @@ async function MembersTable({
               style={{
                 fontFamily: OUTFIT_STACK,
                 fontWeight: 800,
-                color: 'var(--sidebar-border)',
+                color: 'var(--ink)',
               }}
             >
               {t('role')}
@@ -244,7 +244,7 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
           fontFamily: OUTFIT_STACK,
           fontWeight: 800,
           letterSpacing: '-0.02em',
-          color: 'var(--sidebar-border)',
+          color: 'var(--ink)',
         }}
       >
         {t('emptyTitle')}

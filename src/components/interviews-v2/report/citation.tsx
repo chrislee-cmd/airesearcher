@@ -231,7 +231,7 @@ function CitationChip({
 }
 
 // 원문 팝오버 (§1.4 · S5d) — border 2 ink · rounded-panel · paper ·
-// shadow-popover · max-w 420 · 헤더 rose-bg. 칩 위에 절대 배치(레이아웃 무영향).
+// --sh-popover · max-w 420 · 헤더 rose 틴트. 칩 위에 절대 배치(레이아웃 무영향).
 function CitationPopover({ n, chunk }: { n: number; chunk: ResolvedChunk }) {
   const t = useTranslations('InterviewsV2');
   return (

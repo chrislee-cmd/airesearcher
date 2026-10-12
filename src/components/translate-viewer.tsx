@@ -681,7 +681,7 @@ function ScreenStage({ track }: { track: RemoteVideoTrack }) {
   return (
     <div className="flex min-h-0 flex-[1.2] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-ink">
       {/* titlebar — macOS traffic lights (장식 예외) + address chip + SHARING */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-soft-hair bg-ink-2 px-[13px] py-[9px]">
         {/* design-allow-hardcoded -- CD frame 07 traffic lights = literal macOS chrome (장식, 토큰 아님; interpreter-fullview ShareMonitor 선례) */}
         {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
           <span

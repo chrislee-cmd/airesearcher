@@ -9,8 +9,8 @@
    i18n(personaSection.*) 만 재사용한다.
 
    §F4 계약:
-   - filled 카드: border-2 ink · rounded-[--fv-radius-card] · paper ·
-     shadow-memphis-sm-faint.
+   - filled 카드: border 1 --line · rounded-[--fv-radius-card] · 흰 면 ·
+     그림자 없음.
    - empty 카드: border 1.6 dashed line-empty · paper-soft.
    - fill dots = signals count (≤3 정규화): 3=success · 2=amber · 1/0=line-empty.
    ──────────────────────────────────────────────────────────────────── */

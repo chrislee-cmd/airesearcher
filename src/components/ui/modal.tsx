@@ -53,7 +53,7 @@ type Props = {
   // Bare 모드 — 패널의 자체 border/bg/shadow/rounded/overflow + 헤더/본문/
   // 푸터 chrome 을 전부 걷어내고 positioning·sizing·transition·a11y·메커니즘
   // (Esc·backdrop·scroll-lock·focus)만 남긴다. children 이 프레임 비주얼을
-  // 통째로 소유(예: FullviewShell §F1 프레임 — fv-frame-shadow/surface-canvas).
+  // 통째로 소유(예: FullviewShell §F1 프레임 — --sh-frame/surface-canvas).
   // 미지정(기본 false)이면 기존 동작 그대로 → 모든 소비자 회귀 0.
   bare?: boolean;
 };

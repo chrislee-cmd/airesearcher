@@ -38,7 +38,7 @@ import { useInterviewUpload } from '@/components/interview-upload-provider';
 //
 // VISUAL — CD 계약 B (upload-modal-BUILD-SPEC §1·2·4 · CLOSE-BUTTON-AUDIT.dc.html
 // §2 after). Modal `bare` 로 프레임을 이 컴포넌트가 통째로 소유: border 3 · radius
-// 18(rounded-modal) · shadow-memphis-2xl(8px8px0 blur0) · rose 밴드 헤더(§6 결정,
+// 18(rounded-modal) · --sh-modal(블러) · rose 틴트 밴드 헤더(§6 결정,
 // 인터뷰 전용) · 파일 행 = 타입타일 24 + 이름 + 용량 mono + row-remove(계약 A) ·
 // 목록 헤더 총 개수·총량(amber 임계) · 4행 초과 접기 · 푸터 4단 버튼 + 좌측 안내.
 // ✕ 는 전부 <CloseButton>(계약 A #1292) 호출 — 재구현 없음. 진행 배너는 이 PR

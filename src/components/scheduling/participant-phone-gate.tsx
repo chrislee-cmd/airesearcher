@@ -18,7 +18,7 @@ import { PHONE_TAIL_LEN } from '@/lib/scheduling/participant-gate';
 //   * no match / wrong digits → an inline error on the OTP cells.
 // Presentation is a fresh Memphis build (CD SSOT); only the verify flow logic is
 // reused. All surfaces bind to design tokens (§9) — no hardcoded hex, no
-// arbitrary shadows/radii (shadow-memphis-* / rounded-{xs,sm,md,full} only).
+// arbitrary shadows/radii (--sh-* 4단계 / rounded-{xs,sm,md,full} only).
 
 // Display font stacks: Outfit 800 for the screen title (CD 03B), ui-monospace
 // for the OTP digits. Consumed inline (same pattern as WidgetFullviewPanel) —

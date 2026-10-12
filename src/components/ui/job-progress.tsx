@@ -32,13 +32,15 @@ export function JobProgress({
   // 위젯 톤 bg + border-t 2 ink → 공통 lav 틴트 면 + 1px run 선, 바 6px
   // --run-track/--run-dot, 상태 글자 --run-fg, 점은 --run-dot 깜빡임.
   // 실패는 같은 문법의 err 패밀리(틴트 면 + --err-line + --err-fg/-dot).
+  // 밴드 border-t 는 CD 절대값 --run-band-line(#ebe4fb) — --run-track(#e6dffb)
+  // 과 구분값이라 전용 원자다(작업 6 에서 승격, AUTHORITY).
   const fillTone = isError ? 'bg-soft-err-dot' : 'bg-soft-run-dot';
   const trackTone = isError ? 'bg-soft-err-line' : 'bg-soft-run-track';
   const labelTone = isError ? 'text-soft-err-fg' : 'text-soft-run-fg';
   const dotTone = isError ? 'bg-soft-err-dot' : 'bg-soft-run-dot';
   const containerTone = isError
     ? 'border-soft-err-line bg-soft-err-bg'
-    : 'border-soft-run-track bg-tint-lav';
+    : 'border-run-band-line bg-tint-lav';
 
   // inline: outer border/shadow/bg 제거 — 이미 border 컨테이너 (예:
   // WidgetOutputRow) 안에서 mount 될 때 이중 컨테이너 시각을 피함. padding 만 최소.

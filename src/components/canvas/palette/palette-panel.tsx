@@ -937,7 +937,7 @@ function PaletteRailTile({
           <span
             aria-hidden
             style={{ right: -3, top: -3, width: 11, height: 11 }}
-            className={`absolute rounded-full border-2 border-soft-surface ${
+            className={`absolute rounded-full border border-soft-surface ${
               RAIL_DOT[toneOf(lead.status)]
             } ${pulsesFor(lead.status) ? 'palette-pulse' : ''}`}
           />

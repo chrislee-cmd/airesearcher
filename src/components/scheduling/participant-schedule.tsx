@@ -23,7 +23,7 @@ type Props = {
 // Data is polled (no anon realtime — see useSchedPublic). Presentation is a
 // fresh Memphis build (CD SSOT); only the data/split/send logic is reused. All
 // surfaces bind to design tokens (§9) — no hardcoded hex, no arbitrary
-// shadows/radii (shadow-memphis-* / rounded-{xs,sm,md,full} only).
+// shadows/radii (--sh-* 4단계 / rounded-{xs,sm,md,full} only).
 
 // Display font stacks (consumed inline, same pattern as WidgetFullviewPanel):
 // Outfit 800 for the screen title + big day numeral, ui-monospace for the

@@ -13,7 +13,7 @@
    기능은 불변 — 배선(onInject·IME-safe Enter/click 커밋·disabled-until-nonempty·
    PROBING_INJECT_QUESTION_MAX clamp·backfill 피드백)은 #1171 계약 그대로 재사용.
    외형만 CD 마크업/토큰(mono 미니라벨 · 1.5px ink radius22 입력 · amore 버튼 +
-   shadow-memphis-sm · border-b rhythm)으로 교체한다.
+   그림자 없음 · border-b rhythm)으로 교체한다.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
@@ -66,7 +66,7 @@ export function ProbingFullviewInject({
             className="w-full flex-1 truncate text-lg"
           />
         </div>
-        {/* amore CTA — border ink · radius 22 · shadow-memphis-sm. Button
+        {/* amore CTA — border 1 --line · radius 22 · 그림자 없음. Button
             primitive 의 어느 variant(primary=bg-ink)와도 불일치 → 셸 선례
             (probing-spotlight action chrome)대로 native + eslint-disable. */}
         {/* eslint-disable-next-line react/forbid-elements -- CD inject CTA (amore fill·border ink·radius 22·) ≠ Button primitive variant (probing-spotlight 셸 선례와 동일). */}

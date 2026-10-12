@@ -24,7 +24,7 @@
      macOS traffic lights(장식 예외) + URL pill + ● LIVE(rec-soft). 본문 =
      참가자 화면 <video>(현재 보이는 단일 표면에만 부착) 또는 대기 placeholder.
      하단 status bar = REC 경과 + mic/cursor 인디케이터(idle 시 비활성 표기).
-   - 태스크 카드: peach 카드(border-2 ink · rounded-sm · shadow-memphis-sm).
+   - 태스크 카드: peach 틴트 카드(border 1 --line · rounded-sm · 그림자 없음).
      과제 텍스트(assigned task). CD 의 STEP 체크리스트는 구조화 데이터가 없어
      보수적으로 생략(대상 URL 호스트만 보조 노출).
    - think-aloud 스트림: paper-soft 레일 · amore dot 헤더 · 캡션 라인
@@ -60,14 +60,14 @@ const OUTER = 'flex min-h-0 flex-1 gap-4 px-5 py-[18px]';
 const MONITOR_FRAME =
   'flex min-w-0 flex-[1.7] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-ink';
 const TITLEBAR =
-  'flex shrink-0 items-center gap-2 border-b border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]';
+  'flex shrink-0 items-center gap-2 border-b border-soft-hair bg-ink-2 px-[13px] py-[9px]';
 const MONITOR_BODY =
   'relative flex min-h-0 flex-1 flex-col items-center justify-center bg-paper';
 // idle 본문 — 슬롯(세팅 폼/대기 placeholder/로컬 프리뷰)이 자체 정렬. 강제
 // 중앙정렬 안 함(긴 세팅 폼이 잘리지 않도록).
 const MONITOR_BODY_IDLE = 'relative flex min-h-0 flex-1 flex-col bg-paper';
 const STATUSBAR =
-  'flex shrink-0 items-center gap-[14px] border-t border-[color:var(--border-strong)] bg-ink-2 px-[14px] py-[10px]';
+  'flex shrink-0 items-center gap-[14px] border-t border-soft-hair bg-ink-2 px-[14px] py-[10px]';
 const RAIL = 'flex w-[320px] shrink-0 flex-col gap-[14px]';
 
 // macOS traffic lights — 장식(design-allow), 토큰 아님. live/idle 공유.

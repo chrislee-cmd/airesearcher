@@ -6,7 +6,7 @@
 
    fresh 신규 빌드 (레거시 quotes fullview 리스트 프레젠테이션은 supersede).
    파일행 3-상태(done/processing/failed) 를 CD 클래스맵대로 렌더한다:
-   - done: border-2 ink · rounded-sm · shadow-memphis-sm-faint · paper, 클릭 →
+   - done: border 1 --line · rounded-sm · 그림자 없음 · 흰 면, 클릭 →
      상세(state 05). 우측 ✓ Done 칩(success) + 개별 삭제.
    - processing: border-line · bg-lav-bg-2 · Transcribing 칩(lav). % 소스 없음
      (binary) → indeterminate 라벨만(BUILD-SPEC §6).
@@ -33,21 +33,29 @@ import {
   type FileRowState,
 } from './transcript-format';
 
-// CD F() 3-상태 → 유틸리티 클래스맵. 행 프레임(비-done 은 lav tint) + 상태 칩.
+// CD F() 3-상태 → 유틸리티 클래스맵. 행 프레임 + 30 상태 타일 + 상태 칩.
+//
+// Soft Identity 장면 02 "진행 중" 실치수값:
+//   진행 중 행 = bg --row-run-bg(#fbf9ff) · line --run-track(#e6dffb)
+//   실패 행    = bg --row-err-bg(#fffafa) · line --err-line · 사유 --err-fg
+//   완료 행    = 흰 면 + 1px --line (원색 아이콘 타일은 30px = 작은 면이라 유지)
+// --row-run-bg · --row-err-bg 는 CD 절대값 전용 원자(작업 6 에서 승격) —
+// --run-bg/--err-bg 로 굽히지 않는다(AUTHORITY).
+// 칩은 핵심규칙 4: 테두리 없음 · 틴트 면 + 진한 글자.
 const ROW_CLASS: Record<FileRowState, string> = {
-  done: 'border-ink bg-paper',
-  processing: 'border-line bg-lav-bg-2',
-  failed: 'border-line bg-lav-bg-2',
+  done: 'border-soft-line bg-soft-surface',
+  processing: 'border-soft-run-track bg-row-run-bg',
+  failed: 'border-soft-err-line bg-row-err-bg',
 };
 const ICON_BG: Record<FileRowState, string> = {
   done: 'bg-lav',
-  processing: 'bg-lav-bg-3',
-  failed: 'bg-lav-bg-3',
+  processing: 'bg-soft-run-bg',
+  failed: 'bg-soft-err-bg',
 };
 const CHIP_CLASS: Record<FileRowState, string> = {
-  done: 'border-success-line bg-success-bg text-success-text',
-  processing: 'border-lav-text/30 bg-lav-bg-3 text-lav-text',
-  failed: 'border-error-line bg-error-line/30 text-error-text',
+  done: 'bg-soft-ok-bg text-soft-ok-fg',
+  processing: 'bg-soft-run-bg text-soft-run-fg',
+  failed: 'bg-soft-err-bg text-soft-err-fg',
 };
 
 function FileRow({
@@ -108,7 +116,7 @@ function FileRow({
     <>
       <span
         aria-hidden
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--fv-radius-field)] border border-soft-line text-lg ${ICON_BG[state]}`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--fv-radius-field)] text-lg ${ICON_BG[state]}`}
       >
         {fileIcon(job.mime_type, job.filename)}
       </span>
@@ -119,7 +127,7 @@ function FileRow({
         <span className="mt-0.5 block truncate text-sm text-mute-soft">{meta}</span>
       </span>
       <span
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border px-[11px] py-1 text-sm font-bold ${CHIP_CLASS[state]}`}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill px-[11px] py-1 text-sm font-bold ${CHIP_CLASS[state]}`}
       >
         {state === 'done' ? <span aria-hidden>✓</span> : null}
         {chipLabel}
@@ -206,7 +214,7 @@ export function TranscriptFileList({
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 헤더 — 전체 선택 + (선택 시) 벌크 툴바. 스크롤 영역 밖(shrink-0)이라
           목록을 스크롤해도 항상 보인다. */}
-      <div className="shrink-0 border-b border-line-soft px-6 pb-3 pt-[18px]">
+      <div className="shrink-0 border-b border-soft-hair px-6 pb-3 pt-[18px]">
         <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-mute-soft">
           <Checkbox
             checked={allSelected}
