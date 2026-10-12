@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}a{color:#c2334f;text-decoration:none;}a:hover{color:#9e2740;}
+@keyframes laneflow{to{background-position:44px 0;}}
+@keyframes rundot{0%,100%{opacity:1;}50%{opacity:.35;}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;}}</style>
+</helmet>
+
+<div style="min-height:100vh;width:max-content;background:#fbfbf9;background-image:radial-gradient(#d8dad6 1.1px,transparent 1.1px);background-size:22px 22px;padding:56px;display:flex;flex-direction:column;align-items:flex-start;gap:60px;">
+
+  <div style="width:1200px;display:flex;flex-direction:column;gap:13px;">
+    <div style="display:inline-flex;align-items:center;align-self:flex-start;border:2px solid #1d1b20;background:#1d1b20;color:#fff;border-radius:9px;padding:5px 14px;font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;letter-spacing:2px;box-shadow:3px 3px 0 rgba(29,27,32,.3);">CANVAS MODULAR · 멘탈 모델 확정 장면</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:44px;font-weight:800;color:#1d1b20;letter-spacing:-1.3px;line-height:1.1;">위젯은 팔레트에 살고, 작업면에는 쓰는 것만</div>
+    <div style="font-size:14.5px;color:#5b5965;line-height:1.85;max-width:1060px;">방향 1(팔레트 + 작업면)의 핵심 장면 M0–M3 입니다. 풀 번들이 아니라 <b style="color:#1d1b20;">눈으로 확정할 장면</b>이고, 장면마다 고른 것과 버린 것을 적었습니다. 레인 내부는 v3 그대로입니다. 장면은 화면 1600×1000 을 75% 로 보여주며, 팔레트·툴바는 화면 고정이고 레인·카드는 캔버스 줌을 따릅니다.</div>
+  </div>
+
+  <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="4">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">{{ s.id }}</span><span style="font-size:18px;font-weight:800;color:#1d1b20;">{{ s.title }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">{{ s.code }}</span></div>
+
+      <div style="width:1200px;height:750px;border:3px solid #1d1b20;border-radius:16px;box-shadow:8px 8px 0 rgba(29,27,32,.28);overflow:hidden;position:relative;background:#fff;">
+        <div style="position:absolute;left:0;top:0;width:1600px;height:1000px;transform:scale(.75);transform-origin:0 0;">
+
+          <!-- palette -->
+          <div style="position:absolute;left:0;top:0;width:240px;height:1000px;background:#fff;border-right:2px solid #1d1b20;padding:16px 12px;display:flex;flex-direction:column;gap:8px;z-index:5;">
+            <div style="height:56px;display:flex;flex-direction:column;gap:6px;margin-bottom:8px;padding:0 4px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">위젯</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:800;color:#8a8693;">7</span><span style="margin-left:auto;width:28px;height:28px;border:1.5px solid rgba(29,27,32,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b5965" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 6l-6 6 6 6"></path><path d="M19 6l-6 6 6 6"></path></svg></span></div>
+              <div style="font-size:12px;color:#8a8693;line-height:1.4;">끌어서 체인에 넣고, 눌러서 엽니다</div>
+            </div>
+            <sc-for list="{{ s.palette }}" as="t" hint-placeholder-count="7">
+              <div style="width:216px;height:64px;border:{{ t.bd }};border-radius:12px;background:{{ t.bg }};box-shadow:{{ t.sh }};display:flex;align-items:center;gap:11px;padding:0 10px 0 12px;flex-shrink:0;">
+                <div style="width:36px;height:36px;border:1.5px solid #1d1b20;border-radius:9px;background:{{ t.tone }};display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:{{ t.op }};">{{ t.icon }}</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;opacity:{{ t.op }};">
+                  <div style="font-size:13.5px;font-weight:800;color:#1d1b20;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.ko }}</div>
+                  <div style="display:flex;align-items:center;gap:6px;min-height:18px;">
+                    <sc-if value="{{ t.showMeta }}" hint-placeholder-val="{{ true }}">
+                      <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8a8693;">💎{{ t.credit }}</span>
+                      <sc-if value="{{ t.linkOn }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#5b5965;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#5b5965" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>체인</span></sc-if>
+                    </sc-if>
+                    <sc-if value="{{ t.showChip }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:4px;border:1.5px solid {{ t.cLine }};background:{{ t.cBg }};border-radius:999px;padding:1px 8px 1px 6px;font-size:10.5px;font-weight:800;color:{{ t.cFg }};white-space:nowrap;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ t.cFg }}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>{{ t.cText }}</span></sc-if>
+                    <sc-if value="{{ t.showFit }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;border:1.5px solid #1d1b20;background:#1d1b20;border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:800;color:#fff;">{{ t.fitText }}</span></sc-if>
+                    <sc-if value="{{ t.showRun }}" hint-placeholder-val="{{ false }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ t.rDot }};flex-shrink:0;animation:{{ t.rAnim }};"></span><span style="font-size:11px;font-weight:800;color:{{ t.rFg }};white-space:nowrap;">{{ t.rText }}</span></sc-if>
+                    <sc-if value="{{ t.showNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#8a8693;white-space:nowrap;">{{ t.note }}</span></sc-if>
+                  </div>
+                </div>
+                <sc-if value="{{ t.gripOn }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:3px 3px;gap:3px;flex-shrink:0;"><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span></div></sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- canvas area -->
+          <div style="position:absolute;left:240px;top:0;width:1360px;height:1000px;background:#fbfbf9;background-image:radial-gradient(#dcdedb 1.3px,transparent 1.3px);background-size:24px 24px;overflow:hidden;">
+
+            <div style="position:absolute;left:24px;top:84px;transform:scale({{ s.zoom }});transform-origin:0 0;">
+              <sc-if value="{{ s.hasLane }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:0;top:0;display:inline-flex;flex-direction:column;border:3px solid #1d1b20;border-radius:20px;background:#f7f7f5;box-shadow:3px 3px 0 rgba(29,27,32,.14);overflow:hidden;">
+                  <div style="height:72px;background:#fff;border-bottom:2px solid #1d1b20;padding:0 24px;display:flex;align-items:center;gap:16px;white-space:nowrap;">
+                    <span style="width:40px;height:40px;border-radius:11px;border:2px solid #1d1b20;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></span>
+                    <span style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">체인 1</span>
+                    <sc-if value="{{ s.lane.editable }}" hint-placeholder-val="{{ true }}"><div style="display:inline-flex;align-items:stretch;border:2px solid #1d1b20;border-radius:12px;overflow:hidden;background:#fff;box-shadow:2px 2px 0 #1d1b20;"><span style="padding:8px 18px;font-size:16px;font-weight:800;background:#1d1b20;color:#fff;">단계별 승인</span><span style="width:2px;background:#1d1b20;"></span><span style="padding:8px 18px;font-size:16px;font-weight:800;color:#5b5965;">자동</span></div></sc-if>
+                    <sc-if value="{{ s.lane.badge }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;border:2px solid #1d1b20;border-radius:999px;padding:4px 14px;font-size:15px;font-weight:800;color:#1d1b20;background:#fff;">단계별 승인</span></sc-if>
+                    <span style="width:2px;height:30px;background:rgba(29,27,32,.12);"></span>
+                    <span style="font-family:ui-monospace,Menlo,monospace;font-size:18px;font-weight:800;color:{{ s.lane.stFg }};">{{ s.lane.status }}</span>
+                    <span style="flex:1;min-width:24px;"></span>
+                    <sc-if value="{{ s.lane.cost }}" hint-placeholder-val="{{ false }}"><span style="font-family:ui-monospace,Menlo,monospace;font-size:17px;font-weight:800;color:#1d1b20;background:#f7f7f5;border:1.5px solid rgba(29,27,32,.14);border-radius:8px;padding:5px 12px;">세션 후 💎1 + 파일당 25</span></sc-if>
+                    <span style="font-size:16px;font-weight:700;color:#5b5965;border-bottom:1.5px solid rgba(29,27,32,.2);">{{ s.lane.action }}</span>
+                  </div>
+                  <div style="padding:40px 32px;display:flex;align-items:center;">
+                    <sc-for list="{{ s.items }}" as="it" hint-placeholder-count="5">
+                      <div style="display:flex;align-items:center;flex-shrink:0;">
+                        <sc-if value="{{ it.isCard }}" hint-placeholder-val="{{ true }}">
+                          <div style="width:604px;height:900px;border:3px solid #1d1b20;border-radius:20px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;">
+                            <div style="background:{{ it.tone }};border-bottom:2px solid #1d1b20;padding:20px 24px;display:flex;align-items:center;gap:12px;"><span style="font-family:'Outfit',sans-serif;font-size:29px;font-weight:800;color:#1d1b20;letter-spacing:-0.9px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.ko }}</span><span style="display:inline-flex;align-items:stretch;height:36px;border:2px solid #1d1b20;border-radius:10px;background:#fff;box-shadow:2px 2px 0 #1d1b20;overflow:hidden;flex-shrink:0;"><span style="width:58px;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;">💎{{ it.credit }}</span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:44px;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:44px;"></span><span style="width:1.5px;background:#1d1b20;"></span><span style="width:44px;"></span></span></div>
+                            <div style="border-bottom:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;padding:10px 24px;display:flex;align-items:center;min-height:48px;"><span style="display:inline-block;width:132px;height:26px;border-radius:999px;background:#fff;border:1.5px solid #1d1b20;"></span><span style="margin-left:auto;display:inline-flex;align-items:center;border:1.5px solid {{ it.cLine }};background:{{ it.cBg }};border-radius:999px;padding:3px 12px;font-size:13px;font-weight:800;color:{{ it.cFg }};">{{ it.chip }}</span></div>
+                            <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:14px;">
+                              <sc-for list="{{ it.rows }}" as="r" hint-placeholder-count="3"><div style="height:{{ r.h }};width:{{ r.w }};border:{{ r.bd }};border-radius:12px;background:{{ r.bg }};flex-shrink:0;"></div></sc-for>
+                            </div>
+                            <div style="border-top:1px solid rgba(29,27,32,.08);padding:18px 24px;display:flex;align-items:center;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:14px;color:#8a8693;">{{ it.foot }}</span><span style="margin-left:auto;display:inline-block;width:120px;height:44px;border-radius:999px;background:{{ it.cta }};"></span></div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isSlot }}" hint-placeholder-val="{{ false }}">
+                          <div style="width:604px;height:900px;border:3px solid #1d1b20;border-radius:20px;background:{{ it.tone }};display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:20px;text-align:center;padding:180px 48px 48px;">
+                            <div style="width:88px;height:88px;border:2.5px solid #1d1b20;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#1d1b20;">↓</div>
+                            <div style="font-size:26px;font-weight:800;color:#1d1b20;">놓으면 2단계로 들어갑니다</div>
+                            <div style="font-size:19px;color:#2a262f;">전사록 생성기 · 💎1</div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ it.isSeg }}" hint-placeholder-val="{{ false }}"><div style="width:96px;height:900px;position:relative;">{{ it.line }}</div></sc-if>
+                        <sc-if value="{{ it.isOut }}" hint-placeholder-val="{{ false }}">
+                          <div style="width:320px;height:220px;border:2px dashed #c9ccd2;border-radius:16px;background:#fff;overflow:hidden;display:flex;flex-direction:column;">
+                            <div style="border-bottom:2px dashed #c9ccd2;padding:14px 18px;"><span style="font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:#8a8693;">탑라인 보고서</span></div>
+                            <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#a3a7ad;">대기</div>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ s.hasInst }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:0;top:1180px;display:flex;flex-direction:column;gap:14px;">
+                  <div style="display:flex;align-items:center;gap:12px;"><span style="width:22px;height:22px;border-radius:6px;background:#bfe9ef;border:2px solid #1d1b20;"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:28px;font-weight:800;color:#5b5965;">데스크 리서치</span></div>
+                  <div style="width:604px;height:900px;border:3px solid #1d1b20;border-radius:20px;background:#fff;box-shadow:4px 4px 0 #1d1b20;overflow:hidden;display:flex;flex-direction:column;">
+                    <div style="background:#bfe9ef;border-bottom:2px solid #1d1b20;padding:20px 24px;display:flex;align-items:center;"><span style="font-family:'Outfit',sans-serif;font-size:29px;font-weight:800;color:#1d1b20;letter-spacing:-0.9px;flex:1;">데스크 리서치</span><span style="display:inline-block;width:194px;height:36px;border:2px solid #1d1b20;border-radius:10px;background:#fff;box-shadow:2px 2px 0 #1d1b20;"></span></div>
+                    <div style="border-bottom:1.5px solid rgba(29,27,32,.1);background:#f7f7f5;min-height:48px;"></div>
+                    <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:14px;"><div style="height:64px;border:2px solid #1d1b20;border-radius:12px;"></div><div style="height:46px;border:1.5px solid #bfe9ef;background:#f0fbfd;border-radius:999px;width:70%;"></div><div style="height:60px;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;"></div><div style="height:60px;border:1.5px solid rgba(29,27,32,.14);border-radius:12px;"></div></div>
+                    <div style="border-top:1px solid rgba(29,27,32,.08);padding:18px 24px;display:flex;"><span style="margin-left:auto;display:inline-block;width:120px;height:44px;border-radius:999px;background:#1d1b20;"></span></div>
+                  </div>
+                </div>
+                <div style="position:absolute;left:-28px;top:1140px;width:1500px;height:1010px;border:4px dashed #ff5c8a;border-radius:28px;"></div>
+                <div style="position:absolute;left:668px;top:1240px;display:flex;flex-direction:column;gap:12px;width:760px;">
+                  <span style="align-self:flex-start;font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:800;letter-spacing:.1em;color:#fff;background:#ff5c8a;border-radius:8px;padding:6px 16px;">PHASE 2 미리보기</span>
+                  <span style="font-size:34px;font-weight:800;color:#c2334f;line-height:1.35;">단독 인스턴스 — 셸 그대로, 이름표만 위에</span>
+                  <span style="font-size:26px;color:#9e2740;line-height:1.5;">팔레트에서 빈 작업면에 놓으면 생깁니다. 치울 때는 팔레트로 다시 끌어다 놓습니다.</span>
+                </div>
+              </sc-if>
+            </div>
+
+            <!-- screen-fixed toolbar -->
+            <div style="position:absolute;left:24px;top:22px;display:flex;align-items:center;gap:12px;z-index:3;">
+              <span style="display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px 0 14px;border-radius:999px;border:{{ s.tb.bd }};background:{{ s.tb.bg }};color:{{ s.tb.fg }};box-shadow:{{ s.tb.sh }};font-size:14px;font-weight:800;"><span style="font-size:17px;line-height:1;">+</span>새 체인</span>
+              <sc-if value="{{ s.tb.tip }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#8a8693;font-weight:600;">파일럿에서는 체인을 하나만 만들 수 있어요</span></sc-if>
+              <sc-if value="{{ s.hasPill }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 16px 0 7px;border-radius:999px;border:1.5px solid #1d1b20;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.14);"><span style="width:28px;height:28px;border-radius:50%;border:1.5px solid #1d1b20;display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg></span><span style="font-size:13px;font-weight:800;color:#1d1b20;">체인 1</span><span style="width:1.5px;height:15px;background:rgba(29,27,32,.14);"></span><span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;font-weight:800;color:#6b4aa0;">2/3 · 전사 중</span></span></sc-if>
+            </div>
+            <div style="position:absolute;right:24px;bottom:22px;display:inline-flex;align-items:center;gap:14px;height:36px;padding:0 14px;border:1.5px solid #1d1b20;border-radius:999px;background:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.12);font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:800;color:#1d1b20;z-index:3;"><span>−</span><span>{{ s.zoomText }}</span><span>+</span></div>
+
+            <sc-if value="{{ s.hasEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:400px;top:330px;width:560px;border:1.5px solid rgba(29,27,32,.14);border-radius:16px;background:#fff;padding:40px 36px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;">
+                <div style="width:64px;height:64px;border:3px solid #1d1b20;border-radius:18px;background:#fff;box-shadow:4px 4px 0 rgba(29,27,32,.22);display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1d1b20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="6" height="16" rx="1.5" fill="#ffd0e2"></rect><path d="M13 12h7"></path><path d="M17 8l4 4-4 4"></path></svg></div>
+                <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.5px;">작업면이 비어 있어요</div>
+                <div style="font-size:14px;color:#5b5965;line-height:1.7;max-width:420px;">체인을 만들려면 새 체인을 열고 왼쪽에서 위젯을 끌어 넣으세요. 하나만 쓸 거라면 위젯을 누르면 바로 열립니다.</div>
+                <span style="display:inline-flex;align-items:center;gap:8px;background:#1d1b20;color:#fff;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:800;box-shadow:2px 2px 0 rgba(29,27,32,.28);margin-top:4px;">+ 새 체인</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ s.hasGhost }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:432px;top:338px;width:216px;height:64px;transform:rotate(2deg);border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:6px 6px 0 rgba(29,27,32,.3);display:flex;align-items:center;gap:11px;padding:0 12px;z-index:6;">
+                <div style="width:36px;height:36px;border:1.5px solid #1d1b20;border-radius:9px;background:#e7defe;display:flex;align-items:center;justify-content:center;">{{ s.ghostIcon }}</div>
+                <div style="display:flex;flex-direction:column;gap:4px;"><span style="font-size:13.5px;font-weight:800;color:#1d1b20;">전사록 생성기</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8a8693;">💎1</span></div>
+              </div>
+              <span style="position:absolute;left:560px;top:412px;z-index:7;display:inline-flex;align-items:center;border:1.5px solid #1d1b20;background:#1d1b20;border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:800;color:#fff;box-shadow:2px 2px 0 rgba(29,27,32,.2);white-space:nowrap;">체인 2단계</span>
+            </sc-if>
+          </div>
+
+          <div style="position:absolute;left:0;top:0;width:1600px;height:1000px;pointer-events:none;z-index:8;">{{ s.annot }}</div>
+        </div>
+        <div style="position:absolute;right:12px;top:10px;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#a3a7ad;background:rgba(255,255,255,.85);border-radius:4px;padding:2px 6px;z-index:9;">{{ s.frameNote }}</div>
+      </div>
+
+      <div style="width:1200px;border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);overflow:hidden;">
+        <div style="display:grid;grid-template-columns:180px minmax(0,1fr) minmax(0,1fr);background:#f7f7f5;border-bottom:2px solid #1d1b20;">
+          <span style="padding:9px 14px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5b5965;font-weight:800;">결정</span>
+          <span style="padding:9px 14px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#14713a;font-weight:800;">고른 것</span>
+          <span style="padding:9px 14px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a8693;font-weight:800;">버린 것</span>
+        </div>
+        <sc-for list="{{ s.memo }}" as="m" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:180px minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid rgba(29,27,32,.08);">
+            <span style="padding:11px 14px;font-size:13px;font-weight:800;color:#1d1b20;line-height:1.5;">{{ m.q }}</span>
+            <span style="padding:11px 14px;font-size:12.5px;color:#2a262f;line-height:1.7;border-left:1px solid rgba(29,27,32,.06);">{{ m.a }}</span>
+            <span style="padding:11px 14px;font-size:12px;color:#5b5965;line-height:1.7;border-left:1px solid rgba(29,27,32,.06);background:#fbfbf9;">{{ m.no }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-for>
+
+  <!-- M3 -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:800;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">M3</span><span style="font-size:18px;font-weight:800;color:#1d1b20;">팔레트 상태 표현</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#8a8693;">실치수 1:1 · 둘째 줄이 메타 ↔ 상태로 바뀝니다</span></div>
+    <div style="width:1200px;border:3px solid #1d1b20;border-radius:16px;background:#fff;box-shadow:8px 8px 0 rgba(29,27,32,.28);padding:26px;display:flex;gap:30px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 20px;">
+        <sc-for list="{{ states }}" as="x" hint-placeholder-count="9">
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="height:{{ x.boxH }};display:flex;align-items:center;">
+              <div style="width:216px;height:64px;border:{{ x.t.bd }};border-radius:12px;background:{{ x.t.bg }};box-shadow:{{ x.t.sh }};display:flex;align-items:center;gap:11px;padding:0 10px 0 12px;flex-shrink:0;">
+                <div style="width:36px;height:36px;border:1.5px solid #1d1b20;border-radius:9px;background:{{ x.t.tone }};display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:{{ x.t.op }};">{{ x.t.icon }}</div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;opacity:{{ x.t.op }};">
+                  <div style="font-size:13.5px;font-weight:800;color:#1d1b20;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ x.t.ko }}</div>
+                  <div style="display:flex;align-items:center;gap:6px;min-height:18px;">
+                    <sc-if value="{{ x.t.showMeta }}" hint-placeholder-val="{{ true }}"><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;font-weight:700;color:#8a8693;">💎{{ x.t.credit }}</span><sc-if value="{{ x.t.linkOn }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#5b5965;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#5b5965" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>체인</span></sc-if></sc-if>
+                    <sc-if value="{{ x.t.showChip }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:4px;border:1.5px solid {{ x.t.cLine }};background:{{ x.t.cBg }};border-radius:999px;padding:1px 8px 1px 6px;font-size:10.5px;font-weight:800;color:{{ x.t.cFg }};white-space:nowrap;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ x.t.cFg }}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"></path><path d="M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1"></path><path d="M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1"></path></svg>{{ x.t.cText }}</span></sc-if>
+                    <sc-if value="{{ x.t.showFit }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;border:1.5px solid #1d1b20;background:#1d1b20;border-radius:999px;padding:1px 9px;font-size:10.5px;font-weight:800;color:#fff;">{{ x.t.fitText }}</span></sc-if>
+                    <sc-if value="{{ x.t.showRun }}" hint-placeholder-val="{{ false }}"><span style="width:7px;height:7px;border-radius:50%;background:{{ x.t.rDot }};flex-shrink:0;animation:{{ x.t.rAnim }};"></span><span style="font-size:11px;font-weight:800;color:{{ x.t.rFg }};white-space:nowrap;">{{ x.t.rText }}</span></sc-if>
+                    <sc-if value="{{ x.t.showNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#8a8693;white-space:nowrap;">{{ x.t.note }}</span></sc-if>
+                  </div>
+                </div>
+                <sc-if value="{{ x.t.gripOn }}" hint-placeholder-val="{{ true }}"><div style="display:grid;grid-template-columns:3px 3px;gap:3px;flex-shrink:0;"><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span><span style="width:3px;height:3px;border-radius:50%;background:#a3a7ad;"></span></div></sc-if>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;background:#f7f7f5;border:1px solid rgba(29,27,32,.14);border-radius:4px;padding:1px 6px;">{{ x.key }}</span><span style="font-size:13px;font-weight:800;color:#1d1b20;">{{ x.name }}</span></div>
+            <div style="font-size:12px;color:#5b5965;line-height:1.7;">{{ x.rule }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="width:230px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8a8693;font-weight:800;">접힌 레일 · 72</div>
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <div style="width:72px;border:2px solid #1d1b20;border-radius:14px;background:#fff;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <sc-for list="{{ rail }}" as="r" hint-placeholder-count="7">
+              <div style="position:relative;width:44px;height:44px;border:1.5px solid #1d1b20;border-radius:11px;background:{{ r.tone }};display:flex;align-items:center;justify-content:center;">{{ r.icon }}<sc-if value="{{ r.dot }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;right:-4px;top:-4px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:{{ r.dotC }};"></span></sc-if></div>
+            </sc-for>
+          </div>
+          <div style="flex:1;font-size:12px;color:#5b5965;line-height:1.75;">화면 폭 1280 미만에서 접힙니다. 톤 타일과 상태 도트만 남고, 이름·크레딧은 hover/focus 툴팁으로. 끌기와 누르기는 그대로 됩니다.<br><br>도트 색은 체인 칩과 같습니다 — 보라 = 진행, amber = 대기·멈춤, 초록 = 완료, 빨강 = 실패.</div>
+        </div>
+      </div>
+    </div>
+    <div style="width:1200px;border:2px solid #1d1b20;border-radius:12px;background:#fff;box-shadow:3px 3px 0 rgba(29,27,32,.14);overflow:hidden;">
+      <sc-for list="{{ m3memo }}" as="m" hint-placeholder-count="3">
+        <div style="display:grid;grid-template-columns:180px minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid rgba(29,27,32,.08);">
+          <span style="padding:11px 14px;font-size:13px;font-weight:800;color:#1d1b20;line-height:1.5;">{{ m.q }}</span>
+          <span style="padding:11px 14px;font-size:12.5px;color:#2a262f;line-height:1.7;border-left:1px solid rgba(29,27,32,.06);">{{ m.a }}</span>
+          <span style="padding:11px 14px;font-size:12px;color:#5b5965;line-height:1.7;border-left:1px solid rgba(29,27,32,.06);background:#fbfbf9;">{{ m.no }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- open questions -->
+  <div style="width:1200px;border:3px solid #1d1b20;border-radius:16px;background:#1d1b20;box-shadow:6px 6px 0 rgba(29,27,32,.3);padding:24px 26px;display:flex;flex-direction:column;gap:16px;">
+    <div style="font-family:'Outfit',sans-serif;font-size:23px;font-weight:800;color:#fff;letter-spacing:-0.5px;">브리프 §4 열린 질문에 대한 답</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+      <sc-for list="{{ answers }}" as="q" hint-placeholder-count="4">
+        <div style="border:1.5px solid rgba(255,255,255,.2);border-radius:12px;background:rgba(255,255,255,.05);padding:15px 17px;display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;align-items:center;gap:9px;"><span style="font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:800;color:#1d1b20;background:#ffd0e2;border-radius:5px;padding:2px 8px;">{{ q.id }}</span><span style="font-size:14px;font-weight:800;color:#fff;">{{ q.q }}</span></div>
+          <div style="font-size:13px;font-weight:800;color:#ffd0e2;">→ {{ q.a }}</div>
+          <div style="font-size:12px;color:#c9ccd2;line-height:1.75;">{{ q.why }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const e = React.createElement;
+const W = {
+  D: { ko: '데스크 리서치', tone: '#bfe9ef', credit: 60, chain: false },
+  R: { ko: '리크루팅', tone: '#ffe8a8', credit: 30, chain: false },
+  P: { ko: '인터뷰 어시스턴트', tone: '#cfe6ff', credit: 25, chain: true },
+  L: { ko: '라이브 통역', tone: '#cdebd9', credit: 50, chain: false },
+  T: { ko: '전사록 생성기', tone: '#e7defe', credit: 1, chain: true },
+  I: { ko: '인터뷰 결과 생성기', tone: '#ffd0e2', credit: 10, chain: true },
+  U: { ko: 'AI UT', tone: '#ffd9be', credit: 40, chain: false },
+};
+const ORDER = ['D', 'R', 'P', 'L', 'T', 'I', 'U'];
+
+const IP = {
+  D: [['circle', { cx: 11, cy: 11, r: 6, fill: '#fff' }], ['path', { d: 'M16 16l4.5 4.5' }]],
+  R: [['circle', { cx: 12, cy: 8, r: 3.5, fill: '#fff' }], ['path', { d: 'M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6z', fill: '#fff' }]],
+  P: [['path', { d: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 4v-4H6a2 2 0 0 1-2-2z', fill: '#fff' }], ['path', { d: 'M9 10h.01M12 10h.01M15 10h.01' }]],
+  L: [['circle', { cx: 12, cy: 12, r: 8, fill: '#fff' }], ['path', { d: 'M4 12h16M12 4c2.5 2.2 2.5 13.8 0 16M12 4c-2.5 2.2-2.5 13.8 0 16' }]],
+  T: [['path', { d: 'M6 3h8l4 4v14H6z', fill: '#fff' }], ['path', { d: 'M14 3v4h4M9 12h6M9 16h5' }]],
+  I: [['rect', { x: 4, y: 12, width: 4, height: 8, fill: '#fff' }], ['rect', { x: 10, y: 7, width: 4, height: 13, fill: '#fff' }], ['rect', { x: 16, y: 4, width: 4, height: 16, fill: '#fff' }]],
+  U: [['path', { d: 'M5 3l14 7-6 2-2 6z', fill: '#fff' }]],
+};
+const icon = (k, size = 20) => e('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: '#1d1b20', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+  IP[k].map(([tag, p], i) => e(tag, { key: i, ...p })));
+
+const CHIPC = { pending: ['#fff', 'rgba(29,27,32,.2)', '#5b5965'], running: ['#f6f2ff', '#d6c7f5', '#6b4aa0'], done: ['#f4fbf6', '#cdeed8', '#14713a'], awaiting: ['#fff1e6', '#f0d78a', '#8a5a10'] };
+function tile(k, st = 'idle', o = {}) {
+  const t = { ...W[k], icon: icon(k), bd: '1.5px solid #1d1b20', bg: '#fff', sh: '2px 2px 0 rgba(29,27,32,.12)', op: 1, gripOn: true, showMeta: true, linkOn: W[k].chain, showChip: false, showFit: false, showRun: false, showNote: false, cText: '', cBg: '', cLine: '', cFg: '', fitText: '', rText: '', rFg: '', rDot: '', rAnim: 'none', note: '' };
+  if (st === 'hover') Object.assign(t, { sh: '2px 2px 0 #1d1b20', bg: '#fbfbf9' });
+  if (st === 'fit') Object.assign(t, { bd: '2px solid #1d1b20', sh: '2px 2px 0 #1d1b20', showMeta: false, showFit: true, fitText: o.fit });
+  if (st === 'chain') { const c = CHIPC[o.c]; Object.assign(t, { showMeta: false, showChip: true, cText: o.text, cBg: c[0], cLine: c[1], cFg: c[2], gripOn: false }); }
+  if (st === 'run') Object.assign(t, { showMeta: false, showRun: true, rText: o.text, rFg: '#6b4aa0', rDot: '#8b5cf6', rAnim: 'rundot 1.4s ease-in-out infinite' });
+  if (st === 'paused') Object.assign(t, { showMeta: false, showRun: true, rText: o.text, rFg: '#8a5a10', rDot: '#e0a83a' });
+  if (st === 'error') Object.assign(t, { showMeta: false, showRun: true, rText: o.text, rFg: '#b4443f', rDot: '#ef4444' });
+  if (st === 'drag') Object.assign(t, { bd: '1.5px dashed rgba(29,27,32,.32)', bg: '#f7f7f5', sh: 'none', op: 0.45, showMeta: false, showNote: true, note: '끌어가는 중', gripOn: false });
+  if (st === 'inst') Object.assign(t, { showMeta: false, showNote: true, note: '작업면에 1개' });
+  return t;
+}
+const palette = (map = {}) => ORDER.map(k => map[k] ? tile(k, ...map[k]) : tile(k));
+
+const row = (h, bd, bg, w) => ({ h, bd: bd || 'none', bg: bg || 'rgba(29,27,32,.07)', w: w || '100%' });
+const ROWS = {
+  setup: [row('60px', '2px solid #1d1b20', '#fff'), row('60px', '1.5px solid rgba(29,27,32,.14)', '#fff'), row('60px', '1.5px solid rgba(29,27,32,.14)', '#fff'), row('120px', '1.5px solid rgba(29,27,32,.1)', '#fbfbf9')],
+  done: [row('92px', '1.5px solid #cdeed8', '#f4fbf6'), row('60px', '1.5px solid rgba(29,27,32,.14)', '#fff'), row('60px', '1.5px solid rgba(29,27,32,.14)', '#fff')],
+  running: [row('84px', '1.5px solid #d6c7f5', '#f6f2ff'), row('60px', '1.5px solid rgba(29,27,32,.14)', '#fff'), row('14px', null, 'rgba(29,27,32,.1)')],
+  idle: [row('18px', null, null, '60%'), row('200px', '2px dashed #c9ccd2', '#fbfbf9'), row('60px', '1.5px solid rgba(29,27,32,.14)', '#fff')],
+};
+const FOOT = { setup: ['💎25', '#1d1b20'], done: ['완료', '#1d1b20'], running: ['진행 중', '#1d1b20'], idle: ['대기', '#eceef1'] };
+const card = (k, body, chip, cs) => { const c = CHIPC[cs]; return { isCard: true, isSlot: false, isSeg: false, isOut: false, ...W[k], rows: ROWS[body], foot: FOOT[body][0], cta: FOOT[body][1], chip, cBg: c[0], cLine: c[1], cFg: c[2] }; };
+function line(k) {
+  const tip = { done: '#1d1b20', pending: '#c9ccd2', running: '#8b5cf6' }[k];
+  const body = k === 'running'
+    ? e('div', { style: { position: 'absolute', left: 0, right: 10, top: 448, height: 5, borderRadius: 3, backgroundColor: '#d6c7f5', backgroundImage: 'repeating-linear-gradient(90deg,#8b5cf6 0 16px,transparent 16px 44px)', animation: 'laneflow 1s linear infinite' } })
+    : e('div', { style: { position: 'absolute', left: 0, right: 10, top: 449, borderTop: k === 'done' ? '3px solid #1d1b20' : '3px dashed #c9ccd2' } });
+  return e(React.Fragment, null, body, e('div', { style: { position: 'absolute', right: 0, top: 444, width: 0, height: 0, borderTop: '7px solid transparent', borderBottom: '7px solid transparent', borderLeft: `11px solid ${tip}` } }));
+}
+const seg = k => ({ isCard: false, isSlot: false, isSeg: true, isOut: false, line: line(k) });
+const slot = tone => ({ isCard: false, isSlot: true, isSeg: false, isOut: false, tone });
+const out = () => ({ isCard: false, isSlot: false, isSeg: false, isOut: true });
+
+const TB = { normal: { bd: '2px solid #1d1b20', bg: '#fff', fg: '#1d1b20', sh: '2px 2px 0 #1d1b20', tip: false }, off: { bd: '1.5px solid rgba(29,27,32,.2)', bg: '#eceef1', fg: '#8a8693', sh: 'none', tip: true } };
+const tileY = k => 88 + ORDER.indexOf(k) * 72 + 32;
+
+function dragAnnot() {
+  const y0 = tileY('T');
+  return e('svg', { width: 1600, height: 1000, style: { position: 'absolute', left: 0, top: 0 } },
+    e('path', { d: `M230 ${y0} C 420 ${y0 + 10}, 520 ${y0 - 40}, 668 ${y0 - 42}`, fill: 'none', stroke: '#ff5c8a', strokeWidth: 2.5, strokeDasharray: '7 7', strokeLinecap: 'round' }),
+    e('polygon', { points: `668,${y0 - 49} 680,${y0 - 42} 668,${y0 - 35}`, fill: '#ff5c8a' }),
+    e('text', { x: 300, y: y0 + 32, fill: '#c2334f', fontSize: 14, fontWeight: 800, fontFamily: 'Pretendard, sans-serif' }, '주석 · 끌기 경로 (UI 아님)'));
+}
+
+const BASE = { hasLane: false, hasInst: false, hasEmpty: false, hasGhost: false, hasPill: false, annot: null, ghostIcon: icon('T'), items: [], lane: {}, zoom: 0.5, zoomText: '50%' };
+const SCENES = [
+  { ...BASE, id: 'M0a', title: '기본 화면 — 팔레트 + 빈 작업면', code: 'Phase 1 · 첫 진입', tb: TB.normal, palette: palette(), hasEmpty: true, frameNote: '화면 1600×1000 · 75% 표시',
+    memo: [
+      { q: '팔레트 위치', a: '왼쪽 고정 레일 240. 캔버스 transform 밖이라 줌·이동과 무관하게 같은 자리에 있습니다. 풀뷰 사이드바와 같은 자리·같은 폭이라, 사용자는 이미 "왼쪽 = 위젯 목록"을 알고 있습니다.', no: '하단 독 — 레인이 가로로 길어 같은 축에서 시선이 겹치고, 앱 런처로 읽힘 · 플로팅 패널 — 자리가 바뀌는 공급원은 손이 기억하지 못함 · 상단 바 — 레인의 고정 자리와 충돌' },
+      { q: '모듈 타일 문법', a: '가로 행 216×64: 톤 타일(36, 아이콘 흰 채움) + 이름 13.5/800 + 둘째 줄(크레딧, 체인 가능 표시) + 끌기 그립. 셸이 아니므로 헤더밴드·툴바가 없습니다.', no: '정사각 아이콘 그리드 — 한국어 위젯명(7–9자)이 잘림 · 미니 카드 — 셸로 오인돼 "이건 열린 건가?"를 묻게 함' },
+      { q: '빈 작업면', a: '빈 상태 안내 + "+ 새 체인" 하나. 두 제스처(끌기 = 조립, 누르기 = 열기)를 문장으로 한 번 알려줍니다. 팔레트 머리에도 같은 문장이 한 줄로 상주합니다.', no: '빈 곳에 놓으면 새 체인(방향 2 차용) — Phase 2 에서 같은 제스처가 "단독 인스턴스"로 뜻이 바뀜. 단계마다 뜻이 바뀌는 제스처는 만들지 않습니다' },
+    ] },
+  { ...BASE, id: 'M0b', title: '기본 화면 — 레인이 하나 있을 때', code: 'Phase 1 · 조립 완료(v3 L3)', tb: TB.off, palette: palette({ P: ['chain', { c: 'pending', text: '체인 · 1단계' }], T: ['chain', { c: 'pending', text: '체인 · 2단계' }], I: ['chain', { c: 'pending', text: '체인 · 3단계' }] }), hasLane: true, frameNote: '화면 1600×1000 · 75% 표시 · 캔버스 줌 50%',
+    lane: { editable: true, badge: false, status: '준비됨 · 세션이 끝나면 시작', stFg: '#1d1b20', cost: true, action: '해체' },
+    items: [card('P', 'setup', '체인 1/3', 'pending'), seg('pending'), card('T', 'idle', '체인 2/3', 'pending'), seg('pending'), card('I', 'idle', '체인 3/3', 'pending'), seg('pending'), out()],
+    memo: [
+      { q: '레인 자리', a: '작업면 맨 위, v3 그대로. 레인은 작업면의 첫 주민이고 내부는 손대지 않았습니다.', no: '레인 자유 배치 — 파일럿 1개 체인에서 얻는 것이 없고, 화면 밖으로 흩어지면 요약 pill 의 존재 이유가 커짐' },
+      { q: '팔레트에 비친 소속', a: '레인에 들어간 위젯은 팔레트 타일 둘째 줄이 체인 칩(카드 서브바 칩과 같은 문법)으로 바뀌고 그립이 사라집니다. 같은 위젯을 같은 체인에 두 번 넣을 수 없기 때문입니다.', no: '레인에 든 타일을 팔레트에서 숨김 — 위젯 목록의 순서·개수가 바뀌어 손 기억이 깨짐' },
+      { q: '툴바 치수 정정', a: '"+ 새 체인"을 화면 px 40 높이로 그렸습니다. v3 번들은 이 버튼을 캔버스 좌표(56)로 그렸는데, 화면 고정 요소라 화면 px 가 맞습니다(LEARNINGS §3-1).', no: 'v3 의 56 유지 — 캔버스 줌 100% 에서만 맞는 값' },
+    ] },
+  { ...BASE, id: 'M1', title: '팔레트 → 레인 드래그', code: '2단계 슬롯 · 받을 수 있음', tb: TB.off, palette: palette({ P: ['chain', { c: 'pending', text: '체인 · 1단계' }], T: ['drag'] }), hasLane: true, hasGhost: true, annot: dragAnnot(), frameNote: '화면 1600×1000 · 75% 표시 · 캔버스 줌 50%',
+    lane: { editable: true, badge: false, status: '1단계', stFg: '#5b5965', cost: false, action: '해체' },
+    items: [card('P', 'setup', '체인 1/1', 'pending'), seg('pending'), slot('#e7defe')],
+    memo: [
+      { q: '끌려가는 것', a: '타일 자체(216×64 고스트, body 포털). 레인 슬롯이 v3 L1 처럼 받을 수 있음을 보여주고, 놓는 순간 슬롯 자리가 604×900 카드로 바뀝니다(160ms 페이드 교체).', no: '드래그 중 카드 크기로 부풀리기 — 줌에 따라 고스트 크기가 달라지고 슬롯 안내문을 가림 · 타일이 날아가 커지는 애니메이션 — 레이어(화면 ↔ 캔버스)를 건너는 보간이 비쌈' },
+      { q: '드롭 판정', a: '포인터 좌표를 surface 좌표로 환산해 슬롯 rect 와 비교합니다. 팔레트는 transform 밖, 슬롯은 안이라 두 좌표계를 건너는 드래그입니다.', no: 'HTML5 dragenter/dragleave — LEARNINGS §2-2 포함관계 함정 + 자식 진입 시 dragleave 발화' },
+      { q: '원본 타일', a: '제자리에 남고 "끌어가는 중"으로 흐려집니다. 팔레트는 공급원이라 비지 않습니다. 받을 수 없는 위젯·순서 오류는 v3 L2/L2b 그대로(드래그 허용, 슬롯이 사유를 말함).', no: '팔레트 타일 자리를 비움 — v3 의 "원래 자리" 윤곽은 캔버스 카드를 옮길 때 문법이고, 공급원에는 맞지 않음' },
+    ] },
+  { ...BASE, id: 'M2', title: '레인 + 단독 인스턴스 공존', code: 'Phase 1 레인 실행 중 · Phase 2 미리보기', tb: TB.off, hasPill: true, palette: palette({ D: ['inst'], L: ['run', { text: '진행 중 · 24분' }], P: ['chain', { c: 'done', text: '체인 · 완료' }], T: ['chain', { c: 'running', text: '체인 · 진행 중' }], I: ['chain', { c: 'pending', text: '체인 · 3단계' }] }), hasLane: true, hasInst: true, zoom: 0.42, zoomText: '42%', frameNote: '화면 1600×1000 · 75% 표시 · 캔버스 줌 42%',
+    lane: { editable: false, badge: true, status: '2/3 · 전사 중', stFg: '#6b4aa0', cost: false, action: '체인 종료' },
+    items: [card('P', 'done', '체인 1/3 · 완료', 'done'), seg('running'), card('T', 'running', '체인 2/3 · 진행 중', 'running'), seg('pending'), card('I', 'idle', '체인 3/3', 'pending'), seg('pending'), out()],
+    memo: [
+      { q: '단독 인스턴스 표현', a: '셸 그대로 + 카드 위 이름표(톤 도트 + 이름, mono). 레인과 인스턴스 모두 "이름이 붙은 작업면 오브젝트"라는 같은 규칙을 따릅니다 — 방향 2 의 개념 통일은 이 수준에서만 가져왔습니다.', no: '단독 카드도 길이 1 레인으로(방향 2) — 헤더·모드·세그먼트가 단독 사용에는 의미가 없음' },
+      { q: '배치', a: '레인은 맨 위 고정, 인스턴스는 그 아래 자유 배치. 인스턴스는 헤더를 잡고 옮깁니다.', no: '인스턴스를 그리드로 정렬 — 퇴역시키려는 3×3 이 다시 생김' },
+      { q: '치우기', a: '팔레트로 다시 끌어다 놓습니다(팔레트가 "놓으면 작업면에서 치움" 상태로 바뀜). 결과 데이터는 남습니다. 체인 밖에서 실행 중인 위젯(라이브 통역)은 팔레트 타일이 상태를 대신 보여줍니다.', no: '카드에 ✕ 버튼 — 셸 툴바를 바꿔야 함 · 확인 모달 — 데이터가 지워지지 않으므로 불필요' },
+    ] },
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      scenes: SCENES,
+      states: [
+        { key: 'idle', name: '기본', rule: '둘째 줄 = 크레딧. 체인을 지원하는 위젯(파일럿 3종)만 "체인" 표시가 붙습니다.', t: tile('P'), boxH: '72px' },
+        { key: 'hover', name: 'hover · focus', rule: '그림자가 불투명(2px ink)으로. 툴팁 "끌어서 체인에 · 눌러서 열기". 포커스 링은 제품 공통.', t: tile('T', 'hover'), boxH: '72px' },
+        { key: 'fit', name: '다음 단계 가능', rule: '레인에 빈 슬롯이 있을 때만, 그 슬롯에 들어갈 수 있는 타일에 "→ n단계". 나머지 타일은 바꾸지 않습니다.', t: tile('T', 'fit', { fit: '→ 2단계' }), boxH: '72px' },
+        { key: 'chain', name: '체인 소속', rule: '둘째 줄이 체인 칩으로(색은 단계 상태). 그립이 사라지고, 누르면 레인 안 그 카드로 이동합니다.', t: tile('T', 'chain', { c: 'running', text: '체인 · 진행 중' }), boxH: '72px' },
+        { key: 'run', name: '실행 중 (체인 밖)', rule: '보라 도트가 깜빡이고 경과 시간. 누르면 그 위젯이 열린 곳(풀뷰 또는 인스턴스)으로 갑니다.', t: tile('L', 'run', { text: '진행 중 · 24분' }), boxH: '72px' },
+        { key: 'paused', name: '멈춤 · 실패', rule: 'amber 또는 빨강 도트, 깜빡임 없음. 문구는 한 단어 + 사유("멈춤 · 크레딧").', t: tile('I', 'paused', { text: '멈춤 · 크레딧' }), boxH: '72px' },
+        { key: 'drag', name: '끌어가는 중', rule: '원본 타일은 제자리에서 점선 + 흐림. 공급원이므로 자리가 비지 않습니다.', t: tile('T', 'drag'), boxH: '72px' },
+        { key: 'inst', name: '작업면에 있음', rule: 'Phase 2. 단독 인스턴스 개수. 누르면 그 인스턴스로 이동합니다.', t: tile('D', 'inst'), boxH: '72px' },
+        { key: 'no-chain', name: '체인 미지원', rule: '기본과 같습니다 — 흐리지 않습니다. 단독으로는 쓸 수 있으니까요. 레인에 끌어오면 v3 L2 거절.', t: tile('U'), boxH: '72px' },
+      ],
+      rail: ORDER.map(k => ({ tone: W[k].tone, icon: icon(k, 22), dot: ['L', 'T', 'P'].includes(k), dotC: { L: '#8b5cf6', T: '#8b5cf6', P: '#16a34a' }[k] || '' })),
+      m3memo: [
+        { q: '위젯 상태를 누가 보여주나', a: '팔레트. 타일 둘째 줄이 평소엔 메타(크레딧), 일이 있으면 상태로 바뀝니다. 한 줄만 쓰므로 타일 높이가 변하지 않습니다.', no: '상태 배지를 타일 옆에 추가 — 240 폭에서 이름이 잘림' },
+        { q: '체인 미지원 표시', a: '지원하는 소수(3종)에 "체인" 표시를 붙이고, 미지원은 아무 표시도 하지 않습니다.', no: '미지원 4종을 회색 처리 — 단독으로는 다 쓸 수 있는데 못 쓰는 것처럼 보임 · 브리프의 "비활성" 상태는 만들지 않았습니다' },
+        { q: '누르기의 뜻', a: '"그 위젯이 있는 곳으로" 하나. 작업면에 있으면(레인·인스턴스) 그 카드로 캔버스가 이동하고, 없으면 풀뷰가 열립니다.', no: '체인 소속이면 누르기 무반응 — 팔레트가 상태판인데 눌러서 갈 수 없으면 안내만 하는 셈' },
+      ],
+      answers: [
+        { id: 'Q1', q: '발행 배치/visibility 의 거취', a: '그리드 좌표는 퇴역, 발행 = 팔레트 노출(on/off) + 순서', why: '어드민이 정하던 "어느 칸에"가 "보이는가 + 몇 번째인가"로 바뀝니다. 미발행 위젯은 회색으로 남기지 않고 숨깁니다. 기본 순서는 리서치 흐름(데스크 → 리크루팅 → 인터뷰 → 통역 → 전사 → 결과 → AI UT)으로 그렸고, 발행 순서가 정해지면 그걸 따릅니다.' },
+        { id: 'Q2', q: 'Navigator 의 거취', a: '위젯 단위 상태는 팔레트로 흡수 — Navigator 의 위젯 목록 역할은 중복', why: '남는 것은 "같은 위젯의 여러 실행 이력"입니다. 권장: Navigator 를 별도 패널로 두지 않고, 팔레트 타일에서 펼치는 작업 목록으로 통합. 확인 필요: Navigator 가 지금 위젯 단위가 아닌 무엇을 보여주는지(그게 있으면 통합 대신 축소).' },
+        { id: 'Q3', q: 'Phase 1 의 단독 실행', a: '타일 누르기 = 풀뷰 직행 (작업면에 있으면 그 카드로 이동)', why: 'Phase 2 에서도 누르기의 뜻은 같고, 끌기에 "빈 작업면 = 인스턴스"가 더해질 뿐입니다. Phase 1 에서 빈 작업면에 놓으면 받지 않고 타일이 돌아가며 "레인에 놓으세요"를 보여줍니다.' },
+        { id: 'Q4', q: '모바일 · 좁은 뷰포트', a: '<1280 접힌 레일 72 · <768 하단 시트 + 탭 액션', why: '접힌 레일은 M3 오른쪽에 그렸습니다. 터치에서는 드래그가 불안정하므로 시트의 타일을 누르면 "열기 / 체인에 추가" 두 가지를 고르게 합니다. 모바일에서 레인을 어떻게 보여줄지는 이번 범위 밖입니다.' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
