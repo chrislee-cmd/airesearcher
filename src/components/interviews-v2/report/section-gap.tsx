@@ -129,7 +129,7 @@ export function SectionGap({
   );
 }
 
-// 섹션 생성 중 로딩 카드(S5b pending) — 2px dashed processing · lav-bg · 도트
+// 섹션 생성 중 로딩 카드(S5b pending) — 1.5px dashed processing · lav-bg · 도트
 // processing. 명령 제출 후 생성+영속이 끝날 때까지 그 gap 에 렌더된다(낙관적
 // 자리표시). 성공 시 refetch 가 실제 inserted_section 으로 대체, 실패 시 제거.
 export function PendingSectionCard({ prompt }: { prompt: string }) {

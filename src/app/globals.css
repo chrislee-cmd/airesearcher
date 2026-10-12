@@ -96,7 +96,7 @@
      recruiting setup-accordion 이 inline style 의 var() 로 소비한다(check:design
      의 var 통과 규칙 + FileDropZone 과 동일 sanctioned 패턴). */
   --raw-surface-locked: #faf6ea;                            /* 표준 설문 블록 fill (cream) */
-  --cd-dashed-border: 1.6px dashed rgba(29, 27, 32, 0.22);  /* dropzone dashed */
+  --cd-dashed-border: 1.5px dashed var(--line-hover); /* 점선 빈 자리 (Soft 지정값) */
   --cd-solid-border: 1px solid var(--line);                /* paste box (Soft: 선 1px) */
   --cd-hairline-border: 1px solid var(--hair);              /* survey row·info (Soft) */
   --cd-amore-border: 1px solid var(--raw-accent-pink);      /* required chip·amore pill */
