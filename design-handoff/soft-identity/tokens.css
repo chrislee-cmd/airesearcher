@@ -1,0 +1,55 @@
+/* Soft Identity — design tokens (replaces Memphis tokens.json 2.0 visual layer)
+   Paste into globals.css :root and map to Tailwind theme.extend. */
+:root {
+  /* neutrals */
+  --ink: #1d1b20;
+  --ink-2: #3a3640;
+  --mute: #6e6a75;
+  --faint: #9a96a1;
+  --disabled-fg: #c4c1c9;
+  --line: #e7e5ea;          /* 1px borders: cards, inputs, secondary buttons */
+  --hair: #efedf1;          /* 1px dividers inside surfaces */
+  --fill: #f4f3f6;          /* segmented track, neutral chips, hover rows */
+  --surface: #ffffff;
+  --surface-2: #fafafa;     /* sidebar, muted panels */
+  --canvas: #f7f7f8;        /* workspace background */
+  --canvas-dot: #e2e1e6;    /* 1px dot grid, 22px pitch */
+
+  /* widget identity — tone = small surfaces only (icon tiles, dots); tint = large surfaces */
+  --tone-aqua: #bfe9ef;  --tint-aqua: #effafc;   /* 데스크 리서치 */
+  --tone-sun: #ffe8a8;   --tint-sun: #fffaeb;    /* 리크루팅 */
+  --tone-sky: #cfe6ff;   --tint-sky: #f2f8ff;    /* 인터뷰 어시스턴트(프로빙) */
+  --tone-mint: #cdebd9;  --tint-mint: #f1f9f4;   /* 라이브 통역 */
+  --tone-lav: #e7defe;   --tint-lav: #f7f4ff;    /* 전사록 생성기 */
+  --tone-rose: #ffd0e2;  --tint-rose: #fff4f8;   /* 인터뷰 결과 생성기 */
+  --tone-peach: #ffd9be; --tint-peach: #fff6ef;  /* AI UT */
+  --rose-text: #b8325a;  /* eyebrow / accent text on rose surfaces */
+
+  /* signals — badge = bg + fg, no border; dot = solid */
+  --ok-bg: #eaf7ef;   --ok-fg: #13803d;   --ok-dot: #16a34a;
+  --run-bg: #f4f0ff;  --run-fg: #5b44c4;  --run-dot: #7c5cf0;  --run-track: #e6dffb;
+  --warn-bg: #fff6e5; --warn-fg: #93640c; --warn-dot: #d29a1f;
+  --err-bg: #fdf0f0;  --err-fg: #b33a3a;  --err-dot: #dc4444;  --err-line: #f6d6d6;
+  --danger: #c2334f;  /* destructive button fill / destructive text action */
+
+  /* radius */
+  --r-control: 8px;   /* inputs, picker rows, small tiles */
+  --r-inner: 10px;    /* rows inside cards, icon tiles 32–40 */
+  --r-panel: 12px;    /* panels, popovers, lane cards, stat boxes */
+  --r-card: 16px;     /* frames, report boxes, lane container */
+  --r-widget: 20px;   /* 604×900 widget card only */
+  --r-modal: 18px;
+  --r-pill: 999px;    /* all buttons, badges, segmented */
+
+  /* shadow — 4 levels only */
+  --sh-card: 0 1px 0 rgba(29,27,32,.04), 0 6px 18px rgba(29,27,32,.05);
+  --sh-popover: 0 12px 32px rgba(29,27,32,.12);
+  --sh-modal: 0 24px 64px rgba(29,27,32,.18);
+  --sh-frame: 0 2px 4px rgba(29,27,32,.04), 0 24px 48px rgba(29,27,32,.08);
+  --focus-ring: 0 0 0 3px rgba(29,27,32,.08);  /* + border 1px var(--ink) */
+
+  /* type */
+  --font-display: 'Bricolage Grotesque', 'Pretendard', sans-serif; /* titles; Korean falls back to Pretendard */
+  --font-body: 'Pretendard', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;           /* numbers, times, IDs, eyebrows only */
+}

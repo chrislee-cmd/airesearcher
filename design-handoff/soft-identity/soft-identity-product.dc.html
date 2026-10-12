@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;color:#1d1b20;}a{color:#b8325a;text-decoration:none;}a:hover{color:#8f2446;}
+@keyframes sipulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;}}</style>
+</helmet>
+
+<div style="min-height:100vh;width:max-content;background:#ececee;padding:64px;display:flex;flex-direction:column;align-items:flex-start;gap:72px;">
+
+  <!-- ═══ 00 · 시스템 ═══ -->
+  <div style="width:1560px;display:flex;flex-direction:column;gap:26px;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.14em;color:#6e6a75;">SOFT IDENTITY · 제품 적용</span>
+      <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:48px;font-weight:700;letter-spacing:-1.6px;line-height:1.1;">파스텔은 정체성으로, 나머지는 조용하게</span>
+      <span style="font-size:15px;color:#6e6a75;line-height:1.8;max-width:980px;">Memphis 문법(굵은 검정 테두리, 하드 오프셋 그림자)을 걷어내고 1px 선과 옅은 그림자로 바꿨습니다. 일곱 위젯 톤은 그대로 두되, <b style="color:#1d1b20;">면을 칠하는 데는 옅은 틴트만</b> 쓰고 원색 파스텔은 아이콘 타일·도트처럼 작은 곳에만 씁니다.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:20px;">
+      <div style="background:#fff;border:1px solid #e7e5ea;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">위젯 톤 · 원색 / 틴트</span>
+        <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;">
+          <sc-for list="{{ tones }}" as="t" hint-placeholder-count="7">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="height:44px;border-radius:10px;background:{{ t.c }};"></div>
+              <div style="height:26px;border-radius:8px;background:{{ t.tint }};border:1px solid #efedf1;"></div>
+              <span style="font-size:11px;font-weight:700;">{{ t.k }}</span>
+              <span style="font-size:10px;color:#6e6a75;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.short }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="font-size:12px;color:#6e6a75;line-height:1.7;">틴트 = 원색을 흰색에 약 25% 섞은 값. 헤더 밴드·선택 행·요약 박스 바탕에만 씁니다.</span>
+      </div>
+      <div style="background:#fff;border:1px solid #e7e5ea;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">중립 · 시그널</span>
+        <div style="display:flex;gap:6px;">
+          <sc-for list="{{ neutrals }}" as="n" hint-placeholder-count="7"><div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div style="height:34px;border-radius:8px;background:{{ n.c }};border:1px solid #e7e5ea;"></div><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#6e6a75;">{{ n.k }}</span></div></sc-for>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+          <sc-for list="{{ signals }}" as="s" hint-placeholder-count="4"><span style="display:inline-flex;align-items:center;gap:6px;background:{{ s.bg }};color:{{ s.fg }};border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:{{ s.dot }};"></span>{{ s.k }}</span></sc-for>
+        </div>
+        <span style="font-size:12px;color:#6e6a75;line-height:1.7;">시그널 배지는 테두리 없이 틴트 면 + 진한 글자. 상태가 있을 때만 색이 나옵니다.</span>
+      </div>
+      <div style="background:#fff;border:1px solid #e7e5ea;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">타입 · 면</span>
+        <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.7px;">인터뷰 결과 생성기</span>
+        <span style="font-size:14px;line-height:1.75;color:#3a3640;">본문은 Pretendard 14 / 1.75. 제목은 Bricolage 700(라틴·숫자) + Pretendard(한글).</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">MONO · 숫자 · 시각 · ID 전용</span>
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-top:4px;">
+          <div style="width:56px;height:40px;border:1px solid #e7e5ea;border-radius:8px;"></div>
+          <div style="width:56px;height:40px;border:1px solid #e7e5ea;border-radius:12px;box-shadow:0 1px 0 rgba(29,27,32,.04),0 6px 18px rgba(29,27,32,.05);"></div>
+          <div style="width:56px;height:40px;border:1px solid #e7e5ea;border-radius:16px;box-shadow:0 12px 32px rgba(29,27,32,.12);"></div>
+          <div style="width:56px;height:40px;border:1px solid #e7e5ea;border-radius:999px;"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6e6a75;">8 control · 12 panel · 16 card · 999 pill · 선은 전부 1px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 01 · 캔버스 ═══ -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">01</span><span style="font-size:20px;font-weight:700;">캔버스 · 팔레트 + 체인 레인</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">1440 × 900 · 레인 줌 50%</span></div>
+    <div style="width:1440px;height:900px;border-radius:14px;overflow:hidden;display:flex;background:#fff;box-shadow:0 2px 4px rgba(29,27,32,.04),0 24px 48px rgba(29,27,32,.08);">
+      <div style="width:240px;flex-shrink:0;border-right:1px solid #efedf1;padding:18px 14px;display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;align-items:center;gap:9px;padding:0 6px 18px;"><span style="width:24px;height:24px;border-radius:7px;background:#1d1b20;"></span><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.3px;">리서치캔버스</span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:0 6px 8px;"><span style="font-size:13px;font-weight:700;">위젯</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a96a1;">7</span></div>
+        <sc-for list="{{ palette }}" as="p" hint-placeholder-count="7">
+          <div style="display:flex;align-items:center;gap:11px;border-radius:10px;padding:9px 8px;background:{{ p.bg }};">
+            <span style="width:32px;height:32px;border-radius:9px;background:{{ p.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ p.icon }}</span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
+              <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.n }}</span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:{{ p.sfg }};white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:{{ p.dot }};animation:{{ p.anim }};flex-shrink:0;"></span>{{ p.s }}</span>
+            </div>
+          </div>
+        </sc-for>
+        <div style="margin-top:auto;border-top:1px solid #efedf1;padding:14px 6px 0;display:flex;align-items:center;gap:10px;"><span style="width:30px;height:30px;border-radius:50%;background:#e7defe;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">이</span><div style="display:flex;flex-direction:column;gap:1px;"><span style="font-size:12.5px;font-weight:600;">이지은</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6e6a75;">💎 1,240</span></div></div>
+      </div>
+      <div style="flex:1;min-width:0;background:#f7f7f8;background-image:radial-gradient(#e2e1e6 1px,transparent 1px);background-size:22px 22px;position:relative;">
+        <div style="position:absolute;left:24px;top:20px;right:24px;display:flex;align-items:center;gap:10px;">
+          <span style="display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #e7e5ea;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:600;white-space:nowrap;">+ 새 체인</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #e7e5ea;border-radius:999px;padding:7px 14px;font-size:12.5px;white-space:nowrap;"><span style="font-weight:700;">체인 1</span><span style="width:1px;height:12px;background:#e7e5ea;"></span><span style="width:6px;height:6px;border-radius:50%;background:#7c5cf0;animation:sipulse 1.4s ease-in-out infinite;"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5b44c4;">2/3 · 전사 중</span></span>
+          <span style="margin-left:auto;font-size:13px;color:#6e6a75;white-space:nowrap;">결제 이탈 연구</span>
+          <span style="display:inline-flex;align-items:center;gap:12px;background:#fff;border:1px solid #e7e5ea;border-radius:999px;padding:7px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;white-space:nowrap;"><span>−</span><span>50%</span><span>+</span></span>
+        </div>
+        <div style="position:absolute;left:24px;top:84px;background:#fff;border:1px solid #e7e5ea;border-radius:16px;box-shadow:0 1px 0 rgba(29,27,32,.04),0 6px 18px rgba(29,27,32,.05);overflow:hidden;">
+          <div style="padding:13px 18px;border-bottom:1px solid #efedf1;display:flex;align-items:center;gap:12px;">
+            <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:15px;font-weight:700;">체인 1</span>
+            <span style="background:#f4f3f6;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:600;color:#3a3640;white-space:nowrap;">단계별 승인</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6e6a75;white-space:nowrap;">세션 후 💎1 + 파일당 25</span>
+            <span style="margin-left:auto;font-size:12.5px;color:#6e6a75;white-space:nowrap;">체인 종료</span>
+          </div>
+          <div style="padding:20px 18px;display:flex;align-items:center;">
+            <sc-for list="{{ lane }}" as="c" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;flex-shrink:0;">
+                <sc-if value="{{ c.arrow }}" hint-placeholder-val="{{ true }}"><div style="width:36px;display:flex;align-items:center;"><div style="flex:1;height:0;border-top:{{ c.aLine }};"></div><div style="width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid {{ c.aTip }};"></div></div></sc-if>
+                <div style="width:288px;height:452px;background:#fff;border:1px solid #e7e5ea;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;">
+                  <div style="background:{{ c.tint }};border-bottom:1px solid #efedf1;padding:11px 13px;display:flex;align-items:center;gap:9px;">
+                    <span style="width:26px;height:26px;border-radius:8px;background:{{ c.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ c.icon }}</span>
+                    <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:14px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.n }}</span>
+                    <span style="background:{{ c.chipBg }};color:{{ c.chipFg }};border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:600;white-space:nowrap;">{{ c.chip }}</span>
+                  </div>
+                  <div style="flex:1;padding:14px 13px;display:flex;flex-direction:column;gap:9px;">
+                    <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:9px;border:1px solid #efedf1;border-radius:10px;background:{{ r.bg }};padding:9px 11px;">
+                        <span style="width:18px;height:18px;border-radius:6px;background:{{ r.ib }};color:{{ r.ic }};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ r.g }}</span>
+                        <span style="font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.t }}</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6e6a75;white-space:nowrap;flex-shrink:0;">{{ r.m }}</span>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ c.prog }}" hint-placeholder-val="{{ false }}"><div style="margin-top:4px;display:flex;flex-direction:column;gap:6px;"><div style="height:6px;border-radius:999px;background:#efedf1;overflow:hidden;"><div style="width:62%;height:100%;background:#7c5cf0;border-radius:999px;"></div></div><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#5b44c4;">5 / 8 · 약 4분 남음</span></div></sc-if>
+                  </div>
+                  <div style="border-top:1px solid #efedf1;padding:11px 13px;display:flex;align-items:center;"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6e6a75;">{{ c.foot }}</span><span style="margin-left:auto;font-size:12px;font-weight:600;color:{{ c.ctaFg }};background:{{ c.ctaBg }};border-radius:999px;padding:7px 13px;white-space:nowrap;">{{ c.cta }}</span></div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="width:36px;height:0;border-top:1.5px dashed #d6d4da;"></div>
+            <div style="width:128px;height:150px;flex-shrink:0;border:1.5px dashed #d6d4da;border-radius:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;"><span style="width:30px;height:30px;border-radius:9px;background:#fff4f8;display:flex;align-items:center;justify-content:center;">{{ reportIcon }}</span><span style="font-size:12px;font-weight:600;color:#6e6a75;white-space:nowrap;">탑라인 보고서</span><span style="font-size:11px;color:#9a96a1;">대기</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 02 · 위젯 카드 ═══ -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">02</span><span style="font-size:20px;font-weight:700;">위젯 카드 · 셸 상태</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">604 × 900 실치수</span></div>
+    <div style="display:flex;gap:28px;align-items:flex-start;">
+      <sc-for list="{{ cards }}" as="k" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="width:604px;height:900px;background:#fff;border:1px solid #e7e5ea;border-radius:20px;box-shadow:0 1px 0 rgba(29,27,32,.04),0 6px 18px rgba(29,27,32,.05);overflow:hidden;display:flex;flex-direction:column;">
+            <div style="background:{{ k.tint }};border-bottom:1px solid #efedf1;padding:20px 24px;display:flex;align-items:center;gap:13px;">
+              <span style="width:40px;height:40px;border-radius:11px;background:{{ k.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ k.icon }}</span>
+              <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.6px;flex:1;">{{ k.n }}</span>
+              <div style="display:inline-flex;align-items:center;background:#fff;border:1px solid #e7e5ea;border-radius:10px;overflow:hidden;">
+                <span style="padding:7px 11px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;border-right:1px solid #efedf1;">💎{{ k.cr }}</span>
+                <span style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;border-right:1px solid #efedf1;font-size:13px;color:#6e6a75;">?</span>
+                <span style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;border-right:1px solid #efedf1;"><span style="width:13px;height:13px;border-radius:50%;background:{{ k.c }};"></span></span>
+                <span style="width:34px;height:32px;display:flex;align-items:center;justify-content:center;">{{ expandIcon }}</span>
+              </div>
+            </div>
+            <div style="border-bottom:1px solid #efedf1;padding:10px 24px;display:flex;align-items:center;gap:8px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;background:#f4f3f6;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;color:#3a3640;">{{ folderIcon }}결제 이탈 연구</span>
+              <sc-if value="{{ k.hasChip }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;background:{{ k.chipBg }};color:{{ k.chipFg }};border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;">{{ k.chip }}</span></sc-if>
+            </div>
+
+            <sc-if value="{{ k.isSetup }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:12px;">
+                <sc-for list="{{ k.steps }}" as="s" hint-placeholder-count="3">
+                  <div style="border:1px solid {{ s.line }};border-radius:14px;background:{{ s.bg }};overflow:hidden;">
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
+                      <span style="width:24px;height:24px;border-radius:50%;background:{{ s.nb }};color:{{ s.nf }};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ s.num }}</span>
+                      <span style="font-size:15px;font-weight:700;">{{ s.t }}</span>
+                      <span style="font-size:13.5px;color:#6e6a75;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.v }}</span>
+                      <span style="font-size:12.5px;color:#6e6a75;">{{ s.act }}</span>
+                    </div>
+                    <sc-if value="{{ s.open }}" hint-placeholder-val="{{ false }}">
+                      <div style="border-top:1px solid #efedf1;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <sc-for list="{{ s.opts }}" as="o" hint-placeholder-count="4">
+                          <div style="border:1px solid {{ o.line }};background:{{ o.bg }};border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:5px;">
+                            <span style="font-size:14px;font-weight:700;">{{ o.t }}</span>
+                            <span style="font-size:12px;color:#6e6a75;line-height:1.55;">{{ o.d }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ k.isRun }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:10px;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:#6e6a75;font-weight:700;">파일 8</span>
+                <sc-for list="{{ k.files }}" as="f" hint-placeholder-count="6">
+                  <div style="display:flex;align-items:center;gap:12px;border:1px solid {{ f.line }};background:{{ f.bg }};border-radius:12px;padding:12px 14px;">
+                    <span style="width:30px;height:30px;border-radius:9px;background:{{ f.ib }};color:{{ f.ic }};font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ f.g }}</span>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;"><span style="font-size:14px;font-weight:600;">{{ f.n }}</span><span style="font-size:12px;color:{{ f.sf }};">{{ f.s }}</span></div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6e6a75;">{{ f.m }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#f7f4ff;border-top:1px solid #ebe4fb;padding:14px 24px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><span style="width:7px;height:7px;border-radius:50%;background:#7c5cf0;animation:sipulse 1.4s ease-in-out infinite;"></span><span style="font-size:13px;font-weight:600;color:#5b44c4;">화자 분리 중</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:12px;color:#5b44c4;">5 / 8 · 약 4분</span></div>
+                <div style="height:6px;border-radius:999px;background:#e6dffb;overflow:hidden;"><div style="width:62%;height:100%;background:#7c5cf0;border-radius:999px;"></div></div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ k.isDone }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;">
+                <span style="width:64px;height:64px;border-radius:20px;background:#eaf7ef;color:#16a34a;font-size:28px;font-weight:800;display:flex;align-items:center;justify-content:center;">✓</span>
+                <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;">보고서가 준비됐습니다</span>
+                <span style="font-size:14px;color:#6e6a75;line-height:1.7;max-width:320px;">응답자 8명을 전부 읽고 34개 블록을 썼습니다. 전체보기에서 확인하세요.</span>
+                <span style="display:inline-flex;align-items:center;gap:8px;background:#1d1b20;color:#fff;border-radius:999px;padding:12px 22px;font-size:14px;font-weight:600;">{{ expandIconW }}전체보기 열기</span>
+                <span style="font-size:13px;color:#6e6a75;">← 파일로 돌아가기</span>
+              </div>
+            </sc-if>
+
+            <div style="border-top:1px solid #efedf1;padding:16px 24px;display:flex;align-items:center;gap:12px;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6e6a75;">{{ k.foot }}</span>
+              <span style="margin-left:auto;font-size:14px;font-weight:600;color:{{ k.ctaFg }};background:{{ k.ctaBg }};border-radius:999px;padding:11px 20px;">{{ k.cta }}</span>
+            </div>
+          </div>
+          <span style="font-size:13px;font-weight:600;color:#3a3640;">{{ k.cap }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ═══ 03 · 풀뷰 ═══ -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">03</span><span style="font-size:20px;font-weight:700;">풀뷰 · 인터뷰 결과 보고서 (읽기)</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">1400 × 840</span></div>
+    <div style="width:1400px;height:840px;border-radius:16px;overflow:hidden;display:flex;background:#fff;border:1px solid #e7e5ea;box-shadow:0 2px 4px rgba(29,27,32,.04),0 24px 48px rgba(29,27,32,.08);">
+      <div style="width:240px;flex-shrink:0;background:#fafafa;border-right:1px solid #efedf1;padding:18px 12px;display:flex;flex-direction:column;gap:2px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#9a96a1;font-weight:700;padding:0 8px 10px;">위젯</span>
+        <sc-for list="{{ side }}" as="s" hint-placeholder-count="7">
+          <div style="display:flex;align-items:center;gap:10px;border-radius:9px;padding:9px 9px;background:{{ s.bg }};border:{{ s.bd }};">
+            <span style="width:24px;height:24px;border-radius:7px;background:{{ s.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ s.icon }}</span>
+            <span style="font-size:13px;font-weight:{{ s.w }};color:{{ s.fg }};flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.n }}</span>
+            <span style="width:6px;height:6px;border-radius:50%;background:{{ s.dot }};flex-shrink:0;"></span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <div style="background:#fff4f8;border-bottom:1px solid #f6e3ea;padding:16px 26px;display:flex;align-items:center;gap:13px;">
+          <span style="width:36px;height:36px;border-radius:10px;background:#ffd0e2;display:flex;align-items:center;justify-content:center;">{{ iIcon }}</span>
+          <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.5px;">인터뷰 결과 생성기</span><span style="font-size:12.5px;color:#6e6a75;">결제 이탈 연구 · 응답자 8명 · 10월 11일 생성</span></div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <span style="width:38px;height:38px;border:1px solid #e7e5ea;background:#fff;border-radius:999px;display:flex;align-items:center;justify-content:center;">{{ dlIcon }}</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;border:1px solid #e7e5ea;background:#fff;border-radius:999px;padding:9px 15px;font-size:13px;font-weight:600;">{{ linkIcon }}공유</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;background:#1d1b20;color:#fff;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:600;">{{ penIcon }}편집</span>
+            <span style="width:1px;height:24px;background:#efedf1;margin:0 4px;"></span>
+            <span style="width:38px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;">{{ closeIcon }}</span>
+          </div>
+        </div>
+        <div style="padding:0 26px;border-bottom:1px solid #efedf1;display:flex;gap:24px;">
+          <span style="font-size:13.5px;font-weight:600;border-bottom:2px solid #1d1b20;padding:12px 0 10px;">보고서</span>
+          <span style="font-size:13.5px;color:#6e6a75;padding:12px 0;">파일 8</span>
+          <span style="font-size:13.5px;color:#6e6a75;padding:12px 0;">근거 모음</span>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;background:#fff;">
+          <div style="flex:1;min-width:0;display:flex;justify-content:center;padding:32px 40px;overflow:hidden;">
+            <div style="width:700px;display:flex;flex-direction:column;gap:18px;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;color:#b8325a;font-weight:700;">1 · 요약</span>
+              <div style="background:#fff4f8;border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:10px;">
+                <span style="font-size:17px;font-weight:700;line-height:1.55;">결제 이탈의 주원인은 가격이 아니라 배송비를 알게 되는 시점입니다.</span>
+                <sc-for list="{{ keypoints }}" as="kp" hint-placeholder-count="3"><div style="display:flex;gap:10px;font-size:14px;color:#3a3640;line-height:1.7;"><span style="width:5px;height:5px;border-radius:50%;background:#b8325a;margin-top:10px;flex-shrink:0;"></span><span>{{ kp }}</span></div></sc-for>
+              </div>
+              <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.4px;margin-top:8px;">2. 핵심 발견</span>
+              <span style="font-size:14.5px;color:#3a3640;line-height:1.85;">응답자 8명 중 6명이 장바구니 단계에서 처음 배송비를 확인하고 결제를 미뤘습니다. 상품 상세에서 먼저 본 2명은 이탈 없이 결제를 마쳤습니다.<span style="display:inline-flex;margin-left:6px;background:#f4f3f6;border-radius:5px;padding:1px 6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#3a3640;vertical-align:2px;">P02 · P04 +1</span></span>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
+                <sc-for list="{{ stats }}" as="st" hint-placeholder-count="3"><div style="border:1px solid #efedf1;border-radius:12px;padding:15px 16px;display:flex;flex-direction:column;gap:4px;"><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.6px;">{{ st.v }}</span><span style="font-size:12.5px;color:#6e6a75;">{{ st.k }}</span></div></sc-for>
+              </div>
+              <div style="border-left:2px solid #ffd0e2;padding:4px 0 4px 18px;display:flex;flex-direction:column;gap:6px;"><span style="font-size:15px;line-height:1.75;">“처음부터 알려줬으면 그냥 샀을 거예요. 마지막에 붙으니까 속은 느낌이었어요.”</span><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6e6a75;">P04 · 29세 · 월 3회 구매</span></div>
+            </div>
+          </div>
+          <div style="width:220px;flex-shrink:0;border-left:1px solid #efedf1;padding:32px 20px;display:flex;flex-direction:column;gap:12px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#9a96a1;font-weight:700;">목차</span>
+            <sc-for list="{{ toc }}" as="t" hint-placeholder-count="5"><span style="font-size:13px;color:{{ t.fg }};font-weight:{{ t.w }};display:flex;align-items:center;gap:8px;"><span style="width:3px;height:14px;border-radius:2px;background:{{ t.bar }};"></span>{{ t.n }}</span></sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 04 · 라이브러리 ═══ -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">04</span><span style="font-size:20px;font-weight:700;">산출물 라이브러리 · 공유 관리</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">1400 × 760 · 같은 셸의 탭</span></div>
+    <div style="width:1400px;height:760px;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid #e7e5ea;box-shadow:0 2px 4px rgba(29,27,32,.04),0 24px 48px rgba(29,27,32,.08);">
+      <div style="padding:20px 28px 0;border-bottom:1px solid #efedf1;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;align-items:center;gap:12px;"><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.6px;">라이브러리</span><span style="margin-left:auto;display:flex;align-items:center;gap:8px;width:260px;border:1px solid #e7e5ea;border-radius:999px;padding:8px 14px;font-size:13px;color:#9a96a1;">{{ searchIcon }}산출물 검색</span></div>
+        <div style="display:flex;gap:26px;">
+          <span style="font-size:13.5px;color:#6e6a75;padding-bottom:12px;">산출물 <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9a96a1;">42</span></span>
+          <span style="font-size:13.5px;font-weight:600;border-bottom:2px solid #1d1b20;padding-bottom:10px;">공유 <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6e6a75;">12</span></span>
+          <span style="font-size:13.5px;color:#6e6a75;padding-bottom:12px;">문서</span>
+        </div>
+      </div>
+      <div style="padding:14px 28px;border-bottom:1px solid #efedf1;display:flex;align-items:center;gap:10px;">
+        <div style="display:inline-flex;background:#f4f3f6;border-radius:999px;padding:3px;"><span style="background:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgba(29,27,32,.08);">전체</span><span style="padding:6px 14px;font-size:12.5px;color:#6e6a75;">활성</span><span style="padding:6px 14px;font-size:12.5px;color:#6e6a75;">만료</span><span style="padding:6px 14px;font-size:12.5px;color:#6e6a75;">철회</span></div>
+        <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid #e7e5ea;border-radius:999px;padding:6px 13px;font-size:12.5px;">위젯 · 전체 <span style="font-size:9px;color:#6e6a75;">▼</span></span>
+        <span style="margin-left:auto;display:inline-flex;background:#f4f3f6;border-radius:999px;padding:3px;"><span style="background:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgba(29,27,32,.08);">내 링크</span><span style="padding:6px 14px;font-size:12.5px;color:#6e6a75;">조직 전체</span></span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px 130px 110px 100px 170px;padding:10px 28px;border-bottom:1px solid #efedf1;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:#9a96a1;font-weight:700;">
+        <span>산출물</span><span>대상</span><span>만료</span><span>열람</span><span>상태</span><span style="text-align:right;">작업</span>
+      </div>
+      <sc-for list="{{ shares }}" as="r" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px 130px 110px 100px 170px;align-items:center;padding:13px 28px;border-bottom:1px solid #f4f3f6;">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;"><span style="width:34px;height:34px;border-radius:9px;background:{{ r.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:{{ r.op }};">{{ r.icon }}</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:14px;font-weight:600;color:{{ r.tf }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.t }}</span><span style="font-size:12px;color:#9a96a1;">{{ r.w }}</span></div></div>
+          <span style="font-size:13px;color:#3a3640;">{{ r.to }}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6e6a75;">{{ r.exp }}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6e6a75;">{{ r.v }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;justify-self:start;background:{{ r.sb }};color:{{ r.sf }};border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:{{ r.sd }};border:{{ r.sdb }};"></span>{{ r.s }}</span>
+          <div style="display:flex;justify-content:flex-end;gap:6px;"><span style="border:1px solid {{ r.a1b }};color:{{ r.a1f }};background:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;">링크 복사</span><span style="color:{{ r.a2f }};border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;">{{ r.a2 }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ═══ 05 · 공개 · 오버레이 ═══ -->
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">05</span><span style="font-size:20px;font-weight:700;">공개 공유 화면 · 모달 · 피커</span></div>
+    <div style="display:flex;gap:28px;align-items:flex-start;">
+      <div style="width:720px;height:640px;border-radius:16px;overflow:hidden;background:#f7f7f8;border:1px solid #e7e5ea;display:flex;flex-direction:column;">
+        <div style="background:#fff;border-bottom:1px solid #efedf1;padding:14px 24px;display:flex;align-items:center;gap:10px;"><span style="width:20px;height:20px;border-radius:6px;background:#1d1b20;"></span><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:15px;font-weight:700;">리서치캔버스</span><span style="margin-left:auto;font-size:12px;color:#6e6a75;">읽기 전용 · 11월 10일까지</span></div>
+        <div style="flex:1;padding:32px 40px;display:flex;flex-direction:column;gap:14px;">
+          <span style="display:inline-flex;align-items:center;gap:7px;align-self:flex-start;background:#fff4f8;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;color:#8f2446;"><span style="width:7px;height:7px;border-radius:50%;background:#ffd0e2;border:1px solid #f0b6cb;"></span>인터뷰 결과 보고서</span>
+          <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.7px;line-height:1.3;">결제 이탈 연구 — 탑라인</span>
+          <span style="font-size:13px;color:#6e6a75;">이지은 님이 공유 · 응답자 8명</span>
+          <div style="background:#fff;border:1px solid #efedf1;border-radius:14px;padding:20px 22px;font-size:14.5px;line-height:1.8;color:#3a3640;">결제 이탈의 주원인은 가격이 아니라 <b style="color:#1d1b20;">배송비를 알게 되는 시점</b>입니다. 8명 중 6명이 장바구니에서 처음 보고 결제를 미뤘습니다.</div>
+          <div style="background:#fff;border:1px solid #efedf1;border-radius:14px;height:150px;"></div>
+        </div>
+        <div style="border-top:1px solid #efedf1;background:#fff;padding:12px 24px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a96a1;">jieun.lee@meteor-research.com 열람 · 워터마크</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:28px;">
+        <div style="width:440px;background:#fff;border:1px solid #e7e5ea;border-radius:18px;box-shadow:0 24px 64px rgba(29,27,32,.18);overflow:hidden;">
+          <div style="padding:22px 24px 6px;display:flex;align-items:flex-start;gap:12px;">
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;"><span style="font-size:18px;font-weight:700;">링크를 끌까요?</span><span style="font-size:13.5px;color:#6e6a75;line-height:1.65;">이 링크로 보던 3명이 더 이상 열 수 없습니다. 다시 켤 수 없어요.</span></div>
+            <span style="width:32px;height:32px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin:-4px -6px 0 0;">{{ closeIcon }}</span>
+          </div>
+          <div style="margin:14px 24px 0;background:#fafafa;border:1px solid #efedf1;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:11px;"><span style="width:30px;height:30px;border-radius:8px;background:#ffd0e2;display:flex;align-items:center;justify-content:center;">{{ iIconS }}</span><div style="display:flex;flex-direction:column;gap:1px;"><span style="font-size:13.5px;font-weight:600;">결제 이탈 연구 — 탑라인</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">열람 14회 · 3명</span></div></div>
+          <div style="padding:20px 24px;display:flex;justify-content:flex-end;gap:8px;"><span style="border:1px solid #e7e5ea;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:600;">취소</span><span style="background:#c2334f;color:#fff;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:600;">링크 끄기</span></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <span style="display:inline-flex;align-items:center;gap:8px;border:1px solid #1d1b20;border-radius:10px;padding:8px 13px;font-size:13px;font-weight:600;background:#fff;box-shadow:0 0 0 3px rgba(29,27,32,.08);">정렬 · 최근 열람 <span style="font-size:9px;">▲</span></span>
+          <div style="width:240px;background:#fff;border:1px solid #e7e5ea;border-radius:12px;box-shadow:0 12px 32px rgba(29,27,32,.12);padding:6px;display:flex;flex-direction:column;gap:2px;">
+            <sc-for list="{{ picker }}" as="o" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px;border-radius:8px;padding:9px 10px;background:{{ o.bg }};"><span style="font-size:13px;flex:1;font-weight:{{ o.w }};">{{ o.t }}</span><span style="font-size:12px;color:#1d1b20;">{{ o.c }}</span></div></sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const e = React.createElement;
+const TONES = {
+  D: { c: '#bfe9ef', tint: '#effafc', n: '데스크 리서치' }, R: { c: '#ffe8a8', tint: '#fffaeb', n: '리크루팅' },
+  P: { c: '#cfe6ff', tint: '#f2f8ff', n: '인터뷰 어시스턴트' }, L: { c: '#cdebd9', tint: '#f1f9f4', n: '라이브 통역' },
+  T: { c: '#e7defe', tint: '#f7f4ff', n: '전사록 생성기' }, I: { c: '#ffd0e2', tint: '#fff4f8', n: '인터뷰 결과 생성기' },
+  U: { c: '#ffd9be', tint: '#fff6ef', n: 'AI UT' },
+};
+const ORDER = ['D', 'R', 'P', 'L', 'T', 'I', 'U'];
+const IP = {
+  D: [['circle', { cx: 11, cy: 11, r: 6, fill: '#fff' }], ['path', { d: 'M16 16l4.5 4.5' }]],
+  R: [['circle', { cx: 12, cy: 8, r: 3.5, fill: '#fff' }], ['path', { d: 'M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6z', fill: '#fff' }]],
+  P: [['path', { d: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 4v-4H6a2 2 0 0 1-2-2z', fill: '#fff' }]],
+  L: [['circle', { cx: 12, cy: 12, r: 8, fill: '#fff' }], ['path', { d: 'M4 12h16M12 4c2.5 2.2 2.5 13.8 0 16M12 4c-2.5 2.2-2.5 13.8 0 16' }]],
+  T: [['path', { d: 'M6 3h8l4 4v14H6z', fill: '#fff' }], ['path', { d: 'M14 3v4h4M9 12h6M9 16h5' }]],
+  I: [['rect', { x: 4, y: 12, width: 4, height: 8, fill: '#fff' }], ['rect', { x: 10, y: 7, width: 4, height: 13, fill: '#fff' }], ['rect', { x: 16, y: 4, width: 4, height: 16, fill: '#fff' }]],
+  U: [['path', { d: 'M5 3l14 7-6 2-2 6z', fill: '#fff' }]],
+  X: [['path', { d: 'M9 4H4v5M4 4l6 6M15 20h5v-5M20 20l-6-6' }]],
+  F: [['path', { d: 'M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z', fill: '#fff' }]],
+};
+const icon = (k, s = 16, stroke = '#1d1b20', sw = 1.8) => e('svg', { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke, strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flexShrink: 0 } }, IP[k].map(([t, p], i) => e(t, { key: i, ...p })));
+
+const SIG = { ok: ['#eaf7ef', '#13803d', '#16a34a'], run: ['#f4f0ff', '#5b44c4', '#7c5cf0'], warn: ['#fff6e5', '#93640c', '#d29a1f'], err: ['#fdf0f0', '#b33a3a', '#dc4444'], idle: ['#f4f3f6', '#3a3640', '#9a96a1'] };
+const row = (g, t, m, k = 'ok', bg = '#fff') => ({ g, t, m, ib: SIG[k][0], ic: SIG[k][2], bg });
+
+class Component extends DCLogic {
+  renderVals() {
+    const pal = { L: ['진행 중 · 24분', 'run', true], T: ['체인 · 전사 중', 'run', true], P: ['체인 · 완료', 'ok'], I: ['체인 · 3단계', 'idle'] };
+    const X = { close: [['path', { d: 'M6 6l12 12M18 6L6 18' }]], dl: [['path', { d: 'M12 4v11M7 10l5 5 5-5M5 20h14' }]], link: [['path', { d: 'M9.5 14.5l5-5M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1' }]], pen: [['path', { d: 'M4 20h4L19 9l-4-4L4 16z' }]], search: [['circle', { cx: 11, cy: 11, r: 6 }], ['path', { d: 'M16 16l4 4' }]] };
+    const xi = (k, s, c, w = 2) => e('svg', { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke: c, strokeWidth: w, strokeLinecap: 'round', strokeLinejoin: 'round' }, X[k].map(([t, p], i) => e(t, { key: i, ...p })));
+    const sideDot = { L: SIG.run[2], T: SIG.run[2], P: SIG.ok[2] };
+    const st = { act: ['활성', SIG.ok[0], SIG.ok[1], SIG.ok[2], 'none'], exp: ['만료', '#f4f3f6', '#3a3640', '#fff', '1.5px solid #9a96a1'], rev: ['철회', '#f4f3f6', '#3a3640', '#1d1b20', 'none'], soon: ['곧 만료', SIG.warn[0], SIG.warn[1], SIG.warn[2], 'none'] };
+    const shareRow = (k, t, to, exp, v, s) => { const x = st[s], dead = s === 'exp' || s === 'rev'; return { ...TONES[k], c: dead ? '#f4f3f6' : TONES[k].c, op: 1, icon: icon(k, 16, dead ? '#9a96a1' : '#1d1b20'), t, tf: dead ? '#6e6a75' : '#1d1b20', w: TONES[k].n, to, exp, v, s: x[0], sb: x[1], sf: x[2], sd: x[3], sdb: x[4], a1b: dead ? '#efedf1' : '#e7e5ea', a1f: dead ? '#c4c1c9' : '#1d1b20', a2: s === 'rev' ? '—' : (dead ? '다시 켜기' : '끄기'), a2f: s === 'rev' ? '#c4c1c9' : (dead ? '#1d1b20' : '#c2334f') }; };
+    Object.assign(this, { _extra: {
+      side: ORDER.map(k => ({ ...TONES[k], icon: icon(k, 13), bg: k === 'I' ? '#fff' : 'transparent', bd: k === 'I' ? '1px solid #e7e5ea' : '1px solid transparent', fg: k === 'I' ? '#1d1b20' : '#3a3640', w: k === 'I' ? 700 : 500, dot: sideDot[k] || 'transparent' })),
+      iIcon: icon('I', 18), iIconS: icon('I', 14),
+      dlIcon: xi('dl', 16, '#3a3640'), linkIcon: xi('link', 15, '#3a3640'), penIcon: xi('pen', 14, '#fff', 2.2), closeIcon: xi('close', 16, '#6e6a75'), searchIcon: xi('search', 15, '#9a96a1'),
+      keypoints: ['6/8명이 장바구니에서 배송비를 처음 보고 결제를 미룸', '상세 페이지에서 먼저 본 2명은 이탈 없음', '무료배송 기준 금액을 모르는 응답자가 다수'],
+      stats: [{ v: '6 / 8', k: '배송비 고지 시점 언급' }, { v: '3.2분', k: '이탈 전 평균 체류' }, { v: '2명', k: '상세에서 먼저 확인' }],
+      toc: [{ n: '1. 요약', fg: '#6e6a75', w: 500, bar: 'transparent' }, { n: '2. 핵심 발견', fg: '#1d1b20', w: 700, bar: '#ffd0e2' }, { n: '3. 세그먼트', fg: '#6e6a75', w: 500, bar: 'transparent' }, { n: '4. 응답자 목소리', fg: '#6e6a75', w: 500, bar: 'transparent' }, { n: '5. 제언', fg: '#6e6a75', w: 500, bar: 'transparent' }],
+      shares: [
+        shareRow('I', '결제 이탈 연구 — 탑라인', '외부 · 이메일 3', '11.10', '14회', 'act'),
+        shareRow('T', 'P01–P08 전사록', '조직 내', '10.14', '6회', 'soon'),
+        shareRow('D', '간편결제 시장 동향', '외부 · 링크', '12.01', '22회', 'act'),
+        shareRow('P', '인터뷰 가이드 v2', '조직 내', '09.30', '3회', 'exp'),
+        shareRow('U', '결제 플로우 UT 리뷰', '외부 · 링크', '—', '9회', 'rev'),
+        shareRow('R', '스크리너 응답 요약', '조직 내', '11.02', '4회', 'act'),
+      ],
+      picker: [{ t: '최근 열람', c: '✓', bg: '#f4f3f6', w: 600 }, { t: '최근 생성', c: '', bg: 'transparent', w: 400 }, { t: '만료 임박', c: '', bg: 'transparent', w: 400 }, { t: '열람 많은 순', c: '', bg: 'transparent', w: 400 }],
+    } });
+    return {
+      ...this._extra,
+      tones: ORDER.map(k => ({ short: { D: '데스크', R: '리크루팅', P: '프로빙', L: '통역', T: '전사', I: '결과', U: 'AI UT' }[k], k: { D: 'aqua', R: 'sun', P: 'sky', L: 'mint', T: 'lav', I: 'rose', U: 'peach' }[k], w: TONES[k].n, ...TONES[k] })),
+      neutrals: [{ k: 'ink', c: '#1d1b20' }, { k: 'ink-2', c: '#3a3640' }, { k: 'mute', c: '#6e6a75' }, { k: 'faint', c: '#9a96a1' }, { k: 'line', c: '#e7e5ea' }, { k: 'fill', c: '#f4f3f6' }, { k: 'canvas', c: '#f7f7f8' }],
+      signals: ['ok', 'run', 'warn', 'err'].map((k, i) => ({ k: ['완료', '진행 중', '주의', '실패'][i], bg: SIG[k][0], fg: SIG[k][1], dot: SIG[k][2] })),
+      palette: ORDER.map(k => {
+        const p = pal[k], s = p ? SIG[p[1]] : null;
+        return { ...TONES[k], icon: icon(k, 17), bg: k === 'T' ? '#f4f3f6' : 'transparent', s: p ? p[0] : '💎 ' + { D: 60, R: 30, P: 25, L: 50, T: 1, I: 10, U: 40 }[k], sfg: s ? s[1] : '#6e6a75', dot: s ? s[2] : 'transparent', anim: p && p[2] ? 'sipulse 1.4s ease-in-out infinite' : 'none' };
+      }),
+      lane: [
+        { ...TONES.P, icon: icon('P', 14), chip: '완료', chipBg: SIG.ok[0], chipFg: SIG.ok[1], arrow: false, rows: [row('✓', '연구 목적 · 결제 이탈', ''), row('✓', '대상 · 20–30대 여성', ''), row('✓', '세션 · 42분', '')], foot: '페르소나 3 · 질문 18', cta: '열기', ctaBg: '#fff', ctaFg: '#1d1b20' },
+        { ...TONES.T, icon: icon('T', 14), chip: '진행 중', chipBg: SIG.run[0], chipFg: SIG.run[1], arrow: true, aLine: '1.5px solid #1d1b20', aTip: '#1d1b20', prog: true, rows: [row('✓', 'P01_김OO.m4a', '42분'), row('✓', 'P02_이OO.m4a', '38분'), row('•', 'P05_정OO.m4a', '처리 중', 'run')], foot: '6 / 8', cta: '보기', ctaBg: '#fff', ctaFg: '#1d1b20' },
+        { ...TONES.I, icon: icon('I', 14), chip: '3단계', chipBg: SIG.idle[0], chipFg: SIG.idle[1], arrow: true, aLine: '1.5px solid #7c5cf0', aTip: '#7c5cf0', rows: [row('', '전사 완료 후 시작', '', 'idle', '#fafafa'), row('', '💎25 · 파일당', '', 'idle', '#fafafa')], foot: '대기', cta: '대기', ctaBg: '#f4f3f6', ctaFg: '#9a96a1' },
+      ],
+      reportIcon: icon('I', 16, '#b8325a'),
+      expandIcon: icon('X', 14, '#3a3640', 2),
+      expandIconW: icon('X', 15, '#fff', 2.2),
+      folderIcon: icon('F', 13, '#3a3640'),
+      cards: [
+        { ...TONES.P, icon: icon('P', 20), cr: 25, cap: '셋업 · 인터뷰 어시스턴트', isSetup: true, hasChip: false, foot: '💎25 · 세션 시작 시 차감', cta: '세션 시작', ctaBg: '#1d1b20', ctaFg: '#fff',
+          steps: [
+            { num: '✓', t: '연구 목적', v: '결제 이탈 원인 탐색', act: '변경', line: '#efedf1', bg: '#fff', nb: SIG.ok[0], nf: SIG.ok[2] },
+            { num: '✓', t: '대상', v: '20대 후반–30대 여성 · 최근 이탈', act: '변경', line: '#efedf1', bg: '#fff', nb: SIG.ok[0], nf: SIG.ok[2] },
+            { num: '3', t: '방법', v: '', act: '', line: '#d9e8fb', bg: '#fff', nb: '#cfe6ff', nf: '#1d1b20', open: true,
+              opts: [
+                { t: '반구조화 심층', d: '가이드 질문 + 자유 탐색', line: '#1d1b20', bg: '#f2f8ff' },
+                { t: '구조화 인터뷰', d: '정해진 순서와 문항', line: '#e7e5ea', bg: '#fff' },
+                { t: '맥락 질문', d: '사용 장면을 재현하며', line: '#e7e5ea', bg: '#fff' },
+                { t: '일기 후속', d: '사전 기록을 바탕으로', line: '#e7e5ea', bg: '#fff' },
+              ] },
+          ] },
+        { ...TONES.T, icon: icon('T', 20), cr: 1, cap: '진행 중 · 전사록 생성기', isRun: true, hasChip: true, chip: '체인 2/3', chipBg: SIG.run[0], chipFg: SIG.run[1], foot: '6 / 8 완료', cta: '전체보기', ctaBg: '#fff', ctaFg: '#1d1b20',
+          files: [
+            { g: '✓', n: 'P01_김OO.m4a', s: '완료 · 화자 2', m: '42:10', ib: SIG.ok[0], ic: SIG.ok[2], line: '#efedf1', bg: '#fff', sf: '#6e6a75' },
+            { g: '✓', n: 'P02_이OO.m4a', s: '완료 · 화자 2', m: '38:04', ib: SIG.ok[0], ic: SIG.ok[2], line: '#efedf1', bg: '#fff', sf: '#6e6a75' },
+            { g: '✓', n: 'P03_박OO.m4a', s: '완료 · 화자 3', m: '51:22', ib: SIG.ok[0], ic: SIG.ok[2], line: '#efedf1', bg: '#fff', sf: '#6e6a75' },
+            { g: '•', n: 'P05_정OO.m4a', s: '화자 분리 중', m: '—', ib: SIG.run[0], ic: SIG.run[2], line: '#e6dffb', bg: '#fbf9ff', sf: '#5b44c4' },
+            { g: '!', n: 'P06_한OO.m4a', s: '오디오가 비어 있습니다', m: '—', ib: SIG.err[0], ic: SIG.err[2], line: '#f6d6d6', bg: '#fffafa', sf: '#b33a3a' },
+            { g: '', n: 'P07_윤OO.m4a', s: '대기', m: '—', ib: '#f4f3f6', ic: '#9a96a1', line: '#efedf1', bg: '#fff', sf: '#9a96a1' },
+          ] },
+        { ...TONES.I, icon: icon('I', 20), cr: 10, cap: '완료 → 전체보기 · 인터뷰 결과 생성기', isDone: true, hasChip: false, foot: '파일 8 · 블록 34', cta: '다시 생성', ctaBg: '#fff', ctaFg: '#1d1b20' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

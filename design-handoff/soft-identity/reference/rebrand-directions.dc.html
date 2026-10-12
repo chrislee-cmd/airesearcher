@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;family=Bricolage+Grotesque:wght@600;700;800&amp;family=Outfit:wght@700;800&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;}a{color:#1d1b20;}a:hover{color:#5b5965;}</style>
+</helmet>
+
+<section style="width:max-content;background:#e2e2de;padding:56px;display:flex;flex-direction:column;gap:36px;">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:1100px;">
+    <div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;letter-spacing:.14em;color:#5b5965;">TURN 2 · 제품 화면 스냅샷</div>
+    <div style="font-size:38px;font-weight:800;color:#1d1b20;letter-spacing:-1px;">같은 다섯 방향, 앱 안에서</div>
+    <div style="font-size:15px;color:#5b5965;line-height:1.8;">캔버스(팔레트 + 체인 레인)와 풀뷰(사이드바 + 보고서)를 각 방향으로 그렸습니다. <a href="#1a">1a</a>–<a href="#1e">1e</a> 와 같은 토큰이고, 번호만 2로 바뀝니다 — 2a 는 1a 의 제품 화면입니다.</div>
+  </div>
+  <div style="display:flex;gap:40px;align-items:flex-start;">
+    <sc-for list="{{ prod }}" as="d" hint-placeholder-count="5">
+      <div id="{{ d.pid }}" style="width:760px;display:flex;flex-direction:column;gap:16px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:800;background:#1d1b20;color:#fff;border-radius:7px;padding:4px 11px;">{{ d.pid }}</span>
+          <span style="font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">{{ d.name }}</span>
+          <span style="font-size:13px;color:#5b5965;white-space:nowrap;flex-shrink:0;">캔버스 · 풀뷰</span>
+        </div>
+
+        <!-- canvas -->
+        <div style="width:760px;height:470px;background:{{ d.bg }};border:1px solid rgba(0,0,0,.12);border-radius:10px;overflow:hidden;display:flex;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+          <div style="width:156px;flex-shrink:0;background:{{ d.surface }};border-right:{{ d.line }};padding:14px 10px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:7px;padding:0 4px 8px;"><span style="width:16px;height:16px;border-radius:{{ d.logoR }};background:{{ d.accent }};"></span><span style="font-family:{{ d.fDisplay }};font-size:13px;font-weight:700;color:{{ d.ink }};">리서치캔버스</span></div>
+            <span style="font-family:{{ d.fMono }};font-size:9.5px;letter-spacing:.1em;color:{{ d.mute }};font-weight:700;padding:0 4px 2px;">위젯</span>
+            <sc-for list="{{ d.pal }}" as="p" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:8px;border:{{ p.bd }};background:{{ p.bg }};border-radius:{{ d.innerR }};padding:6px 7px;">
+                <span style="width:20px;height:20px;border-radius:{{ d.tileR }};background:{{ p.c }};border:{{ d.tileBd }};flex-shrink:0;"></span>
+                <span style="font-size:11.5px;font-weight:600;color:{{ d.ink }};flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.n }}</span>
+                <span style="width:6px;height:6px;border-radius:50%;background:{{ p.dot }};flex-shrink:0;"></span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:16px 18px;gap:14px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:12px;font-weight:700;color:{{ d.ink }};border:{{ d.line }};background:{{ d.surface }};border-radius:{{ d.btnR }};padding:6px 12px;white-space:nowrap;flex-shrink:0;">+ 새 체인</span>
+              <span style="font-family:{{ d.fMono }};font-size:11px;color:{{ d.mute }};white-space:nowrap;flex-shrink:0;">체인 1 · 2/3 전사 중</span>
+              <span style="margin-left:auto;font-family:{{ d.fMono }};font-size:11px;color:{{ d.mute }};border:{{ d.line }};border-radius:{{ d.btnR }};padding:4px 10px;white-space:nowrap;flex-shrink:0;">− 64% +</span>
+            </div>
+            <div style="border:{{ d.cardBd }};border-radius:{{ d.cardR }};background:{{ d.surface2 }};box-shadow:{{ d.cardSh }};overflow:hidden;display:flex;flex-direction:column;">
+              <div style="padding:10px 14px;border-bottom:{{ d.hair }};display:flex;align-items:center;gap:10px;background:{{ d.surface }};">
+                <span style="font-family:{{ d.fDisplay }};font-size:13.5px;font-weight:700;color:{{ d.ink }};white-space:nowrap;flex-shrink:0;">체인 1</span>
+                <span style="font-size:10.5px;font-weight:700;color:{{ d.mute }};border:{{ d.line }};border-radius:{{ d.chipR }};padding:2px 8px;white-space:nowrap;flex-shrink:0;">단계별 승인</span>
+                <span style="margin-left:auto;font-size:11px;color:{{ d.mute }};white-space:nowrap;flex-shrink:0;">체인 종료</span>
+              </div>
+              <div style="padding:16px 12px;display:flex;align-items:center;gap:0;">
+                <sc-for list="{{ d.lane }}" as="c" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;flex-shrink:0;">
+                    <sc-if value="{{ c.arrow }}" hint-placeholder-val="{{ true }}"><div style="width:16px;height:0;border-top:{{ c.arrowLine }};margin:0 2px;"></div></sc-if>
+                    <div style="width:136px;height:292px;border:{{ d.cardBd }};border-radius:{{ d.cardR }};background:{{ d.surface }};box-shadow:{{ d.cardSh }};overflow:hidden;display:flex;flex-direction:column;">
+                      <div style="background:{{ c.head }};border-bottom:{{ d.headLine }};padding:9px 10px;display:flex;align-items:center;gap:7px;">
+                        <span style="width:18px;height:18px;border-radius:{{ d.tileR }};background:{{ c.c }};border:{{ d.tileBd }};flex-shrink:0;"></span>
+                        <span style="font-family:{{ d.fDisplay }};font-size:11.5px;font-weight:700;color:{{ d.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.n }}</span>
+                      </div>
+                      <div style="padding:6px 10px;border-bottom:{{ d.hair }};display:flex;"><span style="margin-left:auto;font-size:9.5px;font-weight:700;color:{{ c.chipFg }};background:{{ c.chipBg }};border-radius:{{ d.chipR }};padding:2px 7px;white-space:nowrap;">{{ c.chip }}</span></div>
+                      <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:7px;">
+                        <div style="height:30px;border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ c.box }};"></div>
+                        <div style="height:24px;border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ d.surface2 }};"></div>
+                        <div style="height:24px;border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ d.surface2 }};"></div>
+                        <sc-if value="{{ c.prog }}" hint-placeholder-val="{{ false }}"><div style="height:5px;border-radius:3px;background:{{ d.hairC }};overflow:hidden;margin-top:4px;"><div style="width:58%;height:100%;background:{{ d.accentText }};"></div></div></sc-if>
+                      </div>
+                      <div style="border-top:{{ d.hair }};padding:8px 10px;display:flex;align-items:center;"><span style="font-family:{{ d.fMono }};font-size:9px;color:{{ d.mute }};">{{ c.foot }}</span><span style="margin-left:auto;width:52px;height:20px;border-radius:{{ d.btnR }};background:{{ c.cta }};"></span></div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="width:16px;height:0;border-top:{{ d.dash }};margin:0 2px;flex-shrink:0;"></div>
+                <div style="width:72px;height:110px;flex-shrink:0;border:{{ d.dash }};border-radius:{{ d.innerR }};display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:{{ d.mute }};line-height:1.5;">탑라인<br>보고서</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- fullview -->
+        <div style="width:760px;height:470px;background:{{ d.surface }};border:1px solid rgba(0,0,0,.12);border-radius:10px;overflow:hidden;display:flex;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+          <div style="width:146px;flex-shrink:0;background:{{ d.bg }};border-right:{{ d.line }};padding:14px 9px;display:flex;flex-direction:column;gap:3px;">
+            <sc-for list="{{ d.side }}" as="s" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:8px;border-radius:{{ d.innerR }};padding:7px 8px;background:{{ s.bg }};border:{{ s.bd }};">
+                <span style="width:8px;height:8px;border-radius:{{ d.tileR }};background:{{ s.c }};flex-shrink:0;"></span>
+                <span style="font-size:11.5px;font-weight:{{ s.w }};color:{{ s.fg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.n }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+            <div style="padding:14px 20px;border-bottom:{{ d.headLine }};background:{{ d.headBg }};display:flex;align-items:center;gap:10px;">
+              <span style="width:24px;height:24px;border-radius:{{ d.tileR }};background:{{ d.tone }};border:{{ d.tileBd }};"></span>
+              <span style="font-family:{{ d.fDisplay }};font-size:17px;font-weight:700;color:{{ d.ink }};letter-spacing:-0.3px;">인터뷰 결과 생성기</span>
+              <span style="font-family:{{ d.fMono }};font-size:10.5px;color:{{ d.mute }};">결제 이탈 연구 · 8명</span>
+              <span style="margin-left:auto;font-size:12px;font-weight:600;color:{{ d.ink }};border:{{ d.line }};border-radius:{{ d.btnR }};padding:6px 12px;">내보내기</span>
+              <span style="font-size:12px;font-weight:700;color:{{ d.btnFg }};background:{{ d.btnBg }};border-radius:{{ d.btnR }};padding:7px 14px;">편집</span>
+            </div>
+            <div style="padding:0 20px;border-bottom:{{ d.hair }};display:flex;gap:18px;">
+              <span style="font-size:12px;font-weight:700;color:{{ d.ink }};border-bottom:2px solid {{ d.ink }};padding:9px 0 7px;">보고서</span>
+              <span style="font-size:12px;color:{{ d.mute }};padding:9px 0;">파일 8</span>
+              <span style="font-size:12px;color:{{ d.mute }};padding:9px 0;">근거</span>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;background:{{ d.paper }};">
+              <div style="flex:1;min-width:0;padding:20px 26px;display:flex;flex-direction:column;gap:11px;overflow:hidden;">
+                <span style="font-family:{{ d.fMono }};font-size:10px;letter-spacing:.12em;color:{{ d.accentText }};font-weight:700;">요약</span>
+                <div style="border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ d.quoteBg }};padding:12px 14px;font-size:12.5px;color:{{ d.ink }};line-height:1.7;">결제 이탈의 주원인은 가격이 아니라 <b>배송비를 알게 되는 시점</b>입니다. 8명 중 6명이 장바구니에서 처음 보고 결제를 미뤘습니다.</div>
+                <div style="font-family:{{ d.fDisplay }};font-size:16px;font-weight:{{ d.h2W }};color:{{ d.ink }};margin-top:4px;">2. 핵심 발견</div>
+                <div style="font-size:12px;color:{{ d.ink2 }};line-height:1.75;">배송비를 상품 상세에서 먼저 본 2명은 이탈 없이 결제를 마쳤습니다. 고지 시점이 신뢰를 좌우합니다.</div>
+                <div style="display:flex;gap:8px;">
+                  <sc-for list="{{ bars }}" as="b" hint-placeholder-count="4">
+                    <div style="flex:1;display:flex;flex-direction:column;gap:5px;"><div style="height:60px;display:flex;align-items:flex-end;"><div style="width:100%;height:{{ b.h }};background:{{ d.chart }};border-radius:{{ d.tileR }} {{ d.tileR }} 0 0;opacity:{{ b.o }};"></div></div><span style="font-size:10px;color:{{ d.mute }};">{{ b.n }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="width:130px;flex-shrink:0;border-left:{{ d.hair }};padding:20px 14px;display:flex;flex-direction:column;gap:9px;">
+                <span style="font-family:{{ d.fMono }};font-size:9.5px;letter-spacing:.1em;color:{{ d.mute }};font-weight:700;">목차</span>
+                <span style="font-size:11px;color:{{ d.mute }};">1. 요약</span>
+                <span style="font-size:11px;font-weight:700;color:{{ d.ink }};">2. 핵심 발견</span>
+                <span style="font-size:11px;color:{{ d.mute }};">3. 세그먼트</span>
+                <span style="font-size:11px;color:{{ d.mute }};">4. 제언</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section style="min-height:100vh;width:max-content;background:#e9e9e6;padding:56px;display:flex;flex-direction:column;gap:36px;">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:1100px;">
+    <div style="font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;letter-spacing:.14em;color:#5b5965;">TURN 1 · 리브랜드 방향 5안</div>
+    <div style="font-size:38px;font-weight:800;color:#1d1b20;letter-spacing:-1px;">더 깔끔하고 프로페셔널하게 — 다섯 갈래</div>
+    <div style="font-size:15px;color:#5b5965;line-height:1.8;">각 안은 같은 세 화면(랜딩 첫 화면 · 위젯 카드 · 보고서 본문)을 같은 문구로 그린 스냅샷입니다. 레이아웃은 그대로 두고 <b style="color:#1d1b20;">타입 · 색 · 면 · 선 · 그림자</b>만 바꿨습니다. 맨 오른쪽 <a href="#1e">1e</a> 는 지금의 정체성 파스텔을 남긴 진화안이고, 나머지 넷은 더 멀리 갑니다.</div>
+  </div>
+
+  <div style="display:flex;gap:40px;align-items:flex-start;">
+    <sc-for list="{{ dirs }}" as="d" hint-placeholder-count="5">
+      <div id="{{ d.id }}" style="width:760px;display:flex;flex-direction:column;gap:16px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:800;background:#1d1b20;color:#fff;border-radius:7px;padding:4px 11px;">{{ d.id }}</span>
+          <span style="font-size:22px;font-weight:800;color:#1d1b20;letter-spacing:-0.4px;">{{ d.name }}</span>
+          <span style="font-size:13px;color:#5b5965;">{{ d.tag }}</span>
+        </div>
+        <div style="font-size:13.5px;color:#2a262f;line-height:1.75;">{{ d.desc }}</div>
+
+        <!-- landing -->
+        <div style="width:760px;height:470px;background:{{ d.bg }};border:1px solid rgba(0,0,0,.12);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+          <div style="height:58px;padding:0 28px;display:flex;align-items:center;gap:26px;border-bottom:{{ d.navLine }};">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="width:22px;height:22px;border-radius:{{ d.logoR }};background:{{ d.accent }};"></span><span style="font-family:{{ d.fDisplay }};font-size:17px;font-weight:700;color:{{ d.ink }};letter-spacing:-0.3px;">리서치캔버스</span></div>
+            <span style="font-size:13px;color:{{ d.mute }};">제품</span><span style="font-size:13px;color:{{ d.mute }};">요금</span><span style="font-size:13px;color:{{ d.mute }};">사례</span>
+            <span style="margin-left:auto;font-size:13px;color:{{ d.mute }};">로그인</span>
+            <span style="font-size:13px;font-weight:700;color:{{ d.btnFg }};background:{{ d.btnBg }};border-radius:{{ d.btnR }};padding:8px 15px;">무료로 시작</span>
+          </div>
+          <div style="flex:1;padding:44px 28px 0;display:flex;flex-direction:column;align-items:{{ d.heroAlign }};text-align:{{ d.heroText }};gap:16px;">
+            <span style="font-family:{{ d.fMono }};font-size:11.5px;letter-spacing:.12em;color:{{ d.accentText }};font-weight:700;">{{ d.eyebrow }}</span>
+            <div style="font-family:{{ d.fDisplay }};font-size:{{ d.heroSize }};font-weight:{{ d.heroW }};color:{{ d.ink }};letter-spacing:{{ d.heroLs }};line-height:1.22;max-width:600px;">인터뷰에서 보고서까지,<br>한 작업면에서</div>
+            <div style="font-size:14.5px;color:{{ d.mute }};line-height:1.7;max-width:470px;">리크루팅, 진행, 전사, 분석을 따로 돌리지 않습니다. 연구 하나가 처음부터 끝까지 한 흐름으로 이어집니다.</div>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+              <span style="font-size:14px;font-weight:700;color:{{ d.btnFg }};background:{{ d.btnBg }};border-radius:{{ d.btnR }};padding:11px 20px;">무료로 시작</span>
+              <span style="font-size:14px;font-weight:600;color:{{ d.ink }};border:{{ d.line }};border-radius:{{ d.btnR }};padding:10px 19px;">데모 보기</span>
+            </div>
+          </div>
+          <div style="height:118px;margin:0 28px;border:{{ d.line }};border-bottom:none;border-radius:{{ d.cardR }} {{ d.cardR }} 0 0;background:{{ d.surface }};padding:14px 16px;display:flex;gap:10px;">
+            <sc-for list="{{ d.tiles }}" as="t" hint-placeholder-count="7">
+              <div style="flex:1;min-width:0;border:{{ d.line }};border-radius:{{ d.innerR }};background:{{ d.surface2 }};padding:10px;display:flex;flex-direction:column;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:{{ d.tileR }};background:{{ t.c }};border:{{ d.tileBd }};"></span>
+                <span style="font-size:11px;font-weight:600;color:{{ d.ink }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.n }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- app -->
+        <div style="display:flex;gap:16px;">
+          <div style="width:322px;height:430px;background:{{ d.surface }};border:{{ d.cardBd }};border-radius:{{ d.cardR }};box-shadow:{{ d.cardSh }};overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;">
+            <div style="background:{{ d.headBg }};border-bottom:{{ d.headLine }};padding:14px 16px;display:flex;align-items:center;gap:10px;">
+              <span style="width:28px;height:28px;border-radius:{{ d.tileR }};background:{{ d.tone }};border:{{ d.tileBd }};flex-shrink:0;"></span>
+              <span style="font-family:{{ d.fDisplay }};font-size:16px;font-weight:700;color:{{ d.ink }};flex:1;letter-spacing:-0.2px;">인터뷰 결과 생성기</span>
+              <span style="font-family:{{ d.fMono }};font-size:11px;color:{{ d.mute }};">💎10</span>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:11px;flex:1;">
+              <span style="font-family:{{ d.fMono }};font-size:10.5px;letter-spacing:.1em;color:{{ d.mute }};font-weight:700;">파일 8 · 처리 완료</span>
+              <sc-for list="{{ files }}" as="f" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px;border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ d.surface2 }};padding:9px 11px;">
+                  <span style="width:20px;height:20px;border-radius:{{ d.tileR }};background:{{ d.okBg }};color:{{ d.ok }};font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">✓</span>
+                  <span style="font-size:12.5px;color:{{ d.ink }};flex:1;">{{ f.n }}</span>
+                  <span style="font-family:{{ d.fMono }};font-size:10.5px;color:{{ d.mute }};">{{ f.t }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-top:{{ d.hair }};padding:13px 16px;display:flex;align-items:center;">
+              <span style="font-size:11.5px;color:{{ d.mute }};">보고서 준비됨</span>
+              <span style="margin-left:auto;font-size:13px;font-weight:700;color:{{ d.btnFg }};background:{{ d.btnBg }};border-radius:{{ d.btnR }};padding:9px 16px;">전체보기 열기</span>
+            </div>
+          </div>
+
+          <div style="flex:1;min-width:0;height:430px;background:{{ d.paper }};border:{{ d.cardBd }};border-radius:{{ d.cardR }};box-shadow:{{ d.cardSh }};padding:24px 24px;display:flex;flex-direction:column;gap:13px;overflow:hidden;">
+            <span style="font-family:{{ d.fMono }};font-size:10.5px;letter-spacing:.12em;color:{{ d.accentText }};font-weight:700;">탑라인 · 2. 핵심 발견</span>
+            <div style="font-family:{{ d.fDisplay }};font-size:21px;font-weight:{{ d.h2W }};color:{{ d.ink }};letter-spacing:-0.4px;line-height:1.35;">결제 직전 이탈은 가격보다 배송비 고지 시점에서 생깁니다</div>
+            <div style="font-size:13px;color:{{ d.ink2 }};line-height:1.8;">응답자 8명 중 6명이 장바구니 단계에서 처음 배송비를 보고 결제를 미뤘다고 답했습니다.</div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ d.surface2 }};padding:11px 13px;"><div style="font-family:{{ d.fDisplay }};font-size:24px;font-weight:700;color:{{ d.ink }};">6 / 8</div><div style="font-size:11px;color:{{ d.mute }};margin-top:2px;">배송비 고지 시점 언급</div></div>
+              <div style="flex:1;border:{{ d.rowBd }};border-radius:{{ d.innerR }};background:{{ d.surface2 }};padding:11px 13px;"><div style="font-family:{{ d.fDisplay }};font-size:24px;font-weight:700;color:{{ d.ink }};">3.2분</div><div style="font-size:11px;color:{{ d.mute }};margin-top:2px;">이탈 전 평균 체류</div></div>
+            </div>
+            <div style="background:{{ d.quoteBg }};border-radius:{{ d.innerR }};padding:13px 15px;font-family:{{ d.fQuote }};font-size:13.5px;color:{{ d.ink }};line-height:1.7;">“처음부터 알려줬으면 그냥 샀을 거예요. 마지막에 붙으니까 속은 느낌이었어요.”<div style="font-family:{{ d.fMono }};font-size:10.5px;color:{{ d.mute }};margin-top:6px;">P04 · 29세 · 월 3회 구매</div></div>
+            <div style="display:flex;align-items:center;gap:7px;"><span style="font-size:11.5px;font-weight:700;color:{{ d.accentText }};border:{{ d.chipBd }};background:{{ d.chipBg }};border-radius:{{ d.chipR }};padding:3px 9px;">근거 3</span><span style="font-size:11.5px;color:{{ d.mute }};">P02 · P04 · P07</span></div>
+          </div>
+        </div>
+
+        <!-- spec strip -->
+        <div style="display:flex;gap:14px;align-items:center;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:10px;padding:13px 15px;">
+          <div style="display:flex;gap:5px;">
+            <sc-for list="{{ d.sw }}" as="c" hint-placeholder-count="5"><span style="width:26px;height:26px;border-radius:6px;background:{{ c }};border:1px solid rgba(0,0,0,.12);"></span></sc-for>
+          </div>
+          <div style="width:1px;height:28px;background:rgba(0,0,0,.1);"></div>
+          <div style="font-size:12px;color:#2a262f;line-height:1.55;flex:1;">{{ d.spec }}</div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;line-height:1.6;">
+          <div style="flex:1;color:#14713a;"><b>얻는 것</b> · {{ d.gain }}</div>
+          <div style="flex:1;color:#9e2740;"><b>잃는 것</b> · {{ d.loss }}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const NAMES = ['데스크', '리크루팅', '인터뷰', '통역', '전사', '결과', 'AI UT'];
+const T = arr => arr.map((c, i) => ({ c, n: NAMES[i] }));
+const PD = "'Pretendard',sans-serif", MONO = "'JetBrains Mono',ui-monospace,monospace";
+
+const DIRS = [
+  { id: '1a', name: '에디토리얼', tag: '리서치 리포트의 신뢰감',
+    desc: '연구 보고서와 학술지의 문법을 가져옵니다. 한글 세리프 제목, 따뜻한 종이색, 1px 헤어라인. 색은 거의 쓰지 않고 짙은 적갈색 하나만 강조에 씁니다.',
+    bg: '#f6f3ee', surface: '#fbf9f6', surface2: '#fbf9f6', paper: '#fffdfa', ink: '#1c1a17', ink2: '#3a3631', mute: '#76706a', accent: '#8a2c1d', accentText: '#8a2c1d',
+    fDisplay: "'Noto Serif KR',serif", fMono: MONO, fQuote: "'Noto Serif KR',serif",
+    btnBg: '#1c1a17', btnFg: '#fbf9f6', btnR: '2px', logoR: '2px', cardR: '4px', innerR: '2px', tileR: '2px', chipR: '2px',
+    line: '1px solid #d8d1c7', hair: '1px solid #e4ded5', navLine: '1px solid #d8d1c7', cardBd: '1px solid #d8d1c7', rowBd: '1px solid #e4ded5', cardSh: 'none',
+    headBg: '#fbf9f6', headLine: '1px solid #d8d1c7', tone: '#ebe4da', tileBd: '1px solid #d8d1c7',
+    heroAlign: 'flex-start', heroText: 'left', heroSize: '40px', heroW: 600, heroLs: '-0.8px', h2W: 600, eyebrow: 'QUALITATIVE RESEARCH, END TO END',
+    okBg: '#efe9e0', ok: '#5c4a2f', quoteBg: '#f3eee6', chipBd: '1px solid #e2c9c2', chipBg: '#fbf3f1',
+    tiles: T(Array(7).fill('#ebe4da')),
+    sw: ['#f6f3ee', '#d8d1c7', '#76706a', '#1c1a17', '#8a2c1d'], spec: 'Noto Serif KR 600 / Pretendard · radius 2–4 · 1px 헤어라인 · 그림자 없음 · 위젯 톤 없음',
+    gain: '보고서·랜딩이 컨설팅급 문서처럼 읽힘. 결과물 중심 제품에 가장 잘 맞음', loss: '위젯 7종을 색으로 구분할 수 없음 — 아이콘과 이름이 전부 떠안음. 앱 UI 에서는 다소 정적' },
+
+  { id: '1b', name: '스위스 그리드', tag: '정밀한 도구',
+    desc: '흰 바탕, 각진 모서리, 굵은 수평 규칙선. 색은 코발트 하나로 "누를 수 있는 것"만 표시합니다. 위젯은 색 대신 번호로 구분합니다.',
+    bg: '#ffffff', surface: '#ffffff', surface2: '#ffffff', paper: '#ffffff', ink: '#111111', ink2: '#2b2b2b', mute: '#6b6b6b', accent: '#1f4ed8', accentText: '#1f4ed8',
+    fDisplay: "'IBM Plex Sans KR',sans-serif", fMono: MONO, fQuote: "'IBM Plex Sans KR',sans-serif",
+    btnBg: '#1f4ed8', btnFg: '#ffffff', btnR: '0', logoR: '0', cardR: '0', innerR: '0', tileR: '0', chipR: '0',
+    line: '1px solid #111111', hair: '1px solid #dcdcdc', navLine: '2px solid #111111', cardBd: '1px solid #111111', rowBd: '1px solid #dcdcdc', cardSh: 'none',
+    headBg: '#ffffff', headLine: '2px solid #111111', tone: '#111111', tileBd: 'none',
+    heroAlign: 'flex-start', heroText: 'left', heroSize: '42px', heroW: 700, heroLs: '-1.2px', h2W: 700, eyebrow: '01 — RESEARCH CANVAS',
+    okBg: '#eef2fd', ok: '#1f4ed8', quoteBg: '#f4f4f4', chipBd: '1px solid #1f4ed8', chipBg: '#ffffff',
+    tiles: T(Array(7).fill('#111111')),
+    sw: ['#ffffff', '#dcdcdc', '#6b6b6b', '#111111', '#1f4ed8'], spec: 'IBM Plex Sans KR 700 / 400 · radius 0 · 1–2px 검정 규칙선 · 그림자 없음 · 위젯은 번호',
+    gain: '가장 "도구"답고 밀도 높은 화면에 강함. 엔터프라이즈 구매자에게 설득력', loss: '차갑고 친근함이 사라짐. 비전공 연구자에게는 진입 장벽처럼 보일 수 있음' },
+
+  { id: '1c', name: '슬레이트', tag: '조용한 SaaS',
+    desc: '연회색 바탕 위 흰 면, 부드러운 2단 그림자, 반경 10. 위젯 톤은 채도를 크게 낮춰 작은 아이콘 타일에만 남깁니다. 강조는 짙은 청록 하나.',
+    bg: '#f4f5f7', surface: '#ffffff', surface2: '#f8f9fa', paper: '#ffffff', ink: '#161a22', ink2: '#343a46', mute: '#6b7280', accent: '#0f766e', accentText: '#0f766e',
+    fDisplay: PD, fMono: MONO, fQuote: PD,
+    btnBg: '#161a22', btnFg: '#ffffff', btnR: '8px', logoR: '7px', cardR: '12px', innerR: '8px', tileR: '7px', chipR: '999px',
+    line: '1px solid #e3e5e9', hair: '1px solid #eceef1', navLine: '1px solid #e3e5e9', cardBd: '1px solid #e3e5e9', rowBd: '1px solid #eceef1', cardSh: '0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06)',
+    headBg: '#ffffff', headLine: '1px solid #eceef1', tone: '#f6dfe8', tileBd: 'none',
+    heroAlign: 'center', heroText: 'center', heroSize: '40px', heroW: 700, heroLs: '-1.2px', h2W: 700, eyebrow: '리서치 워크스페이스',
+    okBg: '#e6f4f1', ok: '#0f766e', quoteBg: '#f4f5f7', chipBd: '1px solid #cde8e3', chipBg: '#f0f8f6',
+    tiles: T(['#dceaf2', '#f6edcf', '#dfe8f6', '#dcefe5', '#e9e3f6', '#f6dfe8', '#f6e4d8']),
+    sw: ['#f4f5f7', '#e3e5e9', '#6b7280', '#161a22', '#0f766e'], spec: 'Pretendard 700 / 400 · radius 8–12 · 1px 연회색 · 부드러운 그림자 · 톤은 아이콘 타일에만',
+    gain: '가장 무난하고 확장하기 쉬움. 어떤 화면을 더해도 어색하지 않음', loss: '흔한 SaaS 인상 — 경쟁 제품과 구별되는 개성이 약함' },
+
+  { id: '1d', name: '나이트 랩', tag: '분석가의 작업실',
+    desc: '흑연색 바탕의 다크 우선 테마. 경계는 1px 회색선, 숫자·라벨은 모노. 강조색은 연두 하나로, 진행 중이거나 결과가 나온 지점만 밝힙니다.',
+    bg: '#0e0f11', surface: '#16181b', surface2: '#1c1f23', paper: '#16181b', ink: '#eceef0', ink2: '#c4c8cd', mute: '#8b9097', accent: '#c6f432', accentText: '#c6f432',
+    fDisplay: PD, fMono: MONO, fQuote: PD,
+    btnBg: '#c6f432', btnFg: '#0e0f11', btnR: '6px', logoR: '5px', cardR: '10px', innerR: '6px', tileR: '5px', chipR: '4px',
+    line: '1px solid #2a2d32', hair: '1px solid #23262a', navLine: '1px solid #23262a', cardBd: '1px solid #2a2d32', rowBd: '1px solid #26292d', cardSh: 'none',
+    headBg: '#16181b', headLine: '1px solid #23262a', tone: '#3a2a31', tileBd: '1px solid #3a3d42',
+    heroAlign: 'flex-start', heroText: 'left', heroSize: '40px', heroW: 700, heroLs: '-1.2px', h2W: 700, eyebrow: '> research.canvas',
+    okBg: '#26301a', ok: '#c6f432', quoteBg: '#1c1f23', chipBd: '1px solid #3d4a1c', chipBg: '#1f2614',
+    tiles: T(['#1f3a40', '#3d3520', '#1f2c40', '#1f3a2c', '#2c2540', '#3a2a31', '#3d2c22']),
+    sw: ['#0e0f11', '#16181b', '#2a2d32', '#eceef0', '#c6f432'], spec: 'Pretendard 700 / JetBrains Mono · radius 5–10 · 1px 회색 경계 · 그림자 없음 · 다크 기본',
+    gain: '데이터·실시간(통역, AI UT 관전) 화면에서 몰입감. 확실히 차별화됨', loss: '보고서·공유 문서는 밝은 테마가 따로 필요 — 테마가 사실상 2벌' },
+
+  { id: '1e', name: '소프트 아이덴티티', tag: '지금의 진화',
+    desc: '7가지 정체성 파스텔은 남기고 Memphis 문법(굵은 검정 테두리, 하드 오프셋 그림자)만 걷어냅니다. 헤더 밴드는 아주 옅은 틴트로, 테두리는 1px, 그림자는 옅게.',
+    bg: '#ffffff', surface: '#ffffff', surface2: '#fafafa', paper: '#ffffff', ink: '#1d1b20', ink2: '#3a3640', mute: '#6e6a75', accent: '#1d1b20', accentText: '#b8325a',
+    fDisplay: "'Bricolage Grotesque','Pretendard',sans-serif", fMono: MONO, fQuote: PD,
+    btnBg: '#1d1b20', btnFg: '#ffffff', btnR: '999px', logoR: '7px', cardR: '16px', innerR: '10px', tileR: '8px', chipR: '999px',
+    line: '1px solid #e7e5ea', hair: '1px solid #efedf1', navLine: '1px solid #efedf1', cardBd: '1px solid #e7e5ea', rowBd: '1px solid #efedf1', cardSh: '0 1px 0 rgba(29,27,32,.04), 0 6px 18px rgba(29,27,32,.05)',
+    headBg: '#fff4f8', headLine: '1px solid #f6dfe8', tone: '#ffd0e2', tileBd: 'none',
+    heroAlign: 'center', heroText: 'center', heroSize: '42px', heroW: 700, heroLs: '-1.3px', h2W: 700, eyebrow: '리서치캔버스',
+    okBg: '#eaf7ef', ok: '#16a34a', quoteBg: '#fff4f8', chipBd: '1px solid #f6dfe8', chipBg: '#fff4f8',
+    tiles: T(['#bfe9ef', '#ffe8a8', '#cfe6ff', '#cdebd9', '#e7defe', '#ffd0e2', '#ffd9be']),
+    sw: ['#ffffff', '#e7e5ea', '#ffd0e2', '#cfe6ff', '#1d1b20'], spec: 'Bricolage 700 + Pretendard · radius 8–16 · 1px · 옅은 그림자 · 파스텔 7종 유지(틴트로)',
+    gain: '기존 사용자 인지·위젯 구분 체계를 그대로 유지. 이행 비용 최소', loss: '"프로페셔널" 쪽으로의 이동 폭이 가장 작음 — 여전히 친근한 쪽' },
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    const FULL = ['데스크 리서치', '리크루팅', '인터뷰 어시스턴트', '라이브 통역', '전사록 생성기', '인터뷰 결과 생성기', 'AI UT'];
+    const prod = DIRS.map(d => {
+      const dark = d.id === '1d';
+      const hairC = dark ? '#2a2d32' : '#e8e8e8';
+      const run = { chipFg: d.accentText === '#c6f432' ? '#0e0f11' : d.accentText, chipBg: dark ? '#c6f432' : (d.chipBg || '#f4f4f4') };
+      const dot = { 2: d.ok, 4: d.accentText, 5: hairC };
+      const lane = [
+        { n: '인터뷰 어시스턴트', c: d.tiles[2].c, head: d.id === '1e' ? '#eef6ff' : d.headBg, chip: '1/3 · 완료', chipFg: d.ok, chipBg: d.okBg, box: d.okBg, foot: '세션 42분', cta: d.btnBg, prog: false, arrow: false },
+        { n: '전사록 생성기', c: d.tiles[4].c, head: d.id === '1e' ? '#f6f2ff' : d.headBg, chip: '2/3 · 진행 중', ...run, box: d.surface2, foot: '6/8', cta: d.btnBg, prog: true, arrow: true },
+        { n: '인터뷰 결과', c: d.tiles[5].c, head: d.headBg, chip: '3/3', chipFg: d.mute, chipBg: d.surface2, box: d.surface2, foot: '대기', cta: hairC, prog: false, arrow: true },
+      ].map((c, i) => ({ ...c, arrowLine: i === 1 ? `2px solid ${d.accentText}` : `2px dashed ${hairC}` }));
+      return {
+        ...d, pid: d.id.replace('1', '2'), hairC, lane,
+        dash: `1.5px dashed ${dark ? '#3a3d42' : '#c9ccd2'}`,
+        chart: d.id === '1e' ? '#e8a3bd' : d.accentText,
+        pal: d.tiles.map((t, i) => ({ ...t, n: FULL[i], dot: dot[i] || 'transparent', bd: i === 4 ? d.line : '1px solid transparent', bg: i === 4 ? d.surface2 : 'transparent' })),
+        side: d.tiles.map((t, i) => ({ c: t.c, n: FULL[i], bg: i === 5 ? d.surface : 'transparent', bd: i === 5 ? d.line : '1px solid transparent', fg: i === 5 ? d.ink : d.mute, w: i === 5 ? 700 : 500 })),
+      };
+    });
+    return {
+      prod,
+      bars: [{ n: '배송비', h: '100%', o: 1 }, { n: '가격', h: '42%', o: .55 }, { n: '결제수단', h: '30%', o: .55 }, { n: '기타', h: '16%', o: .35 }],
+      dirs: DIRS,
+      files: [{ n: 'P01_김OO.m4a', t: '42분' }, { n: 'P02_이OO.m4a', t: '38분' }, { n: 'P03_박OO.m4a', t: '51분' }, { n: 'P04_최OO.m4a', t: '44분' }],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

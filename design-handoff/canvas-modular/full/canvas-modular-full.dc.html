@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;color:#1d1b20;}a{color:#b8325a;text-decoration:none;}a:hover{color:#8f2446;}
+@keyframes sipulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;}}</style>
+</helmet>
+
+<div style="min-height:100vh;width:max-content;background:#ececee;padding:64px;display:flex;flex-direction:column;align-items:flex-start;gap:64px;">
+
+  <div style="width:2608px;display:flex;flex-direction:column;gap:12px;">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.14em;color:#6e6a75;">CANVAS MODULAR · PHASE 1 풀 번들</span>
+    <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:46px;font-weight:700;letter-spacing:-1.5px;line-height:1.1;">팔레트 + 작업면 + 레인</span>
+    <span style="font-size:15px;color:#6e6a75;line-height:1.8;max-width:1100px;">M0–M3 확정 구도를 실치수로 옮긴 장면 P0–P5 입니다. 레인 내부는 v3 그대로, 셸은 무수정. 시각 값은 Soft Identity 토큰(<code style="font-family:'JetBrains Mono',monospace;font-size:13px;">design_handoff_soft_identity/tokens.css</code>)으로 썼습니다. 화면 장면은 1280×800 뷰포트 실치수, 레인은 캔버스 줌 42% 로 그렸습니다.</span>
+  </div>
+
+  <!-- ═══ P0 · 타일 상태 사전 ═══ -->
+  <div id="P0" style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">P0</span><span style="font-size:20px;font-weight:700;">팔레트 타일 상태 사전</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">216 × 64 · 1:1</span></div>
+    <div style="width:2608px;background:#fff;border:1px solid #e7e5ea;border-radius:16px;padding:28px;display:flex;gap:36px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:26px 28px;">
+        <sc-for list="{{ dict }}" as="x" hint-placeholder-count="12">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="min-height:80px;display:flex;align-items:flex-start;padding:8px;background:#fff;border-radius:12px;border:1px dashed #efedf1;">
+              <div style="width:216px;border:{{ x.t.bd }};border-radius:10px;background:{{ x.t.bg }};box-shadow:{{ x.t.sh }};opacity:{{ x.t.op }};transform:{{ x.t.tf }};overflow:hidden;">
+                <div style="height:64px;display:flex;align-items:center;gap:11px;padding:0 10px 0 10px;">
+                  <span style="width:36px;height:36px;border-radius:9px;background:{{ x.t.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ x.t.icon }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ x.t.n }}</span>
+                    <span style="display:flex;align-items:center;gap:6px;min-height:18px;white-space:nowrap;">
+                      <sc-if value="{{ x.t.isMeta }}" hint-placeholder-val="{{ true }}"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">{{ x.t.meta }}</span><sc-if value="{{ x.t.chainable }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;font-weight:600;color:#6e6a75;background:#f4f3f6;border-radius:999px;padding:1px 7px;">체인</span></sc-if></sc-if>
+                      <sc-if value="{{ x.t.isBadge }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:5px;background:{{ x.t.bb }};color:{{ x.t.bf }};border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:{{ x.t.bd2 }};animation:{{ x.t.anim }};"></span>{{ x.t.text }}</span></sc-if>
+                      <sc-if value="{{ x.t.isFit }}" hint-placeholder-val="{{ false }}"><span style="background:#1d1b20;color:#fff;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:600;">{{ x.t.text }}</span></sc-if>
+                      <sc-if value="{{ x.t.isNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:#6e6a75;">{{ x.t.text }}</span></sc-if>
+                    </span>
+                  </div>
+                  <sc-if value="{{ x.t.grip }}" hint-placeholder-val="{{ true }}"><span style="display:grid;grid-template-columns:3px 3px;gap:3px;flex-shrink:0;opacity:.7;"><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span></span></sc-if>
+                  <sc-if value="{{ x.t.chev }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 7px;border-radius:999px;background:#f4f3f6;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#3a3640;flex-shrink:0;">{{ x.t.count }}<span style="font-size:8px;transform:{{ x.t.chevRot }};">▼</span></span></sc-if>
+                </div>
+                <sc-if value="{{ x.t.expanded }}" hint-placeholder-val="{{ false }}">
+                  <div style="border-top:1px solid #efedf1;padding:6px;display:flex;flex-direction:column;gap:2px;">
+                    <sc-for list="{{ x.t.runs }}" as="r" hint-placeholder-count="3">
+                      <div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:8px;background:{{ r.bg }};">
+                        <span style="width:6px;height:6px;border-radius:50%;background:{{ r.dot }};flex-shrink:0;animation:{{ r.anim }};"></span>
+                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.t }}</span><span style="font-size:10.5px;color:{{ r.sf }};white-space:nowrap;">{{ r.s }}</span></div>
+                        <span style="font-size:11px;color:#9a96a1;">→</span>
+                      </div>
+                    </sc-for>
+                    <span style="font-size:11px;color:#6e6a75;padding:6px 8px 4px;">지난 실행은 라이브러리에서</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;background:#f4f3f6;border-radius:4px;padding:1px 6px;">{{ x.key }}</span><span style="font-size:13.5px;font-weight:700;">{{ x.name }}</span></div>
+            <div style="font-size:12px;color:#3a3640;line-height:1.7;"><b style="color:#1d1b20;">언제</b> · {{ x.when }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#6e6a75;line-height:1.7;">{{ x.vals }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">접힌 레일 · 72</span>
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:72px;background:#fff;border:1px solid #e7e5ea;border-radius:14px;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">
+            <span style="width:36px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;">{{ expandRail }}</span>
+            <sc-for list="{{ rail }}" as="r" hint-placeholder-count="9">
+              <span style="position:relative;width:44px;height:44px;border-radius:11px;background:{{ r.c }};display:flex;align-items:center;justify-content:center;box-shadow:{{ r.ring }};">{{ r.icon }}<sc-if value="{{ r.dot }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;right:-3px;top:-3px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:{{ r.dotC }};"></span></sc-if></span>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;padding-top:262px;">
+            <div style="background:#1d1b20;color:#fff;border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;box-shadow:0 12px 32px rgba(29,27,32,.12);"><span style="font-size:12.5px;font-weight:600;white-space:nowrap;">전사록 생성기</span><span style="font-size:11px;color:#c4c1c9;white-space:nowrap;">체인 1 · 2단계 · 진행 중</span></div>
+            <span style="font-size:11px;color:#6e6a75;line-height:1.6;">hover · focus 툴팁<br>(이름 + 둘째 줄 문구)</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#3a3640;line-height:1.75;">뷰포트 &lt; 1280 이면 접힙니다. 사용자가 « 로 직접 접을 수도 있고, 그 선택은 사용자 설정으로 기억합니다. 톤 타일 44 · 상태 점 11(흰 2px 테두리, 색 = P5 우선순위 1위) · 키보드 포커스 = 타일 링. 끌기와 누르기는 펼친 상태와 같습니다. 접힌 상태에서는 작업 목록이 툴팁 대신 레일 오른쪽 팝오버(240, <code>--sh-popover</code>)로 열립니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 화면 장면 ═══ -->
+  <div style="display:grid;grid-template-columns:1280px 1280px;gap:56px 48px;">
+    <sc-for list="{{ screens }}" as="s" hint-placeholder-count="12">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">{{ s.id }}</span><span style="font-size:18px;font-weight:700;">{{ s.title }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">{{ s.code }}</span></div>
+        <div style="width:1280px;height:800px;position:relative;overflow:hidden;border-radius:14px;background:#fff;box-shadow:0 2px 4px rgba(29,27,32,.04),0 24px 48px rgba(29,27,32,.08);">
+
+          <!-- palette -->
+          <div style="position:absolute;left:0;top:0;width:240px;height:800px;background:#fff;border-right:1px solid #efedf1;padding:16px 12px;display:flex;flex-direction:column;gap:4px;z-index:3;">
+            <div style="display:flex;align-items:center;gap:9px;padding:0 6px 14px;"><span style="width:22px;height:22px;border-radius:7px;background:#1d1b20;"></span><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:16px;font-weight:700;">리서치캔버스</span><span style="margin-left:auto;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;">{{ collapseIcon }}</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px;padding:0 6px 8px;"><span style="font-size:13px;font-weight:700;">위젯 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a96a1;font-weight:500;">9</span></span><span style="font-size:11.5px;color:#9a96a1;">누르면 열리고, 끌면 체인에 들어갑니다</span></div>
+            <sc-for list="{{ s.pal }}" as="t" hint-placeholder-count="9">
+              <div style="width:216px;border:{{ t.bd }};border-radius:10px;background:{{ t.bg }};box-shadow:{{ t.sh }};opacity:{{ t.op }};flex-shrink:0;overflow:hidden;">
+                <div style="height:64px;display:flex;align-items:center;gap:11px;padding:0 10px;">
+                  <span style="width:36px;height:36px;border-radius:9px;background:{{ t.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ t.icon }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.n }}</span>
+                    <span style="display:flex;align-items:center;gap:6px;min-height:18px;white-space:nowrap;">
+                      <sc-if value="{{ t.isMeta }}" hint-placeholder-val="{{ true }}"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">{{ t.meta }}</span><sc-if value="{{ t.chainable }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;font-weight:600;color:#6e6a75;background:#f4f3f6;border-radius:999px;padding:1px 7px;">체인</span></sc-if></sc-if>
+                      <sc-if value="{{ t.isBadge }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:5px;background:{{ t.bb }};color:{{ t.bf }};border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600;"><span style="width:6px;height:6px;border-radius:50%;background:{{ t.bd2 }};animation:{{ t.anim }};"></span>{{ t.text }}</span></sc-if>
+                      <sc-if value="{{ t.isFit }}" hint-placeholder-val="{{ false }}"><span style="background:#1d1b20;color:#fff;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:600;">{{ t.text }}</span></sc-if>
+                      <sc-if value="{{ t.isNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:#6e6a75;">{{ t.text }}</span></sc-if>
+                    </span>
+                  </div>
+                  <sc-if value="{{ t.grip }}" hint-placeholder-val="{{ true }}"><span style="display:grid;grid-template-columns:3px 3px;gap:3px;flex-shrink:0;opacity:.7;"><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span><span style="width:3px;height:3px;border-radius:50%;background:#9a96a1;"></span></span></sc-if>
+                  <sc-if value="{{ t.chev }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:3px;height:24px;padding:0 7px;border-radius:999px;background:#f4f3f6;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#3a3640;flex-shrink:0;">{{ t.count }}<span style="font-size:8px;transform:{{ t.chevRot }};">▼</span></span></sc-if>
+                </div>
+                <sc-if value="{{ t.expanded }}" hint-placeholder-val="{{ false }}">
+                  <div style="border-top:1px solid #efedf1;padding:6px;display:flex;flex-direction:column;gap:2px;">
+                    <sc-for list="{{ t.runs }}" as="r" hint-placeholder-count="3">
+                      <div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:8px;background:{{ r.bg }};">
+                        <span style="width:6px;height:6px;border-radius:50%;background:{{ r.dot }};flex-shrink:0;animation:{{ r.anim }};"></span>
+                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.t }}</span><span style="font-size:10.5px;color:{{ r.sf }};white-space:nowrap;">{{ r.s }}</span></div>
+                        <span style="font-size:11px;color:#9a96a1;">→</span>
+                      </div>
+                    </sc-for>
+                    <span style="font-size:11px;color:#6e6a75;padding:6px 8px 4px;">지난 실행은 라이브러리에서</span>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="margin-top:auto;border-top:1px solid #efedf1;padding:12px 6px 0;display:flex;align-items:center;gap:10px;"><span style="width:28px;height:28px;border-radius:50%;background:#e7defe;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">이</span><span style="font-size:12.5px;font-weight:600;">이지은</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">💎 1,240</span></div>
+          </div>
+
+          <!-- canvas -->
+          <div style="position:absolute;left:240px;top:0;width:1040px;height:800px;background:#f7f7f8;background-image:radial-gradient(#e2e1e6 1px,transparent 1px);background-size:22px 22px;overflow:hidden;">
+            <sc-if value="{{ s.hasLane }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:24px;top:78px;background:#fff;border:1px solid #e7e5ea;border-radius:16px;box-shadow:0 1px 0 rgba(29,27,32,.04),0 6px 18px rgba(29,27,32,.05);overflow:hidden;">
+                <div style="height:44px;padding:0 16px;border-bottom:1px solid #efedf1;display:flex;align-items:center;gap:11px;white-space:nowrap;">
+                  <span style="width:24px;height:24px;border-radius:7px;background:#f4f3f6;display:flex;align-items:center;justify-content:center;">{{ linkIcon }}</span>
+                  <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:14px;font-weight:700;">체인 1</span>
+                  <sc-if value="{{ s.lane.editable }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;background:#f4f3f6;border-radius:999px;padding:2px;"><span style="background:#fff;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;box-shadow:0 1px 2px rgba(29,27,32,.08);">단계별 승인</span><span style="padding:3px 10px;font-size:11px;color:#6e6a75;">자동</span></span></sc-if>
+                  <sc-if value="{{ s.lane.badge }}" hint-placeholder-val="{{ false }}"><span style="background:#f4f3f6;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;color:#3a3640;">단계별 승인</span></sc-if>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:{{ s.lane.stFg }};">{{ s.lane.status }}</span>
+                  <span style="flex:1;min-width:20px;"></span>
+                  <sc-if value="{{ s.lane.cost }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">세션 후 💎1 + 파일당 25</span></sc-if>
+                  <span style="font-size:12px;color:#6e6a75;">{{ s.lane.action }}</span>
+                </div>
+                <div style="padding:18px 16px;display:flex;align-items:center;">
+                  <sc-for list="{{ s.items }}" as="it" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;flex-shrink:0;position:relative;">
+                      <sc-if value="{{ it.isSeg }}" hint-placeholder-val="{{ false }}"><div style="width:36px;display:flex;align-items:center;"><div style="flex:1;height:0;border-top:{{ it.line }};"></div><div style="width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid {{ it.tip }};"></div></div></sc-if>
+                      <sc-if value="{{ it.isCard }}" hint-placeholder-val="{{ true }}">
+                        <div style="width:230px;height:342px;background:#fff;border:1px solid #e7e5ea;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:{{ it.ring }};opacity:{{ it.op }};">
+                          <div style="background:{{ it.tint }};border-bottom:1px solid #efedf1;padding:9px 10px;display:flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border-radius:7px;background:{{ it.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ it.icon }}</span><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.n }}</span><span style="background:{{ it.cb }};color:{{ it.cf }};border-radius:999px;padding:1px 8px;font-size:10px;font-weight:600;white-space:nowrap;">{{ it.chip }}</span></div>
+                          <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:7px;">
+                            <sc-for list="{{ it.rows }}" as="r" hint-placeholder-count="3"><div style="height:{{ r.h }};border:1px solid #efedf1;border-radius:8px;background:{{ r.bg }};"></div></sc-for>
+                          </div>
+                          <div style="border-top:1px solid #efedf1;padding:8px 10px;display:flex;align-items:center;"><span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#6e6a75;">{{ it.foot }}</span><span style="margin-left:auto;width:48px;height:20px;border-radius:999px;background:{{ it.cta }};"></span></div>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ it.isSlot }}" hint-placeholder-val="{{ false }}">
+                        <div style="position:relative;width:230px;height:342px;flex-shrink:0;">
+                        <div style="width:230px;height:342px;border:{{ it.bd }};border-radius:12px;background:{{ it.bg }};display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:44px 18px 18px;opacity:{{ it.op }};">
+                          <span style="width:44px;height:44px;border-radius:13px;background:#fff;border:1px solid {{ it.iconLine }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:{{ it.fg }};">{{ it.glyph }}</span>
+                          <span style="font-size:13px;font-weight:700;color:{{ it.fg }};line-height:1.45;">{{ it.t }}</span>
+                          <span style="font-size:11.5px;color:{{ it.sf }};line-height:1.55;">{{ it.s }}</span>
+                        </div>
+                        <sc-if value="{{ it.hasFade }}" hint-placeholder-val="{{ false }}">
+                          <div style="position:absolute;left:0;top:0;width:230px;height:342px;background:#fff;border:1px solid #e7e5ea;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;opacity:.6;">
+                            <div style="background:#f7f4ff;border-bottom:1px solid #efedf1;padding:9px 10px;display:flex;align-items:center;gap:7px;"><span style="width:22px;height:22px;border-radius:7px;background:#e7defe;display:flex;align-items:center;justify-content:center;">{{ tIcon }}</span><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:12px;font-weight:700;">전사록 생성기</span></div>
+                            <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:7px;"><div style="height:60px;border:1px solid #efedf1;border-radius:8px;"></div><div style="height:30px;border:1px solid #efedf1;border-radius:8px;"></div></div>
+                          </div>
+                        </sc-if>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ it.isOut }}" hint-placeholder-val="{{ false }}"><div style="width:110px;height:130px;border:1.5px dashed #d6d4da;border-radius:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;"><span style="width:26px;height:26px;border-radius:8px;background:#fff4f8;display:flex;align-items:center;justify-content:center;">{{ reportIcon }}</span><span style="font-size:11px;font-weight:600;color:#6e6a75;white-space:nowrap;">탑라인 보고서</span><span style="font-size:10px;color:#9a96a1;">대기</span></div></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ s.hasEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:250px;top:250px;width:540px;background:#fff;border:1px solid #e7e5ea;border-radius:16px;padding:36px 34px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;">
+                <span style="width:60px;height:60px;border-radius:18px;background:#f4f3f6;display:flex;align-items:center;justify-content:center;">{{ emptyIcon }}</span>
+                <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:20px;font-weight:700;letter-spacing:-0.4px;">작업면이 비어 있어요</span>
+                <span style="font-size:13.5px;color:#6e6a75;line-height:1.7;max-width:400px;">체인을 만들려면 새 체인을 열고 왼쪽에서 위젯을 끌어 넣으세요. 하나만 쓸 거라면 위젯을 누르면 바로 열립니다.</span>
+                <span style="display:inline-flex;background:#1d1b20;color:#fff;border-radius:999px;padding:10px 20px;font-size:13.5px;font-weight:600;margin-top:4px;">+ 새 체인</span>
+              </div>
+            </sc-if>
+
+            <div style="position:absolute;left:24px;top:20px;display:flex;align-items:center;gap:10px;">
+              <span style="display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:999px;border:1px solid {{ s.tb.line }};background:{{ s.tb.bg }};color:{{ s.tb.fg }};font-size:13px;font-weight:600;white-space:nowrap;">+ 새 체인</span>
+              <sc-if value="{{ s.tb.tip }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;color:#9a96a1;white-space:nowrap;">파일럿에서는 체인을 하나만 만들 수 있어요</span></sc-if>
+              <sc-if value="{{ s.hasPill }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:999px;border:1px solid #e7e5ea;background:#fff;font-size:12.5px;white-space:nowrap;"><b>체인 1</b><span style="width:1px;height:12px;background:#e7e5ea;"></span><span style="width:6px;height:6px;border-radius:50%;background:{{ s.pillDot }};animation:{{ s.pillAnim }};"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:{{ s.pillFg }};">{{ s.pillText }}</span></span></sc-if>
+            </div>
+            <span style="position:absolute;right:20px;bottom:18px;display:inline-flex;align-items:center;gap:12px;height:32px;padding:0 13px;border-radius:999px;border:1px solid #e7e5ea;background:#fff;font-family:'JetBrains Mono',monospace;font-size:11.5px;white-space:nowrap;"><span>−</span><span>42%</span><span>+</span></span>
+          </div>
+
+          <!-- screen-level overlays (portal layer) -->
+          <sc-if value="{{ s.hasGhost }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:{{ s.g.x }};top:{{ s.g.y }};width:216px;height:64px;transform:rotate(2deg);background:#fff;border:1px solid #e7e5ea;border-radius:10px;box-shadow:0 12px 32px rgba(29,27,32,.16);display:flex;align-items:center;gap:11px;padding:0 10px;z-index:6;opacity:{{ s.g.op }};">
+              <span style="width:36px;height:36px;border-radius:9px;background:{{ s.g.c }};display:flex;align-items:center;justify-content:center;">{{ s.g.icon }}</span>
+              <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:13.5px;font-weight:600;">{{ s.g.n }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">{{ s.g.meta }}</span></div>
+            </div>
+            <sc-if value="{{ s.g.hasLabel }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:{{ s.g.lx }};top:{{ s.g.ly }};z-index:7;display:inline-flex;align-items:center;gap:6px;background:{{ s.g.lb }};color:{{ s.g.lf }};border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 4px 12px rgba(29,27,32,.12);">{{ s.g.label }}</span></sc-if>
+          </sc-if>
+
+          <sc-if value="{{ s.hasCoach }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:252px;top:92px;width:340px;z-index:7;background:#1d1b20;color:#fff;border-radius:14px;padding:18px 18px 14px;box-shadow:0 12px 32px rgba(29,27,32,.18);display:flex;flex-direction:column;gap:9px;">
+              <span style="position:absolute;left:-7px;top:26px;width:14px;height:14px;background:#1d1b20;transform:rotate(45deg);border-radius:2px;"></span>
+              <span style="font-size:15px;font-weight:700;">위젯은 이제 왼쪽 목록에 있어요</span>
+              <span style="font-size:12.5px;color:#d9d6de;line-height:1.7;">캔버스에 모두 펼쳐 두지 않고, 쓸 때만 꺼냅니다. 누르면 열리고, 끌면 체인에 들어갑니다. 만들었던 결과는 그대로 있어요.</span>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:4px;"><span style="font-size:11.5px;color:#9a96a1;">한 번만 보여요</span><span style="margin-left:auto;background:#fff;color:#1d1b20;border-radius:999px;padding:7px 15px;font-size:12.5px;font-weight:600;">알겠어요</span></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ s.hasAnn }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:264px;bottom:62px;z-index:7;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e7e5ea;border-radius:12px;padding:10px 14px;box-shadow:0 12px 32px rgba(29,27,32,.12);max-width:640px;">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.08em;color:#6e6a75;background:#f4f3f6;border-radius:4px;padding:2px 6px;white-space:nowrap;">aria-live</span>
+              <span style="font-size:12.5px;color:#3a3640;line-height:1.5;">{{ s.ann }}</span>
+            </div>
+          </sc-if>
+
+          <div style="position:absolute;left:0;top:0;width:1280px;height:800px;pointer-events:none;z-index:8;">{{ s.svg }}</div>
+        </div>
+        <div style="width:1280px;display:flex;flex-direction:column;gap:6px;">
+          <sc-for list="{{ s.notes }}" as="n" hint-placeholder-count="3">
+            <div style="display:flex;gap:10px;font-size:13px;color:#3a3640;line-height:1.7;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#9a96a1;padding-top:2px;flex-shrink:0;">{{ n.k }}</span><span>{{ n.t }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ═══ P5 · 복수 실행 ═══ -->
+  <div id="P5" style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">P5</span><span style="font-size:20px;font-weight:700;">복수 실행 중첩 — 둘째 줄과 "누르면 어디로"</span></div>
+    <div style="width:2608px;background:#fff;border:1px solid #e7e5ea;border-radius:16px;padding:28px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">① 위치(location) 정의</span>
+        <span style="font-size:13.5px;color:#3a3640;line-height:1.8;">한 위젯의 <b style="color:#1d1b20;">위치</b> = 그 위젯이 지금 일을 갖고 있는 곳. Phase 1 에서는 두 종류뿐입니다.</span>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="border:1px solid #efedf1;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.6;"><b>레인 카드</b> — 체인에 들어 있으면 1개. 체인이 대기여도 위치입니다.</div>
+          <div style="border:1px solid #efedf1;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.6;"><b>풀뷰 실행</b> — 체인 밖에서 시작해 아직 끝나지 않은 실행(running · awaiting · paused · error). 완료된 실행은 위치가 아닙니다(라이브러리 소관).</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">② 누르기 = 위치 개수로 결정</span>
+        <div style="border:1px solid #e7e5ea;border-radius:12px;overflow:hidden;">
+          <sc-for list="{{ pressRule }}" as="r" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid #efedf1;"><span style="padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;background:#fafafa;">{{ r.n }}</span><span style="padding:12px 14px;font-size:13px;line-height:1.65;">{{ r.t }}</span></div>
+          </sc-for>
+        </div>
+        <span style="font-size:12.5px;color:#6e6a75;line-height:1.75;">시스템이 둘 중 하나를 고르지 않습니다. 고르면 사용자가 원한 쪽이 아닐 때 "어디 갔지?"가 생깁니다. ▾ 버튼(개수 칩)은 위치가 2개 이상일 때만 보이고, 누르기와 같은 동작(펼침)입니다.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#6e6a75;font-weight:700;">③ 둘째 줄 = 가장 급한 위치 하나</span>
+        <div style="border:1px solid #e7e5ea;border-radius:12px;overflow:hidden;">
+          <sc-for list="{{ priority }}" as="p" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #efedf1;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#9a96a1;width:16px;">{{ p.n }}</span><span style="display:inline-flex;align-items:center;gap:5px;background:{{ p.bb }};color:{{ p.bf }};border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:{{ p.dot }};"></span>{{ p.k }}</span><span style="font-size:12.5px;color:#3a3640;">{{ p.t }}</span></div>
+          </sc-for>
+        </div>
+        <span style="font-size:12.5px;color:#6e6a75;line-height:1.75;">같은 순위면 최근에 바뀐 것. 위치가 2개 이상이면 문구 앞에 개수를 붙입니다("2건 · 승인 대기"). 체인 소속이면 체인 칩 문구("체인 1 · 3단계 · …")를 우선 형식으로 씁니다.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const e = React.createElement;
+const W = {
+  D: { n: '데스크 리서치', c: '#bfe9ef', tint: '#effafc', cr: 60, ch: false },
+  R: { n: '리크루팅', c: '#ffe8a8', tint: '#fffaeb', cr: 30, ch: false },
+  G: { n: '가이드라인 생성기', c: '#e9e7ec', tint: '#f7f6f8', cr: null, ch: false },
+  P: { n: '인터뷰 어시스턴트', c: '#cfe6ff', tint: '#f2f8ff', cr: 25, ch: true },
+  L: { n: '라이브 통역', c: '#cdebd9', tint: '#f1f9f4', cr: 50, ch: false },
+  T: { n: '전사록 생성기', c: '#e7defe', tint: '#f7f4ff', cr: 1, ch: true },
+  I: { n: '인터뷰 결과 생성기', c: '#ffd0e2', tint: '#fff4f8', cr: 10, ch: true },
+  U: { n: 'AI UT', c: '#ffd9be', tint: '#fff6ef', cr: 40, ch: false },
+  V: { n: '영상 분석기', c: '#e9e7ec', tint: '#f7f6f8', cr: null, ch: false },
+};
+const ORDER = ['D', 'R', 'G', 'P', 'L', 'T', 'I', 'U', 'V'];
+const IP = {
+  D: [['circle', { cx: 11, cy: 11, r: 6, fill: '#fff' }], ['path', { d: 'M16 16l4.5 4.5' }]],
+  R: [['circle', { cx: 12, cy: 8, r: 3.5, fill: '#fff' }], ['path', { d: 'M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6z', fill: '#fff' }]],
+  G: [['rect', { x: 5, y: 3, width: 14, height: 18, rx: 2, fill: '#fff' }], ['path', { d: 'M8 8l1.5 1.5L12 7M8 14l1.5 1.5L12 13M14 8.5h2M14 14.5h2' }]],
+  P: [['path', { d: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 4v-4H6a2 2 0 0 1-2-2z', fill: '#fff' }]],
+  L: [['circle', { cx: 12, cy: 12, r: 8, fill: '#fff' }], ['path', { d: 'M4 12h16M12 4c2.5 2.2 2.5 13.8 0 16M12 4c-2.5 2.2-2.5 13.8 0 16' }]],
+  T: [['path', { d: 'M6 3h8l4 4v14H6z', fill: '#fff' }], ['path', { d: 'M14 3v4h4M9 12h6M9 16h5' }]],
+  I: [['rect', { x: 4, y: 12, width: 4, height: 8, fill: '#fff' }], ['rect', { x: 10, y: 7, width: 4, height: 13, fill: '#fff' }], ['rect', { x: 16, y: 4, width: 4, height: 16, fill: '#fff' }]],
+  U: [['path', { d: 'M5 3l14 7-6 2-2 6z', fill: '#fff' }]],
+  V: [['rect', { x: 3, y: 5, width: 18, height: 14, rx: 2, fill: '#fff' }], ['path', { d: 'M10 9l5 3-5 3z' }]],
+  link: [['path', { d: 'M9.5 14.5l5-5M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1' }]],
+  col: [['path', { d: 'M11 6l-6 6 6 6M19 6l-6 6 6 6' }]],
+  exp: [['path', { d: 'M13 6l6 6-6 6M5 6l6 6-6 6' }]],
+  empty: [['rect', { x: 3, y: 4, width: 6, height: 16, rx: 1.5, fill: '#fff' }], ['path', { d: 'M13 12h7M17 8l4 4-4 4' }]],
+};
+const ic = (k, s = 17, stroke = '#1d1b20', sw = 1.8) => e('svg', { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke, strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flexShrink: 0 } }, IP[k].map(([t, p], i) => e(t, { key: i, ...p })));
+const SIG = { ok: ['#eaf7ef', '#13803d', '#16a34a'], run: ['#f4f0ff', '#5b44c4', '#7c5cf0'], warn: ['#fff6e5', '#93640c', '#d29a1f'], err: ['#fdf0f0', '#b33a3a', '#dc4444'], idle: ['#f4f3f6', '#3a3640', '#9a96a1'] };
+const PULSE = 'sipulse 1.4s ease-in-out infinite';
+
+const RING_FOCUS = 'inset 0 0 0 1px #1d1b20, 0 0 0 3px rgba(29,27,32,.10)';
+function tile(k, st = 'idle', o = {}) {
+  const w = W[k];
+  const t = { ...w, icon: ic(k), bd: '1px solid transparent', bg: 'transparent', sh: 'none', op: 1, tf: 'none', isMeta: true, meta: w.cr == null ? '💎 —' : '💎 ' + w.cr, chainable: w.ch, isBadge: false, isFit: false, isNote: false, grip: true, chev: false, count: '', chevRot: 'none', expanded: false, runs: [], text: '', bb: '', bf: '', bd2: '', anim: 'none' };
+  const badge = (sig, text, pulse) => Object.assign(t, { isMeta: false, isBadge: true, bb: SIG[sig][0], bf: SIG[sig][1], bd2: SIG[sig][2], text, anim: pulse ? PULSE : 'none' });
+  switch (st) {
+    case 'hover': Object.assign(t, { bg: '#f4f3f6' }); break;
+    case 'focus': Object.assign(t, { sh: RING_FOCUS }); break;
+    case 'press': Object.assign(t, { bg: '#ebe9ee', tf: 'scale(.98)' }); break;
+    case 'lifted': Object.assign(t, { bg: '#fff', sh: '0 0 0 2px #1d1b20, 0 12px 32px rgba(29,27,32,.16)', isMeta: false, isNote: true, text: '들어올림 · ←→ 로 위치' }); break;
+    case 'fit': Object.assign(t, { bg: '#fff', sh: 'inset 0 0 0 1px #1d1b20', isMeta: false, isFit: true, text: o.text || '→ 2단계' }); break;
+    case 'source': Object.assign(t, { bd: '1px dashed #c4c1c9', bg: '#fafafa', op: .5, isMeta: false, isNote: true, text: '끌어가는 중', grip: false }); break;
+    case 'chain': badge(o.sig || 'idle', o.text, o.pulse); t.grip = false; break;
+    case 'run': badge('run', o.text, true); break;
+    case 'warn': badge('warn', o.text); break;
+    case 'err': badge('err', o.text); break;
+    case 'multi': badge(o.sig || 'warn', o.text, o.pulse); Object.assign(t, { grip: false, chev: true, count: o.count || 2 }); break;
+    case 'expanded': badge(o.sig || 'warn', o.text, o.pulse); Object.assign(t, { grip: false, chev: true, count: o.count || 3, chevRot: 'rotate(180deg)', expanded: true, bg: '#fff', bd: '1px solid #e7e5ea', sh: '0 1px 0 rgba(29,27,32,.04), 0 6px 18px rgba(29,27,32,.05)', runs: o.runs || [] }); break;
+  }
+  return t;
+}
+const pal = (map = {}) => ORDER.map(k => map[k] ? tile(k, ...map[k]) : tile(k));
+const run = (sig, t, s, sel) => ({ t, s, dot: SIG[sig][2], sf: SIG[sig][1], bg: sel ? '#f4f3f6' : 'transparent', anim: sig === 'run' ? PULSE : 'none' });
+const RUNS_I = [run('warn', '체인 1 · 3단계', '승인 대기 · 💎25', true), run('run', '풀뷰 · P09–P12 추가분', '생성 중 · 3 / 4'), run('err', '풀뷰 · 1차 재생성', '실패 · 파일 2개 확인')];
+
+const R = (h, bg = '#fff') => ({ h, bg });
+const ROWS = { setup: [R('46px'), R('30px'), R('30px'), R('60px', '#fafafa')], done: [R('60px', '#eaf7ef'), R('30px'), R('30px')], running: [R('54px', '#f4f0ff'), R('30px'), R('30px')], idle: [R('20px', '#fafafa'), R('110px', '#fafafa'), R('30px')] };
+const FOOT = { setup: ['💎25', '#1d1b20'], done: ['완료', '#1d1b20'], running: ['6 / 8', '#1d1b20'], idle: ['대기', '#efedf1'] };
+const card = (k, chip, sig, body, o = {}) => ({ isCard: true, isSeg: false, isSlot: false, isFade: false, isOut: false, ...W[k], icon: ic(k, 13), chip, cb: SIG[sig][0], cf: SIG[sig][1], rows: ROWS[body], foot: FOOT[body][0], cta: FOOT[body][1], ring: o.ring || 'none', op: 1 });
+const seg = kind => ({ isCard: false, isSeg: true, isSlot: false, isFade: false, isOut: false, line: { done: '1.5px solid #1d1b20', run: '1.5px solid #7c5cf0', pend: '1.5px dashed #d6d4da' }[kind], tip: { done: '#1d1b20', run: '#7c5cf0', pend: '#d6d4da' }[kind] });
+const SLOT = {
+  empty: { bd: '1.5px dashed #d6d4da', bg: '#fafafa', glyph: '+', fg: '#6e6a75', sf: '#9a96a1', iconLine: '#efedf1', t: '위젯을 끌어 넣으세요', s: '' },
+  ready: { bd: '1.5px dashed #9a96a1', bg: '#fff', glyph: '↓', fg: '#3a3640', sf: '#6e6a75', iconLine: '#e7e5ea', t: '2단계 자리', s: '받을 수 있는 위젯이 들려 있어요' },
+  accept: { bd: '1.5px dashed #1d1b20', bg: '#f7f4ff', glyph: '↓', fg: '#1d1b20', sf: '#3a3640', iconLine: '#e7e5ea', t: '놓으면 2단계로 들어갑니다', s: '전사록 생성기 · 💎1' },
+  reject: { bd: '1.5px dashed #dc4444', bg: '#fdf0f0', glyph: '✕', fg: '#b33a3a', sf: '#b33a3a', iconLine: '#f6d6d6', t: '여기에는 놓을 수 없어요', s: '데스크 리서치는 인터뷰 어시스턴트 다음에 올 수 없습니다' },
+  fade: { bd: '1.5px dashed #1d1b20', bg: '#f7f4ff', glyph: '↓', fg: '#1d1b20', sf: '#3a3640', iconLine: '#e7e5ea', t: '놓으면 2단계로 들어갑니다', s: '전사록 생성기 · 💎1' },
+};
+const slot = (kind, o = {}) => ({ isCard: false, isSeg: false, isSlot: true, isOut: false, hasFade: false, ...SLOT[kind], op: o.op ?? 1 });
+const out = () => ({ isCard: false, isSeg: false, isSlot: false, isFade: false, isOut: true });
+const slotWithFade = () => [{ ...slot('fade', { op: .4 }), hasFade: true }];
+
+const TB = { normal: { line: '#e7e5ea', bg: '#fff', fg: '#1d1b20', tip: false }, locked: { line: 'transparent', bg: '#f4f3f6', fg: '#9a96a1', tip: true } };
+const LANE = {
+  build1: { editable: true, badge: false, status: '1단계', stFg: '#6e6a75', cost: false, action: '해체' },
+  ready: { editable: true, badge: false, status: '준비됨 · 세션이 끝나면 시작', stFg: '#1d1b20', cost: true, action: '해체' },
+  running: { editable: false, badge: true, status: '2/3 · 전사 중', stFg: '#5b44c4', cost: false, action: '체인 종료' },
+  awaiting: { editable: false, badge: true, status: '3단계 · 승인 대기', stFg: '#93640c', cost: false, action: '체인 종료' },
+};
+const tileY = i => 16 + 36 + 14 + 44 + i * 68;
+const path = (d, k, color = '#ff5c8a') => e('path', { key: k, d, fill: 'none', stroke: color, strokeWidth: 2, strokeDasharray: '6 6', strokeLinecap: 'round' });
+const label = (x, y, t, k) => e('text', { key: k, x, y, fill: '#c2334f', fontSize: 12.5, fontWeight: 700, fontFamily: 'Pretendard, sans-serif' }, t);
+const svg = kids => e('svg', { width: 1280, height: 800, style: { position: 'absolute', left: 0, top: 0 } }, kids);
+const yT = tileY(5) + 32;
+
+const N = (k, t) => ({ k, t });
+const S = o => ({ hasLane: false, hasEmpty: false, hasGhost: false, hasCoach: false, hasAnn: false, hasPill: false, pillDot: '', pillAnim: 'none', pillFg: '', pillText: '', items: [], lane: LANE.build1, tb: TB.normal, svg: null, g: {}, ann: '', ...o });
+const ghost = o => ({ x: '300px', y: '400px', op: 1, c: W.T.c, icon: ic('T'), n: W.T.n, meta: '💎 1', hasLabel: false, ...o });
+
+const SCREENS = [
+  S({ id: 'P1a', title: '작업 목록 펼침', code: '인터뷰 결과 · 위치 3개', pal: pal({ P: ['chain', { sig: 'ok', text: '체인 1 · 완료' }], T: ['chain', { sig: 'ok', text: '체인 1 · 완료' }], I: ['expanded', { sig: 'warn', text: '3건 · 승인 대기', count: 3, runs: RUNS_I }] }), hasLane: true, lane: LANE.awaiting, tb: TB.locked, hasPill: true, pillDot: SIG.warn[2], pillFg: SIG.warn[1], pillText: '3단계 · 승인 대기',
+    items: [card('P', '1/3 · 완료', 'ok', 'done'), seg('done'), card('T', '2/3 · 완료', 'ok', 'done'), seg('done'), card('I', '3/3 · 승인 대기', 'warn', 'idle'), seg('pend'), out()],
+    notes: [N('스크롤', '펼치면 팔레트 목록이 길어지므로 타일 영역은 세로 스크롤(사용자 줄은 하단 고정). 펼친 타일이 화면 밖으로 밀리면 펼친 타일이 보이도록 목록을 스크롤합니다. 컴프에서 아래쪽이 잘린 것은 그 상태입니다.'), N('트리거', '위치가 2개 이상인 타일을 누르거나 개수 칩(▾)을 누르면 타일 아래로 펼쳐집니다(아코디언, 한 번에 하나). 위치가 1개면 펼치지 않고 바로 이동합니다 — P5 ②.'), N('행', '높이 40 · 점 + 위치 이름 12/600 + 상태 10.5 + →. 순서 = P5 ③ 우선순위. 최대 5행, 넘치면 "외 n건" 행 하나. 완료된 실행은 넣지 않고 "지난 실행은 라이브러리에서" 링크로.'), N('Navigator 승계', '위젯별 상태 pill → 타일 둘째 줄 · 포커스 스크롤 → 행 누르기(P1b) · 숨김 eye → 개념 소멸(작업면에 안 꺼내면 안 보임). 과도기 공존 금지 — 이 번들 구현과 같은 PR 에서 Navigator 를 제거합니다.')] }),
+  S({ id: 'P1b', title: '행을 누른 뒤 — 레인 카드로 이동', code: 'pan + 1.2s 하이라이트', pal: pal({ P: ['chain', { sig: 'ok', text: '체인 1 · 완료' }], T: ['chain', { sig: 'ok', text: '체인 1 · 완료' }], I: ['chain', { sig: 'warn', text: '3건 · 승인 대기' }] }), hasLane: true, lane: LANE.awaiting, tb: TB.locked, hasPill: true, pillDot: SIG.warn[2], pillFg: SIG.warn[1], pillText: '3단계 · 승인 대기',
+    items: [card('P', '1/3 · 완료', 'ok', 'done'), seg('done'), card('T', '2/3 · 완료', 'ok', 'done'), seg('done'), card('I', '3/3 · 승인 대기', 'warn', 'idle', { ring: '0 0 0 2px #1d1b20, 0 0 0 7px rgba(255,208,226,.9)' }), seg('pend'), out()],
+    notes: [N('이동', '레인 카드 위치로 캔버스를 팬합니다(240ms ease-out, 줌은 바꾸지 않음 — 카드가 이미 화면 안이면 팬 없음). 도착하면 카드에 링(2px ink + 5px 위젯 톤) 1.2s 후 페이드아웃. 키보드 포커스도 그 카드로 옮깁니다(포털 노드에 tabIndex — LEARNINGS §8-3).'), N('풀뷰 행', '"풀뷰 · …" 행을 누르면 그 실행의 풀뷰가 열립니다. 팬하지 않습니다.'), N('펼침 닫힘', '행을 누르면 목록은 접힙니다(한 동작 = 한 결과). Esc · 바깥 클릭 · 같은 타일 다시 누르기로도 접힙니다.')] }),
+  S({ id: 'P2a', title: '드래그 — 픽업 (포인터)', code: '4px 임계 → 고스트', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], T: ['source'] }), hasLane: true, lane: LANE.build1, tb: TB.locked,
+    items: [card('P', '1/1', 'idle', 'setup'), seg('pend'), slot('ready')],
+    hasGhost: true, g: ghost({ x: '262px', y: yT - 40 + 'px' }), svg: svg([path(`M200 ${yT} C 230 ${yT}, 250 ${yT - 10}, 268 ${yT - 12}`, 'p'), label(60, yT + 50, '주석 · 포인터 경로 (UI 아님)', 'l')]),
+    notes: [N('시작', 'pointerdown 후 4px 이상 움직이면 드래그로 확정(그 전에 떼면 누르기). 타일 전체가 손잡이입니다 — 그립은 표시일 뿐 히트 영역을 좁히지 않습니다. 체인 소속 타일은 끌 수 없습니다(그립 없음, 누르기만).'), N('고스트', '타일 216×64 사본을 body 포털에 그립니다(z-overlay). 줌과 무관하게 화면 px 고정 · rotate 2° · --sh-popover 계열. 포인터 기준 오프셋은 집은 지점 그대로 유지.'), N('레인 반응', '받을 수 있는 빈 슬롯만 "자리" 상태(1.5 dashed --faint · ↓)로 바뀝니다. 원본 타일은 제자리에서 점선 + 50% (공급원 불변).')] }),
+  S({ id: 'P2b', title: '드래그 — 레인 위, 받을 수 있음', code: 'v3 L1 접속', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], T: ['source'] }), hasLane: true, lane: LANE.build1, tb: TB.locked,
+    items: [card('P', '1/1', 'idle', 'setup'), seg('pend'), slot('accept')],
+    hasGhost: true, g: ghost({ x: '548px', y: '384px', hasLabel: true, lx: '700px', ly: '456px', label: '2단계', lb: '#1d1b20', lf: '#fff' }),
+    notes: [N('판정', '포인터 clientX/Y 가 슬롯의 getBoundingClientRect() 안인가 — 하나만 봅니다. 팔레트(transform 밖)와 슬롯(transform 안)이 다른 좌표계지만 rect 는 이미 화면 좌표라 환산이 필요 없습니다. dragenter/leave · mouseenter 는 쓰지 않습니다(LEARNINGS §2-2).'), N('외형', '슬롯 = v3 L1 문법 그대로, 바탕만 들어올 위젯의 틴트. 고스트 옆 라벨 "2단계"(ink pill). 슬롯 문구는 고스트가 가리지 않도록 슬롯 위쪽 44px 부터.'), N('저줌', 'FOCUS_THRESHOLD(0.55) 미만에서도 판정은 기하라서 성립합니다. 다만 click-to-focus 오버레이(z-overlay)가 레인 위에 깔리므로, 드래그 중에는 오버레이에 pointer-events:none 을 줍니다(LEARNINGS §2-1, §8-8).')] }),
+  S({ id: 'P2c', title: '드래그 — 레인 위, 받을 수 없음', code: 'v3 L2 / L2b 접속', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], D: ['source'] }), hasLane: true, lane: LANE.build1, tb: TB.locked,
+    items: [card('P', '1/1', 'idle', 'setup'), seg('pend'), slot('reject')],
+    hasGhost: true, g: ghost({ x: '548px', y: '384px', c: W.D.c, icon: ic('D'), n: W.D.n, meta: '💎 60', hasLabel: true, lx: '700px', ly: '456px', label: '놓을 수 없음', lb: '#fdf0f0', lf: '#b33a3a' }),
+    notes: [N('가드', 'registry.ts 의 CHAIN_COMPAT_EDGES · validateSteps 를 UI 가 직접 호출합니다(서버와 같은 함수 — LEARNINGS §4). 미지원 위젯(L2)과 순서 오류(L2b) 모두 드래그는 허용하고 슬롯이 사유를 말합니다.'), N('팔레트', '미지원 위젯 타일은 평소에 흐리지 않습니다(확정 사항). 드래그를 시작해도 "→ n단계" 칩이 안 붙을 뿐입니다.'), N('놓으면', '거절 슬롯에 놓으면 P2e 취소 복귀와 같습니다.')] }),
+  S({ id: 'P2d', title: '드롭 — 슬롯이 카드로 교체', code: '160ms 크로스페이드 · t = 80ms 프레임', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], T: ['chain', { sig: 'idle', text: '체인 1 · 2단계' }] }), hasLane: true, lane: LANE.build1, tb: TB.locked,
+    items: [card('P', '1/2', 'idle', 'setup'), seg('pend'), ...slotWithFade()],
+    notes: [N('순서', '① pointerup → 고스트 즉시 제거(날아가는 보간 없음 — 화면↔캔버스 레이어를 건너는 보간은 비쌈) ② 슬롯 opacity 1→0, 카드 0→1 동시에 160ms ease-out ③ 끝나면 다음 빈 슬롯이 오른쪽에 생깁니다(받을 단계가 남았다면).'), N('낙관적 반영', '레인 구성 POST 전에 화면을 먼저 바꿉니다. 서버가 거부하면 카드를 160ms 페이드아웃 후 슬롯으로 되돌리고 토스트로 사유. 같은 가드 함수라 정상 경로에서는 일어나지 않습니다.'), N('팔레트', '드롭 순간 타일 둘째 줄이 체인 칩(체인 1 · 2단계)으로, 그립 제거.'), N('reduced-motion', '크로스페이드 없이 즉시 교체.')] }),
+  S({ id: 'P2e', title: '드래그 취소 — 원래 자리로', code: 'Esc · 레인 밖 · 거절 슬롯 · 팔레트 위', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], T: ['source'] }), hasLane: true, lane: LANE.build1, tb: TB.locked,
+    items: [card('P', '1/1', 'idle', 'setup'), seg('pend'), slot('ready')],
+    hasGhost: true, g: ghost({ x: '420px', y: '380px', op: .85 }), svg: svg([path(`M520 410 C 420 420, 300 ${yT}, 222 ${yT}`, 'p'), e('polygon', { key: 'a', points: `222,${yT - 6} 210,${yT} 222,${yT + 6}`, fill: '#ff5c8a' }), label(300, 470, '주석 · 복귀 경로 (UI 아님)', 'l')]),
+    notes: [N('복귀', '고스트가 원본 타일 위치로 200ms ease-in-out 이동한 뒤 사라지고, 원본 타일이 평소 상태로 돌아옵니다. 이건 보간이 레이어를 건너지 않습니다 — 고스트도 원본도 화면 좌표.'), N('취소 조건', 'Esc · 슬롯 밖(빈 작업면 포함)에 놓기 · 거절 슬롯에 놓기 · 팔레트 위에 놓기. Phase 1 에서 빈 작업면에 놓는 것은 아무것도 만들지 않습니다(단독 인스턴스는 Phase 2).'), N('안내', '빈 작업면에 놓아 취소된 경우에만 고스트가 출발할 때 한 번 "체인 자리에 놓아야 들어가요" 라벨을 보여줍니다(1.6s).')] }),
+  S({ id: 'P2f', title: '키보드 드래그', code: 'Space 들기 · ←→ 위치 · Space 놓기 · Esc', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], T: ['lifted'] }), hasLane: true, lane: LANE.build1, tb: TB.locked,
+    items: [card('P', '1/1', 'idle', 'setup'), seg('pend'), slot('accept')],
+    hasAnn: true, ann: '전사록 생성기를 들었습니다. 2단계 자리 — Space 로 놓기, ←→ 로 다른 자리, Esc 로 취소.',
+    notes: [N('진입', '타일에 포커스 → Space(또는 Enter 길게 대신 Space) 로 들어올림. 타일은 lifted 상태(2px ink 링). 고스트는 그리지 않습니다 — 대상 슬롯이 accept 로 바뀌는 것으로 위치를 보여줍니다.'), N('이동', '←→ 로 받을 수 있는 슬롯 사이를 이동(거절 슬롯은 건너뛰지 않고 reject 로 보여주며 aria-live 로 사유를 읽음). 레인이 화면 밖이면 첫 이동 때 레인으로 팬.'), N('완료', 'Space/Enter 로 놓기 → P2d 와 같은 교체, 포커스는 새 카드로. Esc 로 취소 → 포커스는 원본 타일로.')] }),
+  S({ id: 'P3a', title: '빈 작업면 — 레인 없음, 실행 없음', code: 'M0a', pal: pal(), hasEmpty: true, tb: TB.normal,
+    notes: [N('표시', '빈 상태 카드 하나와 툴바 "+ 새 체인". 체인 요약 pill 없음. 그리드 자리표시(옛 3×3 윤곽)를 그리지 않습니다.'), N('팔레트', '9개 타일 모두 기본 상태. 로스터와 순서는 발행 SSOT(CANVAS_ORDER × widget_visibility) — 하드코딩 금지. 미발행 위젯은 회색으로 남기지 않고 목록에서 뺍니다.'), N('신규 2종', '가이드라인 생성기 · 영상 분석기의 톤·크레딧은 FEATURES 메타에서 읽습니다. 컴프의 회색 타일과 "💎 —" 는 자리표시입니다.')] }),
+  S({ id: 'P3b', title: '레인만 있을 때 — 조립 완료, 실행 전', code: 'M0b · v3 L3', pal: pal({ P: ['chain', { sig: 'idle', text: '체인 1 · 1단계' }], T: ['chain', { sig: 'idle', text: '체인 1 · 2단계' }], I: ['chain', { sig: 'idle', text: '체인 1 · 3단계' }] }), hasLane: true, lane: LANE.ready, tb: TB.locked,
+    items: [card('P', '1/3', 'idle', 'setup'), seg('pend'), card('T', '2/3', 'idle', 'idle'), seg('pend'), card('I', '3/3', 'idle', 'idle'), seg('pend'), out()],
+    notes: [N('요약 pill', '조립 중·준비됨에는 띄우지 않습니다 — 바로 아래 레인 헤더와 같은 문구가 두 번 보이기 때문입니다. 실행이 시작되면 나타납니다(LEARNINGS §8-7).'), N('툴바', '"+ 새 체인" 잠금(--fill 면, --faint 글자) + 오른쪽 안내 한 줄. 잠금은 서버 체인 행에서 파생합니다(새로고침 후에도 유지 — LEARNINGS §9).'), N('배치', '툴바(화면 고정, top 20)와 레인(캔버스, top 78) 사이 22px. Navigator 가 사라지므로 좌상단 충돌(§8-7)이 없어집니다.')] }),
+  S({ id: 'P3c', title: '레인 밖 실행 — 풀뷰에서 돌고 있을 때', code: '작업면에는 아무것도 그리지 않음', pal: pal({ L: ['run', { text: '진행 중 · 24분' }], R: ['warn', { text: '응답 검토 대기' }] }), hasEmpty: true, tb: TB.normal,
+    notes: [N('규칙', '체인 밖 실행은 팔레트 타일 둘째 줄로만 보입니다. 작업면에 카드·자리표시·토스트를 띄우지 않습니다 — 확정된 "작업면에는 꺼낸 것만" 원칙.'), N('누르기', '위치가 1개(그 풀뷰)이므로 누르면 바로 그 풀뷰가 열립니다(P5 ②).'), N('완료되면', '둘째 줄이 1회 "완료" 배지(초록)로 바뀌고, 사용자가 그 풀뷰를 한 번 열면 메타(크레딧)로 돌아갑니다. 완료 알림을 위해 별도 UI 를 만들지 않습니다.')] }),
+  S({ id: 'P4', title: '전환 온보딩 — 첫 진입 1회', code: '그리드 사용자 · 비모달', pal: pal().map(t => ({ ...t })), hasEmpty: true, hasCoach: true, tb: TB.normal,
+    notes: [N('대상', '이전에 그리드 캔버스를 쓴 사용자의 첫 진입 1회. 신규 사용자에게는 보이지 않습니다(빈 상태 문구가 같은 내용을 이미 말함). 노출 여부는 사용자 단위 서버 플래그 — 기기가 바뀌어도 다시 뜨지 않게.'), N('형태', '팔레트를 가리키는 말풍선 하나(340, ink 면). 배경을 어둡게 하지 않고, 다른 조작을 막지 않습니다. 단계 넘김(1/3, 2/3) 없음.'), N('닫힘', '"알겠어요" · Esc · 팔레트 타일을 처음 누르거나 끌 때 — 어느 쪽이든 플래그를 기록하고 다시 띄우지 않습니다. 문구의 "만들었던 결과는 그대로 있어요" 는 위젯이 사라졌다는 오해를 겨냥한 한 문장입니다.')] }),
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    const dict = [
+      { key: 'idle', name: '기본', t: tile('T'), when: '아무 일도 없음', vals: 'bg 투명 · 테두리 없음 · 둘째 줄 = 💎 mono 11 --mute + 체인 지원 시 "체인" 칩(--fill)' },
+      { key: 'hover', name: 'hover', t: tile('T', 'hover'), when: '포인터가 타일 rect 안(기하 판정)', vals: 'bg --fill · 120ms · 툴팁 없음(펼친 레일에서)' },
+      { key: 'focus', name: 'focus-visible', t: tile('T', 'focus'), when: '키보드 포커스', vals: 'inset 1px ink + 0 0 0 3px ink/10' },
+      { key: 'press', name: '누르는 중', t: tile('T', 'press'), when: 'pointerdown ~ 4px 이동 전', vals: 'bg #ebe9ee · scale .98 · 80ms' },
+      { key: 'fit', name: '다음 단계 가능', t: tile('T', 'fit'), when: '레인에 빈 슬롯이 있고 이 위젯이 그 슬롯에 들어갈 수 있을 때(가드 통과)', vals: 'bg 흰 · inset 1px ink · ink pill "→ n단계" 11/600' },
+      { key: 'source', name: '끌어가는 중', t: tile('T', 'source'), when: '이 타일을 끄는 동안', vals: '1px dashed #c4c1c9 · bg #fafafa · opacity .5 · 그립 숨김' },
+      { key: 'lifted', name: '키보드로 들어올림', t: tile('T', 'lifted'), when: '포커스 + Space', vals: '흰 bg · 0 0 0 2px ink + popover 그림자 · 둘째 줄 안내' },
+      { key: 'chain', name: '체인 소속', t: tile('T', 'chain', { sig: 'run', text: '체인 1 · 2단계', pulse: true }), when: '레인에 들어 있음 — 상태색은 그 단계', vals: '시그널 배지(테두리 없음) · 그립 없음(끌 수 없음) · run 만 점 깜빡임' },
+      { key: 'run', name: '실행 중 (체인 밖)', t: tile('L', 'run', { text: '진행 중 · 24분' }), when: '풀뷰에서 시작한 실행이 running', vals: 'run 배지 · 점 1.4s 깜빡임 · 경과 시간' },
+      { key: 'attn', name: '대기 · 멈춤 · 실패', t: tile('I', 'warn', { text: '승인 대기' }), when: 'awaiting · paused → warn / error → err', vals: '깜빡임 없음 · 문구 = 상태 한 단어 + 사유 최대 6자' },
+      { key: 'multi', name: '위치 2개 이상', t: tile('I', 'multi', { sig: 'warn', text: '2건 · 승인 대기', count: 2 }), when: 'P5 ① 위치 ≥ 2', vals: '그립 자리에 개수 칩 24h (--fill · mono 11/700 · ▼)' },
+      { key: 'expanded', name: '작업 목록 펼침', t: tile('I', 'expanded', { sig: 'warn', text: '3건 · 승인 대기', count: 3, runs: RUNS_I }), when: 'multi 타일을 누름 / 개수 칩', vals: '흰 bg · 1px --line · --sh-card · 행 40 · 칩 ▲' },
+    ];
+    return {
+      dict,
+      rail: ORDER.map(k => ({ ...W[k], icon: ic(k, 19), ring: k === 'T' ? RING_FOCUS : 'none', dot: ['L', 'T', 'I'].includes(k), dotC: { L: SIG.run[2], T: SIG.run[2], I: SIG.warn[2] }[k] || '' })),
+      expandRail: ic('exp', 15, '#6e6a75'), collapseIcon: ic('col', 14, '#9a96a1'), linkIcon: ic('link', 13, '#3a3640'), reportIcon: ic('I', 14, '#b8325a'), tIcon: ic('T', 13), emptyIcon: ic('empty', 28, '#3a3640'),
+      screens: SCREENS,
+      pressRule: [
+        { n: '0', t: '새 풀뷰를 엽니다(지금과 같음).' },
+        { n: '1', t: '그 위치로 바로 갑니다 — 레인 카드면 팬 + 하이라이트(P1b), 풀뷰 실행이면 그 풀뷰.' },
+        { n: '2+', t: '작업 목록을 펼칩니다(P1a). 사용자가 행을 골라 이동합니다.' },
+      ],
+      priority: [
+        { n: '1', k: '실패', ...{ bb: SIG.err[0], bf: SIG.err[1], dot: SIG.err[2] }, t: 'error' },
+        { n: '2', k: '멈춤', ...{ bb: SIG.warn[0], bf: SIG.warn[1], dot: SIG.warn[2] }, t: 'paused (크레딧 등)' },
+        { n: '3', k: '승인 대기', ...{ bb: SIG.warn[0], bf: SIG.warn[1], dot: SIG.warn[2] }, t: 'awaiting' },
+        { n: '4', k: '진행 중', ...{ bb: SIG.run[0], bf: SIG.run[1], dot: SIG.run[2] }, t: 'running' },
+        { n: '5', k: '대기', ...{ bb: SIG.idle[0], bf: SIG.idle[1], dot: SIG.idle[2] }, t: '체인 소속 · 아직 차례 아님' },
+        { n: '6', k: '완료', ...{ bb: SIG.ok[0], bf: SIG.ok[1], dot: SIG.ok[2] }, t: '확인 전 1회만' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
