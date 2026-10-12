@@ -157,7 +157,7 @@ function CdPill({
   );
 }
 
-// CdDropzone — CD dashed dropzone(1.6px dashed · radius14 · bg #f7f7f5 · centered
+// CdDropzone — CD dashed dropzone(1.5px dashed --line-hover · radius14 · bg #f7f7f5 · centered
 // 글리프 · 하드섀도 없음). ui/FileDropZone 은 3px 솔리드 memphis 라 CD 와 상이 →
 // fresh. div[role=button] 이라 memphis cascade(button 대상) 무관.
 function CdDropzone({

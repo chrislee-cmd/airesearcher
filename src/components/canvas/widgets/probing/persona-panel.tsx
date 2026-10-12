@@ -24,8 +24,12 @@ const panelStyle = {
   borderRadius: 'var(--sidebar-nav-radius)',
 } as const;
 
+// 근거 부족(점선) 상태 — Soft Identity 변환표의 "점선 빈 자리" 문법:
+// 1.5px dashed --line-hover. 선 1px 규칙의 허용 예외 2종 중 하나이고,
+// 값은 dropzone·빈 상태 타일과 동일하다(#1338 과 같은 처리).
+// 전: 2px dashed --color-line — 같은 패널의 panelStyle(1px)과 굵기가 어긋났다.
 const insufficientStyle = {
-  border: '2px dashed var(--color-line)',
+  border: '1.5px dashed var(--line-hover)',
   borderRadius: 'var(--sidebar-nav-radius)',
 } as const;
 
