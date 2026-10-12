@@ -289,8 +289,8 @@ export function SlotEditorModal({
     >
       {/* Sun header band — bleeds past the Modal body padding to the panel edge. */}
       <div
-        className="-mx-5 -mt-4 mb-4 flex items-center gap-2.5 border-b-2 border-ink px-5 py-3.5"
-        style={{ background: 'var(--widget-header-bg-sun)' }}
+        className="-mx-5 -mt-4 mb-4 flex items-center gap-2.5 border-b border-soft-hair px-5 py-3.5"
+        style={{ background: 'var(--tint-sun)' }}
       >
         <span className="text-lg" aria-hidden>
           ✏️
@@ -382,7 +382,7 @@ export function SlotEditorModal({
           {overlaps.length > 0 && (
             <div
               className={[
-                'flex items-start gap-2 border-[1.5px] border-warning-line bg-warning-bg px-3 py-2.5',
+                'flex items-start gap-2 border border-warning-line bg-warning-bg px-3 py-2.5',
                 // design-allow-hardcoded -- CD frame 03 overlap-warning radius 10px (documented outlier band, PROJECT.md §9); no exact DS radius token in the 8–10 band
                 'rounded-[10px]',
               ].join(' ')}
@@ -441,8 +441,8 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-sm-faint">
-      <div className="border-b-[1.5px] border-line bg-paper-soft px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
+    <div className="overflow-hidden rounded-sm border border-soft-line">
+      <div className="border-b border-soft-hair bg-paper-soft px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
         {label}
       </div>
       <div className="flex flex-col gap-3 p-3">{children}</div>
@@ -467,7 +467,7 @@ function Segmented<T extends string>({
       role="tablist"
       aria-label={ariaLabel}
       className={[
-        'inline-flex overflow-hidden border-[1.5px] border-ink',
+        'inline-flex overflow-hidden border border-soft-line',
         // design-allow-hardcoded -- CD frame 03 assign-mode segmented radius 9px (documented outlier band, PROJECT.md §9); no exact DS radius token between rounded-xs(4) and rounded-sm(14)
         'rounded-[9px]',
       ].join(' ')}

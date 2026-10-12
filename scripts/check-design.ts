@@ -3,7 +3,7 @@
 //
 // PROJECT.md §9 디자인 시스템의 불변식("색/크기/모서리/그림자는 토큰만 사용")을
 // 정적으로 강제한다. 렌더 무관·file:line 정확·CI 회귀차단. `globals.css` 의
-// 토큰(색 --color-*, --shadow-memphis-*, --radius-*)으로 커버되는 속성을 임의값
+// 토큰(색 --color-*, 그림자 --sh-*/--shadow-soft-*, --radius-*)으로 커버되는 속성을 임의값
 // (arbitrary)·인라인 hex 로 하드코딩하면 토큰화가 우회되고, 톤 swap·라디우스 조정
 // 같은 "토큰 1곳 변경 → 전체 반영" 이 깨진다.
 //
@@ -13,7 +13,7 @@
 // red. 감소하면 baseline 갱신을 권장한다. 스윕 PR 은 baseline 을 단조 감소시킨다.
 //
 // 검출 (토큰 대상 속성만 — 과탐 방지 최우선):
-//   · Tailwind arbitrary shadow:  shadow-[...]           (→ shadow-memphis-*)
+//   · Tailwind arbitrary shadow:  shadow-[...]           (→ shadow-soft-*)
 //   · Tailwind arbitrary color:   (bg|text|border|ring|…)-[#hex|rgb()|hsl()]
 //   · Tailwind arbitrary radius:  rounded-[<len>]        (→ rounded-{xs,sm,…})
 //   · Arbitrary CSS property:     [border-radius:3px] · [box-shadow:…] · [color:#…]
@@ -83,7 +83,7 @@ const LENGTH = /\d*\.?\d+(?:px|rem|em)\b/;
 const COLOR = new RegExp(`(?:${HEX.source}|${RGB_HSL.source})`);
 
 // self-identifying Tailwind / arbitrary-CSS 패턴 (className 문자열 어디에 있든 안전).
-// shadow-[...] 전체 — memphis 스케일(shadow-memphis-*) 을 우회하는 임의 그림자.
+// shadow-[...] 전체 — Soft 4단계(shadow-soft-*) 를 우회하는 임의 그림자.
 const RE_SHADOW = /(?<![\w-])shadow-\[[^\]]+\]/g;
 // 색 계열 유틸의 arbitrary 색 리터럴. border 는 색만(폭 border-[2px] 은 DS-6 담당).
 const RE_COLOR = new RegExp(
@@ -316,7 +316,7 @@ function main(): void {
 
   if (regressions.length > 0) {
     console.error('\n✗ 디자인 하드코드 baseline 초과 — 신규 하드코딩 값이 감지됐습니다.');
-    console.error('  색/그림자/라디우스는 토큰만 사용하세요 (globals.css: --color-*, --shadow-memphis-*, --radius-*).');
+    console.error('  색/그림자/라디우스는 토큰만 사용하세요 (globals.css: --color-*, --shadow-soft-*, --radius-*).');
     console.error(`  정당한 하드코드(브랜드 SVG·third-party)면 같은 줄/윗줄에 \`// ${ALLOW_DIRECTIVE} -- 사유\` 를 추가하세요.\n`);
     for (const r of regressions) {
       console.error(`  📁 ${r.file}  (baseline ${r.base} → 현재 ${r.now})`);

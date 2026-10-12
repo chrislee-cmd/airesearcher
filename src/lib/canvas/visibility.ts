@@ -48,22 +48,24 @@ export const CANVAS_VISIBILITY: Record<CanvasWidgetKey, boolean> = {
   slidegen: false,
 };
 
-// canvas page 가 렌더 순서를 정할 때 reference 하는 고정 순서.
-// row-major 3×3 배치 (canvas-board GRID_COLS=3) — 좌→우, 위→아래로 채움.
-//   Row 1 (상): recruiting | desk       | guideline
-//   Row 2 (중): probing    | translate  | moderator_ai
-//   Row 3 (하): quotes(전사록) | interviews(인터뷰 결과) | ppt_report
+// **팔레트 로스터 순서 SSOT** (캔버스 모듈화 Phase 1).
+//
+// 이 배열 × `widget_visibility` 가 왼쪽 팔레트에 뜨는 위젯과 그 순서를 정한다
+// (canvas-modular/full §2 규칙 5 — "로스터는 발행 SSOT 에서 읽는다. 9종을
+// 하드코딩하지 않고, 미발행 위젯은 목록에서 뺀다"). 팔레트 컴포넌트는 개수도
+// 순서도 모른다 — canvas/page.tsx 가 이 순서로 걸러 넘긴다.
+//
+// 옛 뜻은 "그리드 3×3 row-major 채움 순서" 였고 그 그리드는 이 PR 에서
+// 퇴역했다. 위젯은 더 이상 작업면에 펼쳐지지 않으므로 행/열 개념이 없고,
+// 남은 것은 **세로 목록의 위→아래 순서**다.
 // hidden 3장 (moderator/topline/slidegen) 은 뒤에 두고 visibility=false 로 제외.
 export const CANVAS_ORDER: CanvasWidgetKey[] = [
-  // Row 1 (상)
   'recruiting',
   'desk',
   'guideline',
-  // Row 2 (중)
   'probing',
   'translate',
   'moderator_ai',
-  // Row 3 (하)
   'quotes',
   'interviews',
   'ppt_report',

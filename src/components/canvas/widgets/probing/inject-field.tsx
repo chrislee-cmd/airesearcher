@@ -74,7 +74,7 @@ export function ProbingInjectField({
       description={t('inject.description')}
     >
       <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-center rounded-xs border-2 border-ink bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
+        <div className="flex flex-1 items-center rounded-xs border border-soft-line bg-paper px-3 py-2 min-h-[44px] focus-within:border-amore">
           <ChipInput
             value={draft}
             onChange={(e) =>

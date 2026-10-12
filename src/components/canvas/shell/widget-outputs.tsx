@@ -64,7 +64,7 @@ export function WidgetOutputs<T>({
         <span className="text-xs text-mute-soft">{t('outputsTotal', { count: items.length })}</span>
       </div>
       {isEmpty ? (
-        <div className="rounded-xs border-[2px] border-dashed border-ink bg-paper px-4 py-6 text-center text-md text-mute-soft">
+        <div className="rounded-xs border-[1.5px] border-dashed border-soft-line-hover bg-paper px-4 py-6 text-center text-md text-mute-soft">
           {emptyText ?? t('outputsEmpty')}
         </div>
       ) : (
@@ -114,7 +114,7 @@ export function WidgetOutputRow({
   children,
 }: WidgetOutputRowProps) {
   return (
-    <li className="border-[2px] border-ink bg-paper shadow-[3px_3px_0_black] rounded-sm transition-all duration-[120ms] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_black]">
+    <li className="border border-soft-line bg-paper rounded-sm transition-all duration-[120ms] ">
       <div className="flex items-start gap-4 px-5 py-3">
         {leading && <div className="mt-1 shrink-0">{leading}</div>}
         <div className="min-w-0 flex-1">

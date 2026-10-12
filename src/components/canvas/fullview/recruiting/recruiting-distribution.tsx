@@ -65,8 +65,8 @@ export function RecruitingDistribution({
   };
 
   return (
-    <section className="rounded-[var(--fv-radius-panel)] border-2 border-ink bg-paper shadow-memphis-sm-faint">
-      <header className="flex items-center gap-2 border-b-[1.5px] border-ink/12 px-[14px] py-[11px]">
+    <section className="rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper">
+      <header className="flex items-center gap-2 border-b border-soft-hair px-[14px] py-[11px]">
         <span aria-hidden className="text-md">
           📊
         </span>
@@ -123,7 +123,7 @@ function FilterChips({
     filterableQuestions.find((q) => q.field === field)?.title ?? field;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b-[1.5px] border-ink/12 px-[14px] py-2">
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-soft-hair px-[14px] py-2">
       {filter.cells.map((c) => (
         <Badge
           key={`c-${c.gender}-${c.ageBucket}`}
@@ -281,7 +281,7 @@ function DistributionGrid({
           ))}
         </tbody>
         <tfoot>
-          <tr className="border-t-[1.5px] border-ink/15">
+          <tr className="border-t border-soft-hair">
             <td className="px-1 py-1.5 text-left font-sans text-md font-extrabold text-ink">
               Σ
             </td>

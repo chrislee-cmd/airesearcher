@@ -1553,24 +1553,50 @@
     "subscribeSuccess": "サブスクリプションが有効になりました。クレジットが付与されました。"
   },
   "Canvas": {
-    "navigator": {
-      "title": "ステータス",
-      "expand": "ウィジェットリストを展開",
-      "collapse": "ウィジェットリストを折りたたむ",
-      "dragHandle": "ドラッグして移動",
-      "resetPosition": "位置をリセット",
-      "stateRunning": "実行中",
-      "stateDone": "完了",
-      "stateError": "エラー",
-      "hideWidget": "ウィジェットを非表示にする",
-      "showWidget": "ウィジェットを表示する"
+    "palette": {
+      "heading": "ウィジェット",
+      "hint": "押すと開き、ドラッグするとチェーンに入ります",
+      "collapse": "パレットを折りたたむ",
+      "expand": "パレットを展開",
+      "chainChip": "チェーン",
+      "credits": "💎 {n}",
+      "creditsNone": "💎 —",
+      "fit": "→ {n}段階",
+      "lifted": "持ち上げ中 · ←→ で位置",
+      "dragging": "ドラッグ中",
+      "chainStep": "{chain} · {n}段階",
+      "chainStatus": "{chain} · {status}",
+      "countStatus": "{n}件 · {status}",
+      "detailed": "{status} · {detail}",
+      "statusRunning": "実行中",
+      "statusAwaiting": "承認待ち",
+      "statusPaused": "停止",
+      "statusError": "失敗",
+      "statusPending": "待機",
+      "statusDone": "完了",
+      "locations": "作業 {n}件",
+      "workListMore": "ほか {n}件",
+      "workListLibrary": "過去の実行はライブラリにあります",
+      "workListToggle": "作業リスト",
+      "rowFullview": "フルビュー"
     },
-    "publish": {
-      "publish": "既定レイアウトとして公開",
-      "publishing": "公開中…",
-      "published": "公開しました",
-      "failed": "公開に失敗しました",
-      "hint": "現在のレイアウトを一般アカウントの既定レイアウトとして公開します"
+    "workspace": {
+      "emptyTitle": "作業面が空です",
+      "emptyBody": "チェーンを作るには新しいチェーンを開き、左からウィジェットをドラッグして入れてください。1つだけ使うなら、ウィジェットを押すとすぐ開きます。"
+    },
+    "onboarding": {
+      "title": "ウィジェットは左のリストに移りました",
+      "body": "キャンバスに全部広げておかず、使うときだけ取り出します。押すと開き、ドラッグするとチェーンに入ります。作った結果はそのまま残っています。",
+      "once": "一度だけ表示されます",
+      "dismiss": "わかりました"
+    },
+    "drag": {
+      "emptyDropHint": "チェーンの枠に置くと入ります",
+      "slotLabel": "{n}段階の枠",
+      "liftedAnnounce": "{widget}{josa}を持ち上げました。{slot} — Space で配置、←→ で別の枠、Esc でキャンセル。",
+      "movedAnnounce": "{slot} — Space で配置、Esc でキャンセル。",
+      "droppedAnnounce": "{widget}{josa}を{n}段階に入れました。",
+      "cancelledAnnounce": "持ち上げをキャンセルしました。"
     }
   },
   "Chain": {

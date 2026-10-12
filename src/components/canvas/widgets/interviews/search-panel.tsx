@@ -163,7 +163,7 @@ export function InterviewSearchPanel({
   const tabCls = (active: boolean) =>
     `!border-0 !rounded-none !px-3 !py-2 !text-sm uppercase tracking-[0.22em] ${
       active
-        ? '!text-ink-2 !border-b-2 !border-amore'
+        ? '!text-ink-2 !border-b-2 !border-ink'
         : '!text-mute hover:!text-ink-2'
     }`;
 

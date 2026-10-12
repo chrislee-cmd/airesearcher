@@ -140,7 +140,7 @@ export function FilterRail({
           <Pressable
             onPress={() => onProject(null)}
             className={`flex cursor-pointer items-center gap-2 rounded-nav px-2.5 py-[7px] ${
-              selectedProject === null ? 'bg-lav' : ''
+              selectedProject === null ? 'bg-soft-fill' : ''
             }`}
             ariaLabel={t('rail.allProjects')}
           >
@@ -160,7 +160,7 @@ export function FilterRail({
                 key={p.id}
                 onPress={() => onProject(on ? null : p.id)}
                 className={`flex cursor-pointer items-center gap-2 rounded-nav px-2.5 py-[7px] ${
-                  on ? 'bg-lav' : ''
+                  on ? 'bg-soft-fill' : ''
                 }`}
                 ariaLabel={p.name}
               >

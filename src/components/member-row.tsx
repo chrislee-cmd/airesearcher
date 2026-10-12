@@ -20,9 +20,9 @@ const ROLE_BG: Record<Role, string> = {
 
 const ROLE_TEXT: Record<Role, string> = {
   owner: 'var(--sidebar-active-text)',
-  admin: 'var(--sidebar-border)',
-  member: 'var(--sidebar-border)',
-  viewer: 'var(--sidebar-border)',
+  admin: 'var(--ink)',
+  member: 'var(--ink)',
+  viewer: 'var(--ink)',
 };
 
 export function MemberRow({
@@ -68,7 +68,7 @@ export function MemberRow({
       className="transition-colors hover:bg-[var(--sidebar-nav-bg-hover)]"
       style={{
         borderTop:
-          'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+          '1px solid var(--line)',
       }}
     >
       <td className="px-5 py-3">
@@ -80,14 +80,13 @@ export function MemberRow({
               height: 28,
               background: 'var(--sidebar-nav-bg)',
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: 'var(--memphis-shadow-xs)',
               fontFamily: OUTFIT_STACK,
               fontWeight: 800,
               fontSize: 13,
               letterSpacing: '-0.02em',
-              color: 'var(--sidebar-border)',
+              color: 'var(--ink)',
             }}
             aria-hidden
           >
@@ -98,7 +97,7 @@ export function MemberRow({
             style={{
               fontFamily: OUTFIT_STACK,
               fontWeight: 700,
-              color: 'var(--sidebar-border)',
+              color: 'var(--ink)',
             }}
           >
             {email}
@@ -115,10 +114,9 @@ export function MemberRow({
             className="!border-0 !rounded-[var(--sidebar-nav-radius)]"
             style={{
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
               background: 'var(--sidebar-nav-bg)',
-              boxShadow: 'var(--memphis-shadow-xs)',
               fontFamily: OUTFIT_STACK,
               fontWeight: 700,
             }}
@@ -137,9 +135,8 @@ export function MemberRow({
               background: ROLE_BG[role],
               color: ROLE_TEXT[role],
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: 'var(--memphis-shadow-xs)',
             }}
           >
             {t(role)}
@@ -157,11 +154,10 @@ export function MemberRow({
               fontFamily: OUTFIT_STACK,
               fontWeight: 800,
               background: 'var(--sidebar-nav-bg)',
-              color: 'var(--sidebar-border)',
+              color: 'var(--ink)',
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: 'var(--memphis-shadow-xs)',
             }}
           >
             {t('removeMember')}

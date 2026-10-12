@@ -38,9 +38,8 @@ export type ReflectionStatus = 'idle' | 'streaming' | 'ready' | 'error';
 const PANELS = DEFAULT_PERSONA_PANELS;
 
 const memphisPlaceholderStyle = {
-  border: '2px solid var(--canvas-card-border)',
+  border: '1px solid var(--canvas-card-border)',
   borderRadius: 'var(--sidebar-nav-radius)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 type ProbingT = ReturnType<typeof useTranslations>;
@@ -196,10 +195,10 @@ export function ReflectionPane({
           <div
             className="mt-3 bg-paper px-3 py-2 text-sm text-warning"
             style={{
-              border: '2px solid var(--color-warning)',
+              border: '1px solid var(--color-warning)',
               borderRadius: 'var(--sidebar-nav-radius)',
               // DS-2: 2px-warning offset 은 memphis 토큰 없음(md-warning=3px). 시각 불변 위해 인라인 유지.
-              boxShadow: '2px 2px 0 var(--color-warning)',
+              boxShadow: 'none',
             }}
           >
             {t('persona.generateFailed', { error })}

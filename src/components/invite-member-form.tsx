@@ -12,10 +12,9 @@ const OUTFIT_STACK = 'var(--font-outfit), var(--font-sans)';
 // xs offset shadow keeps editorial weight consistent with the surrounding
 // PR-D5 shell tokens.
 const MEMPHIS_FIELD_STYLE = {
-  border: 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+  border: '1px solid var(--line)',
   borderRadius: 'var(--sidebar-nav-radius)',
   background: 'var(--sidebar-nav-bg)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 export function InviteMemberForm({ orgId }: { orgId: string }) {
@@ -44,7 +43,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
   const labelStyle = {
     fontFamily: OUTFIT_STACK,
     fontWeight: 800,
-    color: 'var(--sidebar-border)',
+    color: 'var(--ink)',
   } as const;
 
   // <select> kept as native — react/forbid-elements only blocks
@@ -100,9 +99,9 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
           fontWeight: 800,
           background: 'var(--sidebar-active-bg)',
           color: 'var(--sidebar-active-text)',
-          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+          border: '1px solid var(--line)',
           borderRadius: 'var(--sidebar-nav-radius)',
-          boxShadow: 'var(--memphis-shadow-sm)',
+          boxShadow: 'var(--sh-card)',
         }}
       >
         {busy ? tCommon('loading') : t('invite')}

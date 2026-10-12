@@ -84,7 +84,7 @@ export function RespondentDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`응답자 ${label} 상세`}
-        className="flex h-full w-full flex-col border-l-2 border-ink bg-paper shadow-[-4px_0_0_var(--color-line-soft)] sm:w-[420px]"
+        className="flex h-full w-full flex-col border-l border-soft-hair bg-paper sm:w-[420px]"
       >
         {/* 헤더 = 응답자 요약 */}
         <header className="shrink-0 border-b border-line-soft px-5 py-4">
@@ -138,7 +138,7 @@ export function RespondentDrawer({
               {judgment.flags.map((f) => (
                 <span
                   key={f}
-                  className="rounded-full border border-warning-line bg-warning-bg px-2 py-0.5 text-xs-soft font-semibold text-ink-2"
+                  className="rounded-full bg-soft-warn-bg px-2 py-0.5 text-xs-soft font-semibold text-soft-warn-fg"
                 >
                   ⚠ {FLAG_LABEL(f)}
                 </span>

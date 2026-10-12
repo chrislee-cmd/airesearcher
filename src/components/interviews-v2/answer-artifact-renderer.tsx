@@ -176,7 +176,7 @@ function ArtifactQuoteList({ title, quotes }: QuoteListArtifact) {
       )}
       <ul className="space-y-2">
         {quotes.map((q, i) => (
-          <li key={i} className="border-l-2 border-amore pl-3">
+          <li key={i} className="border-l-2 border-rose pl-3">
             <p className="text-sm italic leading-[1.7] text-ink-2">
               “{q.quote}”
             </p>

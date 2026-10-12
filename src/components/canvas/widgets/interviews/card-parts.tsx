@@ -143,7 +143,7 @@ export function CardFooterCta({
           fontSize: 13.5,
           padding: '11px 20px',
           background: 'var(--color-surface-disabled)',
-          border: '1.4px solid var(--color-line)',
+          border: '1px solid var(--color-line)',
           cursor: 'not-allowed',
         }}
       >
@@ -163,7 +163,7 @@ export function CardFooterCta({
           onClick?.();
         }
       }}
-      className={`${base} bg-ink text-paper shadow-memphis-sm-faint cursor-pointer`}
+      className={`${base} bg-ink text-paper cursor-pointer`}
       style={{ fontSize: 13.5, padding: '11px 20px', border: `1.4px solid ${INK}` }}
     >
       {label}
@@ -198,7 +198,7 @@ export function ProjectPillTrigger({
           onClick?.();
         }
       }}
-      className="inline-flex min-w-0 items-center gap-2 rounded-pill bg-paper shadow-memphis-sm cursor-pointer"
+      className="inline-flex min-w-0 items-center gap-2 rounded-pill bg-paper cursor-pointer"
       style={{ padding: '6px 13px', border: `1.5px solid ${INK}` }}
     >
       <DuotoneIcon name="project" size={15} />
@@ -242,7 +242,7 @@ export function ProjectFieldTrigger({
           onClick?.();
         }
       }}
-      className="flex w-full items-center gap-2.5 rounded-field bg-paper shadow-memphis-sm-faint cursor-pointer"
+      className="flex w-full items-center gap-2.5 rounded-field bg-paper cursor-pointer"
       style={{ padding: '13px 18px', border: `1.5px solid ${INK}` }}
     >
       <DuotoneIcon name="project" size={17} />
@@ -289,7 +289,7 @@ export function UploadPill({
           inputRef.current?.open();
         }
       }}
-      className="ml-auto inline-flex items-center gap-1.5 rounded-pill bg-paper font-bold text-ink shadow-memphis-sm-faint cursor-pointer"
+      className="ml-auto inline-flex items-center gap-1.5 rounded-pill bg-paper font-bold text-ink cursor-pointer"
       style={{ padding: '6px 13px', fontSize: 12, border: `1.5px solid ${INK}` }}
     >
       <DuotoneIcon name="upload" size={15} />

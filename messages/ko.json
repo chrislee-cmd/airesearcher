@@ -1553,24 +1553,50 @@
     "subscribeSuccess": "구독이 시작되었습니다. 크레딧이 지급되었습니다."
   },
   "Canvas": {
-    "navigator": {
-      "title": "작업 상태",
-      "expand": "위젯 목록 펼치기",
-      "collapse": "위젯 목록 접기",
-      "dragHandle": "드래그해서 이동",
-      "resetPosition": "위치 초기화",
-      "stateRunning": "진행 중",
-      "stateDone": "완료",
-      "stateError": "오류",
-      "hideWidget": "위젯 숨기기",
-      "showWidget": "위젯 보이기"
+    "palette": {
+      "heading": "위젯",
+      "hint": "누르면 열리고, 끌면 체인에 들어갑니다",
+      "collapse": "팔레트 접기",
+      "expand": "팔레트 펼치기",
+      "chainChip": "체인",
+      "credits": "💎 {n}",
+      "creditsNone": "💎 —",
+      "fit": "→ {n}단계",
+      "lifted": "들어올림 · ←→ 로 위치",
+      "dragging": "끌어가는 중",
+      "chainStep": "{chain} · {n}단계",
+      "chainStatus": "{chain} · {status}",
+      "countStatus": "{n}건 · {status}",
+      "detailed": "{status} · {detail}",
+      "statusRunning": "진행 중",
+      "statusAwaiting": "승인 대기",
+      "statusPaused": "멈춤",
+      "statusError": "실패",
+      "statusPending": "대기",
+      "statusDone": "완료",
+      "locations": "작업 {n}건",
+      "workListMore": "외 {n}건",
+      "workListLibrary": "지난 실행은 라이브러리에서",
+      "workListToggle": "작업 목록",
+      "rowFullview": "풀뷰"
     },
-    "publish": {
-      "publish": "기본 배치로 발행",
-      "publishing": "발행 중…",
-      "published": "발행됨",
-      "failed": "발행 실패",
-      "hint": "현재 배치를 일반 계정 기본 배치로 발행합니다"
+    "workspace": {
+      "emptyTitle": "작업면이 비어 있어요",
+      "emptyBody": "체인을 만들려면 새 체인을 열고 왼쪽에서 위젯을 끌어 넣으세요. 하나만 쓸 거라면 위젯을 누르면 바로 열립니다."
+    },
+    "onboarding": {
+      "title": "위젯은 이제 왼쪽 목록에 있어요",
+      "body": "캔버스에 모두 펼쳐 두지 않고, 쓸 때만 꺼냅니다. 누르면 열리고, 끌면 체인에 들어갑니다. 만들었던 결과는 그대로 있어요.",
+      "once": "한 번만 보여요",
+      "dismiss": "알겠어요"
+    },
+    "drag": {
+      "emptyDropHint": "체인 자리에 놓아야 들어가요",
+      "slotLabel": "{n}단계 자리",
+      "liftedAnnounce": "{widget}{josa} 들었습니다. {slot} — Space 로 놓기, ←→ 로 다른 자리, Esc 로 취소.",
+      "movedAnnounce": "{slot} — Space 로 놓기, Esc 로 취소.",
+      "droppedAnnounce": "{widget}{josa} {n}단계로 넣었습니다.",
+      "cancelledAnnounce": "들어올림을 취소했습니다."
     }
   },
   "Chain": {

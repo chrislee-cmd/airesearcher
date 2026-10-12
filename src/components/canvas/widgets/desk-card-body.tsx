@@ -967,7 +967,7 @@ export function DeskCardBody() {
               {skippedSteps?.map((s) => (
                 <span
                   key={`skip-${s}`}
-                  className="inline-flex items-center rounded-pill border border-warning-line bg-warning-bg px-2 py-0.5 text-xs text-ink-2"
+                  className="inline-flex items-center rounded-pill bg-soft-warn-bg px-2 py-0.5 text-xs text-soft-warn-fg"
                 >
                   {tDesk('skippedChipPrefix')} {s}
                 </span>

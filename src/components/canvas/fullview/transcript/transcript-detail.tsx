@@ -127,7 +127,7 @@ function TurnStream({
           <div key={turn.index} className="flex gap-[13px]">
             <span
               aria-hidden
-              className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border-2 border-ink text-lg font-extrabold text-ink ${avatarBg}`}
+              className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-soft-line text-lg font-extrabold text-ink ${avatarBg}`}
             >
               {initials(turn.speaker)}
             </span>
@@ -164,7 +164,7 @@ function ExportCard({
   return (
     <a
       href={href}
-      className="flex flex-1 flex-col items-center gap-1.5 rounded-[var(--fv-radius-panel)] border-[1.5px] border-ink px-1.5 py-3 shadow-memphis-sm transition-colors hover:bg-lav-bg"
+      className="flex flex-1 flex-col items-center gap-1.5 rounded-[var(--fv-radius-panel)] border border-soft-line px-1.5 py-3 transition-colors hover:bg-lav-bg"
     >
       <span aria-hidden className="text-2xl">
         {emoji}
@@ -236,11 +236,11 @@ function AnalysisRail({ job }: { job: TranscriptJob }) {
         {loading ? (
           <p className="text-md text-mute-soft">{t('loading')}</p>
         ) : analysis ? (
-          <div className="rounded-sm border-[1.5px] border-line bg-lav-bg p-[14px]">
+          <div className="rounded-sm border border-soft-line bg-lav-bg p-[14px]">
             <p className="text-lg leading-[1.6] text-ink-2">{analysis.summary}</p>
           </div>
         ) : (
-          <div className="rounded-sm border-2 border-dashed border-line-soft bg-paper-soft px-4 py-4">
+          <div className="rounded-sm border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft px-4 py-4">
             <p className="text-sm leading-relaxed text-mute-soft">
               {genResult === 'empty' ? t('summaryUnavailable') : t('summaryStub')}
             </p>
@@ -266,7 +266,7 @@ function AnalysisRail({ job }: { job: TranscriptJob }) {
             {analysis.themes.map((theme, i) => (
               <div
                 key={`${theme.label}-${i}`}
-                className="flex items-center gap-2.5 rounded-[var(--fv-radius-panel)] border-[1.4px] border-line px-3 py-2.5"
+                className="flex items-center gap-2.5 rounded-[var(--fv-radius-panel)] border border-soft-line px-3 py-2.5"
               >
                 <span
                   aria-hidden
@@ -372,7 +372,7 @@ export function TranscriptDetail({
     <>
     <div className="flex min-h-0 flex-1">
       {/* 좌 · 전사록 */}
-      <div className="flex min-w-0 flex-1 flex-col border-r-2 border-ink">
+      <div className="flex min-w-0 flex-1 flex-col border-r border-soft-hair">
         {/* 검색 툴바 (CD state 05) */}
         <div className="flex shrink-0 items-center gap-2.5 border-b border-line-soft bg-paper px-[22px] py-3">
           {/* eslint-disable-next-line react/forbid-elements -- CD state 05 back ‹ 는 36px 원형 chrome(border 1.5 ink·memphis-sm) — IconButton 고정 radius variant 와 불일치(fullview-header 닫기✕ 선례). */}
@@ -380,7 +380,7 @@ export function TranscriptDetail({
             type="button"
             onClick={onBack}
             aria-label={t('back')}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-[1.5px] border-ink bg-paper text-lg font-bold text-ink shadow-memphis-sm"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-soft-line bg-paper text-lg font-bold text-ink "
           >
             ‹
           </button>
@@ -388,7 +388,7 @@ export function TranscriptDetail({
               전사(turn 0)엔 무의미해 숨긴다(back 버튼은 항상 유지). */}
           {showTurnTools && (
             <>
-              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-pill border-[1.5px] border-line bg-paper-soft px-3.5 py-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2 rounded-pill border border-soft-line bg-paper-soft px-3.5 py-2">
                 <span aria-hidden className="text-lg text-mute-soft">
                   🔍
                 </span>
@@ -407,7 +407,7 @@ export function TranscriptDetail({
                 type="button"
                 aria-pressed={view === 'speaker'}
                 onClick={() => setView('speaker')}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-2 text-md ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-2 text-md ${
                   view === 'speaker'
                     ? 'border-ink font-bold text-ink'
                     : 'border-line font-semibold text-mute-soft'
@@ -420,7 +420,7 @@ export function TranscriptDetail({
                 type="button"
                 aria-pressed={view === 'timestamp'}
                 onClick={() => setView('timestamp')}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-2 text-md ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border px-3 py-2 text-md ${
                   view === 'timestamp'
                     ? 'border-ink font-bold text-ink'
                     : 'border-line font-semibold text-mute-soft'

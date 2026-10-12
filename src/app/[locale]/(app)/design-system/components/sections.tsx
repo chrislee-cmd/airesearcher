@@ -564,7 +564,7 @@ function Wave3Demos({ replay }: { replay: number }) {
         <div className="flex flex-wrap items-center gap-3">
           <span
             key={`${badgeState}-${replay}`}
-            className="pop-in inline-flex items-center gap-1 rounded-xs border-2 border-ink px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
+            className="pop-in inline-flex items-center gap-1 rounded-xs border border-soft-line px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider tabular-nums"
             style={{
               background:
                 badgeState === 'running'
@@ -932,7 +932,7 @@ function PickerSection() {
   return (
     <PrimitivePage
       title="Picker"
-      hint="src/components/ui/picker/ · 제품 전역 dropdown/select/sort/filter 단일 패밀리 (BUILD-SPEC: design-handoff/picker-system/). 트리거 md/sm · 6상태 · 패널 P1 단일(즉시)·P2 멀티(Apply)·P3 2-pane(Apply) · portal(z-overlay)·flip-up·키보드 a11y(↑↓·Space·Enter·Esc·←→) · edge 4종. Phase 0 픽커 토큰 소비(focus-ring·control-h·radius-picker-*·shadow-picker-panel·picker-option-selected). 첫 소비자=리크루팅 업로드 명단 컨트롤. Phase 2/3 에서 위젯 툴바 등 확장."
+      hint="src/components/ui/picker/ · 제품 전역 dropdown/select/sort/filter 단일 패밀리 (BUILD-SPEC: design-handoff/picker-system/). 트리거 md/sm · 6상태 · 패널 P1 단일(즉시)·P2 멀티(Apply)·P3 2-pane(Apply) · portal(z-overlay)·flip-up·키보드 a11y(↑↓·Space·Enter·Esc·←→) · edge 4종. Phase 0 픽커 토큰 소비(focus-ring·control-h·radius-picker-*·shadow-soft-popover·picker-option-selected). 첫 소비자=리크루팅 업로드 명단 컨트롤. Phase 2/3 에서 위젯 툴바 등 확장."
     >
       <Subsection label="Trigger — sizes (md 34px 툴바/테이블 · sm 28px 위젯 레일)">
         <div className="flex flex-wrap items-center gap-4">
@@ -982,10 +982,10 @@ function PickerSection() {
               ✕ never free-floating pills
             </span>
             <div className="flex gap-6">
-              <span className="rounded-full border-[1.5px] border-ink px-3 py-1.5 text-md">
+              <span className="rounded-full border border-soft-line px-3 py-1.5 text-md">
                 Sort ▼
               </span>
-              <span className="rounded-full border-[1.5px] border-ink px-3 py-1.5 text-md">
+              <span className="rounded-full border border-soft-line px-3 py-1.5 text-md">
                 선정여부 ▼
               </span>
             </div>
@@ -1047,8 +1047,8 @@ function TriggerSwatch({ name, children }: { name: string; children: ReactNode }
 
 function EdgeCard({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="w-[290px] overflow-hidden rounded-picker-panel border-2 border-ink bg-paper shadow-memphis-sm-faint">
-      <div className="border-b-[1.5px] border-ink/[0.12] px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-mute-soft">
+    <div className="w-[290px] overflow-hidden rounded-picker-panel border border-soft-line bg-soft-surface shadow-soft-popover">
+      <div className="border-b border-soft-hair px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.1em] text-soft-faint">
         {label}
       </div>
       {children}
@@ -1099,7 +1099,7 @@ function CheckboxSection() {
   return (
     <PrimitivePage
       title="Checkbox"
-      hint="src/components/ui/checkbox.tsx · Memphis 톤 (2px ink border + 1.5px offset shadow) · checked 시 amore 채움 + ✓ SVG · sm 16px / md 20px · 텍스트는 <label> wrapper 로 직접 붙임"
+      hint="src/components/ui/checkbox.tsx · Soft Identity 톤 (1px --line border · 그림자 없음) · checked 시 amore 채움 + ✓ SVG · sm 16px / md 20px · 텍스트는 <label> wrapper 로 직접 붙임"
     >
       <Subsection label="Sizes">
         <div className="flex items-center gap-6">
@@ -1160,11 +1160,11 @@ function WidgetFullviewModalSection() {
       <Subsection label="진입 버튼 — 노란 메인 헤더, READY 상태 pill 바로 아래">
         <div className="space-y-3">
           {/* widget-shell.tsx 의 onFullview 진입 버튼과 동일한 시각 + 위치 —
-              노란 카드 헤더 안 우측, state pill 아래에 Memphis chip
-              (secondary: 흰 bg + 검은 border + offset shadow + arrows-out
-              아이콘). 노란 배경 위에서 또렷하게 보이도록. */}
+              헤더 띠 안 우측, state pill 아래의 보조 chip (secondary: 흰 bg +
+              1px --line + arrows-out 아이콘 · 그림자 없음 — Soft Identity
+              핵심규칙 2·5). 틴트 헤더 띠 위에서 또렷하게 보이도록. */}
           <div
-            className="inline-flex flex-col items-end gap-1.5 px-4 py-3 rounded-sm border-[2px] border-ink"
+            className="inline-flex flex-col items-end gap-1.5 px-4 py-3 rounded-sm border border-soft-line"
             style={{ background: 'var(--canvas-card-header-bg)' }}
           >
             <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider bg-paper border-[2px] border-ink rounded-[4px] shadow-[2px_2px_0_var(--canvas-card-border)]">
@@ -1762,14 +1762,14 @@ function CanvasWidgetPrimitivesSection() {
             props: <code className="font-mono text-ink-2">cost?</code> /{' '}
             <code className="font-mono text-ink-2">costLabel?</code>. 세 갈래 —{' '}
             <code className="font-mono">cost===0</code> → &ldquo;무료&rdquo; 텍스트,{' '}
-            <code className="font-mono">cost&gt;0</code> → 💎 숫자 Memphis pill,{' '}
+            <code className="font-mono">cost&gt;0</code> → 💎 숫자 mono pill,{' '}
             <code className="font-mono">costLabel</code> → 그 문자열(probing 등
             lifecycle 차감). costLabel 이 cost 보다 우선.
           </p>
           {/* 실제 노란 카드 헤더 위에서의 대비를 재현 — 흰 pill 이 배너 노랑
               위에서도 또렷한지 확인. */}
           <div
-            className="flex flex-wrap items-center gap-4 px-5 py-4 rounded-sm border-2 border-ink"
+            className="flex flex-wrap items-center gap-4 px-5 py-4 rounded-sm border border-soft-line"
             style={{ background: 'var(--canvas-card-header-bg)' }}
           >
             <WidgetCreditBadge cost={0} costLabel={undefined} />
@@ -1793,7 +1793,7 @@ function CanvasWidgetPrimitivesSection() {
             widget-shell 이 WidgetStateContext 에서 읽어 이 primitive 에 넘긴다.
           </p>
           <div
-            className="flex flex-wrap items-center gap-3 px-5 py-4 rounded-sm border-2 border-ink"
+            className="flex flex-wrap items-center gap-3 px-5 py-4 rounded-sm border border-soft-line"
             style={{ background: 'var(--canvas-card-header-bg)' }}
           >
             <WidgetStatePill state={{ kind: 'idle' }} />
@@ -2006,7 +2006,7 @@ function CanvasWidgetPrimitivesSection() {
             (좌) / <code className="font-mono text-ink-2">options</code> (중) /{' '}
             <code className="font-mono text-ink-2">actions</code> (우) + 선택적{' '}
             <code className="font-mono text-ink-2">hint</code> 줄. 외곽{' '}
-            <code className="font-mono">border-b-[2px] border-ink</code> +{' '}
+            <code className="font-mono">border-b border-soft-hair</code> +{' '}
             <code className="font-mono">bg-paper-soft</code> +{' '}
             <code className="font-mono">px-5 py-3</code> 표준. translate /
             probing / desk 3 위젯이 같은 시각 룰.

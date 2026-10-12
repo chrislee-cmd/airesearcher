@@ -6,8 +6,11 @@ import {
   type CanvasWidgetKey,
 } from '@/lib/canvas/visibility';
 import { getCanvasVisibility } from '@/lib/canvas/visibility-server';
-import { getPublishedCanvasLayout } from '@/lib/canvas/layout-publish-server';
-import { getCurrentUser } from '@/lib/supabase/user';
+import {
+  getCanvasOnboardingPending,
+  getCurrentUser,
+  getDisplayName,
+} from '@/lib/supabase/user';
 import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
 import { recruitingCard } from '@/components/canvas/widgets/recruiting-card';
@@ -87,9 +90,12 @@ export default async function CanvasPage({
   const user = await getCurrentUser();
   const vis = await getCanvasVisibility(user?.email);
 
-  // 발행된 캔버스 배치(전역 단일 row). 없으면 null → board 는 종전
-  // defaultPositions 폴백(회귀 0). 조회 실패도 null 로 삼켜 렌더를 막지 않는다.
-  const published = await getPublishedCanvasLayout();
+  // 팔레트 사용자 줄(§4.1) + 전환 온보딩 대상 여부(P4). 둘 다 유저 단위이고
+  // cache() 라 layout 의 중복 조회와 dedupe 된다.
+  const [userName, onboardingPending] = await Promise.all([
+    getDisplayName(),
+    getCanvasOnboardingPending(),
+  ]);
 
   // 3단 필터: (1) **DB 기반 visibility**(옛 하드코딩 CANVAS_VISIBILITY 대체) →
   // (2) preview 게이트(FeatureKey 인 recruiting·desk·interviews 등 일반계정
@@ -128,18 +134,21 @@ export default async function CanvasPage({
       <WidgetChainProvider>
       {/* 레인(도킹) 클라 상태 — 체인 데이터 위에 얹히므로 안쪽에 둔다. */}
       <ChainLaneProvider>
+      {/* 그리드 좌표 **발행 배치의 소비**(publishedLayout/version · canPublish ·
+          applyPublished)는 그리드 캔버스와 함께 퇴역했다 — 위젯이 작업면에
+          펼쳐져 있지 않으니 적용할 좌표가 없다. 발행 데이터 자체는 파괴하지
+          않는다: `widget_canvas_layout` 테이블 · `lib/canvas/layout-publish-
+          server.ts` · `/api/admin/canvas-layout` 은 그대로 남아 있고, 팔레트
+          로스터·순서는 `CANVAS_ORDER × widget_visibility` 에서 온다(§2 규칙 5).
+          어드민 노출/순서 전환은 후속 확인 항목(스펙 "발행 전환"). */}
       <CanvasBoard
         widgets={widgets}
         initialFocus={focus}
         lockedKeys={lockedKeys}
         hiddenBadgeKeys={hiddenBadgeKeys}
         orgId={orgId}
-        publishedLayout={published?.positions ?? null}
-        publishedVersion={published?.version ?? null}
-        // 슈퍼어드민이면 발행 컨트롤 노출. 발행 baseline 적용은 일반계정(비-
-        // 슈퍼어드민·비-unlimited)만 — 슈퍼어드민/unlimited 는 개인 배치 유지.
-        canPublish={vis.isSuperAdmin}
-        applyPublished={!vis.isSuperAdmin && !isUnlimited}
+        userName={userName}
+        onboardingPending={onboardingPending}
       />
       </ChainLaneProvider>
       </WidgetChainProvider>

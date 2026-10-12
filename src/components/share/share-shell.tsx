@@ -35,6 +35,18 @@ const TONE_BG: Record<ShareTone, string> = {
   aqua: 'bg-aqua',
 };
 
+// 상단 톤 밴드는 **넓은 면**이라 원색 파스텔을 쓰지 않는다(Soft Identity
+// 핵심규칙 3: 원색은 아이콘 타일·점·사이드바 표시 같은 작은 면 전용).
+// 값 SSOT = design-handoff/soft-identity/tokens.css --tint-*.
+const TONE_TINT: Record<ShareTone, string> = {
+  sky: 'bg-tint-sky',
+  mint: 'bg-tint-mint',
+  lav: 'bg-tint-lav',
+  peach: 'bg-tint-peach',
+  sun: 'bg-tint-sun',
+  aqua: 'bg-tint-aqua',
+};
+
 export type ShareShellProps = {
   state: ShareState;
   locale: string;
@@ -72,7 +84,7 @@ function BrandRow({
   return (
     <div className="flex items-center gap-[11px]">
       <div className="inline-flex shrink-0 items-center gap-[7px]">
-        <span className="flex h-6 w-6 items-center justify-center rounded-xs border-2 border-ink bg-paper font-display text-xs font-extrabold text-ink shadow-memphis-xs">
+        <span className="flex h-6 w-6 items-center justify-center rounded-xs border border-soft-line bg-paper font-display text-xs font-extrabold text-ink ">
           R
         </span>
         <span className="font-display text-xs font-extrabold tracking-[-0.2px] text-ink">
@@ -81,10 +93,8 @@ function BrandRow({
       </div>
       <div className="flex-1" />
       <div
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] bg-paper px-[11px] py-1 font-mono-label text-xs font-bold ${
-          badgeTone === 'ink'
-            ? 'border-ink text-ink shadow-memphis-sm'
-            : 'border-line text-mute-soft'
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-soft-fill px-[11px] py-1 font-mono-label text-xs font-bold ${
+          badgeTone === 'ink' ? 'text-ink' : 'text-soft-faint'
         }`}
       >
         {badge}
@@ -97,7 +107,7 @@ function BrandRow({
 async function Footer() {
   const t = await getTranslations('Share.shell');
   return (
-    <div className="flex shrink-0 items-center gap-2.5 border-t-2 border-ink bg-paper-soft px-[22px] py-[11px]">
+    <div className="flex shrink-0 items-center gap-2.5 border-t border-soft-hair bg-paper-soft px-[22px] py-[11px]">
       <span className="text-xs text-mute-soft">
         {t.rich('madeWith', {
           brand: (chunks) => (
@@ -118,9 +128,9 @@ function Frame({
   children: ReactNode;
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface-canvas p-4 sm:p-10">
+    <main className="flex min-h-screen items-center justify-center bg-soft-canvas p-4 sm:p-10">
       <div
-        className={`flex w-full flex-col overflow-hidden rounded-panel-lg border-[3px] border-ink bg-surface-canvas shadow-frame ${
+        className={`flex w-full flex-col overflow-hidden rounded-panel-lg border border-soft-line bg-soft-surface shadow-soft-frame ${
           size === 'wide'
             ? 'h-[min(780px,90vh)] max-w-[760px]'
             : 'max-w-[568px]'
@@ -154,7 +164,7 @@ async function ValidShell({
     <Frame size="wide">
       {/* masthead — 톤 밴드. D2: attribution=공유일만(실명 없음). */}
       <header
-        className={`shrink-0 border-b-[3px] border-ink px-[22px] py-[15px] ${TONE_BG[tone]}`}
+        className={`shrink-0 border-b border-soft-hair px-[22px] py-[15px] ${TONE_TINT[tone]}`}
       >
         <BrandRow badge={t('readOnly')} badgeTone="ink" />
         <div className="mt-3 flex items-end gap-3">
@@ -202,7 +212,7 @@ async function LoadingShell({ tone }: ShareShellProps) {
   return (
     <Frame size="compact">
       <header
-        className={`shrink-0 border-b-[3px] border-ink px-[18px] py-[14px] ${TONE_BG[tone]}`}
+        className={`shrink-0 border-b border-soft-hair px-[18px] py-[14px] ${TONE_TINT[tone]}`}
       >
         <BrandRow badge={t('readOnly')} badgeTone="ink" />
         <div className="mt-[11px] flex flex-col gap-1.5">
@@ -222,7 +232,7 @@ async function LoadingShell({ tone }: ShareShellProps) {
           </div>
         ))}
       </div>
-      <div className="shrink-0 border-t-2 border-ink bg-paper-soft px-[18px] py-2.5 text-xs text-mute-soft">
+      <div className="shrink-0 border-t border-soft-hair bg-paper-soft px-[18px] py-2.5 text-xs text-mute-soft">
         {t('loadingNote')}
       </div>
     </Frame>
@@ -256,20 +266,20 @@ async function DeadEndShell({ state, locale, expiresAt, tokenEcho }: ShareShellP
 
   return (
     <Frame size="compact">
-      <header className="flex shrink-0 items-center gap-2.5 border-b-[3px] border-ink bg-surface-disabled px-[18px] py-[14px]">
+      <header className="flex shrink-0 items-center gap-2.5 border-b border-soft-hair bg-surface-disabled px-[18px] py-[14px]">
         <BrandRow badge={badge} badgeTone="mute" />
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-3.5 bg-paper px-[34px] py-[34px] text-center">
         {isNotFound ? (
           // never resolved — dashed 타일.
           // design-allow-hardcoded -- CD share-shell.dc.html dead-end 아이콘 타일 radius 19(AUTHORITY: 전용 CD 절대값, DS 토큰 없음 — nearest 로 굽히지 않음)
-          <div className="flex h-[70px] w-[70px] items-center justify-center rounded-[19px] border-[2.5px] border-dashed border-line-empty bg-surface-canvas text-3xl">
+          <div className="flex h-[70px] w-[70px] items-center justify-center rounded-[19px] border-[1.5px] border-dashed border-soft-line-hover bg-surface-canvas text-3xl">
             🔗
           </div>
         ) : (
           // was valid, now closed — solid 타일.
           // design-allow-hardcoded -- CD share-shell.dc.html dead-end 아이콘 타일 radius 19(AUTHORITY: 전용 CD 절대값, DS 토큰 없음)
-          <div className="flex h-[70px] w-[70px] items-center justify-center rounded-[19px] border-[3px] border-ink bg-paper-soft text-3xl shadow-memphis-lg">
+          <div className="flex h-[70px] w-[70px] items-center justify-center rounded-[19px] bg-soft-fill text-3xl">
             ⏳
           </div>
         )}
@@ -286,12 +296,12 @@ async function DeadEndShell({ state, locale, expiresAt, tokenEcho }: ShareShellP
             </div>
           ) : null
         ) : (
-          <div className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-line bg-paper px-[15px] py-2 text-md font-semibold text-mute">
+          <div className="inline-flex items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-[15px] py-2 text-md font-semibold text-mute">
             ✉ {t('requestAccess')}
           </div>
         )}
       </div>
-      <div className="shrink-0 border-t-2 border-ink bg-paper-soft px-[18px] py-2.5 text-xs text-mute-soft">
+      <div className="shrink-0 border-t border-soft-hair bg-paper-soft px-[18px] py-2.5 text-xs text-mute-soft">
         {isNotFound ? t('notFoundNote') : t('deadEndNote')}
       </div>
     </Frame>
@@ -304,13 +314,13 @@ async function GatedShell({ tone, children }: ShareShellProps) {
   return (
     <Frame size="compact">
       <header
-        className={`flex shrink-0 items-center gap-2.5 border-b-[3px] border-ink px-[18px] py-[14px] ${TONE_BG[tone]}`}
+        className={`flex shrink-0 items-center gap-2.5 border-b border-soft-hair px-[18px] py-[14px] ${TONE_TINT[tone]}`}
       >
         <BrandRow badge={t('restricted')} badgeTone="ink" />
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-[11px] bg-paper px-8 py-8 text-center">
         {/* design-allow-hardcoded -- CD share-shell.dc.html gate 아이콘 타일 radius 17(AUTHORITY: 전용 CD 절대값, DS 토큰 없음) */}
-        <div className={`flex h-[62px] w-[62px] items-center justify-center rounded-[17px] border-[3px] border-ink text-2xl shadow-memphis-lg ${TONE_BG[tone]}`}>
+        <div className={`flex h-[62px] w-[62px] items-center justify-center rounded-[17px] text-2xl ${TONE_BG[tone]}`}>
           ✉
         </div>
         <div className="mt-1 font-display text-3xl font-extrabold tracking-[-0.4px] text-ink">

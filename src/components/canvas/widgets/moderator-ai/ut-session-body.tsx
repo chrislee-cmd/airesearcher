@@ -257,17 +257,17 @@ export function UtSessionBody() {
   // 세팅 표면 배너 — 미지원 안내 / 로컬·원격 에러.
   const setupBanner =
     (!session.isSupported && (
-      <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+      <div className="rounded-xs border border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
         {t('unsupported')}
       </div>
     )) ||
     (session.phase === 'idle' && session.error && (
-      <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+      <div className="rounded-xs border border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
         {session.error}
       </div>
     )) ||
     (remote.phase === 'error' && remote.error && (
-      <div className="rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+      <div className="rounded-xs border border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
         {remote.error}
       </div>
     )) ||
@@ -432,7 +432,7 @@ export function UtSessionBody() {
             </div>
           }
           railCardSlot={
-            <div className="flex min-h-0 flex-col gap-3 overflow-y-auto rounded-sm border-2 border-ink bg-peach-bg px-[15px] py-[13px] shadow-memphis-sm">
+            <div className="flex min-h-0 flex-col gap-3 overflow-y-auto rounded-sm border border-soft-line bg-peach-bg px-[15px] py-[13px]">
               <div className="flex items-center gap-[7px]">
                 <DuotoneIcon
                   name="link"
@@ -577,7 +577,7 @@ export function UtSessionBody() {
               </>
             ) : isReviewSurface ? (
               // 리뷰 표면 — dot-less 'Post-session review' pill(CD state 07).
-              <span className="inline-flex shrink-0 items-center rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1 text-sm font-bold text-ink">
+              <span className="inline-flex shrink-0 items-center rounded-pill border border-soft-line bg-paper px-3 py-1 text-sm font-bold text-ink">
                 {t('fullview.reviewBadge')}
               </span>
             ) : null,

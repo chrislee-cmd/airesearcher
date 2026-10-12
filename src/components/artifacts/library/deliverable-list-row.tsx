@@ -39,14 +39,14 @@ export function DeliverableListRow({
   return (
     <div
       className={`flex items-center gap-[9px] border-b border-soft-fill px-5 py-3 transition-colors hover:bg-soft-surface-2 ${
-        selected ? 'bg-soft-fill shadow-[inset_3px_0_0_var(--ink)]' : ''
+        selected ? 'bg-soft-fill ' : ''
       }`}
     >
       <SelectBox
         checked={selected}
         onToggle={onToggleSelect}
         ariaLabel={row.title}
-        boxClassName="h-[15px] w-[15px] rounded-xs border-[1.6px]"
+        boxClassName="h-[15px] w-[15px] rounded-xs border"
       />
 
       <div

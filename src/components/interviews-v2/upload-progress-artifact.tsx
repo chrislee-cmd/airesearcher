@@ -240,13 +240,13 @@ function BatchProgressCard({ batch }: { batch: UploadBatch }) {
   }
 
   return (
-    // Processing-signal frame (CD upload-modal-BUILD-SPEC §3): border-2 ink ·
+    // Processing-signal frame (CD upload-modal-BUILD-SPEC §3): border 1px --line ·
     // radius-card · violet processing shadow + tint while in flight. The old
     // grey/amore look read ambiguously as "failed" — the paired visual half of
     // 증상 A. Resolves to a neutral paper surface once complete.
     <div
-      className={`w-full rounded-card border-2 border-ink px-4 py-3 ${
-        complete ? 'bg-paper' : 'bg-lav-bg shadow-memphis-md-processing'
+      className={`w-full rounded-card border border-soft-line px-4 py-3 ${
+        complete ? 'bg-paper' : 'bg-lav-bg'
       }`}
     >
       <div className="flex items-start gap-2">

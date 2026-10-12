@@ -17,13 +17,13 @@ import type { ShareStatus } from './types';
 // 줄바꿈("초대 편집"→2줄, "철회"→철/회)되지 않게 한다.
 const PILL =
   'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill';
-const PRIMARY = 'border-2 border-ink bg-ink text-paper shadow-memphis-sm';
-const SECONDARY = 'border-[1.5px] border-ink bg-paper text-ink shadow-memphis-sm';
+const PRIMARY = 'border border-soft-line bg-ink text-paper';
+const SECONDARY = 'border border-soft-line bg-paper text-ink';
 const DANGER =
-  'border-[1.5px] border-amore-deep bg-paper text-amore-deep shadow-memphis-sm-crimson';
-const LOCKED = 'border-[1.5px] border-ink/20 bg-surface-disabled text-mute';
+  'border border-amore-deep bg-paper text-amore-deep';
+const LOCKED = 'border border-soft-line bg-surface-disabled text-mute';
 const COPIED =
-  'border-2 border-success bg-success-bg text-success-text shadow-memphis-sm-success';
+  'border border-success bg-success-bg text-success-text';
 
 // 복사됨 체크 — 듀오톤 스트로크 문법(currentColor 로 success-text 상속, hex 없음).
 function CheckGlyph() {

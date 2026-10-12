@@ -204,7 +204,7 @@ export function DateRangePopover({
             ref={panelRef}
             role="dialog"
             aria-label={placeholder ?? t('selectPeriod')}
-            className="fixed z-overlay rounded-xs border-[2px] border-ink bg-paper p-3 shadow-memphis-md-card"
+            className="fixed z-overlay rounded-xs border border-soft-line bg-paper p-3 shadow-soft-popover"
             style={{
               // 패널 폭 = months × 15rem(240) + gap-4(16)×(months-1) + p-3(24).
               // 우측 뷰포트 넘침 방지로 left 클램프.

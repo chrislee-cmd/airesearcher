@@ -18,7 +18,7 @@
    native <button> (ui/ 는 react/forbid-elements 예외 — 프리미티브 정의 지점).
 
    토큰: 선택 = border-amore + shadow-select-glow + amore 코너 ✓.
-   미선택 = border-line + shadow-memphis-sm-faint. rounded-sm / bg-paper.
+   미선택 = border-soft-line (1px) + 그림자 없음. rounded-sm / bg-paper.
    하드코딩 hex/px 없음 (design-system 가드 준수, CaptureUseCaseCards 와 동일).
    ──────────────────────────────────────────────────────────────────── */
 
@@ -71,18 +71,18 @@ export function TranscriptMethodCards({
             className={[
               // Canvas 1c method 카드 지오메트리(GEOMETRY.md §2): radius ~13 ·
               // padding 13x11 · border 2 고정(상태 무관 → 선택 시 폭 변화 shift 0).
-              // radius 는 토큰 rounded-sm(14px). 선택 = amore border-2 + soft glow
+              // radius 는 토큰 rounded-sm(14px). 선택 = amore border(1px) + soft glow
               // (shadow-select-glow) — CaptureUseCaseCards 와 동일.
               // 높이 = 고정 128 (MODECARD-FIX 델타) — subtitle 줄수에 따라 flex 로
               // 늘어나 그리드 정렬이 깨지던 버그 봉인. box-border + flex-col
               // justify-start(top-align) + 텍스트 clamp + overflow-hidden.
-              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border-2 bg-paper box-border px-[11px] py-[13px] text-left',
+              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border bg-paper box-border px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
               selected
                 ? 'border-amore shadow-select-glow'
-                : 'border-line shadow-memphis-sm-faint',
+                : 'border-line',
             ].join(' ')}
           >
             {/* 코너 ✓ — 선택된 카드에만. amore 원형 + 체크 (CaptureUseCaseCards 동형) */}

@@ -87,7 +87,7 @@ export function ProbingResearchContext({
   }
 
   return (
-    <section className="space-y-3 border-b-2 border-line-soft bg-paper px-4 py-3">
+    <section className="space-y-3 border-b border-soft-hair bg-paper px-4 py-3">
       <Field label={t('control.fieldResearchGoal')}>
         <Textarea
           value={goalDraft}

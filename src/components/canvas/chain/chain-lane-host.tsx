@@ -170,9 +170,9 @@ export function ChainLaneHost({
             data-chain="undock-reject"
             aria-live="polite"
             style={{ borderRadius: 'var(--widget-card-frame-radius)' }}
-            className="pointer-events-none absolute inset-0 z-overlay flex flex-col items-center justify-center gap-5 border-[3px] border-dashed border-error bg-error-bg/90"
+            className="pointer-events-none absolute inset-0 z-overlay flex flex-col items-center justify-center gap-5 border-[1.5px] border-dashed border-error bg-error-bg/90"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-[2.5px] border-error text-display font-extrabold text-error-text">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-error text-display font-extrabold text-error-text">
               <span aria-hidden>✕</span>
             </div>
             <div className="px-10 text-center text-3xl font-extrabold text-error-text">

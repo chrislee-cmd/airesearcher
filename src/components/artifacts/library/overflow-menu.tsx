@@ -70,10 +70,10 @@ export function OverflowMenu({
   const moveEnabled = moveSupported && hasOrg && projects.length > 0;
 
   const triggerCls = open
-    ? 'border-2 border-ink bg-ink text-paper shadow-memphis-sm'
+    ? 'border border-soft-line bg-ink text-paper'
     : enabled
-      ? 'border-[1.5px] border-ink bg-paper text-ink shadow-memphis-sm'
-      : 'border-[1.5px] border-ink/20 bg-surface-disabled text-mute';
+      ? 'border border-soft-line bg-paper text-ink'
+      : 'border border-soft-line bg-surface-disabled text-mute';
 
   async function moveTo(next: string | null) {
     setMoving(true);
@@ -118,7 +118,7 @@ export function OverflowMenu({
           <div
             ref={panelRef}
             role="menu"
-            className="fixed z-overlay overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-lg"
+            className="fixed z-overlay overflow-hidden rounded-panel border border-soft-line bg-paper shadow-soft-popover"
             style={{ top, left, width: MENU_WIDTH }}
           >
             {showExport && (

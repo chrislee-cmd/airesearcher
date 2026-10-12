@@ -13,6 +13,14 @@
 
    CD 결정 4: 받을 수 없는 드롭이어도 **드래그는 시작된다** — 시작부터 막으면
    왜 안 되는지 말할 자리가 없다. 거절은 여기서 사유와 함께 보여준다.
+
+   ── Soft 값 (캔버스 모듈화 Phase 1 · full §5 "수용/거절 외형") ──────────────
+   "v3 L1 / L2 / L2b 문법 그대로, 바탕만 Soft 값(수용 = 들어올 위젯 **틴트** +
+   1.5 dashed ink, 거절 = `--err-bg` + 1.5 dashed `--err-dot`)".
+   수용 바탕이 원색이 아니라 **틴트**인 것이 핵심이다 — Soft 핵심규칙 3
+   ("원색은 아이콘 타일·상태 점 같은 작은 면에만"). 그리고 수용 테두리가
+   실선 → **점선**으로 바뀐다(아직 비어 있는 자리라는 뜻을 선이 말한다).
+   선 두께·치수는 제약 1 대로 유지하고 색/스타일만 Soft 로 맞춘다.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
@@ -25,7 +33,16 @@ import {
 export const LANE_CARD_W = 604;
 export const LANE_CARD_H = 900;
 
-const TONE_BG: Record<'sky' | 'lav' | 'rose', string> = {
+// 수용 슬롯 바탕 = 들어올 위젯의 **틴트**(넓은 면). 원색(--tone-*)은 쓰지 않는다.
+const TONE_TINT: Record<'sky' | 'lav' | 'rose', string> = {
+  sky: 'bg-tint-sky',
+  lav: 'bg-tint-lav',
+  rose: 'bg-tint-rose',
+};
+
+// 칩의 상태 점 — 작은 면이라 원색. `--tone-*` 는 기존 파스텔과 값이 1:1 이라
+// 신규 util 이 없다(globals.css Soft 블록 주석의 매핑표).
+const TONE_DOT: Record<'sky' | 'lav' | 'rose', string> = {
   sky: 'bg-sky',
   lav: 'bg-lav',
   rose: 'bg-rose',
@@ -56,17 +73,17 @@ export function ChainSlot({
 
   const frame =
     state === 'valid'
-      ? `border-[3px] border-ink ${toneFeature ? TONE_BG[CHAIN_STEP_TONE[toneFeature]] : 'bg-paper'}`
+      ? `border-[1.5px] border-dashed border-ink ${toneFeature ? TONE_TINT[CHAIN_STEP_TONE[toneFeature]] : 'bg-soft-surface'}`
       : state === 'invalid'
-        ? 'border-[3px] border-dashed border-error bg-error-bg'
-        : 'border-[2.5px] border-dashed border-line-empty bg-surface-canvas';
+        ? 'border-[1.5px] border-dashed border-soft-err-dot bg-soft-err-bg'
+        : 'border-[1.5px] border-dashed border-soft-line-hover bg-soft-surface-2';
 
   const tile =
     state === 'valid'
-      ? 'border-[2.5px] border-ink text-ink'
+      ? 'border border-soft-line bg-soft-surface text-ink'
       : state === 'invalid'
-        ? 'border-[2.5px] border-error text-error-text'
-        : 'border-[2.5px] border-dashed border-line-empty text-faint';
+        ? 'border border-soft-err-dot bg-soft-surface text-soft-err-fg'
+        : 'border-[1.5px] border-dashed border-soft-line-hover bg-soft-surface text-soft-faint';
 
   const glyph = state === 'valid' ? '↓' : state === 'invalid' ? '✕' : '+';
   const heading =
@@ -95,14 +112,14 @@ export function ChainSlot({
         <span aria-hidden>{glyph}</span>
       </div>
       <div
-        className={`px-10 text-center text-3xl font-extrabold ${
-          state === 'invalid' ? 'text-error-text' : 'text-ink'
+        className={`px-10 text-center text-3xl font-bold ${
+          state === 'invalid' ? 'text-soft-err-fg' : 'text-ink'
         }`}
       >
         {heading}
       </div>
       <div
-        className={`text-2xl ${state === 'valid' ? 'text-ink-2' : 'text-mute'}`}
+        className={`text-2xl ${state === 'valid' ? 'text-soft-ink-2' : 'text-soft-mute'}`}
       >
         {sub}
       </div>
@@ -111,18 +128,19 @@ export function ChainSlot({
           {chips.map((f, i) => (
             <span key={f} className="flex items-center gap-2">
               {i > 0 && (
-                <span aria-hidden className="text-2xl text-ink">
+                <span aria-hidden className="text-2xl text-soft-faint">
                   →
                 </span>
               )}
               <span
-                className={`inline-flex items-center gap-2 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-2xl font-extrabold text-ink ${
+                className={`inline-flex items-center gap-2 rounded-pill bg-soft-fill px-4 py-2 text-2xl font-semibold text-soft-ink-2 ${
                   dimChips.includes(f) ? 'opacity-35' : ''
                 }`}
               >
+                {/* 상태 점은 **작은 면**이라 원색(--tone-*)을 쓴다(핵심규칙 3). */}
                 <span
                   aria-hidden
-                  className={`h-3 w-3 rounded-full border-[1.5px] border-ink ${TONE_BG[CHAIN_STEP_TONE[f]]}`}
+                  className={`h-3 w-3 rounded-full ${TONE_DOT[CHAIN_STEP_TONE[f]]}`}
                 />
                 {t(`steps.${f}`)}
               </span>

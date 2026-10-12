@@ -49,7 +49,7 @@ export function UtConsentModal({ open, onClose, onConsent }: Props) {
               b: (chunks) => <strong className="text-ink-2">{chunks}</strong>,
             })}
           </p>
-          <div className="rounded-xs border-2 border-warning bg-paper-soft p-3 text-ink-2">
+          <div className="rounded-xs border border-warning bg-paper-soft p-3 text-ink-2">
             {t('warning')}
           </div>
           <p className="text-xs text-mute-soft">{t('note')}</p>

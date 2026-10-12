@@ -47,16 +47,16 @@ export function RevokeShareModal({
 
   return (
     <Modal open onClose={onCancel} bare size="md" labelledBy="revoke-share-title">
-      <div className="overflow-hidden rounded-modal border-[3px] border-ink bg-paper shadow-iv-modal-regen">
+      <div className="overflow-hidden rounded-modal border border-soft-line bg-paper shadow-soft-modal">
         {/* 헤더 (error-bg). */}
-        <div className="flex items-center gap-[11px] border-b-2 border-ink bg-error-bg px-5 py-3.5">
+        <div className="flex items-center gap-[11px] border-b border-soft-hair bg-error-bg px-5 py-3.5">
           <span id="revoke-share-title" className="text-2xl font-extrabold text-ink" style={OUTFIT}>
             {t('revokeModal.title')}
           </span>
           <Pressable
             onPress={onCancel}
             ariaLabel={t('revokeModal.close')}
-            className="ml-auto flex h-[30px] w-[30px] items-center justify-center rounded-icon border-[1.5px] border-ink bg-paper text-lg font-bold text-ink shadow-memphis-sm"
+            className="ml-auto flex h-[30px] w-[30px] items-center justify-center rounded-icon border border-soft-line bg-paper text-lg font-bold text-ink "
           >
             ✕
           </Pressable>
@@ -66,9 +66,9 @@ export function RevokeShareModal({
         <div className="flex flex-col gap-[15px] p-5">
           {/* 소유자 경고 밴드 — 남의 링크만(§1.11). */}
           {notMine && (
-            <div className="flex items-center gap-2.5 rounded-panel border-2 border-ink bg-warning-bg px-[15px] py-3">
+            <div className="flex items-center gap-2.5 rounded-panel border border-soft-line bg-warning-bg px-[15px] py-3">
               <span
-                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.4px] border-ink text-sm font-extrabold text-ink ${TONE_BG[avatarTone(issuerName)]}`}
+                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-soft-line text-sm font-extrabold text-ink ${TONE_BG[avatarTone(issuerName)]}`}
               >
                 {initials(issuerName)}
               </span>
@@ -82,9 +82,9 @@ export function RevokeShareModal({
           )}
 
           {/* 대상 카드 — 산출물 톤 유지. */}
-          <div className="flex items-center gap-[11px] rounded-panel border-[1.5px] border-line-strong bg-surface-canvas px-[15px] py-[13px]">
+          <div className="flex items-center gap-[11px] rounded-panel border border-soft-line bg-surface-canvas px-[15px] py-[13px]">
             <div
-              className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-nav border-2 border-ink ${TONE_BG[item.tone]}`}
+              className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-nav border border-soft-line ${TONE_BG[item.tone]}`}
             >
               <DuotoneIcon name={TONE_ICON[item.tone]} size={16} fill="var(--color-paper)" />
             </div>
@@ -111,7 +111,7 @@ export function RevokeShareModal({
 
           {/* 영향 범위 박스 — 초대가 있을 때만. 이메일은 마스킹. */}
           {hasInvites && (
-            <div className="flex flex-col gap-[7px] rounded-panel border-2 border-ink bg-error-bg px-[15px] py-[13px]">
+            <div className="flex flex-col gap-[7px] rounded-panel border border-soft-line bg-error-bg px-[15px] py-[13px]">
               <span className="text-md font-extrabold text-error-text">
                 {t('revokeModal.impactTitle')}
               </span>
@@ -119,7 +119,7 @@ export function RevokeShareModal({
                 {item.invitedEmails.map((email) => (
                   <span
                     key={email}
-                    className="rounded-xs border-[1.3px] border-error-line bg-paper px-2 py-0.5 font-mono-label text-sm text-ink"
+                    className="rounded-xs border border-error-line bg-paper px-2 py-0.5 font-mono-label text-sm text-ink"
                   >
                     {maskEmail(email)}
                   </span>
@@ -130,7 +130,7 @@ export function RevokeShareModal({
         </div>
 
         {/* 푸터. */}
-        <div className="flex items-center gap-2.5 border-t-2 border-ink bg-paper-soft px-5 py-3.5">
+        <div className="flex items-center gap-2.5 border-t border-soft-hair bg-paper-soft px-5 py-3.5">
           <span className="font-mono-label text-sm text-mute-soft">
             {t('revokeModal.footerNote')}
           </span>
@@ -139,7 +139,7 @@ export function RevokeShareModal({
               onPress={onCancel}
               disabled={busy}
               ariaLabel={t('revokeModal.cancel')}
-              className="inline-flex cursor-pointer items-center rounded-pill border-[1.5px] border-ink/20 px-[18px] py-2.5 text-lg font-bold text-mute"
+              className="inline-flex cursor-pointer items-center rounded-pill border border-soft-line px-[18px] py-2.5 text-lg font-bold text-mute"
             >
               {t('revokeModal.cancel')}
             </Pressable>
@@ -147,7 +147,7 @@ export function RevokeShareModal({
               onPress={onConfirm}
               disabled={busy}
               ariaLabel={t('revokeModal.confirm')}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-pill border-2 border-amore-deep bg-amore-deep px-5 py-2.5 text-lg font-extrabold text-paper shadow-memphis-sm-crimson"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-pill border border-amore-deep bg-amore-deep px-5 py-2.5 text-lg font-extrabold text-paper "
             >
               {busy ? t('revokeModal.confirming') : t('revokeModal.confirm')}
             </Pressable>

@@ -20,8 +20,8 @@ import { OverflowMenu } from './overflow-menu';
 //   on processing/error (nothing to organise/export yet).
 
 const PILL = 'inline-flex items-center justify-center rounded-pill';
-const PRIMARY = 'border-2 border-ink bg-ink text-paper shadow-memphis-sm';
-const SECONDARY = 'border-[1.5px] border-ink bg-paper text-ink shadow-memphis-sm';
+const PRIMARY = 'border border-soft-line bg-ink text-paper';
+const SECONDARY = 'border border-soft-line bg-paper text-ink';
 
 export function RowActions({
   row,
@@ -59,7 +59,7 @@ export function RowActions({
           className={`${PILL} px-3 py-1.5 text-md font-bold ${
             row.status === 'ready'
               ? SECONDARY
-              : 'border-[1.5px] border-ink/20 bg-surface-disabled text-mute'
+              : 'border border-soft-line bg-surface-disabled text-mute'
           }`}
         >
           {t('action.share')}

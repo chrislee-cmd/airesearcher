@@ -13,7 +13,7 @@
      - hint    (아래 줄): 안내문 / 상태 — border-t border-ink/10 로 분리
 
    시각:
-     - 외곽: border-b-[2px] border-ink (Memphis 분리)
+     - 외곽: border-b border-soft-hair (Soft 구분선)
      - 배경: bg-paper-soft (위젯 본문과 살짝 구분)
      - 패딩: px-5 py-3 (widget-shell px-5 와 같은 좌우 리듬)
      - hint: border-t border-ink/10 + px-5 py-1.5 text-xs text-mute
@@ -62,7 +62,7 @@ export function WidgetSubHeader({
   className,
 }: WidgetSubHeaderProps) {
   const rowClassName = [
-    'flex flex-col border-b-[2px] border-ink bg-paper-soft',
+    'flex flex-col border-b border-soft-hair bg-paper-soft',
     className,
   ]
     .filter(Boolean)

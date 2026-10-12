@@ -96,10 +96,10 @@ function ExecutiveSummary({
   return (
     <div
       id={block.id}
-      className="overflow-hidden rounded-sm border-[2.5px] border-ink bg-rose-bg shadow-memphis-lg-faint"
+      className="overflow-hidden rounded-sm bg-tint-rose"
     >
-      <div className="flex items-center gap-[9px] border-b-[1.5px] border-line-strong bg-paper px-5 py-[9px]">
-        <span className="font-mono-label text-xs font-extrabold uppercase tracking-[0.16em] text-amore-deep">
+      <div className="flex items-center gap-[9px] border-b border-soft-hair bg-paper px-5 py-[9px]">
+        <span className="font-mono-label text-xs font-extrabold uppercase tracking-[0.16em] text-soft-rose-text">
           {execLabel}
         </span>
         <span className="ml-auto font-mono-label text-xs text-mute-soft">
@@ -121,12 +121,12 @@ function ExecutiveSummary({
           </div>
         )}
         {keyPoints.length > 0 && (
-          <div className="flex flex-col gap-2 border-t-[1.5px] border-line-strong pt-3.5">
+          <div className="flex flex-col gap-2 border-t border-soft-hair pt-3.5">
             {keyPoints.map((point, i) => (
               <div key={i} className="flex items-start gap-2.5">
                 <span
                   aria-hidden
-                  className="shrink-0 text-lg leading-[1.65] text-amore-deep"
+                  className="shrink-0 text-lg leading-[1.65] text-soft-rose-text"
                 >
                   ✦
                 </span>
@@ -144,7 +144,7 @@ function Heading({ block, num }: { block: ToplineBlock; num: number }) {
   return (
     <div
       id={block.id}
-      className="flex items-baseline gap-3 border-b-2 border-ink pb-2.5"
+      className="flex items-baseline gap-3 border-b border-soft-hair pb-2.5"
     >
       <span className="shrink-0 rounded-chip bg-ink px-2 py-[3px] font-mono-label text-sm font-extrabold text-paper">
         {pad2(num)}
@@ -162,7 +162,7 @@ function Heading({ block, num }: { block: ToplineBlock; num: number }) {
 function Subheading({ block }: { block: ToplineBlock }) {
   return (
     <div className="flex items-center gap-[9px]">
-      <span className="h-[17px] w-[3px] shrink-0 rounded-2xs bg-amore" />
+      <span className="h-[17px] w-[3px] shrink-0 rounded-2xs bg-rose" />
       <span className="text-xl font-extrabold text-ink">
         {plainText(block.md)}
       </span>
@@ -180,7 +180,7 @@ function Paragraph({ block }: { block: ToplineBlock }) {
 
 function Insight({ block, label }: { block: ToplineBlock; label: string }) {
   return (
-    <div className="flex gap-[13px] rounded-panel border-2 border-ink bg-paper-soft px-[18px] py-[15px]">
+    <div className="flex gap-[13px] rounded-panel border border-soft-hair bg-paper-soft px-[18px] py-[15px]">
       <span className="shrink-0 pt-[3px] font-mono-label text-xs font-extrabold uppercase tracking-[0.14em] text-amber-text">
         {label}
       </span>
@@ -193,10 +193,10 @@ function Insight({ block, label }: { block: ToplineBlock; label: string }) {
 
 function Quote({ block }: { block: ToplineBlock }) {
   return (
-    <div className="flex gap-3.5 rounded-r-panel border-l-[3px] border-amore bg-rose-bg px-5 py-4">
+    <div className="flex gap-3.5 border-l-2 border-rose py-1 pl-[18px]">
       <span
         aria-hidden
-        className="shrink-0 text-4xl font-extrabold leading-[0.9] text-amore"
+        className="shrink-0 text-4xl font-extrabold leading-[0.9] text-soft-rose-text"
         style={DISPLAY_FONT}
       >
         &ldquo;
@@ -244,14 +244,14 @@ function Table({
         {label}
         {caption ? ` · ${caption}` : ''}
       </div>
-      <div className="overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-md-faint">
+      <div className="overflow-hidden rounded-panel border border-soft-hair bg-paper">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-paper-soft">
               {headers.map((h, i) => (
                 <th
                   key={i}
-                  className={`border-b-2 border-ink px-3.5 py-2.5 font-mono-label text-xs font-extrabold uppercase tracking-[0.12em] text-mute ${
+                  className={`border-b border-soft-hair px-3.5 py-2.5 font-mono-label text-xs font-extrabold uppercase tracking-[0.12em] text-mute ${
                     i === 0 ? 'text-left' : 'text-right'
                   } ${i === diffCol ? 'bg-rose-bg' : ''}`}
                 >
@@ -335,9 +335,9 @@ function InsertedFrame({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-panel border-2 border-dashed border-ink/30 bg-paper-soft">
-      <div className="flex items-center gap-2 border-b-[1.5px] border-dashed border-ink/20 bg-paper px-4 py-[9px]">
-        <span className="rounded-nav border-[1.4px] border-ink/20 bg-paper-soft px-[7px] py-0.5 font-mono-label text-xs font-extrabold uppercase tracking-[0.1em] text-mute">
+    <div className="overflow-hidden rounded-panel border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft">
+      <div className="flex items-center gap-2 border-b-[1.5px] border-dashed border-soft-line-hover bg-paper px-4 py-[9px]">
+        <span className="rounded-2xs bg-soft-fill px-[7px] py-0.5 font-mono-label text-xs font-extrabold uppercase tracking-[0.1em] text-mute">
           {chip}
         </span>
         {metaRight && (
@@ -356,7 +356,7 @@ function InsertedQa({ block, t }: { block: ToplineBlock; t: Tr }) {
     <InsertedFrame chip={t('reportInsertedQa')}>
       <div className="flex flex-col gap-3">
         {block.selected_excerpt && (
-          <div className="border-l-2 border-ink/20 pl-3 text-md leading-[1.7] text-mute">
+          <div className="border-l-2 border-rose pl-3 text-md leading-[1.7] text-mute">
             {t('reportSelectedExcerpt')} · &ldquo;{block.selected_excerpt}&rdquo;
           </div>
         )}

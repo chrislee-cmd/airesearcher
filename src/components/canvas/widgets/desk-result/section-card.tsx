@@ -14,10 +14,10 @@ import type { DeskAccent, DeskEmphasis } from '@/lib/desk-report-parser';
 
 const ACCENT_CHIP: Record<DeskAccent, string> = {
   amore: 'bg-amore-bg text-amore',
-  success: 'bg-mint text-ink',
-  info: 'bg-sky text-ink',
+  success: 'bg-tint-mint text-ink',
+  info: 'bg-tint-sky text-ink',
   warning: 'bg-warning-bg text-ink',
-  peach: 'bg-peach text-ink',
+  peach: 'bg-tint-peach text-ink',
   mute: 'bg-paper-soft text-mute',
   'mute-soft': 'bg-paper-soft text-mute-soft',
   ink: 'bg-paper-soft text-ink-2',
@@ -68,11 +68,10 @@ export function SectionCard({
     <article
       id={id}
       // scroll-margin 으로 sidebar anchor 점프 시 상단이 잘리지 않게.
-      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
-      className={`scroll-mt-4 rounded-sm border-[3px] border-ink bg-paper shadow-[4px_4px_0_var(--color-ink)] ${EMPHASIS_WRAP[emphasis]} ${EMPHASIS_PAD[emphasis]}`}
+      className={`scroll-mt-4 rounded-sm border border-soft-line bg-paper ${EMPHASIS_WRAP[emphasis]} ${EMPHASIS_PAD[emphasis]}`}
     >
       <header
-        className={`flex items-center gap-2.5 ${bodyVisible ? 'mb-3 border-b-2 border-line pb-2.5' : ''}`}
+        className={`flex items-center gap-2.5 ${bodyVisible ? 'mb-3 border-b border-soft-hair pb-2.5' : ''}`}
       >
         <span
           aria-hidden

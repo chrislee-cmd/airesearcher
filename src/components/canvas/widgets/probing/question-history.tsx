@@ -77,7 +77,7 @@ export function ProbingQuestionHistory({
   const starredCount = history.filter((q) => q.is_starred).length;
 
   return (
-    <section className="shrink-0 border-t-2 border-line-soft">
+    <section className="shrink-0 border-t border-soft-hair">
       {/* eslint-disable-next-line react/forbid-elements -- accordion header full-width toggle; Button primitive forces capsule shape and centered text incompatible with left-aligned w-full row. */}
       <button
         type="button"
@@ -154,7 +154,7 @@ function HistoryRow({
   const rel = formatRelative(question.emitted_at, nowMs, t);
   return (
     <li
-      className={`rounded-xs border bg-paper px-3 py-2 ${question.is_starred ? 'border-amore border-l-[3px]' : 'border-line-soft'}`}
+      className={`rounded-xs border bg-paper px-3 py-2 ${question.is_starred ? 'border-amore border-l' : 'border-soft-hair'}`}
     >
       <div className="mb-1 flex items-center gap-2">
         <span className={`text-xs tracking-[0.18em] ${dotColor}`} aria-hidden>

@@ -10,6 +10,10 @@
 
    폭: 기본 96 → 캡슐이 들어가면 464(캡슐 400 + 좌우 32), 240ms ease-out.
    유령 상태 금지: paused/error 에는 보라·흐름이 하나도 없어야 한다.
+
+   Soft Identity (캔버스 모듈화 Phase 1): 선 색만 Soft 시그널 원자로 갈아탄다 —
+   진행 `--run-dot` · 대기/멈춤 `--warn-dot` · 실패 `--err-dot` · 완료 `--ink` ·
+   미정 `--line-hover`(= 1.5 dashed 빈 자리와 같은 값). 두께·경로는 불변(제약 1).
    ──────────────────────────────────────────────────────────────────── */
 
 import { useTranslations } from 'next-intl';
@@ -59,7 +63,7 @@ export function ChainSegment({
         <span
           data-chain-el="run-label"
           style={{ top: LINE_Y - 34 }}
-          className="absolute left-1/2 -translate-x-1/2 rounded-pill border-2 border-lav-line bg-lav-bg px-4 py-1.5 text-lg font-extrabold whitespace-nowrap text-lav-text"
+          className="absolute left-1/2 -translate-x-1/2 rounded-pill bg-soft-run-bg px-4 py-1.5 text-lg font-semibold whitespace-nowrap text-soft-run-fg"
         >
           {label}
         </span>
@@ -85,17 +89,16 @@ function SegmentLine({
   reducedMotion: boolean;
 }) {
   const broken = kind === 'paused' || kind === 'error';
-  const headColor =
-    kind === 'paused' ? 'var(--color-amber)' : 'var(--color-error)';
+  const headColor = kind === 'paused' ? 'var(--warn-dot)' : 'var(--err-dot)';
   const tipColor = broken
-    ? 'var(--color-line-empty)'
+    ? 'var(--line-hover)'
     : kind === 'running'
-      ? 'var(--color-processing)'
+      ? 'var(--run-dot)'
       : kind === 'awaiting'
-        ? 'var(--color-amber)'
+        ? 'var(--warn-dot)'
         : kind === 'done'
-          ? 'var(--color-ink)'
-          : 'var(--color-line-empty)';
+          ? 'var(--ink)'
+          : 'var(--line-hover)';
 
   return (
     <>
@@ -115,14 +118,12 @@ function SegmentLine({
               top: 0,
               height: 5,
               borderRadius: 3,
-              backgroundColor: 'var(--color-lav-line)',
+              backgroundColor: 'var(--run-track)',
               // reduced-motion 이면 흐름을 끄고 정적 보라 실선으로(README).
               backgroundImage: reducedMotion
                 ? 'none'
-                : 'repeating-linear-gradient(90deg, var(--color-processing) 0 16px, transparent 16px 44px)',
-              ...(reducedMotion
-                ? { backgroundColor: 'var(--color-processing)' }
-                : null),
+                : 'repeating-linear-gradient(90deg, var(--run-dot) 0 16px, transparent 16px 44px)',
+              ...(reducedMotion ? { backgroundColor: 'var(--run-dot)' } : null),
             }}
           />
         ) : broken ? (
@@ -133,9 +134,7 @@ function SegmentLine({
             />
             <span
               className="flex-1"
-              style={{
-                borderTop: '3px dashed var(--color-line-empty)',
-              }}
+              style={{ borderTop: '3px dashed var(--line-hover)' }}
             />
           </span>
         ) : (
@@ -147,10 +146,10 @@ function SegmentLine({
               top: 1,
               borderTop:
                 kind === 'done'
-                  ? '3px solid var(--color-ink)'
+                  ? '3px solid var(--ink)'
                   : kind === 'awaiting'
-                    ? '3px dashed var(--color-amber)'
-                    : '3px dashed var(--color-line-empty)',
+                    ? '3px dashed var(--warn-dot)'
+                    : '3px dashed var(--line-hover)',
             }}
           />
         )}
@@ -162,6 +161,9 @@ function SegmentLine({
             top: -4,
             width: 0,
             height: 0,
+            // ⚠ 보더 스타일이 아니라 **CSS 삼각형 기하**다(width/height 0 +
+            // 투명 보더로 화살촉을 만든다). Soft Identity "선은 전부 1px" 규칙의
+            // 대상이 아니므로 줄이면 화살촉이 사라진다 — 선 스윕에서 제외.
             borderTop: '7px solid transparent',
             borderBottom: '7px solid transparent',
             borderLeft: `11px solid ${tipColor}`,

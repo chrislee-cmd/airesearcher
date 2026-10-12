@@ -19,7 +19,7 @@ export function ShareDashboardEmpty({
   const t = useTranslations('ShareDashboard');
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
-      <div className="flex h-[70px] w-[70px] items-center justify-center rounded-modal border-[3px] border-ink bg-paper shadow-memphis-lg-faint">
+      <div className="flex h-[70px] w-[70px] items-center justify-center rounded-modal bg-soft-fill">
         <DuotoneIcon name="link" size={34} />
       </div>
       <div className="text-3xl font-extrabold text-ink" style={OUTFIT}>
@@ -32,7 +32,7 @@ export function ShareDashboardEmpty({
       </p>
       <Pressable
         onPress={onOpenArtifacts}
-        className="mt-1 inline-flex cursor-pointer items-center gap-2 rounded-pill bg-ink px-5 py-[11px] text-lg font-extrabold text-paper shadow-memphis-md"
+        className="mt-1 inline-flex cursor-pointer items-center gap-2 rounded-pill bg-ink px-5 py-[11px] text-lg font-extrabold text-paper "
       >
         {t('empty.cta')}
       </Pressable>
@@ -51,7 +51,7 @@ export function ShareDashboardFilteredEmpty({
   const t = useTranslations('ShareDashboard');
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3.5 p-10 text-center">
-      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-panel-lg border-[2.5px] border-dashed border-line-empty bg-paper">
+      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-panel-lg border-[1.5px] border-dashed border-soft-line-hover bg-paper">
         <DuotoneIcon name="link" size={28} stroke="var(--color-mute-soft)" />
       </div>
       <div className="text-2xl font-extrabold text-ink" style={OUTFIT}>
@@ -62,7 +62,7 @@ export function ShareDashboardFilteredEmpty({
       </p>
       <Pressable
         onPress={onClear}
-        className="inline-flex cursor-pointer items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-paper px-[15px] py-2 text-md font-bold text-ink shadow-memphis-sm-faint"
+        className="inline-flex cursor-pointer items-center gap-[7px] rounded-pill border border-soft-line bg-paper px-[15px] py-2 text-md font-bold text-ink "
       >
         {t('filteredEmpty.clear', { total })}
       </Pressable>

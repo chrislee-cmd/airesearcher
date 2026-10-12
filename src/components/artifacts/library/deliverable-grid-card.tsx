@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import type { DeliverableRow } from '@/lib/artifacts/types';
-import { FEATURE_ICON, FEATURE_TONE_BG } from './constants';
+import { FEATURE_ICON, FEATURE_TINT_BG } from './constants';
 import { formatProgress, formatUpdatedShort } from './format';
 import { SelectBox } from './pressable';
 import { StatusBadge } from './status-badge';
@@ -32,13 +32,13 @@ export function DeliverableGridCard({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-sm border-2 border-ink bg-paper ${
-        selected ? 'shadow-memphis-md-amore' : 'shadow-memphis-md-faint'
+      className={`flex flex-col overflow-hidden rounded-sm border bg-paper shadow-soft-card ${
+        selected ? 'border-ink' : 'border-soft-line'
       }`}
     >
       <div
-        className={`flex items-center gap-2 border-b-2 border-ink px-[13px] py-[9px] ${
-          FEATURE_TONE_BG[row.feature]
+        className={`flex items-center gap-2 border-b border-soft-hair px-[13px] py-[9px] ${
+          FEATURE_TINT_BG[row.feature]
         }`}
       >
         <span className="text-lg">{FEATURE_ICON[row.feature]}</span>
@@ -49,7 +49,7 @@ export function DeliverableGridCard({
           checked={selected}
           onToggle={onToggleSelect}
           ariaLabel={row.title}
-          boxClassName="h-[15px] w-[15px] rounded-xs border-[1.6px]"
+          boxClassName="h-[15px] w-[15px] rounded-xs border"
         />
       </div>
 
@@ -78,7 +78,7 @@ export function DeliverableGridCard({
         </div>
       </div>
 
-      <div className="border-t-[1.5px] border-line-strong px-[13px] py-[9px]">
+      <div className="border-t border-soft-hair px-[13px] py-[9px]">
         <RowActions row={row} hasOrg={hasOrg} projects={projects} onChanged={onChanged} />
       </div>
     </div>

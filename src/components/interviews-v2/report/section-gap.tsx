@@ -46,7 +46,7 @@ export function SectionGap({
   // 열림 — 자연어 지시 카드(S5b 3번째 상태).
   if (open) {
     return (
-      <div className="overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-md-faint">
+      <div className="overflow-hidden rounded-panel border border-soft-line bg-paper">
         <div className="flex flex-col gap-2.5 px-3.5 py-3">
           {/* eslint-disable-next-line react/forbid-elements -- CD S5b 지시 입력은 rounded-control 인라인 chrome; Textarea primitive 의 고정 스타일과 불일치(자동 높이 단행) */}
           <textarea
@@ -72,7 +72,7 @@ export function SectionGap({
             disabled={busy}
             placeholder={t('editSectionPlaceholder')}
             aria-label={t('editSectionAdd')}
-            className="w-full resize-none rounded-control border-[1.5px] border-ink bg-paper px-3.5 py-2.5 text-md leading-[1.65] text-ink-2 outline-none placeholder:text-faint disabled:opacity-60"
+            className="w-full resize-none rounded-control border border-soft-line bg-paper px-3.5 py-2.5 text-md leading-[1.65] text-ink-2 outline-none placeholder:text-faint disabled:opacity-60"
           />
           <div className="flex items-center gap-2.5">
             <span className="font-mono-label text-xs text-mute-soft">
@@ -84,7 +84,7 @@ export function SectionGap({
                 type="button"
                 onClick={onClose}
                 disabled={busy}
-                className="inline-flex items-center rounded-pill border-[1.5px] border-ink/20 px-3.5 py-[7px] text-md font-bold text-mute disabled:opacity-45"
+                className="inline-flex items-center rounded-pill border border-soft-line px-3.5 py-[7px] text-md font-bold text-mute disabled:opacity-45"
               >
                 {t('editSectionCancel')}
               </button>
@@ -93,7 +93,7 @@ export function SectionGap({
                 type="button"
                 onClick={submit}
                 disabled={busy || draft.trim().length === 0}
-                className="inline-flex items-center rounded-pill bg-ink px-4 py-[7px] text-md font-extrabold text-paper shadow-memphis-sm-faint disabled:opacity-45"
+                className="inline-flex items-center rounded-pill bg-ink px-4 py-[7px] text-md font-extrabold text-paper disabled:opacity-45"
               >
                 {t('editSectionSubmit')}
               </button>
@@ -107,11 +107,11 @@ export function SectionGap({
   // 유휴/hover — 26px 고정 행. group-hover 로 노드↔라벨 pill 스왑(둘 다 26px = 점프 0).
   return (
     <div className="group flex h-[var(--iv-gap-h)] items-center gap-2">
-      <span aria-hidden className="h-[1.5px] flex-1 bg-rose/55 group-hover:bg-rose" />
+      <span aria-hidden className="h-px flex-1 bg-rose/55 group-hover:bg-rose" />
       {/* 유휴 노드 — hover 시 숨김. */}
       <span
         aria-hidden
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-nav border-[1.4px] border-ink/[0.18] bg-paper text-xs font-extrabold leading-none text-line-empty group-hover:hidden"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-nav border border-soft-line/[0.18] bg-paper text-xs font-extrabold leading-none text-line-empty group-hover:hidden"
       >
         ＋
       </span>
@@ -120,11 +120,11 @@ export function SectionGap({
       <button
         type="button"
         onClick={onOpen}
-        className="hidden shrink-0 items-center gap-1.5 rounded-nav border-[1.5px] border-ink bg-paper px-[11px] py-1 text-xs font-extrabold text-ink shadow-memphis-sm group-hover:inline-flex focus-visible:inline-flex"
+        className="hidden shrink-0 items-center gap-1.5 rounded-nav border border-soft-line bg-paper px-[11px] py-1 text-xs font-extrabold text-ink group-hover:inline-flex focus-visible:inline-flex"
       >
         ＋ {t('editSectionAddHere')}
       </button>
-      <span aria-hidden className="h-[1.5px] flex-1 bg-rose/55 group-hover:bg-rose" />
+      <span aria-hidden className="h-px flex-1 bg-rose/55 group-hover:bg-rose" />
     </div>
   );
 }
@@ -137,7 +137,7 @@ export function PendingSectionCard({ prompt }: { prompt: string }) {
   return (
     <div
       aria-busy
-      className="flex items-center gap-[11px] rounded-panel border-2 border-dashed border-processing bg-lav-bg px-4 py-3.5"
+      className="flex items-center gap-[11px] rounded-panel border-[1.5px] border-dashed border-processing bg-lav-bg px-4 py-3.5"
     >
       <span
         aria-hidden

@@ -459,7 +459,7 @@ function CrosstabTable({ t: ct, mode }: { t: CrossTab; mode: Mode }) {
               </td>
             </tr>
           ))}
-          <tr className="border-t-2 border-line bg-paper-soft text-mute">
+          <tr className="border-t border-soft-hair bg-paper-soft text-mute">
             <th className="px-3 py-2 text-left text-xs-soft font-semibold uppercase tracking-[0.18em]">
               Σ
             </th>

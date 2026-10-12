@@ -17,7 +17,7 @@
    메커니즘 재사용(fresh 빌드, 로직만): `<Modal bare>` 가 포털·backdrop·Esc·
    focus trap·scroll lock 을 제공하고, 프레임 비주얼은 이 셸이 소유한다
    (bare = Modal 패널의 자체 border/bg/shadow 를 걷어내 셸 프레임이 유일한
-   비주얼 박스가 되게 함 — §F1 fv-frame-shadow/surface-canvas 를 그대로 표현).
+   비주얼 박스가 되게 함 — §F1 프레임(--sh-frame)/surface-canvas 를 그대로 표현).
    ──────────────────────────────────────────────────────────────────── */
 
 import type { ReactNode } from 'react';

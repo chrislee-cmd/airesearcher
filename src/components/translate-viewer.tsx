@@ -542,7 +542,7 @@ export function TranslateViewer({
   return (
     <div className="flex min-h-0 w-full max-w-[600px] flex-1 flex-col">
       {/* Page frame — border 3px ink · radius 16 · fv-frame shadow · canvas bg */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-surface-canvas shadow-[var(--fv-frame-shadow)]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-surface-canvas shadow-soft-frame">
         <ViewerHeader
           ended={ended}
           liveLabel={ended ? COPY.endedPill : `${COPY.livePill}${elapsedLabel}`}
@@ -559,7 +559,7 @@ export function TranslateViewer({
             {error ? (
               <div
                 role="alert"
-                className="rounded-sm border-2 border-ink bg-paper px-[15px] py-[11px] text-md font-bold text-mute shadow-memphis-sm"
+                className="rounded-sm border border-soft-line bg-paper px-[15px] py-[11px] text-md font-bold text-mute"
               >
                 {error}
               </div>
@@ -607,8 +607,8 @@ function ViewerHeader({
 }) {
   return (
     <header
-      className={`flex shrink-0 flex-col gap-[11px] border-b-[3px] border-ink px-[22px] py-4 ${
-        ended ? 'bg-surface-disabled' : 'bg-mint'
+      className={`flex shrink-0 flex-col gap-[11px] border-b border-soft-hair px-[22px] py-4 ${
+        ended ? 'bg-surface-disabled' : 'bg-tint-mint'
       }`}
     >
       <div className="flex items-center gap-[11px]">
@@ -624,7 +624,7 @@ function ViewerHeader({
           </div>
         </div>
         <span
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1 font-mono-label text-sm font-bold shadow-memphis-sm ${
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-3 py-1 font-mono-label text-sm font-bold ${
             ended ? 'text-mute-soft' : 'text-ink'
           }`}
         >
@@ -653,7 +653,7 @@ function ViewerHeader({
 function LangPill({ code }: { code: string }) {
   const flag = LANG_FLAG[code];
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1 text-md font-bold text-ink">
+    <span className="inline-flex items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-3 py-1 text-md font-bold text-ink">
       {flag ? <span aria-hidden>{flag}</span> : null}
       {langName(code)}
     </span>
@@ -679,9 +679,9 @@ function ScreenStage({ track }: { track: RemoteVideoTrack }) {
     };
   }, [track]);
   return (
-    <div className="flex min-h-0 flex-[1.2] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-ink shadow-memphis-md">
+    <div className="flex min-h-0 flex-[1.2] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-ink">
       {/* titlebar — macOS traffic lights (장식 예외) + address chip + SHARING */}
-      <div className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-soft-hair bg-ink-2 px-[13px] py-[9px]">
         {/* design-allow-hardcoded -- CD frame 07 traffic lights = literal macOS chrome (장식, 토큰 아님; interpreter-fullview ShareMonitor 선례) */}
         {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
           <span
@@ -747,15 +747,15 @@ function CaptionPanel({
   // Emphasized channel → 3px border + colored hard shadow (success for
   // translation, ink for original). Idle → 2px + soft ink shadow.
   const frame = emphasized
-    ? `border-[3px] ${isTranslation ? 'shadow-memphis-md-success' : 'shadow-memphis-md'}`
-    : 'border-2 shadow-memphis-sm';
+    ? `border ${isTranslation ? '' : ''}`
+    : 'border';
 
   return (
     <section
       className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-ink bg-paper ${frame}`}
     >
       <header
-        className={`flex shrink-0 items-center gap-2 border-b-2 border-ink px-4 py-[10px] ${
+        className={`flex shrink-0 items-center gap-2 border-b border-soft-hair px-4 py-[10px] ${
           isTranslation ? 'bg-success-bg-soft' : 'bg-paper-soft'
         }`}
       >
@@ -785,7 +785,7 @@ function CaptionPanel({
         </span>
         {playing ? (
           <span
-            className={`ml-auto inline-flex items-center gap-1.5 rounded-pill border-[1.4px] font-mono-label text-xs font-bold ${
+            className={`ml-auto inline-flex items-center gap-1.5 rounded-pill border font-mono-label text-xs font-bold ${
               isTranslation
                 ? 'border-success-line bg-success-bg text-success-text'
                 : 'border-ink bg-paper text-ink'
@@ -843,8 +843,8 @@ function WaitingPanel({
 }) {
   const label = tone === 'translation' ? COPY.translation : COPY.original;
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-[1.8px] border-dashed border-line-empty bg-paper-soft">
-      <header className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-dashed border-line-empty px-4 py-[10px]">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft">
+      <header className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-dashed border-soft-line-hover px-4 py-[10px]">
         <span aria-hidden className="h-2 w-2 rounded-full bg-line-empty" />
         <span className="font-mono-label text-xs font-bold tracking-[0.14em] text-faint">
           {label}
@@ -878,7 +878,7 @@ function WaitingPanel({
 function UnlockGate({ onEnable }: { onEnable: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[15px] p-10 text-center">
-      <div className="flex h-[74px] w-[74px] items-center justify-center rounded-md border-[3px] border-ink bg-mint text-display shadow-memphis-lg">
+      <div className="flex h-[74px] w-[74px] items-center justify-center rounded-md bg-soft-ok-bg text-display">
         <span aria-hidden>🔈</span>
       </div>
       <div
@@ -898,7 +898,7 @@ function UnlockGate({ onEnable }: { onEnable: () => void }) {
       <button
         type="button"
         onClick={onEnable}
-        className="mt-1.5 inline-flex items-center gap-2 rounded-pill border-2 border-ink bg-ink px-[30px] py-3.5 text-xl font-extrabold text-paper shadow-memphis-lg"
+        className="mt-1.5 inline-flex items-center gap-2 rounded-pill border border-soft-line bg-ink px-[30px] py-3.5 text-xl font-extrabold text-paper "
       >
         {COPY.unlock.cta}
       </button>
@@ -917,7 +917,7 @@ function EndedScreen({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
-      <div className="flex h-[72px] w-[72px] items-center justify-center rounded-md border-[3px] border-ink bg-paper text-display shadow-memphis-lg">
+      <div className="flex h-[72px] w-[72px] items-center justify-center rounded-md bg-soft-fill text-display">
         <span aria-hidden>✓</span>
       </div>
       <div
@@ -966,7 +966,7 @@ function ChannelBar({
 
   return (
     <div
-      className={`flex shrink-0 flex-col gap-2 border-t-2 border-ink px-[18px] py-[13px] ${
+      className={`flex shrink-0 flex-col gap-2 border-t border-soft-hair px-[18px] py-[13px] ${
         muted ? 'bg-peach-bg' : 'bg-paper'
       }`}
     >
@@ -1002,8 +1002,8 @@ function ChannelBar({
       <div
         role="radiogroup"
         aria-label={COPY.audioChannel}
-        className={`inline-flex self-start overflow-hidden rounded-pill border-2 ${
-          locked ? 'border-ink/32' : 'border-ink shadow-memphis-sm'
+        className={`inline-flex self-start overflow-hidden rounded-pill border ${
+          locked ? 'border-ink/32' : 'border-ink'
         }`}
       >
         {segs.map((s) => {

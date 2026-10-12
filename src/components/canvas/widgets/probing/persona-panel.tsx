@@ -20,9 +20,8 @@ import type { ProbingPersonaSection } from '@/lib/probing-prompts';
 import { CloseButton } from '@/components/ui/close-button';
 
 const panelStyle = {
-  border: '2px solid var(--canvas-card-border)',
+  border: '1px solid var(--canvas-card-border)',
   borderRadius: 'var(--sidebar-nav-radius)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 const insufficientStyle = {
@@ -33,7 +32,7 @@ const insufficientStyle = {
 // 모순(⚠) 인라인 행 — warning 톤 박스. 기존 panelStyle 처럼 인라인 style 로
 // 토큰 참조(className bracket 아님 → DS-6 bracket 게이트 무관).
 const conflictRowStyle = {
-  border: '2px solid var(--color-warning)',
+  border: '1px solid var(--color-warning)',
   borderRadius: 'var(--sidebar-nav-radius)',
 } as const;
 

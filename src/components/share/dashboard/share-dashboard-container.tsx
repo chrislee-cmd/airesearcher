@@ -230,7 +230,7 @@ export function ShareDashboardContainer({
               void load();
             }
           }}
-          className="inline-flex cursor-pointer items-center rounded-pill border-[1.5px] border-ink bg-paper px-4 py-2 text-md font-bold text-ink shadow-memphis-sm-faint"
+          className="inline-flex cursor-pointer items-center rounded-pill border border-soft-line bg-paper px-4 py-2 text-md font-bold text-ink "
         >
           {t('error.retry')}
         </span>
@@ -272,7 +272,7 @@ export function ShareDashboardContainer({
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       {/* 툴바 — 섹션 제목 + 카운트 + 상태 세그먼트 + 발급자 필터(org) + 검색 + 정렬. */}
-      <div className="flex shrink-0 items-center gap-3 border-b-2 border-ink bg-paper px-6 py-[13px]">
+      <div className="flex shrink-0 items-center gap-3 border-b border-soft-hair bg-paper px-6 py-[13px]">
         <div className="flex shrink-0 items-baseline gap-2.5">
           <span className="text-3xl font-extrabold tracking-tight text-ink" style={OUTFIT}>
             {t('section.title')}
@@ -306,7 +306,7 @@ export function ShareDashboardContainer({
         )}
 
         <div
-          className={`flex flex-1 items-center gap-2.5 rounded-field border-[1.5px] border-ink bg-paper px-4 py-2 ${
+          className={`flex flex-1 items-center gap-2.5 rounded-field border border-soft-line bg-paper px-4 py-2 ${
             hasIssuerFilter ? 'max-w-[280px]' : 'max-w-[320px]'
           }`}
         >
@@ -322,7 +322,7 @@ export function ShareDashboardContainer({
         <div className="flex-1" />
 
         {/* 정렬 — v1 은 최신 발급순 단일(표시 전용). */}
-        <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-control border-[1.5px] border-ink bg-paper shadow-memphis-sm">
+        <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-control border border-soft-line bg-paper">
           <span className="flex items-center px-[13px] py-2 text-md font-bold text-ink">
             {t('sort.recent')}
           </span>

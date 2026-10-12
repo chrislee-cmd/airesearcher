@@ -217,7 +217,7 @@ function CitationChip({
         }}
         onBlur={() => setOpen(false)}
         aria-label={t('citationChunk', { n })}
-        className={`inline-block translate-y-[-3px] rounded-xs border border-rose bg-rose-bg px-1 font-mono-label text-xs font-extrabold leading-none text-amore-deep ${
+        className={`inline-block translate-y-[-3px] rounded-2xs bg-soft-fill px-1 font-mono-label text-xs font-extrabold leading-none text-ink-2 ${
           first ? 'ml-[3px]' : 'ml-[2px]'
         }`}
       >
@@ -231,15 +231,15 @@ function CitationChip({
 }
 
 // 원문 팝오버 (§1.4 · S5d) — border 2 ink · rounded-panel · paper ·
-// shadow-popover · max-w 420 · 헤더 rose-bg. 칩 위에 절대 배치(레이아웃 무영향).
+// --sh-popover · max-w 420 · 헤더 rose 틴트. 칩 위에 절대 배치(레이아웃 무영향).
 function CitationPopover({ n, chunk }: { n: number; chunk: ResolvedChunk }) {
   const t = useTranslations('InterviewsV2');
   return (
     <span
       role="tooltip"
-      className="absolute bottom-full left-1/2 z-overlay mb-1.5 block w-[420px] max-w-[420px] -translate-x-1/2 overflow-hidden rounded-panel border-2 border-ink bg-paper text-left shadow-popover"
+      className="absolute bottom-full left-1/2 z-overlay mb-1.5 block w-[420px] max-w-[420px] -translate-x-1/2 overflow-hidden rounded-panel border border-soft-line bg-paper text-left shadow-soft-popover"
     >
-      <span className="flex items-center gap-2 border-b-[1.5px] border-line bg-rose-bg px-[13px] py-2">
+      <span className="flex items-center gap-2 border-b border-soft-hair bg-tint-rose px-[13px] py-2">
         <span className="font-mono-label text-xs font-extrabold text-amore-deep">
           {t('citationChunk', { n })}
         </span>

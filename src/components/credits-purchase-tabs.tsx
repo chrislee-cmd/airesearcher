@@ -13,9 +13,9 @@ function tabStyle(active: boolean): CSSProperties {
   return {
     background: active ? '#fff0f4' : '#fff',
     color: '#000',
-    border: '2.5px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: '10px',
-    boxShadow: active ? '3px 3px 0 var(--canvas-card-border)' : 'none',
+    boxShadow: active ? 'none' : 'none',
     fontFamily: outfitStack,
     fontWeight: 800,
   };

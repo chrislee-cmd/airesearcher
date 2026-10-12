@@ -59,7 +59,7 @@ export async function UtShareBody({ data }: { data: SharedUtInsight }) {
       {/* ① 인사이트 리포트(peach 카드) */}
       <div>
         <SectionLabel>{t('utInsightReport')}</SectionLabel>
-        <div className="flex flex-col gap-3 rounded-sm border-[1.4px] border-line bg-peach-bg p-4">
+        <div className="flex flex-col gap-3 rounded-sm border border-soft-line bg-peach-bg p-4">
           {data.targetUrl && (
             <div className="break-all font-mono-label text-xs text-mute">
               {data.targetUrl}
@@ -130,7 +130,7 @@ export async function UtShareBody({ data }: { data: SharedUtInsight }) {
             {quotes.map((q, i) => (
               <blockquote
                 key={i}
-                className="rounded-sm border-l-2 border-amore bg-paper-soft px-3.5 py-2.5 text-md italic leading-[1.6] text-ink-2"
+                className="border-l-2 border-rose pl-[18px] text-md leading-[1.6] text-ink-2"
               >
                 “{q.quote}”
               </blockquote>

@@ -62,22 +62,19 @@ const IMPORTANCE_CARD: Record<
 > = {
   high: {
     container:
-      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(warning 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
-      'border-[3px] border-warning bg-warning-bg shadow-[8px_8px_0_var(--color-warning)]',
+      'border border-warning bg-warning-bg shadow-soft-popover',
     ring: 'stroke-warning',
     pulse: true,
   },
   medium: {
     container:
-      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 shadow + 3px 폭 — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
-      'border-[3px] border-ink bg-paper shadow-[6px_6px_0_var(--color-ink)]',
+      'border border-soft-line bg-paper shadow-soft-popover',
     ring: 'stroke-ink',
     pulse: false,
   },
   low: {
     container:
-      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(mute 색 오프셋 shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
-      'border-2 border-mute bg-paper shadow-[3px_3px_0_var(--color-mute)]',
+      'border border-mute bg-paper shadow-soft-popover',
     ring: 'stroke-mute',
     pulse: false,
   },
@@ -321,7 +318,7 @@ function ProbingQuestionPopupInner({
             길면 line-clamp 로 질문 시각 비중 보호. */}
         {popup.rationale && (
           <p
-            className={`mb-3 rounded-xs border-l-[3px] border-amore bg-paper-soft px-3 py-2 leading-relaxed ${
+            className={`mb-3 rounded-xs border-l border-amore bg-paper-soft px-3 py-2 leading-relaxed ${
               spot ? 'text-xs text-mute line-clamp-3' : 'text-sm text-ink-2'
             }`}
           >
@@ -497,8 +494,7 @@ function ActionButton({
       data-canvas-action
       // spotlight: 저시력 탭타깃 44px + 아이콘 확대([&>svg] 로 14px attribute
       // override). compact: 현행 32px / 14px.
-      // eslint-disable-next-line no-restricted-syntax -- DS-2 가 정확 일치 memphis 토큰 부재로 유지한 잔존(ink 색 오프셋 default/hover shadow — 새 토큰 임의 신설 금지). DS-6 lint gate baseline.
-      className={`flex ${spotlight ? 'h-11 w-11 [&>svg]:h-5 [&>svg]:w-5' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-ink shadow-[2px_2px_0_var(--color-ink)] transition-[transform,box-shadow] duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0_var(--color-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore`}
+      className={`flex ${spotlight ? 'h-11 w-11 [&>svg]:h-5 [&>svg]:w-5' : 'h-8 w-8'} shrink-0 items-center justify-center rounded-xs border border-soft-line bg-paper text-ink transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore`}
     >
       {children}
     </button>
