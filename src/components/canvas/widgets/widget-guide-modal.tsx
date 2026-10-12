@@ -163,7 +163,7 @@ export function WidgetGuideModal({
     // p-4(16px×2) 오버레이 여백을 뺀 뷰포트 높이. 짧은 뷰포트에서 카드가
     // 이 값으로 clamp 되고 player(flex-1 min-h-0)가 먼저 shrink.
     maxHeight: 'calc(100dvh - 2rem)',
-    border: '3px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: 18,
     boxShadow: 'var(--shadow-soft-modal)',
   };
@@ -213,7 +213,7 @@ export function WidgetGuideModal({
             <span
               className="inline-flex shrink-0 items-center rounded-full bg-paper font-mono font-bold text-ink"
               style={{
-                border: '1.5px solid var(--canvas-card-border)',
+                border: '1px solid var(--canvas-card-border)',
                 padding: '4px 11px',
                 fontSize: 10.5,
               }}
@@ -265,7 +265,7 @@ export function WidgetGuideModal({
                 style={{
                   width: 74,
                   height: 74,
-                  border: '3px solid var(--canvas-card-border)',
+                  border: '1px solid var(--canvas-card-border)',
                   boxShadow: 'var(--)',
                 }}
               >
@@ -341,7 +341,7 @@ export function WidgetGuideModal({
                 rel="noopener noreferrer"
                 className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-paper font-bold text-ink "
                 style={{
-                  border: '1.5px solid var(--canvas-card-border)',
+                  border: '1px solid var(--canvas-card-border)',
                   padding: '7px 14px',
                   fontSize: 12,
                 }}

@@ -118,7 +118,7 @@ export function ProjectCard({
         className={`flex items-center gap-2.5 ${TINT[status]}`}
         style={{
           padding: '11px 15px',
-          borderBottom: '1.5px solid var(--color-line)',
+          borderBottom: '1px solid var(--color-line)',
         }}
       >
         <DuotoneIcon name="project" size={16} fill="var(--color-rose)" />

@@ -22,9 +22,9 @@ function memphisCta(tone: 'pink' | 'paper'): CSSProperties {
   return {
     background: bg,
     color: fg,
-    border: '3px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: '10px',
-    boxShadow: '4px 4px 0 var(--canvas-card-border)',
+    boxShadow: 'var(--sh-card)',
     fontFamily: outfitStack,
     fontWeight: 800,
     letterSpacing: '0.18em',
@@ -36,9 +36,9 @@ function memphisGhost(active: boolean): CSSProperties {
   return {
     background: '#fff',
     color: '#000',
-    border: '2.5px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: '10px',
-    boxShadow: active ? '3px 3px 0 var(--canvas-card-border)' : 'none',
+    boxShadow: active ? 'none' : 'none',
     fontFamily: outfitStack,
     fontWeight: 700,
   };
@@ -205,7 +205,7 @@ export function SubscriptionPlans({
           <span
             style={{
               background: 'var(--canvas-accent)',
-              border: '2px solid var(--canvas-card-border)',
+              border: '1px solid var(--canvas-card-border)',
               fontFamily: outfitStack,
             }}
             className="rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.08em] text-paper"
@@ -220,9 +220,9 @@ export function SubscriptionPlans({
         <div
           style={{
             background: 'var(--canvas-bg)',
-            border: '3px solid var(--canvas-card-border)',
+            border: '1px solid var(--canvas-card-border)',
             borderRadius: 'var(--canvas-card-radius)',
-            boxShadow: '4px 4px 0 var(--canvas-card-border)',
+            boxShadow: 'var(--sh-card)',
             fontFamily: outfitStack,
           }}
           className="mt-6 flex flex-wrap items-center justify-between gap-4 px-5 py-4 rounded-sm"
@@ -288,7 +288,7 @@ export function SubscriptionPlans({
                 <span
                   style={{
                     background: 'var(--canvas-accent)',
-                    border: '2.5px solid var(--canvas-card-border)',
+                    border: '1px solid var(--canvas-card-border)',
                     transform: 'rotate(-3deg)',
                     fontFamily: outfitStack,
                   }}
@@ -301,7 +301,7 @@ export function SubscriptionPlans({
                 <span
                   style={{
                     background: '#000',
-                    border: '2.5px solid var(--canvas-card-border)',
+                    border: '1px solid var(--canvas-card-border)',
                     transform: 'rotate(-3deg)',
                     fontFamily: outfitStack,
                   }}
@@ -425,8 +425,8 @@ export function SubscriptionPlans({
           <div
             style={{
               background: '#000',
-              border: '3px solid #000',
-              boxShadow: '4px 4px 0 var(--canvas-accent)',
+              border: '1px solid var(--line)',
+              boxShadow: 'none',
               fontFamily: outfitStack,
             }}
             className="px-4 py-2 text-md font-bold text-paper rounded-sm"

@@ -278,7 +278,7 @@ export function QAPair({ data }: { data: QAData }) {
           {respondents.length > 0 && (
             <div
               className="bg-paper-soft px-5 py-3"
-              style={{ borderTop: '1.5px solid var(--color-line)' }}
+              style={{ borderTop: '1px solid var(--color-line)' }}
             >
               <div
                 className="mb-2 font-mono-label font-bold uppercase text-mute-soft"
@@ -294,7 +294,7 @@ export function QAPair({ data }: { data: QAData }) {
                     style={{
                       fontSize: 10.5,
                       padding: '3px 9px',
-                      border: '1.4px solid var(--color-line-strong)',
+                      border: '1px solid var(--color-line-strong)',
                     }}
                   >
                     {r.label}
@@ -311,7 +311,7 @@ export function QAPair({ data }: { data: QAData }) {
         <div className="flex justify-start">
           <div
             className="max-w-[82%] rounded-sm rounded-bl-xs bg-paper-soft px-4 py-3 text-sm leading-[1.75] text-mute"
-            style={{ border: '1.5px solid var(--color-line)' }}
+            style={{ border: '1px solid var(--color-line)' }}
           >
             {t('searchNoArtifactFallback')}
           </div>

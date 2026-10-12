@@ -30,7 +30,7 @@ export function AmbientProgressBand({
       className="flex shrink-0 flex-col gap-2.5"
       style={{
         padding: '13px 22px',
-        borderTop: '2px solid var(--color-ink)',
+        borderTop: '1px solid var(--color-ink)',
         background: 'var(--widget-tone)',
       }}
     >

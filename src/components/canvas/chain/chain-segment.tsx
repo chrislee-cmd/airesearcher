@@ -161,6 +161,9 @@ function SegmentLine({
             top: -4,
             width: 0,
             height: 0,
+            // ⚠ 보더 스타일이 아니라 **CSS 삼각형 기하**다(width/height 0 +
+            // 투명 보더로 화살촉을 만든다). Soft Identity "선은 전부 1px" 규칙의
+            // 대상이 아니므로 줄이면 화살촉이 사라진다 — 선 스윕에서 제외.
             borderTop: '7px solid transparent',
             borderBottom: '7px solid transparent',
             borderLeft: `11px solid ${tipColor}`,

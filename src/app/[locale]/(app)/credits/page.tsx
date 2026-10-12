@@ -109,7 +109,7 @@ export default async function CreditsPage({
           background: 'var(--canvas-bg)',
           backgroundImage: 'var(--canvas-bg-image)',
           backgroundSize: 'var(--canvas-bg-size)',
-          border: '3px solid var(--canvas-card-border)',
+          border: '1px solid var(--canvas-card-border)',
           borderRadius: 'var(--canvas-card-radius)',
           boxShadow: 'var(--canvas-card-shadow)',
         }}
@@ -119,7 +119,7 @@ export default async function CreditsPage({
           style={{
             fontFamily: outfitStack,
             background: 'var(--canvas-accent)',
-            border: '2.5px solid var(--canvas-card-border)',
+            border: '1px solid var(--canvas-card-border)',
             color: '#fff',
           }}
           className="inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.18em]"
@@ -172,7 +172,7 @@ export default async function CreditsPage({
                   style={{
                     fontFamily: outfitStack,
                     background: 'var(--canvas-accent)',
-                    border: '2px solid var(--canvas-card-border)',
+                    border: '1px solid var(--canvas-card-border)',
                     color: '#fff',
                   }}
                   className="inline-block rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"

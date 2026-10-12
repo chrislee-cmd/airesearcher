@@ -52,7 +52,7 @@ export function AbstractDoneHero({
           }
         }}
         className="inline-flex cursor-pointer select-none items-center gap-2 rounded-pill bg-ink font-bold text-paper "
-        style={{ fontSize: 14, padding: '12px 22px', border: '1.4px solid var(--color-ink)' }}
+        style={{ fontSize: 14, padding: '12px 22px', border: '1px solid var(--color-ink)' }}
       >
         <DuotoneIcon name="fullview" size={16} mono />
         {t('cardDoneOpenFullview')}
@@ -69,7 +69,7 @@ export function AbstractDoneHero({
           }
         }}
         className="cursor-pointer select-none font-semibold text-mute-soft"
-        style={{ fontSize: 12.5, borderBottom: '1.5px solid var(--color-line-strong)', paddingBottom: 1 }}
+        style={{ fontSize: 12.5, borderBottom: '1px solid var(--color-line-strong)', paddingBottom: 1 }}
       >
         {t('cardDoneBackToFiles')}
       </span>
@@ -93,7 +93,7 @@ export function FilesCollapse({
     <details ref={detailsRef} className="group">
       <summary
         className="flex cursor-pointer list-none items-center gap-2.5 rounded-card bg-paper [&::-webkit-details-marker]:hidden"
-        style={{ padding: '11px 14px', border: '1.5px solid var(--color-line)' }}
+        style={{ padding: '11px 14px', border: '1px solid var(--color-line)' }}
       >
         <span
           aria-hidden

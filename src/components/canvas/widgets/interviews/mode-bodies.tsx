@@ -44,7 +44,7 @@ export function IdleModeBody({
         </div>
         <div
           className="flex items-start gap-2.5 rounded-panel bg-paper"
-          style={{ padding: '13px 15px', border: '1.5px solid var(--color-line)' }}
+          style={{ padding: '13px 15px', border: '1px solid var(--color-line)' }}
         >
           <span aria-hidden style={{ fontSize: 15 }}>
             ✦
@@ -213,7 +213,7 @@ export function AnalyzePromptModeBody({
         {/* rose-bg 프롬프트 박스 */}
         <div
           className="flex flex-col gap-2.5 rounded-sm bg-rose-bg"
-          style={{ padding: 20, border: '2px solid var(--color-ink)' }}
+          style={{ padding: 20, border: '1px solid var(--color-ink)' }}
         >
           <CardEyebrow tone="crimson">{t('analyzeNoReport')}</CardEyebrow>
           <div className="font-extrabold text-ink" style={{ fontSize: 16, lineHeight: 1.4 }}>
@@ -225,7 +225,7 @@ export function AnalyzePromptModeBody({
           <div className="flex items-center gap-2.5" style={{ marginTop: 2 }}>
             <span
               className="inline-flex items-center gap-1.5 rounded-pill bg-paper font-bold text-ink "
-              style={{ padding: '8px 14px', fontSize: 12.5, border: '1.5px solid var(--color-ink)' }}
+              style={{ padding: '8px 14px', fontSize: 12.5, border: '1px solid var(--color-ink)' }}
             >
               <DuotoneIcon name="language" size={15} />
               {t('analyzeLangDefault')}

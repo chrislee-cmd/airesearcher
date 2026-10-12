@@ -143,7 +143,7 @@ export function CardFooterCta({
           fontSize: 13.5,
           padding: '11px 20px',
           background: 'var(--color-surface-disabled)',
-          border: '1.4px solid var(--color-line)',
+          border: '1px solid var(--color-line)',
           cursor: 'not-allowed',
         }}
       >
