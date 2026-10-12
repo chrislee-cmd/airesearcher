@@ -71,8 +71,11 @@ export async function Topbar({
       data-coachmark-id="topbar"
       className="flex h-14 shrink-0 items-center justify-between gap-6 px-8"
       style={{
-        background: 'var(--sidebar-bg-strong)',
-        borderBottom: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        // Soft Identity (리브랜드 2단계) 변환표 "헤더 하단선" — 제품 헤더 3px ink
+        // → 1px --hair, 구분은 bg 로(제품 = 흰색 / 기능 = 틴트). 노랑 Memphis
+        // 배너는 여기서 퇴역한다. 가로 워드마크 자산 자체는 회사 정본이라 무변경.
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--hair)',
       }}
     >
       <div className="flex shrink-0 items-center gap-4">

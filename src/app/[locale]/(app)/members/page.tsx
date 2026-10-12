@@ -34,7 +34,7 @@ export default async function MembersPage({
               style={{
                 background: 'var(--sidebar-bg)',
                 border:
-                  'var(--sidebar-border-width) solid var(--sidebar-border)',
+                  '1px solid var(--line)',
                 borderRadius: 'var(--sidebar-nav-radius)',
                 boxShadow: 'var(--sh-card)',
               }}
@@ -66,7 +66,7 @@ function MembersHeader({ title }: { title: string }) {
       className="mb-6 flex items-end justify-between gap-4 px-5 py-4"
       style={{
         background: 'var(--sidebar-bg-strong)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
         boxShadow: 'var(--sh-card)',
       }}
@@ -88,7 +88,7 @@ function MembersHeader({ title }: { title: string }) {
         className="hidden h-5 w-5 sm:inline-block"
         style={{
           background: 'var(--sidebar-active-bg)',
-          border: '2px solid var(--sidebar-border)',
+          border: '1px solid var(--line)',
           borderRadius: 999,
         }}
       />
@@ -103,7 +103,7 @@ async function EmptyAuthCard() {
       className="p-6 text-md"
       style={{
         background: 'var(--sidebar-nav-bg)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
         boxShadow: 'var(--sh-card)',
         color: 'var(--sidebar-border)',
@@ -160,7 +160,7 @@ async function MembersTable({
       className="overflow-hidden"
       style={{
         background: 'var(--sidebar-nav-bg)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
         boxShadow: 'var(--sh-card)',
       }}
@@ -170,7 +170,7 @@ async function MembersTable({
           style={{
             background: 'var(--sidebar-bg)',
             borderBottom:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+              '1px solid var(--line)',
           }}
         >
           <tr>
@@ -224,7 +224,7 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
       className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center"
       style={{
         background: 'var(--sidebar-nav-bg)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
         boxShadow: 'var(--sh-card)',
       }}
@@ -234,7 +234,7 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
         className="inline-block h-10 w-10"
         style={{
           background: 'var(--sidebar-active-bg)',
-          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+          border: '1px solid var(--line)',
           borderRadius: 999,
         }}
       />

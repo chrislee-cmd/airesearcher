@@ -12,7 +12,7 @@ const OUTFIT_STACK = 'var(--font-outfit), var(--font-sans)';
 // xs offset shadow keeps editorial weight consistent with the surrounding
 // PR-D5 shell tokens.
 const MEMPHIS_FIELD_STYLE = {
-  border: 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+  border: '1px solid var(--line)',
   borderRadius: 'var(--sidebar-nav-radius)',
   background: 'var(--sidebar-nav-bg)',
 } as const;
@@ -99,7 +99,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
           fontWeight: 800,
           background: 'var(--sidebar-active-bg)',
           color: 'var(--sidebar-active-text)',
-          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+          border: '1px solid var(--line)',
           borderRadius: 'var(--sidebar-nav-radius)',
           boxShadow: 'var(--sh-card)',
         }}

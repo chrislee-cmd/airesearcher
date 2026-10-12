@@ -68,7 +68,7 @@ export function MemberRow({
       className="transition-colors hover:bg-[var(--sidebar-nav-bg-hover)]"
       style={{
         borderTop:
-          'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+          '1px solid var(--line)',
       }}
     >
       <td className="px-5 py-3">
@@ -80,7 +80,7 @@ export function MemberRow({
               height: 28,
               background: 'var(--sidebar-nav-bg)',
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
               fontFamily: OUTFIT_STACK,
               fontWeight: 800,
@@ -114,7 +114,7 @@ export function MemberRow({
             className="!border-0 !rounded-[var(--sidebar-nav-radius)]"
             style={{
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
               background: 'var(--sidebar-nav-bg)',
               fontFamily: OUTFIT_STACK,
@@ -135,7 +135,7 @@ export function MemberRow({
               background: ROLE_BG[role],
               color: ROLE_TEXT[role],
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
             }}
           >
@@ -156,7 +156,7 @@ export function MemberRow({
               background: 'var(--sidebar-nav-bg)',
               color: 'var(--sidebar-border)',
               border:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+                '1px solid var(--line)',
               borderRadius: 'var(--sidebar-nav-radius)',
             }}
           >

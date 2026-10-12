@@ -343,7 +343,7 @@ export function TopbarAccount({
           style={{
             background: 'var(--sidebar-nav-bg)',
             border:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+              '1px solid var(--line)',
             borderRadius: 'var(--sidebar-nav-radius)',
             boxShadow: 'var(--sh-card)',
           }}

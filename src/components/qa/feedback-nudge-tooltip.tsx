@@ -100,7 +100,7 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
           style={{
             background: 'var(--sidebar-nav-bg)',
             border:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+              '1px solid var(--line)',
             borderRadius: 'var(--sidebar-nav-radius)',
             boxShadow: 'var(--sh-card)',
           }}
@@ -114,9 +114,9 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
             style={{
               background: 'var(--sidebar-nav-bg)',
               borderTop:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+                '1px solid var(--line)',
               borderLeft:
-                'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+                '1px solid var(--line)',
             }}
           />
           <span className="whitespace-nowrap text-xs font-medium text-ink">
