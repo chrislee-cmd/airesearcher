@@ -133,9 +133,9 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
     // mockup chrome; the real page owns its W×H responsively — full-bleed on
     // phones, a floating framed card on desktop. Only the border/radius/shadow/
     // header-tone/typography are CD absolutes.
-    <div className="mx-auto flex min-h-dvh w-full max-w-[760px] flex-col overflow-hidden border-[3px] border-ink bg-paper sm:my-6 sm:min-h-0 sm:h-[calc(100dvh-3rem)] sm:rounded-sm sm:shadow-memphis-2xl">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[760px] flex-col overflow-hidden border border-soft-line bg-paper sm:my-6 sm:min-h-0 sm:h-[calc(100dvh-3rem)] sm:rounded-sm sm:shadow-soft-frame">
       {/* ── Sky header band (participant identity tone) ───────────── */}
-      <header className="flex shrink-0 items-center gap-3 border-b-[3px] border-ink bg-sky px-[22px] py-[15px]">
+      <header className="flex shrink-0 items-center gap-3 border-b border-soft-hair bg-tint-sky px-[22px] py-[15px]">
         <span aria-hidden="true" style={{ fontSize: 20 }}>
           📅
         </span>
@@ -146,7 +146,7 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
           {t('title')}
         </h1>
         {candidateName ? (
-          <span className="inline-flex shrink-0 items-center rounded-full border-2 border-ink bg-paper px-3 py-1 text-sm font-bold text-ink shadow-memphis-sm">
+          <span className="inline-flex shrink-0 items-center rounded-full border border-soft-line bg-paper px-3 py-1 text-sm font-bold text-ink ">
             {candidateName}
           </span>
         ) : null}
@@ -165,7 +165,7 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
           ) : error && slots.length === 0 ? (
             <p className="text-md text-warning">{t('loadError')}</p>
           ) : slots.length === 0 ? (
-            <p className="rounded-sm border-2 border-ink bg-paper-soft px-4 py-6 text-center text-md text-mute">
+            <p className="rounded-sm border border-soft-line bg-paper-soft px-4 py-6 text-center text-md text-mute">
               {t('noSlots')}
             </p>
           ) : (
@@ -192,8 +192,8 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
             <ul className="flex flex-col gap-2.5">
               {announcements.map((m) => (
                 <li key={m.id}>
-                  <div className="overflow-hidden rounded-sm border-2 border-ink bg-warning-bg shadow-memphis-md-amber">
-                    <div className="flex items-center gap-[7px] border-b-2 border-ink bg-sun px-[13px] py-1.5">
+                  <div className="overflow-hidden rounded-sm border border-soft-line bg-warning-bg">
+                    <div className="flex items-center gap-[7px] border-b border-soft-hair bg-tint-sun px-[13px] py-1.5">
                       <span aria-hidden="true" style={{ fontSize: 12 }}>
                         📢
                       </span>
@@ -234,8 +234,8 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
                     className={[
                       'max-w-[82%] whitespace-pre-wrap border-ink px-3.5 py-[11px] text-lg leading-normal text-ink-2',
                       mine
-                        ? 'self-end rounded-sm rounded-br-xs border-2 bg-sky shadow-memphis-sm'
-                        : 'self-start rounded-sm rounded-bl-xs border-[1.5px] border-line bg-paper shadow-memphis-sm-faint',
+                        ? 'self-end rounded-sm rounded-br-xs border border-soft-line bg-tint-sky'
+                        : 'self-start rounded-sm rounded-bl-xs border border-soft-line bg-paper',
                     ].join(' ')}
                   >
                     {m.body}
@@ -255,7 +255,7 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
       </div>
 
       {/* ── Composer ─────────────────────────────────────────────── */}
-      <div className="shrink-0 border-t-2 border-ink bg-paper px-4 py-[13px]">
+      <div className="shrink-0 border-t border-soft-hair bg-paper px-4 py-[13px]">
         {sendError && <p className="mb-2 text-sm text-warning">{sendError}</p>}
         <div className="flex items-end gap-[9px]">
           <Textarea
@@ -276,7 +276,7 @@ export function ParticipantSchedule({ token, candidateName }: Props) {
             // send button off-screen. Inline fontSize is this file's CD idiom and
             // overrides the Textarea primitive's text-lg (13px) base.
             style={{ fontSize: 16 }}
-            className="min-h-11 !rounded-sm !border-2 !border-ink resize-none"
+            className="min-h-11 !rounded-sm !border !border-soft-line resize-none"
           />
           <IconButton
             variant="bordered"
@@ -316,21 +316,21 @@ const SLOT_TONE: Record<
   { shadow: string; chip: string; chipText: string; pill: string; dot: string }
 > = {
   confirmed: {
-    shadow: 'shadow-memphis-md-success',
+    shadow: '',
     chip: 'bg-success-soft',
     chipText: 'text-success',
     pill: 'border-success/30 bg-success-soft text-success',
     dot: 'bg-slot-confirmed-dot',
   },
   proposed: {
-    shadow: 'shadow-memphis-md-amore',
+    shadow: '',
     chip: 'bg-slot-proposed-bg',
     chipText: 'text-amore',
     pill: 'border-amore/30 bg-slot-proposed-bg text-amore',
     dot: 'bg-slot-proposed-dot',
   },
   cancelled: {
-    shadow: 'shadow-memphis-sm-faint',
+    shadow: '',
     chip: 'bg-paper-soft',
     chipText: 'text-mute-soft',
     pill: 'border-line bg-paper-soft text-mute-soft',
@@ -361,11 +361,11 @@ function SlotCard({
   const heading = slot.title?.trim() || weekdayFmt.format(start);
   return (
     <li
-      className={`flex items-center gap-3.5 rounded-sm border-[3px] border-ink bg-paper px-[18px] py-4 ${tone.shadow}`}
+      className={`flex items-center gap-3.5 rounded-sm border border-soft-line bg-paper px-[18px] py-4 ${tone.shadow}`}
     >
       {/* Date chip */}
       <span
-        className={`flex h-[52px] w-[52px] shrink-0 flex-col items-center justify-center rounded-sm border-2 border-ink ${tone.chip}`}
+        className={`flex h-[52px] w-[52px] shrink-0 flex-col items-center justify-center rounded-sm border border-soft-line ${tone.chip}`}
       >
         <span
           className={`uppercase ${tone.chipText}`}
@@ -399,7 +399,7 @@ function SlotCard({
 
       {/* Status pill */}
       <span
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border-[1.5px] px-3 py-1 text-md font-bold ${tone.pill}`}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-md font-bold ${tone.pill}`}
       >
         <span className={`h-[7px] w-[7px] rounded-full ${tone.dot}`} />
         {statusLabel[slot.status]}

@@ -148,7 +148,7 @@ function AskCard({
         <button
           type="button"
           onClick={() => setStage('input')}
-          className="inline-flex items-center gap-[7px] rounded-pill bg-ink px-3.5 py-[7px] text-md font-extrabold text-paper shadow-memphis-sm"
+          className="inline-flex items-center gap-[7px] rounded-pill bg-ink px-3.5 py-[7px] text-md font-extrabold text-paper"
         >
           <DuotoneIcon name="questions" size={15} mono />
           {t('editAskCta')}
@@ -164,11 +164,11 @@ function AskCard({
       role="dialog"
       aria-label={t('editAskTitle')}
       style={anchorStyle(selection.rect, 180)}
-      className="z-popup overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-md-faint"
+      className="z-popup overflow-hidden rounded-panel border border-soft-line bg-paper shadow-soft-popover"
     >
       <div className="flex flex-col gap-[11px] px-3.5 py-3">
         {/* 선택 발췌 — border-l 2 amber. */}
-        <div className="border-l-2 border-amber pl-3 text-xs leading-[1.6] text-mute-soft">
+        <div className="border-l border-amber pl-3 text-xs leading-[1.6] text-mute-soft">
           <span className="bg-sun px-0.5 text-ink">{selection.text}</span>
         </div>
         {/* eslint-disable-next-line react/forbid-elements -- CD S5c 질문 입력은 rounded-control 인라인 chrome; Textarea primitive 고정 스타일과 불일치 */}
@@ -193,7 +193,7 @@ function AskCard({
           autoFocus
           placeholder={t('editAskPlaceholder')}
           aria-label={t('editAskTitle')}
-          className="w-full resize-none rounded-control border-[1.5px] border-ink bg-paper px-3 py-2 text-md leading-[1.55] text-ink-2 outline-none placeholder:text-faint"
+          className="w-full resize-none rounded-control border border-soft-line bg-paper px-3 py-2 text-md leading-[1.55] text-ink-2 outline-none placeholder:text-faint"
         />
         <div className="flex items-center gap-2">
           {(['interview', 'web'] as const).map((m) => (
@@ -205,8 +205,8 @@ function AskCard({
               aria-pressed={mode === m}
               className={
                 mode === m
-                  ? 'inline-flex items-center rounded-pill border-2 border-ink bg-widget-header-rose px-3 py-[5px] text-xs font-extrabold text-ink'
-                  : 'inline-flex items-center rounded-pill border-[1.5px] border-ink/[0.18] bg-paper px-3 py-[5px] text-xs font-bold text-mute'
+                  ? 'inline-flex items-center rounded-pill border border-soft-line bg-widget-header-rose px-3 py-[5px] text-xs font-extrabold text-ink'
+                  : 'inline-flex items-center rounded-pill border border-soft-line/[0.18] bg-paper px-3 py-[5px] text-xs font-bold text-mute'
               }
             >
               {m === 'interview' ? t('editAskModeInterview') : t('editAskModeWeb')}
@@ -246,7 +246,7 @@ export function PendingQaCard({
   return (
     <div
       aria-busy={streaming}
-      className="flex flex-col gap-2.5 rounded-panel border-2 border-ink bg-paper-soft px-3.5 py-3"
+      className="flex flex-col gap-2.5 rounded-panel border border-soft-line bg-paper-soft px-3.5 py-3"
     >
       {/* 질문 + 발췌 문맥. */}
       <div className="flex flex-col gap-1.5">
@@ -254,7 +254,7 @@ export function PendingQaCard({
           {qa.question}
         </div>
         {qa.selectedExcerpt && (
-          <div className="border-l-2 border-amber pl-2.5 font-mono-label text-xs leading-[1.5] text-mute-soft">
+          <div className="border-l border-amber pl-2.5 font-mono-label text-xs leading-[1.5] text-mute-soft">
             &ldquo;{qa.selectedExcerpt}&rdquo;
           </div>
         )}
@@ -268,7 +268,7 @@ export function PendingQaCard({
             : t('editAskError')}
         </div>
       ) : noAnswer ? (
-        <div className="rounded-control border-[1.5px] border-line bg-paper px-3 py-2.5 text-md leading-[1.7] text-mute">
+        <div className="rounded-control border border-soft-line bg-paper px-3 py-2.5 text-md leading-[1.7] text-mute">
           {t('editAskNoGround')}
         </div>
       ) : qa.answerMd ? (
@@ -287,14 +287,14 @@ export function PendingQaCard({
 
       {/* 액션 — 완료/에러 시. 근거 없음(noAnswer)이면 넣기 미렌더. */}
       {(qa.phase === 'done' || errored) && (
-        <div className="flex items-center gap-2 border-t-[1.5px] border-line pt-2.5">
+        <div className="flex items-center gap-2 border-t border-soft-hair pt-2.5">
           {qa.phase === 'done' && !noAnswer && (
             // eslint-disable-next-line react/forbid-elements -- CD S5c 넣기는 solid ink rounded-pill chrome; Button primary radius 와 불일치
             <button
               type="button"
               onClick={onKeep}
               disabled={qa.saving}
-              className="inline-flex items-center gap-1.5 rounded-pill bg-ink px-3.5 py-[7px] text-md font-extrabold text-paper shadow-memphis-sm-faint disabled:opacity-45"
+              className="inline-flex items-center gap-1.5 rounded-pill bg-ink px-3.5 py-[7px] text-md font-extrabold text-paper disabled:opacity-45"
             >
               ＋ {t('editAskKeep')}
             </button>
@@ -304,7 +304,7 @@ export function PendingQaCard({
             type="button"
             onClick={onDiscard}
             disabled={qa.saving}
-            className="inline-flex items-center rounded-pill border-[1.5px] border-ink/20 bg-paper px-3.5 py-[7px] text-md font-bold text-mute disabled:opacity-45"
+            className="inline-flex items-center rounded-pill border border-soft-line bg-paper px-3.5 py-[7px] text-md font-bold text-mute disabled:opacity-45"
           >
             {t('editAskDiscard')}
           </button>

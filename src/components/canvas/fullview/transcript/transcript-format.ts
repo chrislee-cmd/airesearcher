@@ -7,7 +7,7 @@
 import { getLanguage } from '@/lib/transcripts/languages';
 import type { TranscriptJobStatus } from '@/components/transcript-job-provider';
 
-// CD 파일행 3-상태 (state 04). done=✓/border-2 ink, processing=lav tint,
+// CD 파일행 3-상태 (state 04). done=✓/border ink, processing=lav tint,
 // failed=error. 잡 status + stuck 플래그 → 이 3-상태로 축약.
 export type FileRowState = 'done' | 'processing' | 'failed';
 

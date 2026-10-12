@@ -110,7 +110,7 @@ export function QuestionFilterMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 rounded-sm border-2 border-ink bg-paper px-3 py-1.5 text-sm text-ink shadow-memphis-xs transition-colors hover:bg-paper-soft"
+        className="inline-flex items-center gap-1.5 rounded-sm border border-soft-line bg-paper px-3 py-1.5 text-sm text-ink shadow-soft-popover transition-colors hover:bg-paper-soft"
       >
         <span>질문 필터</span>
         {activeCount > 0 && (
@@ -127,7 +127,7 @@ export function QuestionFilterMenu({
             <div
               ref={menuRef}
               role="menu"
-              className="z-overlay max-h-[320px] overflow-auto rounded-sm border-2 border-ink bg-paper py-1 shadow-memphis-md"
+              className="z-overlay max-h-[320px] overflow-auto rounded-sm border border-soft-line bg-paper py-1 shadow-soft-popover"
               style={menuStyle}
             >
               {questions.map((q) => {

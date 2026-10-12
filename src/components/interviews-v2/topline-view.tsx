@@ -81,7 +81,7 @@ function PendingQaCard({
   return (
     <div
       aria-busy={streaming}
-      className={`my-3 rounded-sm border-l-2 border-l-amore px-4 py-3 ${
+      className={`my-3 rounded-sm border-l-2 border-l-rose px-4 py-3 ${
         streaming
           ? 'border border-dashed border-line bg-paper-soft'
           : errored

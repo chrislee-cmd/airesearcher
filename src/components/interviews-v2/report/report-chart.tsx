@@ -53,8 +53,8 @@ function ChartFrame({
   footnote?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-md-faint">
-      <div className="border-b-[1.5px] border-line bg-paper-soft px-[18px] py-3">
+    <div className="overflow-hidden rounded-panel border border-soft-line bg-paper">
+      <div className="border-b border-soft-hair bg-paper-soft px-[18px] py-3">
         <div className="mb-1 font-mono-label text-xs uppercase tracking-[0.14em] text-mute-soft">
           {eyebrow}
         </div>
@@ -64,7 +64,7 @@ function ChartFrame({
       </div>
       {children}
       {footnote && (
-        <div className="border-t-[1.5px] border-line bg-surface-canvas px-[18px] py-2.5 font-mono-label text-xs text-faint">
+        <div className="border-t border-soft-hair bg-surface-canvas px-[18px] py-2.5 font-mono-label text-xs text-faint">
           {footnote}
         </div>
       )}
@@ -147,7 +147,7 @@ function PieChart({
         {data.map((d, i) => (
           <div key={`${d.label}:${i}`} className="flex items-center gap-2.5">
             <span
-              className={`h-3 w-3 shrink-0 rounded-2xs border-[1.4px] border-ink ${catBg(i)}`}
+              className={`h-3 w-3 shrink-0 rounded-2xs border border-soft-line ${catBg(i)}`}
             />
             <span className="flex-1 text-md text-ink">{d.label}</span>
             <span className="font-mono-label text-sm font-extrabold tabular-nums text-ink">

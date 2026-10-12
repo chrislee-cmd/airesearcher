@@ -32,7 +32,7 @@ export function AbstractDoneHero({
       {/* 완료 타일 — 64×64 · border2 ink · success 연초록 틴트 + success memphis
           그림자. radius 는 CD 16 근접 rounded-sm(14) (공유 done hero 선례 · 임의값
           회피). */}
-      <div className="flex h-16 w-16 items-center justify-center rounded-sm border-2 border-ink bg-success-bg text-display font-extrabold text-success shadow-memphis-md-success">
+      <div className="flex h-16 w-16 items-center justify-center rounded-sm border border-soft-line bg-success-bg text-display font-extrabold text-success ">
         ✓
       </div>
       <div className="text-3xl font-extrabold text-ink">{t('cardDoneTitle')}</div>
@@ -51,7 +51,7 @@ export function AbstractDoneHero({
             onOpenFullview();
           }
         }}
-        className="inline-flex cursor-pointer select-none items-center gap-2 rounded-pill bg-ink font-bold text-paper shadow-memphis-sm-faint"
+        className="inline-flex cursor-pointer select-none items-center gap-2 rounded-pill bg-ink font-bold text-paper "
         style={{ fontSize: 14, padding: '12px 22px', border: '1.4px solid var(--color-ink)' }}
       >
         <DuotoneIcon name="fullview" size={16} mono />

@@ -48,8 +48,8 @@ function BannerButton({
       onClick={onClick}
       className={
         tone === 'crimson'
-          ? 'inline-flex shrink-0 items-center gap-1.5 rounded-pill border-2 border-amore-deep bg-paper px-3.5 py-2 text-md font-extrabold text-amore-deep shadow-memphis-sm-crimson'
-          : 'inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-[15px] py-2 text-md font-extrabold text-ink shadow-memphis-sm-faint'
+          ? 'inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-amore-deep bg-paper px-3.5 py-2 text-md font-extrabold text-amore-deep '
+          : 'inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-[15px] py-2 text-md font-extrabold text-ink '
       }
     >
       {icon && <DuotoneIcon name="regenerate" size={15} />}
@@ -77,7 +77,7 @@ export function ReportBanner({
   const t = useTranslations('InterviewsV2');
   if (kind === 'stale') {
     return (
-      <div className="flex items-start gap-[13px] rounded-panel border-2 border-ink bg-warning-bg px-[18px] py-[15px] shadow-memphis-md-amber">
+      <div className="flex items-start gap-[13px] rounded-panel border border-soft-line bg-warning-bg px-[18px] py-[15px]">
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-lg font-extrabold text-amber-text">
             {t('reportStaleTitle')}
@@ -94,7 +94,7 @@ export function ReportBanner({
   }
   if (kind === 'stuck') {
     return (
-      <div className="flex items-start gap-[13px] rounded-panel border-2 border-ink bg-lav-bg px-[18px] py-[15px] shadow-memphis-md-processing">
+      <div className="flex items-start gap-[13px] rounded-panel border border-soft-line bg-lav-bg px-[18px] py-[15px]">
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-lg font-extrabold text-lav-text">
             {t('reportStuckTitle')}
@@ -120,7 +120,7 @@ export function ReportBanner({
   }
   if (kind === 'error') {
     return (
-      <div className="flex items-start gap-[13px] rounded-panel border-2 border-ink bg-error-bg px-[18px] py-[15px] shadow-memphis-md-error">
+      <div className="flex items-start gap-[13px] rounded-panel border border-soft-line bg-error-bg px-[18px] py-[15px]">
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-lg font-extrabold text-error-text">
             {t('reportErrorTitle')}
@@ -129,7 +129,7 @@ export function ReportBanner({
             {t('reportErrorBody')}
           </div>
           {errorCode && (
-            <div className="mt-2.5 rounded-chip border-[1.4px] border-error-line bg-paper px-2.5 py-1.5 font-mono-label text-xs leading-[1.5] text-error-text">
+            <div className="mt-2.5 rounded-chip border border-error-line bg-paper px-2.5 py-1.5 font-mono-label text-xs leading-[1.5] text-error-text">
               {errorCode}
             </div>
           )}
@@ -142,7 +142,7 @@ export function ReportBanner({
   }
   // cancelled — 중립(그림자 없음).
   return (
-    <div className="flex items-center gap-[13px] rounded-panel border-[1.5px] border-line-strong bg-paper-soft px-[18px] py-3.5">
+    <div className="flex items-center gap-[13px] rounded-panel border border-soft-line bg-paper-soft px-[18px] py-3.5">
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 text-md font-extrabold text-mute">
           {t('reportCancelledTitle')}
@@ -179,7 +179,7 @@ export function IndexingGatePrompt({
 }) {
   const t = useTranslations('InterviewsV2');
   return (
-    <div className="flex items-start gap-[13px] rounded-panel border-2 border-ink bg-warning-bg px-[18px] py-[15px] shadow-memphis-md-amber">
+    <div className="flex items-start gap-[13px] rounded-panel border border-soft-line bg-warning-bg px-[18px] py-[15px]">
       <div className="min-w-0 flex-1">
         <div className="mb-1 text-lg font-extrabold text-amber-text">
           {t('reportIndexGateTitle', { pending })}
@@ -261,8 +261,8 @@ export function ReportEmpty({
         : t('reportEmptyHint');
   return (
     <div className="flex h-full items-center justify-center p-10">
-      <div className="w-full max-w-[620px] overflow-hidden rounded-panel-lg border-[3px] border-ink bg-paper shadow-memphis-lg-faint">
-        <div className="border-b-2 border-ink bg-rose-bg px-[26px] py-5">
+      <div className="w-full max-w-[620px] overflow-hidden rounded-panel-lg border border-soft-line bg-paper">
+        <div className="border-b border-soft-hair bg-tint-rose px-[26px] py-5">
           <div className="mb-2 font-mono-label text-xs uppercase tracking-[0.16em] text-amore-deep">
             {t('reportEmptyEyebrow')}
           </div>
@@ -276,11 +276,11 @@ export function ReportEmpty({
         <div className="flex flex-col gap-4 px-[26px] py-[22px]">
           <p className="text-lg leading-[1.7] text-ink-2">{hint}</p>
           {isError && errorCode && (
-            <div className="rounded-chip border-[1.4px] border-error-line bg-paper px-2.5 py-1.5 font-mono-label text-xs leading-[1.5] text-error-text">
+            <div className="rounded-chip border border-error-line bg-paper px-2.5 py-1.5 font-mono-label text-xs leading-[1.5] text-error-text">
               {errorCode}
             </div>
           )}
-          <div className="flex flex-col gap-3 border-t-[1.5px] border-line pt-4">
+          <div className="flex flex-col gap-3 border-t border-soft-hair pt-4">
             <div className="flex items-center gap-2.5">
               <span className="font-mono-label text-xs uppercase tracking-[0.14em] text-mute-soft">
                 {t('toplineLangLabel')}
@@ -350,7 +350,7 @@ export function ReportLoading() {
   const t = useTranslations('InterviewsV2');
   return (
     <div className="mx-auto flex w-[var(--iv-body-col-w)] max-w-full flex-col gap-[26px] py-2">
-      <div className="flex flex-col gap-3 rounded-sm border-2 border-line bg-paper p-[22px]">
+      <div className="flex flex-col gap-3 rounded-sm border border-soft-line bg-paper p-[22px]">
         <Sk className="h-[11px] w-24" />
         <Sk className="h-5 w-[78%]" />
         <Sk className="h-[11px] w-full" />
@@ -386,7 +386,7 @@ export function ReportGenerating({
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (
     <div className="mx-auto flex w-[var(--iv-body-col-w)] max-w-full flex-col gap-[22px] py-2">
-      <div className="flex flex-col gap-3.5 rounded-sm border-2 border-ink bg-paper p-[22px] shadow-memphis-md-faint">
+      <div className="flex flex-col gap-3.5 rounded-sm border border-soft-line bg-paper p-[22px]">
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden
@@ -402,7 +402,7 @@ export function ReportGenerating({
         <div className="flex gap-3.5">
           {/* 1 · 응답자 순회 (map) — ETA 문구 없음(DECISIONS #2). */}
           <div
-            className={`flex-1 rounded-panel border-[1.5px] px-[15px] py-[13px] ${
+            className={`flex-1 rounded-panel border px-[15px] py-[13px] ${
               inReduce
                 ? 'border-line bg-paper-soft opacity-65'
                 : 'border-amber-line bg-lav-bg'
@@ -428,7 +428,7 @@ export function ReportGenerating({
           </div>
           {/* 2 · 보고서 작성 (reduce). */}
           <div
-            className={`flex-1 rounded-panel border-[1.5px] px-[15px] py-[13px] ${
+            className={`flex-1 rounded-panel border px-[15px] py-[13px] ${
               inReduce
                 ? 'border-amber-line bg-lav-bg'
                 : 'border-line bg-paper-soft opacity-65'
@@ -448,7 +448,7 @@ export function ReportGenerating({
             </div>
           </div>
         </div>
-        <div className="border-t-[1.5px] border-line pt-3 text-md leading-[1.6] text-mute">
+        <div className="border-t border-soft-hair pt-3 text-md leading-[1.6] text-mute">
           {t('reportGenKeepOpen')}
         </div>
       </div>

@@ -85,21 +85,17 @@ export function FileDropZone({
     inputRef.current?.click();
   }
 
-  // PR-D15 — Memphis tone (shell pop 정합):
-  // - 3px 검정 hard border (실선) + 6px radius + 3px offset 검정 shadow
-  // - 흰 bg base · hover 시 옅은 노랑 wash · drag-over 시 핑크 accent border
-  //   + offset shadow 살짝 확장 (4px) 로 "들고 있는" 감각 + 미세한 translate
-  // - label 은 Outfit weight 700 검정 (지원 형식 라벨은 weight 500)
-  const memphisBorder = dragOver
-    ? 'var(--canvas-accent)'
-    : 'var(--canvas-card-border)';
-  // 활성(drag-over) 드롭존 그림자 = --shadow-dropzone 토큰 (interview-results
-  // BUILD-SPEC §2 A 승격). 기존 인라인 `4px4px0 var(--canvas-card-border)`(solid
-  // ink) → CD 지정 ink/16(rgba .16) 로 정정 — CD 가 비주얼 SSOT.
-  const memphisShadow = dragOver
-    ? 'var(--shadow-dropzone)'
-    : 'var(--memphis-shadow-sm)';
-  const memphisBg = dragOver
+  // Soft Identity (리브랜드 2단계) — 드롭존 = 변환표의 "빈 상태 타일" 유형.
+  // 평소 = 1.5px dashed --line-hover(#d6d4da) · 그림자 없음(핵심규칙 1 의 허용
+  // 예외 "점선 빈 자리" + 핵심규칙 2 "하드 오프셋 전면 폐지"). drag-over(받을
+  // 수 있음) = 1px 실선 --ink + --focus-ring — README §Interactions "하드
+  // 그림자로 포커스를 표시하지 않습니다". 하드 오프셋이 사라졌으므로 그 짝이던
+  // translate 리프트도 같이 뺀다.
+  const dropBorder = dragOver
+    ? '1px solid var(--ink)'
+    : '1.5px dashed var(--line-hover)';
+  const dropShadow = dragOver ? 'var(--focus-ring)' : 'none';
+  const dropBg = dragOver
     ? 'var(--sidebar-nav-bg-hover)'
     : 'var(--sidebar-nav-bg)';
   const outfitStack = 'var(--font-outfit), var(--font-sans)';
@@ -134,15 +130,15 @@ export function FileDropZone({
       }}
       className={`flex flex-col items-center justify-center text-center transition-[transform,box-shadow,background-color,border-color] duration-[140ms] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--canvas-accent)] ${
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-      } ${dragOver ? '-translate-x-[1px] -translate-y-[1px]' : ''} ${className ?? ''}`}
+      } ${className ?? ''}`}
       style={
         bare
           ? undefined
           : {
-              background: memphisBg,
-              border: `3px solid ${memphisBorder}`,
+              background: dropBg,
+              border: dropBorder,
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: memphisShadow,
+              boxShadow: dropShadow,
             }
       }
       {...rest}

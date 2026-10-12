@@ -25,8 +25,8 @@ export function RecruitingCriteriaPanel({
   const summary = brief?.summary?.trim() ?? '';
 
   return (
-    <section className="rounded-[var(--fv-radius-panel)] border-2 border-ink bg-paper shadow-memphis-sm-faint">
-      <header className="flex items-center gap-2 border-b-[1.5px] border-ink/12 px-[14px] py-[11px]">
+    <section className="rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper">
+      <header className="flex items-center gap-2 border-b border-soft-hair px-[14px] py-[11px]">
         <span aria-hidden className="text-md">
           🎯
         </span>
@@ -55,7 +55,7 @@ export function RecruitingCriteriaPanel({
                 <li
                   key={i}
                   title={c.detail || undefined}
-                  className={`inline-flex items-center gap-1.5 rounded-pill border-[1.4px] bg-paper px-2.5 py-[5px] text-sm ${
+                  className={`inline-flex items-center gap-1.5 rounded-pill border bg-paper px-2.5 py-[5px] text-sm ${
                     c.required ? 'border-amore' : 'border-line'
                   }`}
                 >

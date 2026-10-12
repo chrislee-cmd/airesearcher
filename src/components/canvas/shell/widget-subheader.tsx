@@ -62,7 +62,7 @@ export function WidgetSubHeader({
   className,
 }: WidgetSubHeaderProps) {
   const rowClassName = [
-    'flex flex-col border-b-[2px] border-ink bg-paper-soft',
+    'flex flex-col border-b border-soft-hair bg-paper-soft',
     className,
   ]
     .filter(Boolean)

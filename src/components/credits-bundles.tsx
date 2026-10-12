@@ -252,7 +252,6 @@ export function CreditsBundles() {
                   style={{
                     background: 'var(--canvas-accent)',
                     border: '2.5px solid var(--canvas-card-border)',
-                    boxShadow: 'var(--memphis-shadow-xs)',
                     transform: 'rotate(-3deg)',
                     fontFamily: outfitStack,
                   }}
@@ -300,7 +299,6 @@ export function CreditsBundles() {
                     style={{
                       background: 'var(--canvas-accent)',
                       border: '2px solid var(--canvas-card-border)',
-                      boxShadow: 'var(--memphis-shadow-xs)',
                       fontFamily: outfitStack,
                     }}
                     className="rounded-full px-2 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-paper"
@@ -561,7 +559,6 @@ export function CreditsBundles() {
                   background: 'var(--canvas-bg)',
                   border: '2.5px solid var(--canvas-card-border)',
                   borderRadius: '10px',
-                  boxShadow: 'var(--memphis-shadow-xs)',
                 }}
                 className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 px-4 py-4"
               >
@@ -615,7 +612,6 @@ export function CreditsBundles() {
                   style={{
                     background: 'var(--canvas-accent)',
                     border: '2px solid var(--canvas-card-border)',
-                    boxShadow: 'var(--memphis-shadow-xs)',
                     borderRadius: '6px',
                   }}
                   className="inline-block self-start px-2 py-0.5 font-mono text-xl font-bold tracking-[0.08em] text-paper"

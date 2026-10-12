@@ -181,7 +181,7 @@ export function QAPair({ data }: { data: QAData }) {
         <strong className="font-semibold text-ink">{children}</strong>
       ),
       blockquote: ({ children }) => (
-        <blockquote className="my-2 border-l-2 border-amore bg-amore-bg px-3 py-1 text-md italic text-ink-2">
+        <blockquote className="my-2 border-l-2 border-rose pl-3 text-md text-ink-2">
           {children}
         </blockquote>
       ),
@@ -226,14 +226,14 @@ export function QAPair({ data }: { data: QAData }) {
     <div className="space-y-4">
       {/* 사용자 말풍선 — 우측·rose·radius 14/14/4/14·shadow 2px2px0 ink. */}
       <div className="flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap rounded-sm rounded-br-xs border-2 border-ink bg-widget-header-rose px-4 py-2.5 text-md leading-[1.7] text-ink shadow-memphis-sm">
+        <div className="max-w-[85%] whitespace-pre-wrap rounded-sm rounded-br-xs border border-soft-line bg-widget-header-rose px-4 py-2.5 text-md leading-[1.7] text-ink">
           {question}
         </div>
       </div>
 
       {/* 응답 말풍선 — 좌측·paper·radius 14/14/14/4·shadow 3px3px0 ink/14. */}
       <div className="flex justify-start">
-        <div className="w-full max-w-[92%] overflow-hidden rounded-sm rounded-bl-xs border-2 border-ink bg-paper shadow-memphis-md-faint">
+        <div className="w-full max-w-[92%] overflow-hidden rounded-sm rounded-bl-xs border border-soft-line bg-paper">
           <div className="px-5 py-4">
             {answerEmpty && streaming ? (
               // Pre-answer stages (sending/searching) — prefer the phase label,

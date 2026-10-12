@@ -40,7 +40,6 @@ const PANELS = DEFAULT_PERSONA_PANELS;
 const memphisPlaceholderStyle = {
   border: '2px solid var(--canvas-card-border)',
   borderRadius: 'var(--sidebar-nav-radius)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 type ProbingT = ReturnType<typeof useTranslations>;

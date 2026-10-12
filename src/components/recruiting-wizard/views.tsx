@@ -39,9 +39,9 @@ export function CriteriaPreview({
         </Field>
       )}
       <Field label={`대상자 조건 (${criteria.length})`}>
-        <ul className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] rounded-sm overflow-hidden">
+        <ul className="border border-soft-line bg-paper shadow-soft-card rounded-sm overflow-hidden">
           {criteria.map((c, i) => (
-            <li key={i} className="px-3 py-2 text-md border-b-[1.5px] border-ink/15 last:border-b-0">
+            <li key={i} className="px-3 py-2 text-md border-b border-soft-hair last:border-b-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs-soft uppercase tracking-[0.04em] text-mute-soft">
                   {c.category}
@@ -118,9 +118,9 @@ export function CriteriaEditor({
         {criteria.length === 0 ? (
           <EmptyState tone="subtle" title="조건이 없습니다." />
         ) : (
-          <ul className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] rounded-sm overflow-hidden">
+          <ul className="border border-soft-line bg-paper shadow-soft-card rounded-sm overflow-hidden">
             {criteria.map((c, i) => (
-              <li key={i} className="space-y-1 px-3 py-2 text-md border-b-[1.5px] border-ink/15 last:border-b-0">
+              <li key={i} className="space-y-1 px-3 py-2 text-md border-b border-soft-hair last:border-b-0">
                 <div className="flex items-center gap-2">
                   <ChromeInput
                     type="text"
@@ -187,7 +187,7 @@ export function SurveyPreview({ survey }: { survey: Survey }) {
           {survey.sections.map((section, si) => (
             <section
               key={si}
-              className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] p-4 rounded-sm"
+              className="border border-soft-line bg-paper shadow-soft-card p-4 rounded-sm"
             >
               <header className="mb-3 text-md font-semibold text-ink-2">
                 {section.title || '제목 없는 섹션'}
@@ -257,7 +257,7 @@ function StandardLockBadge() {
 
 function LockedStandardSection({ section }: { section: Survey['sections'][number] }) {
   return (
-    <section className="border-[2px] border-line bg-paper/60 p-4 rounded-sm">
+    <section className="border border-soft-line bg-paper/60 p-4 rounded-sm">
       <header className="mb-3 flex items-center gap-2">
         <span className="text-md font-semibold text-ink-2">
           {section.title || '제목 없는 섹션'}
@@ -362,7 +362,7 @@ export function SurveyEditor({
             ) : (
             <section
               key={si}
-              className="border-[2px] border-ink bg-paper shadow-[2px_2px_0_black] p-4 rounded-sm"
+              className="border border-soft-line bg-paper shadow-soft-card p-4 rounded-sm"
             >
               <ChromeInput
                 type="text"
@@ -372,7 +372,7 @@ export function SurveyEditor({
               />
               <ol className="space-y-3">
                 {section.questions.map((q, qi) => (
-                  <li key={qi} className="border-[1.5px] border-ink/30 p-3 text-md rounded-xs">
+                  <li key={qi} className="border border-soft-line p-3 text-md rounded-xs">
                     <div className="flex items-baseline gap-2">
                       <span className="shrink-0 tabular-nums text-mute-soft">
                         {qi + 1}.

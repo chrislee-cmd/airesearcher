@@ -7,7 +7,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 // pattern (uppercase + tracking, active = ink text + 2px amore underline,
 // inactive = mute → ink-2 on hover). Previously each surface hand-rolled
 // this with a `Button variant="ghost"` + a stack of `!important` overrides
-// (`!border-b-2 !border-amore !text-ink-2 …`) to fight the Button
+// (`!border-b !border-amore !text-ink-2 …`) to fight the Button
 // primitive's own chrome — brittle, un-reusable, and a design-system-lint
 // smell. This primitive owns the tokens directly so callers pass data, not
 // className hacks.

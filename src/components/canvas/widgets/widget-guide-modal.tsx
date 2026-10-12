@@ -165,7 +165,7 @@ export function WidgetGuideModal({
     maxHeight: 'calc(100dvh - 2rem)',
     border: '3px solid var(--canvas-card-border)',
     borderRadius: 18,
-    boxShadow: 'var(--shadow-memphis-2xl)',
+    boxShadow: 'var(--shadow-soft-modal)',
   };
 
   return (
@@ -189,7 +189,7 @@ export function WidgetGuideModal({
         >
           {/* Header — 위젯 pastel bg · 2px ink bottom border. */}
           <div
-            className="flex shrink-0 items-center gap-[11px] border-b-2 border-ink"
+            className="flex shrink-0 items-center gap-[11px] border-b border-soft-hair"
             style={{
               background: `var(--widget-header-bg-${accent}, var(--widget-header-bg-default))`,
               padding: '13px 20px',
@@ -266,7 +266,7 @@ export function WidgetGuideModal({
                   width: 74,
                   height: 74,
                   border: '3px solid var(--canvas-card-border)',
-                  boxShadow: 'var(--shadow-memphis-lg)',
+                  boxShadow: 'var(--)',
                 }}
               >
                 <PlayTriangle />
@@ -325,7 +325,7 @@ export function WidgetGuideModal({
 
           {/* Footer — paper-soft · 2px ink top border · blurb + (옵션) docs. */}
           <div
-            className="flex shrink-0 items-center gap-3 border-t-2 border-ink bg-paper-soft"
+            className="flex shrink-0 items-center gap-3 border-t border-soft-hair bg-paper-soft"
             style={{ padding: '13px 20px' }}
           >
             <div
@@ -339,7 +339,7 @@ export function WidgetGuideModal({
                 href={guide.docsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-paper font-bold text-ink shadow-memphis-sm"
+                className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-paper font-bold text-ink "
                 style={{
                   border: '1.5px solid var(--canvas-card-border)',
                   padding: '7px 14px',

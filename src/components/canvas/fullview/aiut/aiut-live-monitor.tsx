@@ -58,16 +58,16 @@ function hostOf(url: string | null | undefined): string | null {
 // ── 공유 프레임 클래스(live/idle 동일 지오메트리 — 픽셀 conformance SSOT) ──
 const OUTER = 'flex min-h-0 flex-1 gap-4 px-5 py-[18px]';
 const MONITOR_FRAME =
-  'flex min-w-0 flex-[1.7] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-ink shadow-memphis-md';
+  'flex min-w-0 flex-[1.7] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-ink';
 const TITLEBAR =
-  'flex shrink-0 items-center gap-2 border-b-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]';
+  'flex shrink-0 items-center gap-2 border-b border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]';
 const MONITOR_BODY =
   'relative flex min-h-0 flex-1 flex-col items-center justify-center bg-paper';
 // idle 본문 — 슬롯(세팅 폼/대기 placeholder/로컬 프리뷰)이 자체 정렬. 강제
 // 중앙정렬 안 함(긴 세팅 폼이 잘리지 않도록).
 const MONITOR_BODY_IDLE = 'relative flex min-h-0 flex-1 flex-col bg-paper';
 const STATUSBAR =
-  'flex shrink-0 items-center gap-[14px] border-t-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[14px] py-[10px]';
+  'flex shrink-0 items-center gap-[14px] border-t border-[color:var(--border-strong)] bg-ink-2 px-[14px] py-[10px]';
 const RAIL = 'flex w-[320px] shrink-0 flex-col gap-[14px]';
 
 // macOS traffic lights — 장식(design-allow), 토큰 아님. live/idle 공유.
@@ -116,8 +116,8 @@ function TaskCard({
     <div
       className={`shrink-0 rounded-sm px-[15px] py-[13px] ${
         hasTask
-          ? 'border-2 border-ink bg-peach-bg shadow-memphis-sm'
-          : 'border-2 border-dashed border-line-empty bg-paper-soft'
+          ? 'border border-soft-line bg-peach-bg'
+          : 'border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft'
       }`}
     >
       <div className="mb-2 flex items-center gap-[7px]">
@@ -160,7 +160,7 @@ function ThinkAloudStream({
   const active = status === 'connecting' || status === 'live';
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-[1.4px] border-line paper-soft">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border border-soft-line paper-soft">
       <div className="flex shrink-0 items-center gap-[7px] border-b border-line px-[14px] py-[11px]">
         <span aria-hidden className="h-2 w-2 rounded-full bg-amore" />
         <span className="text-md font-extrabold text-ink">

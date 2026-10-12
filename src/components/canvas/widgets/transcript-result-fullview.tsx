@@ -94,7 +94,7 @@ function Avatar({ role, name }: { role: TranscriptTurn['role']; name: string }) 
   const cls =
     role === 'guest'
       ? 'bg-amore-bg text-amore'
-      : 'bg-sky text-ink-2';
+      : 'bg-tint-sky text-ink-2';
   return (
     <span
       aria-hidden="true"
@@ -184,7 +184,7 @@ function ExportButton({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
-      className="flex items-center gap-2 rounded-xs border-2 border-line bg-paper px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-amore hover:bg-amore-bg"
+      className="flex items-center gap-2 rounded-xs border border-soft-line bg-paper px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-amore hover:bg-amore-bg"
     >
       <DuotoneIcon name="document" size={16} fill={LAV_TONE} />
       {label}
@@ -194,7 +194,7 @@ function ExportButton({ href, label }: { href: string; label: string }) {
 
 function ComingSoonCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-sm border-2 border-dashed border-line-soft bg-paper-soft px-4 py-4">
+    <div className="rounded-sm border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft px-4 py-4">
       <h4 className="text-sm font-semibold text-ink-2">{title}</h4>
       <p className="mt-1 text-xs leading-relaxed text-mute-soft">{body}</p>
     </div>
@@ -272,7 +272,7 @@ export function TranscriptResultFullview({
   }, [turns, query]);
 
   const donePill = (
-    <span className="rounded-full bg-sky px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-ink-2">
+    <span className="rounded-full bg-tint-sky px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-ink-2">
       {t('donePill')}
     </span>
   );
@@ -296,7 +296,7 @@ export function TranscriptResultFullview({
     >
       <div className="flex h-full min-h-0">
         {/* 좌 · 전사록 */}
-        <div className="flex min-w-0 flex-1 flex-col border-r-2 border-ink">
+        <div className="flex min-w-0 flex-1 flex-col border-r border-soft-hair">
           <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-6 py-3">
             <div className="min-w-[200px] flex-1">
               <Input
@@ -307,7 +307,7 @@ export function TranscriptResultFullview({
                 aria-label={t('searchPlaceholder')}
               />
             </div>
-            <div className="flex shrink-0 items-center gap-1 rounded-sm border-2 border-line-soft p-0.5">
+            <div className="flex shrink-0 items-center gap-1 rounded-sm border border-soft-line p-0.5">
               <Button
                 variant={view === 'speaker' ? 'secondary' : 'ghost'}
                 size="sm"

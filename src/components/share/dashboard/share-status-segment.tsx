@@ -32,7 +32,7 @@ export function ShareStatusSegment({
   labels: Record<StatusFilter, string>;
 }) {
   return (
-    <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-pill border-[1.5px] border-ink bg-paper shadow-memphis-sm-faint">
+    <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-pill border border-soft-line bg-paper ">
       {ORDER.map((seg, i) => {
         const active = value === seg.key;
         return (

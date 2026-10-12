@@ -6448,7 +6448,7 @@ export function PrompterPane({ lines, empty }: { lines: CaptionLine[]; empty: st
       style={{
         border: '3px solid var(--canvas-card-border)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <div

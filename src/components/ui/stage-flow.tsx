@@ -154,7 +154,7 @@ function StageNode({
       : NODE_TONE[stage.status];
   return (
     <div
-      className={`flex items-center gap-3 rounded-sm border-[2px] px-3.5 py-2.5 transition-colors ${
+      className={`flex items-center gap-3 rounded-sm border px-3.5 py-2.5 transition-colors ${
         fill ? 'w-full' : 'shrink-0'
       } ${toneClass}`}
     >
@@ -251,10 +251,10 @@ function CompleteHero({
           border · amore 채움)로 통일(기존 외톨이 원형 폐기). pop-in 으로 튕겨
           등장 + amore ring 이 한 번 퍼지고(ping) + 체크가 그려지듯 나타난다
           (check-draw). 모든 모션은 prefers-reduced-motion 존중. */}
-      <span className="pop-in relative inline-flex h-16 w-16 items-center justify-center rounded-sm border-[2px] border-ink bg-paper text-ink">
+      <span className="pop-in relative inline-flex h-16 w-16 items-center justify-center rounded-sm border border-soft-line bg-paper text-ink">
         <span
           aria-hidden
-          className="stage-flow-complete-ping pointer-events-none absolute inset-0 rounded-sm border-[2px] border-ink"
+          className="stage-flow-complete-ping pointer-events-none absolute inset-0 rounded-sm border border-soft-line"
         />
         <svg
           aria-hidden

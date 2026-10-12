@@ -345,7 +345,7 @@ export function TopbarAccount({
             border:
               'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
             borderRadius: 'var(--sidebar-nav-radius)',
-            boxShadow: 'var(--memphis-shadow-sm)',
+            boxShadow: 'var(--sh-card)',
           }}
         >
           <div className="px-3 py-2">

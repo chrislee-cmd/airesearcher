@@ -102,7 +102,7 @@ export function FeedbackNudgeTooltip({ children }: { children: ReactNode }) {
             border:
               'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
             borderRadius: 'var(--sidebar-nav-radius)',
-            boxShadow: 'var(--memphis-shadow-sm)',
+            boxShadow: 'var(--sh-card)',
           }}
         >
           {/* Caret pointing back up at the 🎤 button. Bobs to draw the eye

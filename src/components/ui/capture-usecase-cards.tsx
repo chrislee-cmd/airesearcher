@@ -95,13 +95,13 @@ export function CaptureUseCaseCards({
               // 제목+설명)의 높이가 어긋나던 버그를 봉인 — box-border + flex-col
               // justify-start(top-align, 남는 공간은 하단 균일 패딩) + 텍스트 clamp.
               // overflow-hidden 으로 선택 note 초과분도 프레임 밖 유출 방지.
-              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border-2 bg-paper box-border px-[11px] py-[13px] text-left',
+              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border bg-paper box-border px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
               selected
                 ? 'border-amore shadow-select-glow'
-                : 'border-line shadow-memphis-sm-faint',
+                : 'border-line',
             ].join(' ')}
           >
             {/* 코너 체크 — 선택된 카드에만. amore 원형 + ✓ */}

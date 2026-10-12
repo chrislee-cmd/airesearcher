@@ -204,7 +204,7 @@ export function LangDualDropdown({
               ref={menuRef}
               aria-labelledby={triggerId}
               onKeyDown={onPanelKeyDown}
-              className="menu-in z-overlay grid grid-cols-2 rounded-sm border-[2px] border-ink bg-paper py-1 shadow-[3px_3px_0_black]"
+              className="menu-in z-overlay grid grid-cols-2 rounded-sm border border-soft-line bg-paper py-1 shadow-soft-popover"
               style={menuStyle}
             >
               {renderColumn(inputLabel, sourceLang, onSelectSource, false)}

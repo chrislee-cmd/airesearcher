@@ -104,7 +104,7 @@ function ChatMarkdown({ source }: { source: string }) {
           <strong className="font-semibold text-ink">{children}</strong>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-2 border-l-2 border-amore bg-amore-bg px-3 py-1 text-md italic text-ink-2">
+          <blockquote className="my-2 border-l-2 border-rose pl-3 text-md text-ink-2">
             {children}
           </blockquote>
         ),

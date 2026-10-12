@@ -35,7 +35,7 @@ import {
 
 // CD F() 3-상태 → 유틸리티 클래스맵. 행 프레임(비-done 은 lav tint) + 상태 칩.
 const ROW_CLASS: Record<FileRowState, string> = {
-  done: 'border-ink bg-paper shadow-memphis-sm-faint',
+  done: 'border-ink bg-paper',
   processing: 'border-line bg-lav-bg-2',
   failed: 'border-line bg-lav-bg-2',
 };
@@ -108,7 +108,7 @@ function FileRow({
     <>
       <span
         aria-hidden
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--fv-radius-field)] border-2 border-ink text-lg ${ICON_BG[state]}`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--fv-radius-field)] border border-soft-line text-lg ${ICON_BG[state]}`}
       >
         {fileIcon(job.mime_type, job.filename)}
       </span>
@@ -119,7 +119,7 @@ function FileRow({
         <span className="mt-0.5 block truncate text-sm text-mute-soft">{meta}</span>
       </span>
       <span
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.4px] px-[11px] py-1 text-sm font-bold ${CHIP_CLASS[state]}`}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border px-[11px] py-1 text-sm font-bold ${CHIP_CLASS[state]}`}
       >
         {state === 'done' ? <span aria-hidden>✓</span> : null}
         {chipLabel}
@@ -128,8 +128,8 @@ function FileRow({
   );
 
   const clickable = isDone && !!onOpen;
-  const rowClass = `flex items-center gap-[14px] rounded-sm border-2 px-4 py-[14px] ${ROW_CLASS[state]}${
-    clickable ? ' transition-[box-shadow] hover:shadow-memphis-sm' : ''
+  const rowClass = `flex items-center gap-[14px] rounded-sm border px-4 py-[14px] ${ROW_CLASS[state]}${
+    clickable ? ' transition-[box-shadow] ' : ''
   }`;
 
   return (
@@ -222,7 +222,7 @@ export function TranscriptFileList({
         {/* 벌크 툴바 — 선택 1개 이상일 때만. 다운로드는 confirm 없이 바로,
             삭제는 confirm 모달(소비처 소유). */}
         {actions.selected.size > 0 && (
-          <div className="mt-3 flex items-center gap-3 rounded-sm border-2 border-ink bg-amore-bg px-4 py-2 shadow-memphis-sm-faint">
+          <div className="mt-3 flex items-center gap-3 rounded-sm border border-soft-line bg-amore-bg px-4 py-2">
             <span className="text-sm font-semibold text-ink-2">
               {t('nSelected', { count: actions.selected.size })}
             </span>

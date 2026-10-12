@@ -103,7 +103,7 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
   if (isReady) {
     return (
       <div
-        className="flex items-center gap-2.5 rounded-card bg-paper shadow-memphis-sm-faint"
+        className="flex items-center gap-2.5 rounded-card bg-paper"
         style={{ padding: '11px 13px', border: `2px solid ${INK}` }}
       >
         <DuotoneIcon name={icon} size={17} />

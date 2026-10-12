@@ -82,8 +82,8 @@ export function RecruitingDistributionPanel({
   };
 
   return (
-    <section className="flex min-h-[200px] flex-col rounded-sm border-2 border-ink bg-paper shadow-memphis-sm">
-      <header className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-ink/15 px-4 py-2.5">
+    <section className="flex min-h-[200px] flex-col rounded-sm border border-soft-line bg-paper">
+      <header className="flex shrink-0 items-center gap-2 border-b border-soft-hair px-4 py-2.5">
         <h3 className="text-md font-semibold text-ink">📊 분포 통계</h3>
         {table && table.grandTotal > 0 && (
           <span className="text-xs-soft tabular-nums text-mute-soft">
@@ -139,7 +139,7 @@ function FilterChips({
     filterableQuestions.find((q) => q.field === field)?.title ?? field;
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b-[1.5px] border-ink/15 px-4 py-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-soft-hair px-4 py-2">
       {filter.cells.map((c) => (
         <Badge
           key={`c-${c.gender}-${c.ageBucket}`}
@@ -304,7 +304,7 @@ function DistributionGrid({
         ))}
       </tbody>
       <tfoot>
-        <tr className="border-t-[1.5px] border-ink/15">
+        <tr className="border-t border-soft-hair">
           <th className="px-2 py-1.5 text-left text-sm font-semibold text-ink">
             계
           </th>

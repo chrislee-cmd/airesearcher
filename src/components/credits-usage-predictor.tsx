@@ -132,7 +132,6 @@ export function CreditsUsagePredictor({
               fontFamily: outfitStack,
               background: 'var(--canvas-accent)',
               border: '2.5px solid var(--canvas-card-border)',
-              boxShadow: 'var(--memphis-shadow-xs)',
               color: '#fff',
             }}
             className="inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.18em]"

@@ -206,7 +206,6 @@ export function SubscriptionPlans({
             style={{
               background: 'var(--canvas-accent)',
               border: '2px solid var(--canvas-card-border)',
-              boxShadow: 'var(--memphis-shadow-xs)',
               fontFamily: outfitStack,
             }}
             className="rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.08em] text-paper"
@@ -290,7 +289,6 @@ export function SubscriptionPlans({
                   style={{
                     background: 'var(--canvas-accent)',
                     border: '2.5px solid var(--canvas-card-border)',
-                    boxShadow: 'var(--memphis-shadow-xs)',
                     transform: 'rotate(-3deg)',
                     fontFamily: outfitStack,
                   }}
@@ -304,7 +302,6 @@ export function SubscriptionPlans({
                   style={{
                     background: '#000',
                     border: '2.5px solid var(--canvas-card-border)',
-                    boxShadow: 'var(--memphis-shadow-xs)',
                     transform: 'rotate(-3deg)',
                     fontFamily: outfitStack,
                   }}

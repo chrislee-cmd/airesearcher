@@ -82,7 +82,6 @@ export function MemberRow({
               border:
                 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: 'var(--memphis-shadow-xs)',
               fontFamily: OUTFIT_STACK,
               fontWeight: 800,
               fontSize: 13,
@@ -118,7 +117,6 @@ export function MemberRow({
                 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
               borderRadius: 'var(--sidebar-nav-radius)',
               background: 'var(--sidebar-nav-bg)',
-              boxShadow: 'var(--memphis-shadow-xs)',
               fontFamily: OUTFIT_STACK,
               fontWeight: 700,
             }}
@@ -139,7 +137,6 @@ export function MemberRow({
               border:
                 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: 'var(--memphis-shadow-xs)',
             }}
           >
             {t(role)}
@@ -161,7 +158,6 @@ export function MemberRow({
               border:
                 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
               borderRadius: 'var(--sidebar-nav-radius)',
-              boxShadow: 'var(--memphis-shadow-xs)',
             }}
           >
             {t('removeMember')}

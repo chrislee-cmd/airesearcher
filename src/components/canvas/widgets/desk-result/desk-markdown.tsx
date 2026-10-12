@@ -51,7 +51,7 @@ const FULL_COMPONENTS: Components = {
     </a>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="my-3 border-l-2 border-amore bg-white px-4 py-2 text-lg italic text-ink-2">
+    <blockquote className="my-3 border-l-2 border-rose pl-[18px] text-lg text-ink-2">
       {children}
     </blockquote>
   ),

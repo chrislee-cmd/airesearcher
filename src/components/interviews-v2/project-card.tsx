@@ -111,7 +111,7 @@ export function ProjectCard({
       aria-label={ariaLabel ?? name}
       onClick={onOpen}
       onKeyDown={onEnterOrSpace(onOpen)}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-md-faint transition-transform focus-visible:outline-none focus-visible:-translate-y-0.5 hover:-translate-y-0.5"
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-panel border border-soft-line bg-paper shadow-soft-card transition-transform focus-visible:outline-none focus-visible:-translate-y-0.5 "
     >
       {/* 헤더 스트립 — 상태 틴트 + 아이콘 + 이름 + 뱃지 + kebab. */}
       <div

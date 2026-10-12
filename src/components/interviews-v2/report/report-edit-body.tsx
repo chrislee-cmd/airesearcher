@@ -38,7 +38,7 @@ const DRAG_HINT_KEY = 'iv:drag-hint-dismissed';
 function DragHintStrip({ onDismiss }: { onDismiss: () => void }) {
   const t = useTranslations('InterviewsV2');
   return (
-    <div className="mb-3.5 flex items-center gap-2.5 rounded-control border-[1.5px] border-ink bg-rose-bg px-3.5 py-2.5 shadow-memphis-sm-faint">
+    <div className="mb-3.5 flex items-center gap-2.5 rounded-control border border-soft-hair bg-tint-rose px-3.5 py-2.5">
       <DuotoneIcon name="highlight" size={17} fill="var(--color-paper)" />
       <div className="flex-1 text-md leading-relaxed text-ink-2">
         {t.rich('dragHintText', {
@@ -75,7 +75,7 @@ function BlockEditor({
   const [draft, setDraft] = useState(initialMd);
   const unchanged = draft.trim() === initialMd.trim();
   return (
-    <div className="rounded-panel border-2 border-ink bg-paper p-3.5 shadow-memphis-md-faint">
+    <div className="rounded-panel border border-soft-line bg-paper p-3.5">
       {/* eslint-disable-next-line react/forbid-elements -- 인라인 편집은 자동 높이 plain textarea chrome; Textarea primitive 고정 스타일과 불일치 */}
       <textarea
         value={draft}
@@ -84,7 +84,7 @@ function BlockEditor({
         autoFocus
         disabled={saving}
         aria-label={t('editBlockLabel')}
-        className="w-full resize-none rounded-control border-[1.5px] border-ink bg-paper px-3 py-2.5 text-md leading-[1.7] text-ink-2 outline-none disabled:opacity-60"
+        className="w-full resize-none rounded-control border border-soft-line bg-paper px-3 py-2.5 text-md leading-[1.7] text-ink-2 outline-none disabled:opacity-60"
       />
       <div className="mt-2 flex items-center gap-2.5">
         <span className="font-mono-label text-xs text-mute-soft">
@@ -96,7 +96,7 @@ function BlockEditor({
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="inline-flex items-center rounded-pill border-[1.5px] border-ink/20 px-3.5 py-[7px] text-md font-bold text-mute disabled:opacity-45"
+            className="inline-flex items-center rounded-pill border border-soft-line px-3.5 py-[7px] text-md font-bold text-mute disabled:opacity-45"
           >
             {t('editBlockCancel')}
           </button>
@@ -105,7 +105,7 @@ function BlockEditor({
             type="button"
             onClick={() => onSave(draft)}
             disabled={saving || unchanged || draft.trim().length === 0}
-            className="inline-flex items-center rounded-pill bg-ink px-4 py-[7px] text-md font-extrabold text-paper shadow-memphis-sm-faint disabled:opacity-45"
+            className="inline-flex items-center rounded-pill bg-ink px-4 py-[7px] text-md font-extrabold text-paper disabled:opacity-45"
           >
             {t('editBlockSave')}
           </button>
@@ -249,7 +249,7 @@ export function ReportEditBody({
                       onClick={() => setEditingBlockId(block.id)}
                       aria-label={t('editBlockLabel')}
                       title={t('editBlockLabel')}
-                      className="absolute right-0 top-0 hidden h-[26px] w-[26px] items-center justify-center rounded-nav border-[1.5px] border-ink bg-paper shadow-memphis-sm group-hover/block:flex focus-visible:flex"
+                      className="absolute right-0 top-0 hidden h-[26px] w-[26px] items-center justify-center rounded-nav border border-soft-line bg-paper group-hover/block:flex focus-visible:flex"
                     >
                       <DuotoneIcon name="typos" size={13} />
                     </button>

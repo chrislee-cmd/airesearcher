@@ -73,9 +73,9 @@ export function RegenerateModal({
 
   return (
     <Modal open={open} onClose={onClose} size="md" bare labelledBy="iv-regen-title">
-      <div className="overflow-hidden rounded-modal border-[3px] border-ink bg-paper shadow-iv-modal-regen">
+      <div className="overflow-hidden rounded-modal border border-soft-line bg-paper shadow-soft-modal">
         {/* 헤더 — rose. */}
-        <div className="flex items-center gap-[11px] border-b-2 border-ink bg-widget-header-rose px-5 py-3.5">
+        <div className="flex items-center gap-[11px] border-b border-soft-hair bg-widget-header-rose px-5 py-3.5">
           <DuotoneIcon name="regenerate" size={19} />
           <div
             id="iv-regen-title"
@@ -116,7 +116,7 @@ export function RegenerateModal({
               maxLength={TOPLINE_DIRECTION_MAX}
               placeholder={t('regenDirectionPlaceholder')}
               aria-label={t('regenDirectionLabel')}
-              className="min-h-[100px] w-full resize-none rounded-panel border-[1.5px] border-ink bg-paper px-3.5 py-3 text-md leading-[1.75] text-ink-2 shadow-memphis-sm-faint outline-none placeholder:text-faint"
+              className="min-h-[100px] w-full resize-none rounded-panel border border-soft-line bg-paper px-3.5 py-3 text-md leading-[1.75] text-ink-2 outline-none placeholder:text-faint"
             />
             <div className="text-xs leading-[1.6] text-mute-soft">
               {t('regenDirectionHint')}
@@ -138,8 +138,8 @@ export function RegenerateModal({
                   aria-pressed={lang === o.value}
                   className={
                     lang === o.value
-                      ? 'inline-flex items-center rounded-pill border-2 border-ink bg-widget-header-rose px-3.5 py-[7px] text-md font-extrabold text-ink shadow-memphis-sm'
-                      : 'inline-flex items-center rounded-pill border-[1.5px] border-ink/[0.18] bg-paper px-3.5 py-[7px] text-md font-bold text-mute'
+                      ? 'inline-flex items-center rounded-pill border border-soft-line bg-widget-header-rose px-3.5 py-[7px] text-md font-extrabold text-ink '
+                      : 'inline-flex items-center rounded-pill border border-soft-line/[0.18] bg-paper px-3.5 py-[7px] text-md font-bold text-mute'
                   }
                 >
                   {o.label}
@@ -153,7 +153,7 @@ export function RegenerateModal({
 
           {/* 덮어쓰기/보존 안내. */}
           {isUploaded && (
-            <div className="rounded-control border-[1.5px] border-warning bg-warning-bg px-3 py-2.5 text-sm leading-[1.6] text-amber-text">
+            <div className="rounded-control border border-warning bg-warning-bg px-3 py-2.5 text-sm leading-[1.6] text-amber-text">
               {t('regenUploadedNote')}
             </div>
           )}
@@ -165,7 +165,7 @@ export function RegenerateModal({
         </div>
 
         {/* 푸터 — paper-soft. */}
-        <div className="flex items-center gap-2.5 border-t-2 border-ink bg-paper-soft px-5 py-3.5">
+        <div className="flex items-center gap-2.5 border-t border-soft-hair bg-paper-soft px-5 py-3.5">
           <span className="font-mono-label text-xs text-mute-soft">
             {t('regenEta')}
           </span>
@@ -174,7 +174,7 @@ export function RegenerateModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center rounded-pill border-[1.5px] border-ink/20 px-[18px] py-2.5 text-md font-bold text-mute"
+              className="inline-flex items-center rounded-pill border border-soft-line px-[18px] py-2.5 text-md font-bold text-mute"
             >
               {t('regenCancel')}
             </button>
@@ -182,7 +182,7 @@ export function RegenerateModal({
             <button
               type="button"
               onClick={confirm}
-              className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-md font-extrabold text-paper shadow-memphis-sm-faint"
+              className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-md font-extrabold text-paper "
             >
               {t('regenConfirm')} · 💎10
             </button>

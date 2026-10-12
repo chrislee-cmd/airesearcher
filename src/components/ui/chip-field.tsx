@@ -48,7 +48,7 @@ const CONTAINER_BASE =
 // = the loud desk frame (2px ink, user #517 preference / default); subtle =
 // the quiet border-line frame for dense/secondary contexts.
 const CONTAINER_VARIANT: Record<ChipFieldVariant, string> = {
-  bordered: 'border-[2px] border-ink',
+  bordered: 'border border-soft-line',
   subtle: 'border border-line',
 };
 

@@ -330,12 +330,12 @@ export function RecruitingFullviewBody({
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1">
-        {/* 좌측 = 명단 소스(최상단) + 참여자 조건 + 분포 통계. border-r-2 ink.
+        {/* 좌측 = 명단 소스(최상단) + 참여자 조건 + 분포 통계. border-r ink.
             가로 collapse 가능 (탭③ 캘린더 레일 패턴) — 접히면 우측 콘텐츠 전폭.
             명단 소스(#587) = 유입 컴팩트 스트립 — 좌패널 최상단 카드로 이관
             (579 툴바 아래 밴드에서 이동, 순서 LIST SOURCES → 참여자 조건 → 분포). */}
         {!panelCollapsed && (
-          <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r-2 border-ink p-4">
+          <div className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-soft-hair p-4">
             {intakeBand}
             <RecruitingCriteriaPanel brief={conditionsForPanel} />
             <RecruitingDistribution
@@ -357,7 +357,7 @@ export function RecruitingFullviewBody({
           type="button"
           onClick={() => setPanelCollapsed((v) => !v)}
           aria-label={panelCollapsed ? t('panelExpand') : t('panelFold')}
-          className="flex w-9 shrink-0 flex-col items-center justify-center gap-3 border-r-2 border-ink bg-paper-soft transition-colors hover:bg-paper"
+          className="flex w-9 shrink-0 flex-col items-center justify-center gap-3 border-r border-soft-hair bg-paper-soft transition-colors hover:bg-paper"
         >
           <span className="text-lg font-bold text-ink" aria-hidden>
             {panelCollapsed ? '›' : '‹'}
@@ -501,7 +501,7 @@ export function RecruitingFullviewBody({
               onClick={onDownloadCsv}
               disabled={!hasResponses}
               title={t('csvTitle')}
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1.5 text-sm font-bold text-ink shadow-memphis-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-3 py-1.5 text-sm font-bold text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
               ↓ CSV
             </button>

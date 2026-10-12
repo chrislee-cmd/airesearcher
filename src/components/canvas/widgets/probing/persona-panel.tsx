@@ -22,7 +22,6 @@ import { CloseButton } from '@/components/ui/close-button';
 const panelStyle = {
   border: '2px solid var(--canvas-card-border)',
   borderRadius: 'var(--sidebar-nav-radius)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 const insufficientStyle = {

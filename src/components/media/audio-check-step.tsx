@@ -254,7 +254,7 @@ export function AudioCheckStep({
           {/* 무음일 때 — 두 핵심 실패 원인을 시각적으로 강조(네이티브 앱 / 탭 오디오
               토글). 정적 스크린샷 대신, 게이트 안에서 바로 고칠 수 있게 강조 안내. */}
           {tabMuted && (
-            <div className="flex flex-col gap-2.5 rounded-xs border-2 border-warning bg-warning-bg p-3">
+            <div className="flex flex-col gap-2.5 rounded-xs border border-warning bg-warning-bg p-3">
               <p className="flex items-center gap-2 text-sm font-bold text-warning">
                 <span aria-hidden className="text-lg leading-none">
                   ⚠️

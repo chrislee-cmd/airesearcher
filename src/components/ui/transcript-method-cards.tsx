@@ -76,13 +76,13 @@ export function TranscriptMethodCards({
               // 높이 = 고정 128 (MODECARD-FIX 델타) — subtitle 줄수에 따라 flex 로
               // 늘어나 그리드 정렬이 깨지던 버그 봉인. box-border + flex-col
               // justify-start(top-align) + 텍스트 clamp + overflow-hidden.
-              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border-2 bg-paper box-border px-[11px] py-[13px] text-left',
+              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border bg-paper box-border px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
               selected
                 ? 'border-amore shadow-select-glow'
-                : 'border-line shadow-memphis-sm-faint',
+                : 'border-line',
             ].join(' ')}
           >
             {/* 코너 ✓ — 선택된 카드에만. amore 원형 + 체크 (CaptureUseCaseCards 동형) */}

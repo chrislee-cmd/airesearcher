@@ -21,6 +21,18 @@ export const FEATURE_TONE_BG: Record<DeliverableFeature, string> = {
 };
 
 // feature → glyph. Emoji per the CD comp (deliverables-library.dc.html ICON map).
+// feature → 틴트 bg utility. Soft Identity 핵심규칙 3 — 원색(FEATURE_TONE_BG)은
+// 아이콘 타일·점처럼 작은 면 전용이고, 그리드 카드 헤더 띠처럼 **넓은 면은
+// 틴트**만 칠한다. 값 SSOT = design-handoff/soft-identity/tokens.css --tint-*.
+export const FEATURE_TINT_BG: Record<DeliverableFeature, string> = {
+  transcript: 'bg-tint-lav',
+  desk: 'bg-tint-aqua',
+  ut: 'bg-tint-peach',
+  recruiting: 'bg-tint-sun',
+  probing: 'bg-tint-rose',
+  translate: 'bg-tint-mint',
+};
+
 export const FEATURE_ICON: Record<DeliverableFeature, string> = {
   transcript: '📄',
   desk: '🔍',

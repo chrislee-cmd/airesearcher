@@ -133,7 +133,7 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
               autoComplete="off"
               value={fullPhone}
               error={error ?? undefined}
-              className="!border-2 !border-ink text-ink"
+              className="!border !border-soft-line text-ink"
               onChange={(e) => setFullPhone(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -178,14 +178,14 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
               const cellTone = error
                 ? 'border-warning bg-paper'
                 : filled
-                  ? 'border-ink bg-paper shadow-memphis-sm-faint'
+                  ? 'border-ink bg-paper'
                   : active
-                    ? 'border-amore bg-paper shadow-memphis-xs-amore'
+                    ? 'border-amore bg-paper'
                     : 'border-ink/20 bg-paper-soft';
               return (
                 <span
                   key={i}
-                  className={`flex h-14 w-[46px] items-center justify-center rounded-sm border-2 text-ink ${cellTone}`}
+                  className={`flex h-14 w-[46px] items-center justify-center rounded-sm border text-ink ${cellTone}`}
                   style={{ fontFamily: MONO, fontWeight: 700, fontSize: 22 }}
                 >
                   {tail[i] ?? ''}
@@ -244,7 +244,7 @@ export function ParticipantPhoneGate({ token }: { token: string }) {
 function GateCanvas({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-paper px-6 py-10">
-      <div className="flex w-full max-w-[380px] flex-col items-center gap-2 rounded-md border-[3px] border-ink bg-paper px-[30px] py-[34px] shadow-memphis-2xl">
+      <div className="flex w-full max-w-[380px] flex-col items-center gap-2 rounded-md border border-soft-line bg-paper px-[30px] py-[34px] shadow-soft-card">
         {children}
       </div>
     </div>
@@ -256,7 +256,7 @@ function LockChip() {
   return (
     <span
       aria-hidden="true"
-      className="flex h-[60px] w-[60px] items-center justify-center rounded-sm border-2 border-ink bg-sky shadow-memphis-sm"
+      className="flex h-[60px] w-[60px] items-center justify-center rounded-sm bg-sky"
       style={{ fontSize: 28 }}
     >
       🔒

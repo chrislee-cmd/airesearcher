@@ -122,12 +122,12 @@ export function QuestionPane({
         />
 
         {!isLive && thinkingEvents.length === 0 && history.length === 0 && (
-          <div className="mx-4 my-4 rounded-xs border-2 border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
+          <div className="mx-4 my-4 rounded-xs border border-soft-line bg-paper-soft px-4 py-6 text-center text-sm text-mute">
             {t('question.emptyNotLive')}
           </div>
         )}
         {isLive && !hasTranscript && thinkingEvents.length === 0 && (
-          <div className="mx-4 my-4 rounded-xs border-2 border-line-soft bg-paper-soft px-4 py-6 text-center text-sm text-mute">
+          <div className="mx-4 my-4 rounded-xs border border-soft-line bg-paper-soft px-4 py-6 text-center text-sm text-mute">
             {t('question.emptyLiveNoTranscript')}
           </div>
         )}

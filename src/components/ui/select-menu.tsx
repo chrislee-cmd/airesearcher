@@ -143,7 +143,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
             ref={panelRef}
             role="listbox"
             aria-multiselectable={props.multi}
-            className="menu-in fixed z-overlay max-h-72 overflow-y-auto rounded-xs border-[2px] border-ink bg-paper shadow-memphis-md-card"
+            className="menu-in fixed z-overlay max-h-72 overflow-y-auto rounded-xs border border-soft-line bg-paper shadow-soft-popover"
             style={{
               left: rect.left,
               top: rect.bottom + 4,
@@ -176,7 +176,7 @@ export function SelectMenu(props: SingleProps | MultiProps) {
                     <span
                       aria-hidden
                       className={
-                        'inline-block h-3 w-3 rounded-full border-[1.5px] ' +
+                        'inline-block h-3 w-3 rounded-full border ' +
                         (checked ? 'border-amore bg-amore' : 'border-line')
                       }
                     />

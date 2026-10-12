@@ -160,7 +160,7 @@ export function GeneratingModeBody({
           <CardEyebrow>{t('filesUploadedHeader', { count: documents.length })}</CardEyebrow>
           {activeCount > 0 && (
             <span
-              className="ml-auto inline-flex items-center gap-1.5 rounded-chip border border-lav-line bg-lav-bg font-mono-label font-extrabold text-lav-text"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-chip bg-soft-run-bg font-mono-label font-extrabold text-soft-run-fg"
               style={{ fontSize: 10.5, padding: '2px 8px' }}
             >
               <span className="inline-block rounded-full bg-processing" style={{ width: 5, height: 5 }} />
@@ -212,7 +212,7 @@ export function AnalyzePromptModeBody({
       <CardScroll>
         {/* rose-bg 프롬프트 박스 */}
         <div
-          className="flex flex-col gap-2.5 rounded-sm bg-rose-bg shadow-memphis-md-faint"
+          className="flex flex-col gap-2.5 rounded-sm bg-rose-bg"
           style={{ padding: 20, border: '2px solid var(--color-ink)' }}
         >
           <CardEyebrow tone="crimson">{t('analyzeNoReport')}</CardEyebrow>
@@ -224,7 +224,7 @@ export function AnalyzePromptModeBody({
           </p>
           <div className="flex items-center gap-2.5" style={{ marginTop: 2 }}>
             <span
-              className="inline-flex items-center gap-1.5 rounded-pill bg-paper font-bold text-ink shadow-memphis-sm-faint"
+              className="inline-flex items-center gap-1.5 rounded-pill bg-paper font-bold text-ink "
               style={{ padding: '8px 14px', fontSize: 12.5, border: '1.5px solid var(--color-ink)' }}
             >
               <DuotoneIcon name="language" size={15} />
@@ -243,7 +243,7 @@ export function AnalyzePromptModeBody({
         <div className="flex items-center gap-2">
           <CardEyebrow>{t('filesUploadedHeader', { count: documents.length })}</CardEyebrow>
           <span
-            className="rounded-chip border border-success-line bg-success-bg font-mono-label font-extrabold text-success-text"
+            className="rounded-chip bg-soft-ok-bg font-mono-label font-extrabold text-soft-ok-fg"
             style={{ fontSize: 10, padding: '2px 8px' }}
           >
             {t('filesAllReady')}

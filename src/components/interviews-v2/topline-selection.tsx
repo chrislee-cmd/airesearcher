@@ -203,7 +203,7 @@ export function ToplineAskPopup({
       role="dialog"
       aria-label={t('toplineAskTitle')}
       style={{ ...popupStyle(selection.rect), width: POPUP_WIDTH }}
-      className="z-popup rounded-sm border-[3px] border-ink bg-paper p-3 shadow-[6px_6px_0_var(--color-ink)]"
+      className="z-popup rounded-sm border border-soft-line bg-paper p-3 shadow-soft-popover"
     >
       <div className="mb-2 flex items-start gap-2">
         <span className="mt-0.5 shrink-0 rounded-xs bg-amore-bg px-1.5 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">

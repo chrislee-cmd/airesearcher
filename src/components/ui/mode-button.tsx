@@ -63,7 +63,7 @@ function cardClassName(selected: boolean, variant: ModeVariant): string {
     // 절대 건드리지 말 것 (MODECARD-FIX 는 default variant 한정).
     return (
       'relative flex aspect-square flex-col items-center justify-start gap-1.5 ' +
-      'overflow-hidden rounded-sm border-[2px] border-line-soft bg-paper p-3 text-center'
+      'overflow-hidden rounded-sm border border-soft-line bg-paper p-3 text-center'
     );
   }
   // default — 고정 128 프레임(box-border, flex column, top-align). 남는 공간은
@@ -75,7 +75,7 @@ function cardClassName(selected: boolean, variant: ModeVariant): string {
   // top-align 는 canvas·비-canvas 양쪽 모두 적용되는 핵심 델타.
   return (
     'relative flex flex-col items-center justify-start box-border h-[var(--mode-card-h)] ' +
-    'rounded-mode-card border-2 py-[13px] px-[11px] text-center transition-colors ' +
+    'rounded-mode-card border py-[13px] px-[11px] text-center transition-colors ' +
     'disabled:cursor-not-allowed disabled:opacity-40 ' +
     (selected
       ? 'border-amore bg-paper shadow-select-glow'

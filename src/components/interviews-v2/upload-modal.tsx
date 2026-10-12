@@ -286,10 +286,10 @@ export function UploadModal({
       labelledBy="upload-modal-title"
     >
       {/* Frame — §1.1: border 3 · radius 18 · shadow-2xl 8px8px0 blur0. */}
-      <div className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-modal border-[3px] border-ink bg-paper shadow-memphis-2xl">
+      <div className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-modal border border-soft-line bg-paper shadow-soft-modal">
         {/* Header — §1.2: rose 밴드 + border-b 2 · Outfit 800/17 · 총량 pill +
             dialog-close(계약 A). */}
-        <header className="flex shrink-0 items-center gap-2.5 border-b-2 border-ink bg-rose px-[18px] py-3.5">
+        <header className="flex shrink-0 items-center gap-2.5 border-b border-soft-hair bg-tint-rose px-[18px] py-3.5">
           <h2
             id="upload-modal-title"
             className="min-w-0 flex-1 truncate text-2xl font-extrabold tracking-[-0.02em] text-ink"
@@ -298,7 +298,7 @@ export function UploadModal({
             {t('uploadTitle')}
           </h2>
           {staged.length > 0 && (
-            <span className="shrink-0 rounded-chip border-[1.5px] border-ink bg-paper px-2 py-0.5 font-mono text-xs-soft font-extrabold text-ink">
+            <span className="shrink-0 rounded-chip border border-soft-line bg-paper px-2 py-0.5 font-mono text-xs-soft font-extrabold text-ink">
               {t('uploadHeaderPill', { count: staged.length })}
             </span>
           )}
@@ -323,9 +323,9 @@ export function UploadModal({
                 accept={ACCEPT}
                 maxSizeBytes={MAX_BYTES}
                 onFiles={handleFiles}
-                className="gap-[9px] rounded-panel border-[2.5px] border-dashed border-line-empty bg-paper px-4 py-[26px]"
+                className="gap-[9px] rounded-panel border-[1.5px] border-dashed border-soft-line-hover bg-paper px-4 py-[26px]"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-panel border-[3px] border-ink bg-paper shadow-memphis-md">
+                <span className="flex h-11 w-11 items-center justify-center rounded-panel border border-soft-line bg-paper ">
                   <DuotoneIcon name="upload" size={22} />
                 </span>
                 <span
@@ -342,7 +342,7 @@ export function UploadModal({
               {/* File list — §1.4: border strong 2 · radius panel · shadow-md-faint
                   · 구분선 hair ink/8. §1.5: 목록 헤더 총 개수·총량. */}
               {staged.length > 0 && (
-                <div className="overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-memphis-md-faint">
+                <div className="overflow-hidden rounded-panel border border-soft-line bg-paper">
                   <div className="flex items-center gap-2 border-b border-ink/10 bg-paper-soft px-[13px] py-[7px]">
                     <span className="flex-1 font-mono text-xs font-extrabold uppercase tracking-[0.1em] text-mute">
                       {t('uploadListHeader', { count: staged.length })}
@@ -364,7 +364,7 @@ export function UploadModal({
                       key={`${f.name}-${i}`}
                       className="flex items-center gap-2.5 border-b border-ink/8 px-[13px] py-2.5 transition-colors duration-[120ms] last:border-b-0 hover:bg-surface-canvas motion-reduce:transition-none"
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-nav border-[1.5px] border-ink bg-rose">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-nav border border-soft-line bg-rose">
                         <DuotoneIcon
                           name="document"
                           size={13}
@@ -461,7 +461,7 @@ export function UploadModal({
         </div>
 
         {/* Footer — §1.6: border-t 2 · 좌측 후속 안내 mono · 4단 버튼. */}
-        <footer className="flex shrink-0 items-center gap-2.5 border-t-2 border-ink bg-paper px-[18px] py-3.5">
+        <footer className="flex shrink-0 items-center gap-2.5 border-t border-soft-hair bg-paper px-[18px] py-3.5">
           <span className="min-w-0 flex-1 truncate font-mono text-xs-soft font-bold text-mute-soft">
             {t('uploadFooterNote')}
           </span>

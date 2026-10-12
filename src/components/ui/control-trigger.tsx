@@ -21,9 +21,9 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 export const CONTROL_TRIGGER_CLASS =
   'flex h-10 w-full items-center justify-between gap-1.5 rounded-sm ' +
-  'border-[2.5px] border-line bg-paper px-3 text-sm font-semibold text-ink ' +
-  'shadow-memphis-sm-faint transition-all duration-[120ms] ' +
-  'hover:-translate-x-px hover:-translate-y-px hover:border-ink hover:shadow-memphis-md ' +
+  'border border-soft-line bg-paper px-3 text-sm font-semibold text-ink ' +
+  ' transition-all duration-[120ms] ' +
+  ' hover:border-ink ' +
   'focus:outline-none focus-visible:border-amore ' +
   'disabled:cursor-not-allowed disabled:opacity-40 disabled:transform-none disabled:shadow-none';
 

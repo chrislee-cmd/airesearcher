@@ -15,7 +15,6 @@ const MEMPHIS_FIELD_STYLE = {
   border: 'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
   borderRadius: 'var(--sidebar-nav-radius)',
   background: 'var(--sidebar-nav-bg)',
-  boxShadow: 'var(--memphis-shadow-xs)',
 } as const;
 
 export function InviteMemberForm({ orgId }: { orgId: string }) {
@@ -102,7 +101,7 @@ export function InviteMemberForm({ orgId }: { orgId: string }) {
           color: 'var(--sidebar-active-text)',
           border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
           borderRadius: 'var(--sidebar-nav-radius)',
-          boxShadow: 'var(--memphis-shadow-sm)',
+          boxShadow: 'var(--sh-card)',
         }}
       >
         {busy ? tCommon('loading') : t('invite')}

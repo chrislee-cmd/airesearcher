@@ -105,7 +105,7 @@ const MAX_CHAT_PANELS = 4;
 
 // Pastel tints cycled across By-group (01B) section heads (BUILD-SPEC §1 — group
 // heads sky/mint/neutral). Inbox section heads neutral (paper-soft) separately.
-const HEAD_TINTS = ['bg-sky', 'bg-mint', 'bg-lav', 'bg-peach', 'bg-cyan'] as const;
+const HEAD_TINTS = ['bg-tint-sky', 'bg-tint-mint', 'bg-tint-lav', 'bg-tint-peach', 'bg-tint-aqua'] as const;
 
 // Coarse per-candidate status (sched_candidates.status) — bulk-set from the
 // list, distinct from a slot's proposed/confirmed/cancelled lifecycle.
@@ -902,7 +902,7 @@ export function RecruitingSchedulingClient({
               the frozen ones. Row borders move onto the cells via thead/tbody
               variants since <tr> borders don't paint in separate mode. */}
           <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
-            <thead className="[&_th]:border-b-2 [&_th]:border-ink [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
+            <thead className="[&_th]:border-b [&_th]:border-soft-hair [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
               <tr className="text-left">
                 {!readOnly && (
                   <th
@@ -926,7 +926,7 @@ export function RecruitingSchedulingClient({
                   {t('colName')}
                 </th>
                 <th
-                  className="sticky z-table-cell-sticky border-r-2 border-ink px-3.5 py-2.5"
+                  className="sticky z-table-cell-sticky border-r border-soft-hair px-3.5 py-2.5"
                   style={stickyStyle(
                     readOnly ? STICKY_W.name : STICKY_LEFT.contact,
                     STICKY_W.contact,
@@ -1002,7 +1002,7 @@ export function RecruitingSchedulingClient({
                         </div>
                       </td>
                       <td
-                        className="sticky z-table-cell-sticky border-r-2 border-ink bg-paper px-3.5 py-2.5 font-mono text-md text-ink-2 transition-colors group-hover:bg-paper-soft"
+                        className="sticky z-table-cell-sticky border-r border-soft-hair bg-paper px-3.5 py-2.5 font-mono text-md text-ink-2 transition-colors group-hover:bg-paper-soft"
                         style={stickyStyle(
                           readOnly ? STICKY_W.name : STICKY_LEFT.contact,
                           STICKY_W.contact,
@@ -1108,7 +1108,7 @@ export function RecruitingSchedulingClient({
     // Grouped sections (01B) supply their own Memphis card frame, so the table
     // renders unframed inside them; the flat "all" view frames it here.
     return framed ? (
-      <div className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md">
+      <div className="overflow-hidden rounded-sm border border-soft-line">
         {body}
       </div>
     ) : (
@@ -1122,14 +1122,14 @@ export function RecruitingSchedulingClient({
           offset shadow. This establishes the redesign client shell (frame + sun
           header + project pill + view tabs) that the calendar/chat specs build
           on. Legacy flat editorial (1px border-line / shadow-0) is replaced. */}
-      <div className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper-soft shadow-memphis-2xl">
+      <div className="overflow-hidden rounded-sm border border-soft-line bg-paper-soft shadow-soft-frame">
         {/* Sun header band — recruiting widget identity (WIDGET-SHELL §S3, sun).
             Tone + Outfit display consumed via CSS var (the sanctioned shell
             pattern — no bg/font utility exists for these), mirroring the canvas
             fullview panel. */}
         <header
-          className="flex flex-wrap items-center gap-3 border-b-[3px] border-ink px-[26px] py-[15px]"
-          style={{ background: 'var(--widget-header-bg-sun)' }}
+          className="flex flex-wrap items-center gap-3 border-b border-soft-hair px-[26px] py-[15px]"
+          style={{ background: 'var(--tint-sun)' }}
         >
           <span className="text-2xl" aria-hidden>
             🧲
@@ -1185,7 +1185,7 @@ export function RecruitingSchedulingClient({
           {/* Inline new-project creator — revealed by the header "+ New
               project" pill. */}
           {showNewProject && (
-            <div className="flex flex-wrap items-end gap-2 rounded-sm border-2 border-ink bg-paper p-4 shadow-memphis-sm">
+            <div className="flex flex-wrap items-end gap-2 rounded-sm border border-soft-line bg-paper p-4">
               <Input
                 label={t('newProjectLabel')}
                 placeholder={t('newProjectPlaceholder')}
@@ -1236,10 +1236,10 @@ export function RecruitingSchedulingClient({
                     helperText={t('uploadHelper')}
                     className="flex-1 px-6 py-10"
                   />
-                  <div className="flex flex-1 flex-col gap-3 rounded-sm border-2 border-ink bg-paper px-5 py-4 shadow-memphis-sm">
+                  <div className="flex flex-1 flex-col gap-3 rounded-sm border border-soft-line bg-paper px-5 py-4">
                     <div className="flex items-center gap-2.5">
                       <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-mint text-base"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs border border-soft-line bg-mint text-base"
                         aria-hidden
                       >
                         📗
@@ -1401,7 +1401,7 @@ export function RecruitingSchedulingClient({
               {/* Bulk action bar (BUILD-SPEC §1) — amber warning surface + amber
                   hard shadow when rows are selected. */}
               {selected.size > 0 && (
-                <div className="flex flex-wrap items-center gap-2 rounded-sm border-2 border-ink bg-warning-bg px-4 py-3 shadow-memphis-md-amber">
+                <div className="flex flex-wrap items-center gap-2 rounded-sm border border-soft-line bg-warning-bg px-4 py-3">
                   <span className="text-md font-extrabold text-ink">
                     {t('bulkSelected', { count: selected.size })}
                   </span>
@@ -1481,10 +1481,10 @@ export function RecruitingSchedulingClient({
                       return (
                         <div
                           key={key}
-                          className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                          className="overflow-hidden rounded-sm border border-soft-line"
                         >
                           <div
-                            className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                            className={`flex flex-wrap items-center gap-3 border-b border-soft-hair px-4 py-3 ${
                               isInbox
                                 ? 'bg-paper-soft'
                                 : HEAD_TINTS[i % HEAD_TINTS.length]
@@ -1517,7 +1517,7 @@ export function RecruitingSchedulingClient({
                                 {title}
                               </span>
                             )}
-                            <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                            <span className="shrink-0 rounded-pill border border-soft-line bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
                               {rows.length}
                             </span>
                             {!isInbox && (
@@ -1560,7 +1560,7 @@ export function RecruitingSchedulingClient({
 
               {/* Height bumped ~1.5× (수정2, 680→1020) so more of the day is
                   visible at once and the chat tiles have vertical room. */}
-              <div className="flex flex-col overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md lg:h-[1020px] lg:flex-row">
+              <div className="flex flex-col overflow-hidden rounded-sm border border-soft-line lg:h-[1020px] lg:flex-row">
                 {/* Calendar pane — collapsible horizontally on desktop (수정3) to
                     free width for the chat tiles. Always shown on mobile (the
                     panes stack there, so folding a horizontal pane is moot). */}
@@ -1602,7 +1602,7 @@ export function RecruitingSchedulingClient({
                   aria-label={
                     calendarFolded ? t('calendarExpand') : t('calendarFold')
                   }
-                  className="hidden shrink-0 flex-col items-center justify-center gap-3 bg-paper-soft transition-colors hover:bg-paper lg:flex lg:w-9 lg:border-l-2 lg:border-ink"
+                  className="hidden shrink-0 flex-col items-center justify-center gap-3 bg-paper-soft transition-colors hover:bg-paper lg:flex lg:w-9 lg:border-l lg:border-soft-hair"
                 >
                   <span className="text-lg font-bold text-ink" aria-hidden>
                     {calendarFolded ? '›' : '‹'}
@@ -1620,7 +1620,7 @@ export function RecruitingSchedulingClient({
                     resolves its own batch/roster and closes independently. */}
                 <div
                   className={[
-                    'flex w-full flex-col overflow-x-auto border-t-2 border-ink lg:min-h-0 lg:flex-row lg:border-t-0',
+                    'flex w-full flex-col overflow-x-auto border-t border-soft-hair lg:min-h-0 lg:flex-row lg:border-t-0',
                     calendarFolded
                       ? 'lg:min-w-0 lg:flex-1'
                       : 'lg:w-auto lg:max-w-[768px] lg:shrink-0',
@@ -1635,7 +1635,7 @@ export function RecruitingSchedulingClient({
                         className={[
                           'flex min-h-[540px] w-full flex-col lg:min-h-0 lg:w-[360px] lg:shrink-0',
                           i > 0
-                            ? 'border-t-2 border-ink lg:border-l-2 lg:border-t-0'
+                            ? 'border-t border-soft-hair lg:border-l lg:border-t-0'
                             : '',
                         ].join(' ')}
                       >
@@ -1690,7 +1690,7 @@ export function RecruitingSchedulingClient({
                   (#1161 Memphis rewrite dropped this block). Clicking a row
                   opens that attendee's chat thread in the rail; the header CTA
                   opens the broadcast thread. */}
-              <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
+              <div className="flex flex-col gap-2 rounded-sm border border-soft-line p-4">
                 <div className="flex items-center justify-between gap-2">
                   {/* Roster disclosure toggle (수정1) — the whole heading bar is
                       the fold control; the count stays visible when collapsed.
@@ -1704,7 +1704,7 @@ export function RecruitingSchedulingClient({
                     className="-mx-1.5 -my-1 flex min-w-0 flex-1 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
                   >
                     <span
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border border-soft-line bg-paper text-xs text-ink transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
                       aria-hidden
                     >
                       ▾
@@ -1747,10 +1747,10 @@ export function RecruitingSchedulingClient({
                         return (
                           <div
                             key={key}
-                            className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                            className="overflow-hidden rounded-sm border border-soft-line"
                           >
                             <div
-                              className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                              className={`flex flex-wrap items-center gap-3 border-b border-soft-hair px-4 py-3 ${
                                 isInbox
                                   ? 'bg-paper-soft'
                                   : HEAD_TINTS[i % HEAD_TINTS.length]
@@ -1769,7 +1769,7 @@ export function RecruitingSchedulingClient({
                               >
                                 {title}
                               </span>
-                              <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                              <span className="shrink-0 rounded-pill border border-soft-line bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
                                 {rows.length}
                               </span>
                             </div>
@@ -1900,7 +1900,7 @@ function MasterLinkBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-sm border-2 border-ink bg-sky px-4 py-3 shadow-memphis-md">
+    <div className="flex flex-wrap items-center gap-3 rounded-sm border border-soft-line bg-tint-sky px-4 py-3">
       <span className="text-lg" aria-hidden>
         🔗
       </span>
@@ -1910,7 +1910,7 @@ function MasterLinkBar({
         </div>
         <div className="text-sm text-mute">{t('masterLinkHelper')}</div>
       </div>
-      <div className="min-w-[180px] flex-1 truncate rounded-[var(--fv-radius-field)] border-[1.5px] border-ink bg-paper px-3 py-2 font-mono text-md text-ink">
+      <div className="min-w-[180px] flex-1 truncate rounded-[var(--fv-radius-field)] border border-soft-line bg-paper px-3 py-2 font-mono text-md text-ink">
         {relative}
       </div>
       <Button variant="secondary" size="sm" onClick={copy}>
@@ -1939,7 +1939,7 @@ function SegmentedControl<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className="inline-flex shrink-0 overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm"
+      className="inline-flex shrink-0 overflow-hidden rounded-pill border border-soft-line "
     >
       {options.map((o) => {
         const active = o.value === value;
@@ -1973,7 +1973,7 @@ function UnreadDot({ label }: { label: string }) {
       role="status"
       aria-label={label}
       title={label}
-      className="inline-block h-3 w-3 shrink-0 rounded-full border-2 border-ink bg-amore shadow-memphis-2xs"
+      className="inline-block h-3 w-3 shrink-0 rounded-full bg-amore"
     />
   );
 }

@@ -62,7 +62,7 @@ function onEnterOrSpace(handler: () => void) {
 
 // "+ 새 프로젝트" 타일 — 카드와 같은 프레임(radius 12·2px)이되 dashed·중립.
 const NEW_TILE =
-  'flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-panel border-2 border-dashed border-line-strong bg-paper text-mute transition-colors hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:border-amore';
+  'flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-panel border-[1.5px] border-dashed border-soft-line-hover bg-paper text-mute transition-colors hover:border-soft-line-hover hover:text-ink focus-visible:outline-none focus-visible:border-amore';
 
 // 목록 훅이 제공하는 데이터(파일 수)로 카드 상태 틴트를 보수적으로 파생한다.
 // 훅/API 무변경 제약상 per-project topline 상태(done vs generating vs error)는

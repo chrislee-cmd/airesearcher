@@ -36,7 +36,7 @@ export default async function MembersPage({
                 border:
                   'var(--sidebar-border-width) solid var(--sidebar-border)',
                 borderRadius: 'var(--sidebar-nav-radius)',
-                boxShadow: 'var(--memphis-shadow-sm)',
+                boxShadow: 'var(--sh-card)',
               }}
             >
               <div
@@ -68,7 +68,7 @@ function MembersHeader({ title }: { title: string }) {
         background: 'var(--sidebar-bg-strong)',
         border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <h1
@@ -90,7 +90,6 @@ function MembersHeader({ title }: { title: string }) {
           background: 'var(--sidebar-active-bg)',
           border: '2px solid var(--sidebar-border)',
           borderRadius: 999,
-          boxShadow: 'var(--memphis-shadow-xs)',
         }}
       />
     </div>
@@ -106,7 +105,7 @@ async function EmptyAuthCard() {
         background: 'var(--sidebar-nav-bg)',
         border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
         color: 'var(--sidebar-border)',
         fontFamily: OUTFIT_STACK,
         fontWeight: 600,
@@ -163,7 +162,7 @@ async function MembersTable({
         background: 'var(--sidebar-nav-bg)',
         border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <table className="w-full text-md">
@@ -227,7 +226,7 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
         background: 'var(--sidebar-nav-bg)',
         border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <span
@@ -237,7 +236,6 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
           background: 'var(--sidebar-active-bg)',
           border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
           borderRadius: 999,
-          boxShadow: 'var(--memphis-shadow-xs)',
         }}
       />
       <div

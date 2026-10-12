@@ -68,7 +68,9 @@ export async function exportDomToPdf(
     const head = document.createElement('div');
     head.style.marginBottom = '24px';
     head.style.paddingBottom = '16px';
-    head.style.borderBottom = '2px solid var(--canvas-card-border, #1a1a1a)';
+    // Soft Identity (리브랜드 2단계) — 선은 1px --hair. 내보내기 문서의 헤더
+    // 구분선도 같은 규칙(변환표 "헤더 하단선": 3px/2px ink → 둘 다 1px --hair).
+    head.style.borderBottom = '1px solid var(--hair, #efedf1)';
     head.style.letterSpacing = 'normal';
 
     if (header.eyebrow) {
@@ -116,6 +118,9 @@ export async function exportDomToPdf(
     // letter-spacing 정상화 + 제목 truncate(overflow clip) 해제 → 한글 온전.
     holder.querySelectorAll<HTMLElement>('*').forEach((n) => {
       n.style.letterSpacing = 'normal';
+      // 내보내기 문서(인쇄)는 그림자를 쓰지 않는다 — CD README "작업 순서" 5번.
+      // 화면용 --sh-* 블러 그림자가 캡쳐에 섞이면 인쇄물에서 회색 번짐으로 남는다.
+      n.style.boxShadow = 'none';
     });
     holder.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6').forEach((n) => {
       n.style.whiteSpace = 'normal';

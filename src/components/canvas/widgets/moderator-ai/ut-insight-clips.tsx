@@ -89,7 +89,7 @@ function ClipCard({ sessionId, clip, index }: { sessionId: string; clip: Insight
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{ins.summary}</p>
       )}
       {ins?.quote && (
-        <p className="border-l-2 border-line pl-2 text-sm italic text-mute">“{ins.quote}”</p>
+        <p className="border-l-2 border-rose pl-2 text-sm text-mute">“{ins.quote}”</p>
       )}
       <div className="flex flex-wrap items-center gap-2">
         {ins?.friction && (
@@ -176,7 +176,7 @@ function Report({ summary, clips }: { summary: InsightSummary; clips: InsightCli
           </span>
           <ul className="mt-1 flex flex-col gap-1">
             {summary.notable_quotes.map((q, i) => (
-              <li key={i} className="border-l-2 border-line pl-2 text-sm italic text-mute">
+              <li key={i} className="border-l-2 border-rose pl-2 text-sm text-mute">
                 “{q.quote}”<span className="text-mute-soft not-italic">{ref(q.clip_index)}</span>
               </li>
             ))}
@@ -250,7 +250,7 @@ export function UtInsightClips({ sessionId }: { sessionId: string }) {
       )}
 
       {status === 'error' && !isRunning && (
-        <div className="flex flex-col gap-2 rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+        <div className="flex flex-col gap-2 rounded-xs border border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
           <span>{t('insight.error')}</span>
           <div>
             <Button variant="secondary" size="sm" onClick={() => void trigger()}>

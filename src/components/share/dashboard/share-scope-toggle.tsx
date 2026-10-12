@@ -61,7 +61,7 @@ export function ShareScopeToggle({
 }) {
   const cell = 'flex items-center gap-1.5 px-[13px] py-1.5 text-md';
   return (
-    <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-pill border-[1.5px] border-ink bg-paper shadow-memphis-sm">
+    <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-pill border border-soft-line bg-paper ">
       <Pressable
         onPress={() => onScope('mine')}
         ariaLabel={labels.mine}

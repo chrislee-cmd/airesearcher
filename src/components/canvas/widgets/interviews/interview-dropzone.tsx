@@ -98,7 +98,7 @@ export function InterviewDropzone({
       style={{
         padding: '44px 22px',
         border: `3px dashed ${INK}`,
-        boxShadow: 'var(--shadow-dropzone)',
+        boxShadow: 'var(--)',
       }}
     >
       <DuotoneIcon name="upload" size={34} />
@@ -110,7 +110,7 @@ export function InterviewDropzone({
       </div>
       {actionLabel && (
         <span
-          className="mt-1.5 inline-flex items-center gap-2 rounded-pill bg-ink font-bold text-paper shadow-memphis-sm-faint"
+          className="mt-1.5 inline-flex items-center gap-2 rounded-pill bg-ink font-bold text-paper "
           style={{ padding: '10px 20px', fontSize: 13 }}
         >
           {actionLabel}

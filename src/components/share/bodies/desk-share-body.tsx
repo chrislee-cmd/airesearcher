@@ -54,14 +54,14 @@ export async function DeskShareBody({ data }: { data: SharedDeskReport }) {
           return (
             <section
               key={section.id}
-              className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-md"
+              className="overflow-hidden rounded-sm border border-soft-line bg-paper"
             >
               <div
-                className={`flex items-center gap-2.5 border-b-2 border-ink px-3.5 py-2.5 ${visual.headBg}`}
+                className={`flex items-center gap-2.5 border-b border-soft-hair px-3.5 py-2.5 ${visual.headBg}`}
               >
                 <span
                   aria-hidden
-                  className={`h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-ink ${visual.dot}`}
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full border border-soft-line ${visual.dot}`}
                 />
                 <span aria-hidden className="text-md">
                   {section.icon}
@@ -107,7 +107,7 @@ export async function DeskShareBody({ data }: { data: SharedDeskReport }) {
 
       {/* 출처 — 공유 페이로드에 있으면 하단 appendix 로. */}
       {data.sources.length > 0 && (
-        <section className="overflow-hidden rounded-sm border-[1.5px] border-line bg-paper">
+        <section className="overflow-hidden rounded-sm border border-soft-line bg-paper">
           <div className="border-b border-line px-3.5 py-2 font-mono-label text-xs font-bold uppercase tracking-[0.1em] text-mute-soft">
             {t('deskSources')}
           </div>

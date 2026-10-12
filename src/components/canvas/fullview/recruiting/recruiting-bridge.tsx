@@ -178,8 +178,8 @@ export function RecruitingBridge({
     <>
       {/* ── 브리지 바 (CD N1 line 62) — mint bg(#e8f7ee, GAP-AUDIT §3) · 2px ink
           bottom · inset success 룰 · ✓ 배지 · 카운트 · 힌트 · success CTA · 해제 */}
-      <div className="flex shrink-0 flex-wrap items-center gap-[11px] border-b-2 border-ink bg-bridge-bar-bg px-5 py-[11px] shadow-[inset_0_-3px_0_var(--color-success)]">
-        <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-xs border-[1.6px] border-ink bg-ink text-xs text-white">
+      <div className="flex shrink-0 flex-wrap items-center gap-[11px] border-b border-soft-hair bg-bridge-bar-bg px-5 py-[11px] ">
+        <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-xs border border-soft-line bg-ink text-xs text-white">
           ✓
         </span>
         <span className="text-sm font-extrabold text-ink">
@@ -188,11 +188,11 @@ export function RecruitingBridge({
         <span className="text-xs-soft text-mute">{t('bridgeHint')}</span>
         <div className="flex-1" />
         {/* success CTA — bg-success·white·2px ink·radius-pill·memphis-sm 전용 chrome */}
-        {/* eslint-disable-next-line react/forbid-elements -- CD N1 브리지 CTA 는 bg-success·white·border-2 ink·radius-pill·memphis-sm 전용 chrome 으로 Button primitive 의 variant/radius 와 불일치(§7.11). 셸 헤더 조각과 동일 선례. */}
+        {/* eslint-disable-next-line react/forbid-elements -- CD N1 브리지 CTA 는 bg-success·white·border ink·radius-pill·memphis-sm 전용 chrome 으로 Button primitive 의 variant/radius 와 불일치(§7.11). 셸 헤더 조각과 동일 선례. */}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-[7px] rounded-pill border-2 border-ink bg-success px-[18px] py-2 text-sm font-extrabold text-white shadow-memphis-sm"
+          className="inline-flex items-center gap-[7px] rounded-pill bg-soft-ok-bg px-[18px] py-2 text-sm font-extrabold text-soft-ok-fg"
         >
           {t('bridgeSend')}
         </button>
@@ -214,10 +214,10 @@ export function RecruitingBridge({
         bare
         dsPrimitive="Modal"
       >
-        <div className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-2xl">
+        <div className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-sm border border-soft-line bg-paper shadow-soft-modal">
           {/* 헤더 — sun 밴드(§S3 recruiting sun 톤 = shell tokens.ts) · → ·
               Outfit 800 타이틀 · 닫기 ✕ */}
-          <header className="flex shrink-0 items-center gap-[10px] border-b-2 border-ink bg-sun px-5 py-[14px]">
+          <header className="flex shrink-0 items-center gap-[10px] border-b border-soft-hair bg-tint-sun px-5 py-[14px]">
             <span aria-hidden className="text-lg leading-none">
               →
             </span>
@@ -234,7 +234,7 @@ export function RecruitingBridge({
               type="button"
               onClick={() => !sending && setOpen(false)}
               aria-label={t('bridgeCancel')}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border-[1.5px] border-ink bg-paper text-sm text-ink shadow-memphis-sm"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border border-soft-line bg-paper text-sm text-ink "
             >
               ✕
             </button>
@@ -257,7 +257,7 @@ export function RecruitingBridge({
             </div>
 
             {/* D1-A PII 고지 — warning-bg(#fff1e6) · 2px ink · amber memphis */}
-            <div className="flex items-start gap-[9px] rounded-sm border-2 border-ink bg-warning-bg px-3.5 py-3 shadow-memphis-md-amber">
+            <div className="flex items-start gap-[9px] rounded-sm border border-soft-line bg-warning-bg px-3.5 py-3">
               <span aria-hidden className="text-md leading-none">
                 🔒
               </span>
@@ -306,7 +306,7 @@ export function RecruitingBridge({
           </div>
 
           {/* 푸터 — dedup 노트 + 취소 / N명 보내기 */}
-          <footer className="flex shrink-0 items-center gap-[10px] border-t-2 border-ink bg-paper-soft px-5 py-3">
+          <footer className="flex shrink-0 items-center gap-[10px] border-t border-soft-hair bg-paper-soft px-5 py-3">
             <span className="text-xs text-mute-soft">{t('bridgeDedupNote')}</span>
             <div className="ml-auto flex gap-[9px]">
               {/* eslint-disable-next-line react/forbid-elements -- CD N4 취소 는 radius-pill·1.5px ink·white 전용 chrome 으로 Button primitive radius/variant 와 불일치(§7.11). 모달 푸터 조각. */}
@@ -314,7 +314,7 @@ export function RecruitingBridge({
                 type="button"
                 disabled={sending}
                 onClick={() => setOpen(false)}
-                className="rounded-pill border-[1.5px] border-ink bg-paper px-[17px] py-2 text-sm font-bold text-ink disabled:opacity-40"
+                className="rounded-pill border border-soft-line bg-paper px-[17px] py-2 text-sm font-bold text-ink disabled:opacity-40"
               >
                 {t('bridgeCancel')}
               </button>
@@ -323,7 +323,7 @@ export function RecruitingBridge({
                 type="button"
                 disabled={sending}
                 onClick={() => void send()}
-                className="rounded-pill border-2 border-ink bg-ink px-5 py-2 text-sm font-extrabold text-white shadow-memphis-sm disabled:opacity-40"
+                className="rounded-pill border border-soft-line bg-ink px-5 py-2 text-sm font-extrabold text-white disabled:opacity-40"
               >
                 {sending
                   ? t('bridgeSending')
