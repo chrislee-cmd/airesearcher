@@ -41,7 +41,25 @@ grep -rnE "borderWidth: '1\.[0-9]px'|[2-9](\.[0-9])?px solid|1\.[34689]px solid|
   | grep -vE 'landing.css|login.css|lib/reports/prompts|7px solid transparent|11px solid|outline: [23]px solid transparent'
 ```
 
-**측정 grep 이 제3 경로를 못 덮으면 "0건"이 거짓이 된다 (사후 재발).** 머지 후 독립 확인에서 "보더 적용 스타일 잔존 0" 이라는 측정이 올라왔는데, 실제로는 main 에 3건이 살아 있었다 — `border: '3px dashed …'`(dashed 형태) · `` border: `3px dashed ${INK}` ``(템플릿 리터럴) · `` border: `${active ? 3 : 2.5}px solid …` ``(조건식). 같은 측정에서 잡힌 2건(`interpreter-fullview:459` · `recruiting-journey-shell:195`)은 `eslint-disable` **주석 문자열**이라 v5 기준 제외 대상이었고, **주석 2건과 적용 스타일 3건은 서로 다른 줄**이었다. 한쪽을 다른 쪽으로 환원해 "피해는 주석뿐"으로 축소하면 실제 렌더되는 3건이 그대로 남는다. → **"0건" 보고를 받으면 측정에 쓴 정규식을 함께 받아서 경로 커버리지를 확인하라.** 특히 dashed·템플릿 리터럴·조건식은 단일 인용 리터럴 패턴에 안 걸린다.
+**측정 grep 이 경로를 못 덮으면 "0건"이 거짓이 된다 — 이 사이클에서 세 번 반복됐다.**
+
+| # | 놓친 이유 | 결과 |
+|---|---|---|
+| 1 | `\b` 가 `]` 뒤에서 작동하지 않음 (`\bborder-\[3px\]\b` 는 절대 매치 안 됨) | bracket 보더 300여 건을 조용히 놓침 |
+| 2 | 단일 인용 리터럴만 봄 (`'3px solid …'`) | 템플릿 리터럴·조건식·`borderWidth`·상수 보간 80곳 누락 → 머지 후 발견 |
+| 3 | `solid` 중심 + CSS 변수 **선언** 경로 누락 | `--cd-dashed-border: 1.6px dashed …` 1건 누락 → #1335·#1338 머지 후에도 생존 |
+
+3번은 머지 후 독립 측정(writer·jarvis)에서도 안 잡혔다. 폭이 **`dashed` 키워드와 함께 CSS 변수 선언 안**에 있었기 때문이다. 즉 **"0건" 보고는 측정 패턴을 함께 제출해야 검증 가능하다** — 보고된 숫자가 아니라 패턴의 경로 커버리지를 봐야 한다.
+
+**최종 패턴 (세 경로 + dashed + CSS 변수 선언까지 덮음).**
+
+```bash
+grep -rnE "borderWidth: '1\.[0-9]px'|[2-9](\.[0-9])?px (solid|dashed)|1\.[34689]px (solid|dashed)|[0-9]+px +-?[0-9]+px +0" src \
+  | grep -vE 'landing.css|login.css|lib/reports/prompts|7px solid transparent|11px solid|outline: [23]px solid transparent' \
+  | grep -vE ':[0-9]+: *(//|\*|/\*)' | grep -vE '1\.5px (solid|dashed)'   # 주석 · CD 지정 1.5px 제외
+```
+
+**주석 매치와 적용 스타일 매치를 환원하지 마라 (사후 재발).** 머지 후 독립 확인에서 "보더 적용 스타일 잔존 0" 이라는 측정이 올라왔는데, 실제로는 main 에 3건이 살아 있었다 — `border: '3px dashed …'`(dashed 형태) · `` border: `3px dashed ${INK}` ``(템플릿 리터럴) · `` border: `${active ? 3 : 2.5}px solid …` ``(조건식). 같은 측정에서 잡힌 2건(`interpreter-fullview:459` · `recruiting-journey-shell:195`)은 `eslint-disable` **주석 문자열**이라 v5 기준 제외 대상이었고, **주석 2건과 적용 스타일 3건은 서로 다른 줄**이었다. 한쪽을 다른 쪽으로 환원해 "피해는 주석뿐"으로 축소하면 실제 렌더되는 3건이 그대로 남는다. → **"0건" 보고를 받으면 측정에 쓴 정규식을 함께 받아서 경로 커버리지를 확인하라.** 특히 dashed·템플릿 리터럴·조건식은 단일 인용 리터럴 패턴에 안 걸린다.
 
 **교훈.** 시각 값 스윕의 완료 판정은 **정적 grep 으로 끝내면 안 된다.** grep 은 "내가 생각한 표현 경로"만 덮고, 값을 넣는 경로는 최소 3개(클래스 · 토큰 참조 · 인라인 문자열)이고 세 번째는 또 5가지로 갈라진다. **런타임 `getComputedStyle` 전수 감사가 유일하게 경로-불변인 오라클이다.** 이번에 두 번의 "잔존 0" 선언이 모두 런타임 감사에 의해 반증됐다.
 
