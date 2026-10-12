@@ -86,7 +86,7 @@ export function UtResultView({
         </div>
       )}
       {phase === 'error' && error && (
-        <div className="flex flex-col gap-2 rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+        <div className="flex flex-col gap-2 rounded-xs border border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
           <span>{error}</span>
           {onRetry && (
             <div>

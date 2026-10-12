@@ -131,8 +131,7 @@ export function CreditsUsagePredictor({
             style={{
               fontFamily: outfitStack,
               background: 'var(--canvas-accent)',
-              border: '2.5px solid var(--canvas-card-border)',
-              boxShadow: 'var(--memphis-shadow-xs)',
+              border: '1px solid var(--canvas-card-border)',
               color: '#fff',
             }}
             className="inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.18em]"
@@ -170,7 +169,7 @@ export function CreditsUsagePredictor({
                 color: '#000',
                 border: `${active ? 3 : 2.5}px solid var(--canvas-card-border)`,
                 borderRadius: '10px',
-                boxShadow: active ? '4px 4px 0 var(--canvas-card-border)' : '2px 2px 0 var(--canvas-card-border)',
+                boxShadow: active ? 'none' : 'none',
                 fontFamily: outfitStack,
                 fontWeight: 700,
                 opacity: 1,
@@ -208,7 +207,7 @@ export function CreditsUsagePredictor({
       <div
         style={{
           background: 'var(--canvas-bg)',
-          border: '3px solid var(--canvas-card-border)',
+          border: '1px solid var(--canvas-card-border)',
           borderRadius: 'var(--canvas-card-radius)',
           boxShadow: 'var(--canvas-card-shadow)',
         }}
@@ -240,7 +239,7 @@ export function CreditsUsagePredictor({
         </div>
         <div
           style={{
-            border: '2px solid var(--canvas-card-border)',
+            border: '1px solid var(--canvas-card-border)',
             borderRadius: '999px',
             background: '#fff',
           }}
@@ -260,7 +259,7 @@ export function CreditsUsagePredictor({
       <div
         style={{
           background: '#fff',
-          border: '3px solid var(--canvas-card-border)',
+          border: '1px solid var(--canvas-card-border)',
           borderRadius: 'var(--canvas-card-radius)',
           boxShadow: 'var(--canvas-card-shadow)',
         }}

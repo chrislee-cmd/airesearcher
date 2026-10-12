@@ -68,7 +68,7 @@ export function QaTesterList({ profiles: initial }: { profiles: QaTesterRow[] })
       </header>
 
       <table className="w-full text-sm">
-        <thead className="border-b-2 border-line-soft text-mute">
+        <thead className="border-b border-soft-hair text-mute">
           <tr>
             <th className="text-left p-2 font-medium">Email</th>
             <th className="text-left p-2 font-medium">Name</th>

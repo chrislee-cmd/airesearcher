@@ -85,7 +85,7 @@ export function CitationPopover({
             ref={panelRef}
             role="dialog"
             aria-label={citation.filename}
-            className="fixed z-overlay w-[min(28rem,calc(100vw-1rem))] rounded-sm border-[2px] border-ink bg-paper p-4 shadow-memphis-md"
+            className="fixed z-overlay w-[min(28rem,calc(100vw-1rem))] rounded-sm border border-soft-line bg-paper p-4 shadow-soft-popover"
             style={{ left: pos.left, top: pos.top }}
           >
             <div className="mb-2 flex items-center gap-2 border-b border-line-soft pb-2 text-xs-soft">

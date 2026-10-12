@@ -114,7 +114,7 @@ export function ProbingSpotlight({
         aria-label={t('popup.dialogAria')}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
-        className="relative w-full max-w-[720px] rounded-md border-[3px] border-amber bg-warning-bg p-8 shadow-[var(--fv-shadow-modal-amber)] sm:px-9"
+        className="relative w-full max-w-[720px] rounded-md border border-amber bg-warning-bg p-8 shadow-soft-popover sm:px-9"
       >
         {/* 닫기 ✕ — top-right. 오버레이 전체를 접는 동작이라 BUILD-SPEC §1-B
             dialog-close (주변 프레임과 별개로 스스로 보더를 갖는 유일 변종). */}
@@ -133,7 +133,7 @@ export function ProbingSpotlight({
           <span className="text-lg font-extrabold text-warning-text-deep">
             {t('popup.importanceHigh')}
           </span>
-          <span className="rounded-pill border-[1.4px] border-line bg-paper px-[11px] py-[3px] text-sm font-bold text-mute">
+          <span className="rounded-pill border border-soft-line bg-paper px-[11px] py-[3px] text-sm font-bold text-mute">
             {techniqueLabel}
           </span>
           {popup.target_section_label && (
@@ -150,7 +150,7 @@ export function ProbingSpotlight({
 
         {/* rationale — border-left amore. */}
         {popup.rationale && (
-          <p className="mb-6 border-l-[3px] border-amore pl-[13px] text-xl leading-relaxed text-mute">
+          <p className="mb-6 border-l-2 border-rose pl-[18px] text-xl leading-relaxed text-mute">
             {popup.rationale}
           </p>
         )}
@@ -180,21 +180,21 @@ export function ProbingSpotlight({
             {t('fv.spotlightAutosave')}
           </p>
           <div className="flex gap-2">
-            {/* Copy / Pin — CD §F4: border-2 ink · radius 11 · memphis-sm chrome.
+            {/* Copy / Pin — CD §F4: border ink · radius 11 · memphis-sm chrome.
                 Button primitive capsule/variant 와 불일치 → native 유지(셸 선례). */}
-            {/* eslint-disable-next-line react/forbid-elements -- CD spotlight action chrome (border-2 ink·radius 11·memphis-sm) ≠ Button primitive variant. */}
+            {/* eslint-disable-next-line react/forbid-elements -- CD spotlight action chrome (border ink·radius 11·memphis-sm) ≠ Button primitive variant. */}
             <button
               type="button"
               onClick={onCopy}
-              className="flex items-center gap-1.5 rounded-[var(--fv-radius-card)] border-2 border-ink bg-paper px-[15px] py-[9px] text-lg font-bold text-ink shadow-memphis-sm"
+              className="flex items-center gap-1.5 rounded-[var(--fv-radius-card)] border border-soft-line bg-paper px-[15px] py-[9px] text-lg font-bold text-ink shadow-soft-popover"
             >
               📋 {t('popup.copy')}
             </button>
-            {/* eslint-disable-next-line react/forbid-elements -- CD spotlight action chrome (border-2 ink·radius 11·memphis-sm) ≠ Button primitive variant. */}
+            {/* eslint-disable-next-line react/forbid-elements -- CD spotlight action chrome (border ink·radius 11·memphis-sm) ≠ Button primitive variant. */}
             <button
               type="button"
               onClick={onPin}
-              className="flex items-center gap-1.5 rounded-[var(--fv-radius-card)] border-2 border-ink bg-paper px-[15px] py-[9px] text-lg font-bold text-ink shadow-memphis-sm"
+              className="flex items-center gap-1.5 rounded-[var(--fv-radius-card)] border border-soft-line bg-paper px-[15px] py-[9px] text-lg font-bold text-ink shadow-soft-popover"
             >
               📌 {t('popup.pin')}
             </button>

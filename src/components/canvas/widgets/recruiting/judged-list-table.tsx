@@ -358,7 +358,7 @@ export function JudgedListTable({
                         {j.flags.length > 0 && (
                           <span
                             title={j.flags.map(FLAG_LABEL).join(', ')}
-                            className="rounded-full border border-warning-line bg-warning-bg px-1.5 text-xs-soft font-semibold text-ink-2"
+                            className="rounded-full bg-soft-warn-bg px-1.5 text-xs-soft font-semibold text-soft-warn-fg"
                           >
                             ⚠ {j.flags.length}
                           </span>

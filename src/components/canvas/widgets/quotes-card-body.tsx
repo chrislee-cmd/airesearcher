@@ -1261,9 +1261,9 @@ export function QuotesCardBody() {
               // shell WidgetStatusFooter(done) 가 담당.
               <div className="flex w-full flex-col items-center gap-4 py-5 text-center">
                 {/* 성공 체크박스 — 초록 틴트 bg + 초록 offset 그림자 = 신규 success
-                    토큰(bg-success-soft · shadow-memphis-md-success). radius 는 CD 16
+                    토큰(bg-success-soft ·). radius 는 CD 16
                     에 근접한 rounded-sm(14) 사용(스펙 근접 지침 · 과잉 토큰 회피). */}
-                <div className="flex h-16 w-16 items-center justify-center rounded-sm border-2 border-ink bg-success-soft text-display font-extrabold text-success shadow-memphis-md-success">
+                <div className="flex h-16 w-16 items-center justify-center rounded-sm border border-soft-line bg-success-soft text-display font-extrabold text-success ">
                   ✓
                 </div>
                 <div className="text-3xl font-extrabold text-ink">
@@ -1591,7 +1591,7 @@ export function QuotesCardBody() {
                     밖(shrink-0)이라 스크롤해도 항상 보인다. 다운로드는 confirm
                     없이 바로, 삭제는 confirm 모달(결정 3). */}
                 {selected.size > 0 && (
-                  <div className="mb-3 flex shrink-0 items-center gap-3 border-2 border-line-soft bg-amore-bg px-4 py-2 rounded-sm">
+                  <div className="mb-3 flex shrink-0 items-center gap-3 border border-soft-line bg-amore-bg px-4 py-2 rounded-sm">
                     <span className="text-sm font-semibold text-ink-2">
                       {tView('nSelected', { count: selected.size })}
                     </span>

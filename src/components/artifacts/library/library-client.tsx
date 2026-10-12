@@ -125,7 +125,7 @@ export function LibraryClient({
 
   // ── header slots ────────────────────────────────────────────────────────
   const search = (
-    <div className="flex max-w-[400px] flex-1 items-center gap-2.5 rounded-field border-[1.5px] border-ink bg-paper px-3.5 py-2">
+    <div className="flex max-w-[400px] flex-1 items-center gap-2.5 rounded-field border border-soft-line bg-paper px-3.5 py-2">
       <span className="text-lg text-mute-soft">🔍</span>
       <Input
         value={q}
@@ -141,7 +141,7 @@ export function LibraryClient({
     <Pressable
       onPress={() => setSort((s) => SORT_FIELDS[(SORT_FIELDS.indexOf(s) + 1) % SORT_FIELDS.length])}
       ariaLabel={t('sort.label')}
-      className="inline-flex shrink-0 items-stretch overflow-hidden rounded-control border-[1.5px] border-ink bg-paper shadow-memphis-sm"
+      className="inline-flex shrink-0 items-stretch overflow-hidden rounded-control border border-soft-line bg-paper"
     >
       <span className="flex items-center gap-1.5 px-3 py-2 text-md font-bold text-ink">
         ↕ {t(`sort.${sort}`)}
@@ -152,7 +152,7 @@ export function LibraryClient({
   );
 
   const viewToggle = (
-    <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-control border-[1.5px] border-ink bg-paper shadow-memphis-sm">
+    <span className="inline-flex shrink-0 items-stretch overflow-hidden rounded-control border border-soft-line bg-paper">
       <Pressable
         onPress={() => setView('list')}
         ariaLabel={t('view.list')}
@@ -258,7 +258,7 @@ export function LibraryClient({
               checked={allLoadedSelected}
               onToggle={toggleAll}
               ariaLabel={t('col.deliverable')}
-              boxClassName="h-[15px] w-[15px] rounded-xs border-[1.6px]"
+              boxClassName="h-[15px] w-[15px] rounded-xs border"
             />
             <span className="font-mono-label text-xs font-bold uppercase tracking-[0.08em] text-mute-soft">
               {t('col.deliverable')}

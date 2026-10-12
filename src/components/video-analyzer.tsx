@@ -94,7 +94,7 @@ function VideoMarkdown({ source }: { source: string }) {
           <strong className="font-semibold text-ink">{children}</strong>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2 text-md italic text-ink-2">
+          <blockquote className="my-3 border-l-2 border-rose pl-[18px] text-md text-ink-2">
             {children}
           </blockquote>
         ),

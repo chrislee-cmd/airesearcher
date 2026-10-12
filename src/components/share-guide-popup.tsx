@@ -182,7 +182,7 @@ export function ShareGuidePopup({
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-ink text-md font-semibold text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-soft-line text-md font-semibold text-ink"
           >
             {step}
           </span>
@@ -200,7 +200,7 @@ export function ShareGuidePopup({
         <p className="text-sm leading-snug text-mute-soft">{sub}</p>
 
         {/* 스크린샷 프레임 (이미지 애셋 + 주석 오버레이) */}
-        <div className="relative overflow-hidden rounded-sm border-2 border-ink">
+        <div className="relative overflow-hidden rounded-sm border border-soft-line">
           <Image
             src={asset.src}
             alt={t(`${s}.imgAlt`)}
@@ -222,14 +222,14 @@ export function ShareGuidePopup({
               <div
                 key={i}
                 aria-hidden="true"
-                className={`absolute rounded-2xs border-2 ${
+                className={`absolute rounded-2xs border ${
                   a.tone === 'good' ? 'border-success' : 'border-warning'
                 }`}
                 style={regionStyle(a.region)}
               >
                 {a.badge ? (
                   <span
-                    className={`absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border-2 bg-paper text-md font-bold leading-none ${
+                    className={`absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border bg-paper text-md font-bold leading-none ${
                       a.tone === 'good'
                         ? 'border-success text-success'
                         : 'border-warning text-warning'
@@ -250,7 +250,7 @@ export function ShareGuidePopup({
 
           {/* "시스템 오디오 ON" 필 (우상단, STEP2) */}
           {asset.badgeKey ? (
-            <span className="absolute right-2 top-2 rounded-pill border border-success bg-paper px-2 py-0.5 text-xs font-semibold text-success">
+            <span className="absolute right-2 top-2 rounded-pill bg-soft-ok-bg px-2 py-0.5 text-xs font-semibold text-soft-ok-fg">
               {t(asset.badgeKey)}
             </span>
           ) : null}

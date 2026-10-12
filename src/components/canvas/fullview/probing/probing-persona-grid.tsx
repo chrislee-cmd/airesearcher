@@ -9,8 +9,8 @@
    i18n(personaSection.*) 만 재사용한다.
 
    §F4 계약:
-   - filled 카드: border-2 ink · rounded-[--fv-radius-card] · paper ·
-     shadow-memphis-sm-faint.
+   - filled 카드: border 1 --line · rounded-[--fv-radius-card] · 흰 면 ·
+     그림자 없음.
    - empty 카드: border 1.6 dashed line-empty · paper-soft.
    - fill dots = signals count (≤3 정규화): 3=success · 2=amber · 1/0=line-empty.
    ──────────────────────────────────────────────────────────────────── */
@@ -99,8 +99,8 @@ function PersonaCard({
 
   const surfaceClass = `flex min-h-[112px] flex-col rounded-[var(--fv-radius-card)] p-[13px] text-left ${
     filled
-      ? 'border-2 border-ink bg-paper shadow-memphis-sm-faint'
-      : 'border-[1.6px] border-dashed border-line-empty bg-paper-soft'
+      ? 'border border-soft-line bg-paper'
+      : 'border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft'
   } ${clickable ? 'cursor-pointer transition-transform duration-150 hover:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore' : ''}`;
 
   const inner = (
@@ -190,7 +190,7 @@ export function ProbingPersonaGrid({
   const hasAnyPanel = data !== null;
 
   return (
-    <div className="flex min-h-0 flex-[5] flex-col overflow-y-auto border-r-2 border-ink p-[18px]">
+    <div className="flex min-h-0 flex-[5] flex-col overflow-y-auto border-r border-soft-hair p-[18px]">
       <div className="mb-3 font-mono-label text-xs font-bold uppercase tracking-[1px] text-mute-soft">
         {t('fv.personaBuilding')}
       </div>
@@ -220,7 +220,7 @@ export function ProbingPersonaGrid({
           ))}
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center rounded-[var(--fv-radius-card)] border-2 border-dashed border-line-empty bg-paper-soft px-4 py-8 text-center text-md text-mute">
+        <div className="flex flex-1 items-center justify-center rounded-[var(--fv-radius-card)] border-[1.5px] border-dashed border-soft-line-hover bg-paper-soft px-4 py-8 text-center text-md text-mute">
           {!isLive
             ? t('persona.emptyNotLive')
             : !hasTranscript

@@ -13,7 +13,7 @@
    기능은 불변 — 배선(onInject·IME-safe Enter/click 커밋·disabled-until-nonempty·
    PROBING_INJECT_QUESTION_MAX clamp·backfill 피드백)은 #1171 계약 그대로 재사용.
    외형만 CD 마크업/토큰(mono 미니라벨 · 1.5px ink radius22 입력 · amore 버튼 +
-   shadow-memphis-sm · border-b rhythm)으로 교체한다.
+   그림자 없음 · border-b rhythm)으로 교체한다.
    ──────────────────────────────────────────────────────────────────── */
 
 import { useState } from 'react';
@@ -54,7 +54,7 @@ export function ProbingFullviewInject({
 
       {/* row — 입력(flex:1) + Inject 버튼(shrink-0), stretch 정렬 */}
       <div className="flex items-stretch gap-[9px]">
-        <div className="flex min-w-0 flex-1 items-center overflow-hidden rounded-[var(--fv-radius-inject)] border-[1.5px] border-ink bg-paper px-4 py-[11px] focus-within:border-amore">
+        <div className="flex min-w-0 flex-1 items-center overflow-hidden rounded-[var(--fv-radius-inject)] border border-soft-line bg-paper px-4 py-[11px] focus-within:border-amore">
           <ChipInput
             value={draft}
             onChange={(e) =>
@@ -66,16 +66,16 @@ export function ProbingFullviewInject({
             className="w-full flex-1 truncate text-lg"
           />
         </div>
-        {/* amore CTA — border-2 ink · radius 22 · shadow-memphis-sm. Button
+        {/* amore CTA — border 1 --line · radius 22 · 그림자 없음. Button
             primitive 의 어느 variant(primary=bg-ink)와도 불일치 → 셸 선례
             (probing-spotlight action chrome)대로 native + eslint-disable. */}
-        {/* eslint-disable-next-line react/forbid-elements -- CD inject CTA (amore fill·border-2 ink·radius 22·shadow-memphis-sm) ≠ Button primitive variant (probing-spotlight 셸 선례와 동일). */}
+        {/* eslint-disable-next-line react/forbid-elements -- CD inject CTA (amore fill·border ink·radius 22·) ≠ Button primitive variant (probing-spotlight 셸 선례와 동일). */}
         <button
           type="button"
           onClick={inject}
           disabled={!canInject}
           title={t('inject.injectTitle')}
-          className="flex shrink-0 items-center rounded-[var(--fv-radius-inject)] border-2 border-ink bg-amore px-[18px] py-[11px] text-lg font-bold text-white shadow-memphis-sm transition-all duration-[var(--dur-fast)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          className="flex shrink-0 items-center rounded-[var(--fv-radius-inject)] border border-soft-line bg-amore px-[18px] py-[11px] text-lg font-bold text-white transition-all duration-[var(--dur-fast)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
           {t('inject.inject')}
         </button>

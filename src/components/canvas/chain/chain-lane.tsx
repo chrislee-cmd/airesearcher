@@ -91,11 +91,11 @@ export function ChainLane({
       data-chain-mode={mode}
       aria-label={title}
       style={{ borderRadius: 'var(--widget-card-frame-radius)' }}
-      className="inline-flex max-w-full flex-col overflow-hidden border-[3px] border-soft-line bg-soft-surface shadow-soft-card"
+      className="inline-flex max-w-full flex-col overflow-hidden border border-soft-line bg-soft-surface shadow-soft-card"
     >
       <header
         style={{ height: LANE_HEADER_H }}
-        className="flex shrink-0 items-center gap-4 border-b-2 border-soft-hair bg-soft-surface px-6"
+        className="flex shrink-0 items-center gap-4 border-b border-soft-hair bg-soft-surface px-6"
       >
         <span
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-nav ${auto ? 'bg-ink' : 'bg-soft-fill'}`}

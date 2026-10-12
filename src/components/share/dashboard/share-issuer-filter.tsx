@@ -13,7 +13,7 @@ export type IssuerOption = { name: string; isMine: boolean };
 function Avatar({ name, index }: { name: string; index: number }) {
   return (
     <span
-      className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border-[1.4px] border-ink text-xs font-extrabold text-ink ${TONE_BG[avatarTone(name)]} ${index > 0 ? '-ml-1.5' : ''}`}
+      className={`inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border border-soft-line text-xs font-extrabold text-ink ${TONE_BG[avatarTone(name)]} ${index > 0 ? '-ml-1.5' : ''}`}
     >
       {initials(name)}
     </span>
@@ -61,7 +61,7 @@ export function ShareIssuerFilter({
       <Pressable
         onPress={() => setOpen((v) => !v)}
         ariaLabel={allLabel}
-        className="inline-flex items-center gap-[7px] rounded-control border-[1.5px] border-ink bg-paper px-[11px] py-1.5 text-md font-bold text-ink shadow-memphis-sm-faint"
+        className="inline-flex items-center gap-[7px] rounded-control border border-soft-line bg-paper px-[11px] py-1.5 text-md font-bold text-ink"
       >
         <span className="inline-flex items-center">
           {stack.map((iss, i) => (
@@ -75,7 +75,7 @@ export function ShareIssuerFilter({
       </Pressable>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-fab flex w-max min-w-[180px] max-w-[280px] flex-col overflow-hidden rounded-panel border-2 border-ink bg-paper py-1 shadow-popover">
+        <div className="absolute left-0 top-[calc(100%+6px)] z-fab flex w-max min-w-[180px] max-w-[280px] flex-col overflow-hidden rounded-panel border border-soft-line bg-paper py-1 shadow-soft-popover">
           <MenuItem
             label={allLabel}
             active={selected === null}
@@ -125,7 +125,7 @@ function MenuItem({
       {avatar}
       {label}
       {me && (
-        <span className="rounded-xs border border-rose bg-rose-bg px-1 font-mono-label text-xs font-extrabold text-amore-deep">
+        <span className="rounded-xs bg-tint-rose px-1 font-mono-label text-xs font-extrabold text-amore-deep">
           {me}
         </span>
       )}

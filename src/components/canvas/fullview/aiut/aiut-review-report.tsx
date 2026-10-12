@@ -105,7 +105,7 @@ function InsightReport({
     <div className="flex flex-col gap-5">
       <div>
         <SectionLabel>{t('fv.review.insightReport')}</SectionLabel>
-        <div className="rounded-sm border-[1.4px] border-line bg-peach-bg p-4">
+        <div className="rounded-sm border border-soft-line bg-peach-bg p-4">
           <div className="mb-1.5 text-lg font-bold text-ink">
             {t('fv.review.taskHeading', {
               task: taskGoal.trim() ? taskGoal : t('fv.review.taskFallback'),
@@ -224,7 +224,7 @@ function InsightDetails({
             {summary.notable_quotes.map((q, i) => (
               <li
                 key={i}
-                className="border-l-2 border-line pl-2 text-md italic text-mute"
+                className="border-l-2 border-rose pl-2 text-md text-mute"
               >
                 &ldquo;{q.quote}&rdquo;
                 <span className="not-italic text-mute-soft">
@@ -271,7 +271,7 @@ function ClipThumb({
   }, [sessionId, clip.id, clip.has_clip, url, loading]);
 
   return (
-    <div className="overflow-hidden rounded-[var(--fv-radius-panel)] border-[1.5px] border-ink shadow-memphis-sm">
+    <div className="overflow-hidden rounded-[var(--fv-radius-panel)] border border-soft-line">
       {url ? (
         <video
           src={url}
@@ -385,7 +385,7 @@ function BehaviorMetricsGrid({
         {cards.map((c) => (
           <div
             key={c.label}
-            className={`rounded-[var(--fv-radius-panel)] border-[1.4px] border-line bg-paper p-[13px] ${
+            className={`rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper p-[13px] ${
               dim ? 'opacity-50' : ''
             }`}
           >
@@ -447,7 +447,7 @@ export function AiutReviewReport({
         </div>
       )}
       {phase === 'error' && error && (
-        <div className="flex flex-col items-start gap-2 rounded-sm border-2 border-warning bg-paper-soft px-3 py-2 text-md text-ink-2">
+        <div className="flex flex-col items-start gap-2 rounded-sm border border-warning bg-paper-soft px-3 py-2 text-md text-ink-2">
           <span>{error}</span>
           {onRetry && (
             <Button variant="secondary" size="sm" onClick={onRetry}>
@@ -477,7 +477,7 @@ export function AiutReviewReport({
           type="button"
           onClick={() => setLogOpen((v) => !v)}
           disabled={!transcript}
-          className="flex w-full items-center gap-2 rounded-[var(--fv-radius-panel)] border-[1.4px] border-line bg-paper px-[14px] py-3 text-left disabled:opacity-60"
+          className="flex w-full items-center gap-2 rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper px-[14px] py-3 text-left disabled:opacity-60"
         >
           <span aria-hidden className="text-lg">
             🗒️

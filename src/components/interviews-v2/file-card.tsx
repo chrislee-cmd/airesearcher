@@ -184,7 +184,7 @@ export function FileCard({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`flex w-full flex-col items-start gap-1 rounded-sm border-[2px] p-3 text-left transition-colors ${
+        className={`flex w-full flex-col items-start gap-1 rounded-sm border p-3 text-left transition-colors ${
           active ? 'border-amore bg-amore-bg' : 'border-line-soft hover:border-ink'
         }`}
       >
@@ -229,7 +229,7 @@ export function FileCard({
             ref={panelRef}
             role="dialog"
             aria-label={file.filename}
-            className="fixed z-overlay w-[min(18rem,calc(100vw-1rem))] rounded-sm border-[2px] border-ink bg-paper p-4 shadow-[3px_3px_0_black]"
+            className="fixed z-overlay w-[min(18rem,calc(100vw-1rem))] rounded-sm border border-soft-line bg-paper p-4 shadow-soft-popover"
             style={{ left: pos.left, top: pos.top }}
           >
             <div className="mb-2 truncate border-b border-line-soft pb-2 text-sm font-semibold text-ink-2">

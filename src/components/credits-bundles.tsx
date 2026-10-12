@@ -48,9 +48,9 @@ function memphisCta(tone: 'pink' | 'paper' | 'ink'): CSSProperties {
   return {
     background: bg,
     color: fg,
-    border: '3px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: '10px',
-    boxShadow: '4px 4px 0 var(--canvas-card-border)',
+    boxShadow: 'var(--sh-card)',
     fontFamily: outfitStack,
     fontWeight: 800,
     letterSpacing: '0.18em',
@@ -63,9 +63,9 @@ function memphisGhost(active: boolean): CSSProperties {
   return {
     background: '#fff',
     color: '#000',
-    border: '2.5px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: '10px',
-    boxShadow: active ? '3px 3px 0 var(--canvas-card-border)' : 'none',
+    boxShadow: active ? 'none' : 'none',
     fontFamily: outfitStack,
     fontWeight: 700,
   };
@@ -251,8 +251,7 @@ export function CreditsBundles() {
                 <span
                   style={{
                     background: 'var(--canvas-accent)',
-                    border: '2.5px solid var(--canvas-card-border)',
-                    boxShadow: 'var(--memphis-shadow-xs)',
+                    border: '1px solid var(--canvas-card-border)',
                     transform: 'rotate(-3deg)',
                     fontFamily: outfitStack,
                   }}
@@ -299,8 +298,7 @@ export function CreditsBundles() {
                   <span
                     style={{
                       background: 'var(--canvas-accent)',
-                      border: '2px solid var(--canvas-card-border)',
-                      boxShadow: 'var(--memphis-shadow-xs)',
+                      border: '1px solid var(--canvas-card-border)',
                       fontFamily: outfitStack,
                     }}
                     className="rounded-full px-2 py-0.5 text-xs font-extrabold uppercase tracking-[0.08em] text-paper"
@@ -345,8 +343,8 @@ export function CreditsBundles() {
           <div
             style={{
               background: '#000',
-              border: '3px solid #000',
-              boxShadow: '4px 4px 0 var(--canvas-accent)',
+              border: '1px solid var(--line)',
+              boxShadow: 'none',
               fontFamily: outfitStack,
             }}
             className="px-4 py-2 text-md font-bold text-paper rounded-sm"
@@ -366,7 +364,7 @@ export function CreditsBundles() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: '#fff',
-              border: '3px solid var(--canvas-card-border)',
+              border: '1px solid var(--canvas-card-border)',
               borderRadius: 'var(--canvas-card-radius)',
               boxShadow: 'var(--canvas-card-shadow)',
             }}
@@ -375,7 +373,7 @@ export function CreditsBundles() {
             <header
               style={{
                 background: 'var(--canvas-bg)',
-                borderBottom: '2.5px solid var(--canvas-card-border)',
+                borderBottom: '1px solid var(--canvas-card-border)',
                 borderTopLeftRadius: 'var(--canvas-card-radius)',
                 borderTopRightRadius: 'var(--canvas-card-radius)',
               }}
@@ -519,7 +517,7 @@ export function CreditsBundles() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: '#fff',
-              border: '3px solid var(--canvas-card-border)',
+              border: '1px solid var(--canvas-card-border)',
               borderRadius: 'var(--canvas-card-radius)',
               boxShadow: 'var(--canvas-card-shadow)',
             }}
@@ -528,7 +526,7 @@ export function CreditsBundles() {
             <header
               style={{
                 background: 'var(--canvas-bg)',
-                borderBottom: '2.5px solid var(--canvas-card-border)',
+                borderBottom: '1px solid var(--canvas-card-border)',
                 borderTopLeftRadius: 'var(--canvas-card-radius)',
                 borderTopRightRadius: 'var(--canvas-card-radius)',
               }}
@@ -559,9 +557,8 @@ export function CreditsBundles() {
               <dl
                 style={{
                   background: 'var(--canvas-bg)',
-                  border: '2.5px solid var(--canvas-card-border)',
+                  border: '1px solid var(--canvas-card-border)',
                   borderRadius: '10px',
-                  boxShadow: 'var(--memphis-shadow-xs)',
                 }}
                 className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 px-4 py-4"
               >
@@ -614,8 +611,7 @@ export function CreditsBundles() {
                 <dd
                   style={{
                     background: 'var(--canvas-accent)',
-                    border: '2px solid var(--canvas-card-border)',
-                    boxShadow: 'var(--memphis-shadow-xs)',
+                    border: '1px solid var(--canvas-card-border)',
                     borderRadius: '6px',
                   }}
                   className="inline-block self-start px-2 py-0.5 font-mono text-xl font-bold tracking-[0.08em] text-paper"

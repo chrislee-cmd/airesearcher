@@ -212,7 +212,7 @@ export function ParticipantCapture({
 
       {/* 프라이버시 동의 게이트 — 필수. */}
       <div className="mt-5 flex flex-col gap-3">
-        <div className="rounded-xs border-2 border-warning bg-paper-soft p-3 text-sm leading-relaxed text-ink-2">
+        <div className="rounded-xs border border-warning bg-paper-soft p-3 text-sm leading-relaxed text-ink-2">
           {t('consent.warning')}
         </div>
         <p className="text-xs leading-relaxed text-mute-soft">{t('consent.note')}</p>
@@ -228,7 +228,7 @@ export function ParticipantCapture({
       </div>
 
       {phase === 'error' && error && (
-        <div className="mt-4 rounded-xs border-2 border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
+        <div className="mt-4 rounded-xs border border-warning bg-paper-soft px-3 py-2 text-sm text-ink-2">
           {error}
         </div>
       )}

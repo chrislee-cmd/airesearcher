@@ -272,10 +272,10 @@ function PasteBox({
 // (기존 GenRow(BrandLoader) 대체 — CD 는 amore 톤 전용 처리.)
 function GeneratingRow({ label, sub }: { label: string; sub?: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-sm border-2 border-amore/35 bg-amore-bg px-4 py-3">
+    <div className="flex items-center gap-3 rounded-sm border border-amore/35 bg-amore-bg px-4 py-3">
       <span
         aria-hidden
-        className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-amore/30 border-t-amore"
+        className="h-4 w-4 shrink-0 animate-spin rounded-full border border-amore/30 border-t-amore"
       />
       <div className="min-w-0 flex-1">
         <div className="text-md font-semibold text-ink">{label}</div>

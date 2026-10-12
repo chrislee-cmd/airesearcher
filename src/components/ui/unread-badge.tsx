@@ -27,7 +27,7 @@ export function UnreadBadge({
         role="status"
         aria-label={ariaLabel}
         title={ariaLabel}
-        className="inline-block h-3 w-3 shrink-0 rounded-full border-2 border-ink bg-amore shadow-memphis-2xs"
+        className="inline-block h-3 w-3 shrink-0 rounded-full bg-amore"
       />
     );
   }
@@ -37,7 +37,7 @@ export function UnreadBadge({
       role="status"
       aria-label={ariaLabel}
       title={ariaLabel}
-      className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-pill border-2 border-ink bg-amore px-1.5 py-px font-mono text-xs font-bold tabular-nums text-paper shadow-memphis-2xs"
+      className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-pill bg-amore px-1.5 py-px font-mono text-xs font-bold tabular-nums text-paper "
     >
       {n > UNREAD_CAP ? UNREAD_CAP : n}
     </span>

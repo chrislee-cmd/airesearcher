@@ -12,8 +12,8 @@ import { Pressable } from './pressable';
 // so Export stays disabled with the CD hint; Move reuses /api/artifacts/assign
 // per movable row; Delete is out of scope (disabled).
 
-const PILL_ON = 'border-[1.5px] border-ink bg-paper shadow-memphis-sm';
-const PILL_OFF = 'border-[1.5px] border-ink/20 bg-surface-disabled text-mute';
+const PILL_ON = 'border border-soft-line bg-paper';
+const PILL_OFF = 'border border-soft-line bg-surface-disabled text-mute';
 
 export function BulkBar({
   selected,
@@ -64,8 +64,8 @@ export function BulkBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2.5 rounded-panel border-2 border-ink bg-warning-bg px-3.5 py-2.5 shadow-memphis-md-amber">
-      <span className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-xs border-[1.6px] border-ink bg-ink text-xs text-paper">
+    <div className="flex flex-wrap items-center gap-2.5 rounded-panel border border-soft-line bg-warning-bg px-3.5 py-2.5">
+      <span className="inline-flex h-[17px] w-[17px] items-center justify-center rounded-xs border border-soft-line bg-ink text-xs text-paper">
         ✓
       </span>
       <span className="text-lg font-extrabold text-ink">
@@ -111,7 +111,7 @@ export function BulkBar({
 
       <span
         title={t('deleteUnavailable')}
-        className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-pill border-[1.5px] border-ink/20 bg-surface-disabled px-3 py-1.5 text-md font-bold text-mute"
+        className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-pill border border-soft-line bg-surface-disabled px-3 py-1.5 text-md font-bold text-mute"
       >
         🗑 {t('bulk.delete')}
       </span>

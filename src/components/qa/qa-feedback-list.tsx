@@ -139,14 +139,14 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
     <div className="flex h-full">
       {/* 좌 사이드바 = 유저 리스트 */}
       <aside className="w-72 flex-shrink-0 border-r border-line-soft overflow-y-auto">
-        <header className="p-4 border-b-2 border-line-soft">
+        <header className="p-4 border-b border-soft-hair">
           <h2 className="text-md font-semibold text-ink">
             QA Testers ({userGroups.length})
           </h2>
         </header>
 
         {/* Tag 필터 (OR 다중 toggle) — 좌 사이드바 유저 목록과 우 상세를 함께 좁힌다. */}
-        <div className="p-4 border-b-2 border-line-soft space-y-3">
+        <div className="p-4 border-b border-soft-hair space-y-3">
           <div className="flex flex-wrap gap-1">
             {QA_TAGS.map((t) => (
               // eslint-disable-next-line react/forbid-elements -- compact filter chip; Button primitive capsule chrome unsuitable for a small toggle pill
@@ -256,7 +256,7 @@ export function QaFeedbackList({ feedbacks }: { feedbacks: QaFeedbackRow[] }) {
                         row (meta.silent=true) 를 시각 경고. 신규 row 는 이제
                         submit 시 차단되어 이 플래그가 안 붙는다. */}
                     {Boolean(f.meta?.silent) && (
-                      <span className="px-1.5 py-0.5 rounded-pill border border-warning bg-warning-bg text-xs-soft">
+                      <span className="px-1.5 py-0.5 rounded-pill bg-soft-warn-bg text-xs-soft text-soft-warn-fg">
                         ⚠ 무음 (재생 안 됨)
                       </span>
                     )}

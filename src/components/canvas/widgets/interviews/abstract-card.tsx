@@ -32,7 +32,7 @@ export function AbstractDoneHero({
       {/* 완료 타일 — 64×64 · border2 ink · success 연초록 틴트 + success memphis
           그림자. radius 는 CD 16 근접 rounded-sm(14) (공유 done hero 선례 · 임의값
           회피). */}
-      <div className="flex h-16 w-16 items-center justify-center rounded-sm border-2 border-ink bg-success-bg text-display font-extrabold text-success shadow-memphis-md-success">
+      <div className="flex h-16 w-16 items-center justify-center rounded-sm border border-soft-line bg-success-bg text-display font-extrabold text-success ">
         ✓
       </div>
       <div className="text-3xl font-extrabold text-ink">{t('cardDoneTitle')}</div>
@@ -51,8 +51,8 @@ export function AbstractDoneHero({
             onOpenFullview();
           }
         }}
-        className="inline-flex cursor-pointer select-none items-center gap-2 rounded-pill bg-ink font-bold text-paper shadow-memphis-sm-faint"
-        style={{ fontSize: 14, padding: '12px 22px', border: '1.4px solid var(--color-ink)' }}
+        className="inline-flex cursor-pointer select-none items-center gap-2 rounded-pill bg-ink font-bold text-paper "
+        style={{ fontSize: 14, padding: '12px 22px', border: '1px solid var(--color-ink)' }}
       >
         <DuotoneIcon name="fullview" size={16} mono />
         {t('cardDoneOpenFullview')}
@@ -69,7 +69,7 @@ export function AbstractDoneHero({
           }
         }}
         className="cursor-pointer select-none font-semibold text-mute-soft"
-        style={{ fontSize: 12.5, borderBottom: '1.5px solid var(--color-line-strong)', paddingBottom: 1 }}
+        style={{ fontSize: 12.5, borderBottom: '1px solid var(--color-line-strong)', paddingBottom: 1 }}
       >
         {t('cardDoneBackToFiles')}
       </span>
@@ -93,7 +93,7 @@ export function FilesCollapse({
     <details ref={detailsRef} className="group">
       <summary
         className="flex cursor-pointer list-none items-center gap-2.5 rounded-card bg-paper [&::-webkit-details-marker]:hidden"
-        style={{ padding: '11px 14px', border: '1.5px solid var(--color-line)' }}
+        style={{ padding: '11px 14px', border: '1px solid var(--color-line)' }}
       >
         <span
           aria-hidden

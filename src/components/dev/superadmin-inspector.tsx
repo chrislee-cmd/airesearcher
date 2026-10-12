@@ -143,7 +143,7 @@ function distanceGeom(a: DOMRect, b: DOMRect): { h: Seg | null; v: Seg | null } 
 function DistLabel({ left, top, text }: { left: number; top: number; text: string }) {
   return (
     <div
-      className="pointer-events-none fixed z-overlay -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xs border-[2px] border-amore bg-paper px-1.5 py-0.5 font-mono text-xs font-semibold text-amore shadow-memphis-xs-amore"
+      className="pointer-events-none fixed z-overlay -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-xs border border-amore bg-paper px-1.5 py-0.5 font-mono text-xs font-semibold text-amore shadow-soft-popover"
       style={{ left, top }}
     >
       {text}
@@ -161,7 +161,7 @@ function OutlineBox({
 }) {
   return (
     <div
-      className={`pointer-events-none fixed z-overlay rounded-xs border-[2px] ${
+      className={`pointer-events-none fixed z-overlay rounded-xs border ${
         accent ? 'border-amore' : 'border-ink'
       }`}
       style={{
@@ -385,7 +385,7 @@ function InspectorOverlay() {
     <div
       // pointer-events-none: hover 방해 금지. z-overlay(=70) 토큰 클래스 —
       // 하드코드 z-index 금지(§3.8 lint gate). Memphis 톤 소형 배지, DS 토큰만.
-      className="pointer-events-none fixed z-overlay flex flex-col gap-0.5 whitespace-nowrap rounded-xs border-[2px] border-ink bg-paper px-2 py-1 text-xs-soft font-semibold text-ink shadow-memphis-sm"
+      className="pointer-events-none fixed z-overlay flex flex-col gap-0.5 whitespace-nowrap rounded-xs border border-soft-line bg-paper px-2 py-1 text-xs-soft font-semibold text-ink shadow-soft-popover"
       style={{ left, top }}
     >
       <span className="flex items-center gap-1.5">

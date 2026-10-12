@@ -4,39 +4,38 @@ import type { ShareStatus } from './types';
 // **error 틴트 없음.** 철회는 고장이 아니라 사람이 의도한 일 — 붉은색은 철회
 // 버튼과 확인 모달에만. 목록에 붉은 배지가 뜨면 잘못된 화면처럼 읽힌다.
 //
-// - active  : success 도트(채움) · success 틴트
-// - expired : 속 빈 도트(paper + mute-soft 링) · paper-soft 틴트
-// - revoked : ink 도트(채움) · surface-disabled 틴트
+// Soft Identity (리브랜드 2단계) 핵심규칙 4 — **배지에 테두리가 없다.**
+// 틴트 면(--*-bg) + 진한 글자(--*-fg) + 6px 점. 만료와 철회는 **둘 다 회색
+// 면**이고 점 모양으로만 구분한다:
+// - active  : --ok-bg 면 · --ok-fg 글자 · 채운 --ok-dot 점
+// - expired : --fill 면 · --mute 글자 · **속 빈 점**(흰 면 + 1.5px --faint 링)
+// - revoked : --fill 면 · --mute 글자 · **채운 점**(--ink)
 
 type Tone = {
   dot: string;
   ring: boolean; // 속 빈 도트(만료)
   tint: string;
-  border: string;
   text: string;
 };
 
 const TONE: Record<ShareStatus, Tone> = {
   active: {
-    dot: 'bg-success',
+    dot: 'bg-soft-ok-dot',
     ring: false,
-    tint: 'bg-success-bg',
-    border: 'border-success-line',
-    text: 'text-success-text',
+    tint: 'bg-soft-ok-bg',
+    text: 'text-soft-ok-fg',
   },
   expired: {
-    dot: 'bg-paper',
+    dot: 'bg-soft-surface',
     ring: true,
-    tint: 'bg-paper-soft',
-    border: 'border-line-strong',
-    text: 'text-mute',
+    tint: 'bg-soft-fill',
+    text: 'text-soft-mute',
   },
   revoked: {
     dot: 'bg-ink',
     ring: false,
-    tint: 'bg-surface-disabled',
-    border: 'border-ink/24',
-    text: 'text-mute',
+    tint: 'bg-soft-fill',
+    text: 'text-soft-mute',
   },
 };
 
@@ -50,11 +49,11 @@ export function ShareStatusBadge({
   const t = TONE[status];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-pill border-[1.3px] ${t.tint} ${t.border} px-2.5 py-[3px] text-sm font-bold ${t.text}`}
+      className={`inline-flex items-center gap-1.5 rounded-pill ${t.tint} px-2.5 py-[3px] text-sm font-bold ${t.text}`}
     >
       <span
-        className={`h-[7px] w-[7px] rounded-full ${t.dot} ${
-          t.ring ? 'border-[1.6px] border-mute-soft' : ''
+        className={`h-1.5 w-1.5 rounded-full ${t.dot} ${
+          t.ring ? 'border-[1.5px] border-soft-faint' : ''
         }`}
       />
       {label}

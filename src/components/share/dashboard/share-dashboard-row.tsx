@@ -66,17 +66,18 @@ export function ShareDashboardRow({
   return (
     <div className="group flex flex-col border-b border-line bg-paper hover:bg-surface-canvas">
       <div className="flex items-center gap-[11px] px-6 py-[13px]">
-        {/* 산출물 톤 타일 — revoked 는 파스텔 상실. 아이콘 채움 = paper(§1.10). */}
+        {/* 산출물 톤 타일 — 죽은 행(만료·철회)은 파스텔 상실 → --fill 면 +
+            --faint 아이콘(장면 04 "죽은 행"). 살아 있는 행의 아이콘 채움 = paper(§1.10). */}
         <div
-          className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-icon border-2 ${
-            revoked ? 'border-ink/28 bg-surface-disabled' : `border-ink ${TONE_BG[item.tone]}`
-          } group-hover:shadow-memphis-sm-faint`}
+          className={`flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-icon ${
+            dim ? 'bg-soft-fill' : TONE_BG[item.tone]
+          }`}
         >
           <DuotoneIcon
             name={TONE_ICON[item.tone]}
             size={18}
             fill="var(--color-paper)"
-            stroke={revoked ? 'var(--color-mute-soft)' : undefined}
+            stroke={dim ? 'var(--faint)' : undefined}
           />
         </div>
 
@@ -89,7 +90,7 @@ export function ShareDashboardRow({
               {item.resourceTitle ?? item.resourceLabel}
             </span>
             <span
-              className={`shrink-0 rounded-xs border-[1.3px] border-line-strong px-1.5 py-px font-mono-label text-xs font-bold ${
+              className={`shrink-0 rounded-xs border border-soft-line px-1.5 py-px font-mono-label text-xs font-bold ${
                 revoked ? 'text-faint' : 'text-mute-soft'
               }`}
             >
@@ -100,21 +101,21 @@ export function ShareDashboardRow({
             <span>{t('meta.issuedOn', { date: mmdd(item.createdAt) })}</span>
             {showIssuer && (
               <span
-                className={`inline-flex items-center gap-[5px] ${revoked ? 'opacity-[.72]' : ''}`}
+                className={`inline-flex items-center gap-[5px] ${dim ? 'text-soft-faint' : ''}`}
               >
                 <span aria-hidden>·</span>
                 <span
-                  className={`${AVATAR_BASE} h-4 w-4 border-[1.3px] ${
-                    revoked
-                      ? 'border-ink/30 bg-surface-disabled text-mute'
-                      : `border-ink text-ink ${TONE_BG[avatarTone(issuerName)]}`
+                  className={`${AVATAR_BASE} h-4 w-4 ${
+                    dim
+                      ? 'bg-soft-fill text-soft-faint'
+                      : `text-ink ${TONE_BG[avatarTone(issuerName)]}`
                   }`}
                 >
                   {initials(issuerName)}
                 </span>
                 <span>{issuerName}</span>
                 {item.issuer.isMine && (
-                  <span className="rounded-xs border border-rose bg-rose-bg px-1 font-mono-label text-xs font-extrabold text-amore-deep">
+                  <span className="rounded-xs bg-tint-rose px-1 font-mono-label text-xs font-extrabold text-soft-rose-text">
                     {t('meta.mine')}
                   </span>
                 )}
@@ -137,7 +138,7 @@ export function ShareDashboardRow({
               {shownChips.map((email) => (
                 <span
                   key={email}
-                  className="rounded-xs border-[1.3px] border-line-strong bg-paper-soft px-[7px] py-0.5 font-mono-label text-xs-soft text-ink"
+                  className="rounded-xs border border-soft-line bg-paper-soft px-[7px] py-0.5 font-mono-label text-xs-soft text-ink"
                 >
                   {maskEmail(email)}
                 </span>
@@ -224,11 +225,11 @@ export function ShareDashboardRow({
 
       {/* 복사 실패 카드 — 토스트 대신 행 아래에서 주소 직접 선택(§1.7). */}
       {copyState === 'failed' && (
-        <div className="mx-6 mb-3 flex max-w-[430px] flex-col gap-2 rounded-panel border-2 border-ink bg-error-bg px-3.5 py-3">
+        <div className="mx-6 mb-3 flex max-w-[430px] flex-col gap-2 rounded-panel border border-soft-line bg-error-bg px-3.5 py-3">
           <span className="text-md font-extrabold text-error-text">
             {t('actions.copyFailedTitle')}
           </span>
-          <span className="truncate rounded-icon border-[1.5px] border-error-line bg-paper px-3 py-2 font-mono-label text-sm text-mute">
+          <span className="truncate rounded-icon border border-error-line bg-paper px-3 py-2 font-mono-label text-sm text-mute">
             {item.url}
           </span>
         </div>
@@ -253,7 +254,7 @@ function ExpiryCell({
         <span className="font-mono-label text-sm font-extrabold text-amber-text">
           {exp.date}
         </span>
-        <span className="inline-flex w-fit items-center gap-1 rounded-xs border-[1.3px] border-amber-line bg-warning-bg px-1.5 py-px font-mono-label text-xs font-extrabold text-amber-text">
+        <span className="inline-flex w-fit items-center gap-1 rounded-xs bg-soft-warn-bg px-1.5 py-px font-mono-label text-xs font-extrabold text-soft-warn-fg">
           {t('expiry.daysLeft', { days: exp.days })}
         </span>
       </>

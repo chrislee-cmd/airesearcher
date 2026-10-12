@@ -8,8 +8,8 @@
    로직/데이터만 재사용: TranslateSessionContext 스냅샷(promptedLines·
    inputLines·listeners·shareUrl·outputAudible·stop)을 read-only 로 미러.
 
-   레이아웃(§F4): 트윈 INPUT/OUTPUT 패널(flex:1 each · border-3 ink ·
-   radius-panel-lg · shadow-memphis-md) + 우측 rail 300px(출력오디오 토글 ·
+   레이아웃(§F4): 트윈 INPUT/OUTPUT 패널(flex:1 each · border 1 --line ·
+   radius-panel-lg · 그림자 없음) + 우측 rail 300px(출력오디오 토글 ·
    옵저버 링크 · 리스너 목록). INPUT 헤더 paper-soft·dot mute-soft / OUTPUT
    헤더 success-bg-soft·dot·label success.
 
@@ -104,7 +104,7 @@ export function InterpreterFullview() {
     );
     const langPill =
       sourceLangLabel && targetLangLabel ? (
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
           {sourceLangLabel} → {targetLangLabel}
         </span>
       ) : undefined;
@@ -141,7 +141,7 @@ export function InterpreterFullview() {
         {/* autoplay-blocked amber 배너 — host 로컬 모니터가 차단됐을 때 1클릭
             재활성. 일반 위젯 ttsBlockedBanner(translate-console §Layer A) 미러. */}
         {ttsBlocked ? (
-          <div className="flex flex-wrap items-center gap-[11px] rounded-sm border-2 border-warning-line-amber bg-warning-bg px-[15px] py-[11px] shadow-memphis-sm">
+          <div className="flex flex-wrap items-center gap-[11px] rounded-sm border border-warning-line-amber bg-warning-bg px-[15px] py-[11px]">
             <span aria-hidden className="text-xl leading-none">
               🔊
             </span>
@@ -160,7 +160,7 @@ export function InterpreterFullview() {
         {echoDetected ? (
           <div
             role="status"
-            className="rounded-sm border-2 border-warning-line-amber bg-warning-bg px-[15px] py-[11px] text-md font-bold text-warning-text shadow-memphis-sm"
+            className="rounded-sm border border-warning-line-amber bg-warning-bg px-[15px] py-[11px] text-md font-bold text-warning-text"
           >
             {t('echoDetected.notice')}
           </div>
@@ -218,8 +218,8 @@ export function InterpreterFullview() {
 
       {/* 우측 rail 300px — 출력오디오 · 옵저버 링크 · 리스너 */}
       <div className="flex w-[300px] shrink-0 flex-col gap-[14px] overflow-hidden">
-        {/* 출력 오디오 토글 (§F4: on = track success · knob paper · border-2 ink) */}
-        <div className="flex items-center gap-[11px] rounded-sm border-2 border-ink bg-paper px-[15px] py-[13px] shadow-memphis-sm">
+        {/* 출력 오디오 토글 (§F4: on = track success · knob paper · border ink) */}
+        <div className="flex items-center gap-[11px] rounded-sm border border-soft-line bg-paper px-[15px] py-[13px]">
           <span aria-hidden className="text-2xl leading-none">
             🔊
           </span>
@@ -240,7 +240,7 @@ export function InterpreterFullview() {
         </div>
 
         {/* 옵저버 링크 — mono 필드 + Copy (§F4: field border-1.5 ink · radius-field) */}
-        <div className="flex flex-col gap-[9px] rounded-sm border-[1.5px] border-line bg-paper-soft px-[15px] py-[13px]">
+        <div className="flex flex-col gap-[9px] rounded-sm border border-soft-line bg-paper-soft px-[15px] py-[13px]">
           <div className="flex items-center gap-[7px]">
             <span aria-hidden className="text-xl leading-none">
               🔗
@@ -250,7 +250,7 @@ export function InterpreterFullview() {
             </span>
           </div>
           <div className="flex gap-[7px]">
-            <div className="min-w-0 flex-1 truncate rounded-[var(--fv-radius-field)] border-[1.5px] border-ink bg-paper px-[11px] py-[9px] font-mono-label text-sm text-ink">
+            <div className="min-w-0 flex-1 truncate rounded-[var(--fv-radius-field)] border border-soft-line bg-paper px-[11px] py-[9px] font-mono-label text-sm text-ink">
               {shareUrl ?? t('interpreter.observerLinkPending')}
             </div>
             <CopyButton
@@ -274,7 +274,7 @@ export function InterpreterFullview() {
         </div>
 
         {/* 리스너 목록 (§F4: presence — success dot · mono id) */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border-[1.5px] border-line bg-paper-soft">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border border-soft-line bg-paper-soft">
           <div className="flex items-center gap-[7px] border-b border-line px-[15px] py-[12px]">
             <span aria-hidden className="text-lg leading-none">
               👂
@@ -321,13 +321,13 @@ function StreamPanel({
 }) {
   const isOutput = tone === 'output';
   const shadow =
-    isOutput && elevated ? 'shadow-memphis-md-success' : 'shadow-memphis-md';
+    isOutput && elevated ? '' : '';
   return (
     <section
-      className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-paper ${shadow}`}
+      className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-paper ${shadow}`}
     >
       <header
-        className={`flex shrink-0 items-center gap-2 border-b-2 border-ink px-[18px] py-[11px] ${
+        className={`flex shrink-0 items-center gap-2 border-b border-soft-hair px-[18px] py-[11px] ${
           isOutput ? 'bg-success-bg-soft' : 'bg-paper-soft'
         }`}
       >
@@ -407,10 +407,10 @@ function ShareMonitor({
     };
   }, [stream]);
   return (
-    <div className="flex min-h-0 flex-[1.15] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border-[3px] border-ink bg-ink shadow-memphis-md">
+    <div className="flex min-h-0 flex-[1.15] flex-col overflow-hidden rounded-[var(--fv-radius-panel-lg)] border border-soft-line bg-ink">
       {/* titlebar — macOS traffic lights(장식 예외) + URL pill + SHARING 뱃지.
           pad 9/13 · border-b 1.5px (#000 = border-strong) · bg ink-2 (§1). */}
-      <div className="flex shrink-0 items-center gap-2 border-b-[1.5px] border-[color:var(--border-strong)] bg-ink-2 px-[13px] py-[9px]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-soft-hair bg-ink-2 px-[13px] py-[9px]">
         {/* design-allow-hardcoded -- CD frame 10 traffic lights = literal macOS chrome (장식, 토큰 아님; aiut-live-monitor 선례) */}
         {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
           <span
@@ -463,13 +463,13 @@ function AudioToggle({
       aria-checked={on}
       aria-label={on ? onAria : offAria}
       onClick={onToggle}
-      className={`relative h-[26px] w-[44px] shrink-0 rounded-pill border-2 border-ink transition-colors ${
+      className={`relative h-[26px] w-[44px] shrink-0 rounded-pill border border-soft-line transition-colors ${
         on ? 'bg-success' : 'bg-paper-soft'
       }`}
     >
       <span
         aria-hidden
-        className={`absolute top-[1px] h-5 w-5 rounded-full border-[1.5px] border-ink bg-paper transition-all ${
+        className={`absolute top-[1px] h-5 w-5 rounded-full border border-soft-line bg-paper transition-all ${
           on ? 'right-[1px]' : 'left-[1px]'
         }`}
       />
@@ -536,7 +536,7 @@ function RevokeButton({
       type="button"
       onClick={onRevoke}
       disabled={disabled}
-      className="rounded-[var(--fv-radius-field)] border-[1.5px] border-line bg-paper px-[11px] py-[8px] text-sm font-bold text-mute-soft disabled:opacity-50"
+      className="rounded-[var(--fv-radius-field)] border border-soft-line bg-paper px-[11px] py-[8px] text-sm font-bold text-mute-soft disabled:opacity-50"
     >
       {label}
     </button>
@@ -561,7 +561,7 @@ function ListenerRow({
     [listener.user_agent],
   );
   return (
-    <li className="flex items-center gap-[9px] rounded-[var(--fv-radius-field)] border-[1.4px] border-line bg-paper px-[11px] py-[9px]">
+    <li className="flex items-center gap-[9px] rounded-[var(--fv-radius-field)] border border-soft-line bg-paper px-[11px] py-[9px]">
       <span
         aria-hidden
         className="h-2 w-2 shrink-0 rounded-full bg-success"

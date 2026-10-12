@@ -406,7 +406,7 @@ export function RecruitingJudgedTable({
                             title={j.flags
                               .map((f) => flagText(f, t))
                               .join(', ')}
-                            className="rounded-pill border border-warning-line-amber bg-warning-bg px-1.5 text-xs-soft font-extrabold text-warning-text"
+                            className="rounded-pill bg-soft-warn-bg px-1.5 text-xs-soft font-extrabold text-soft-warn-fg"
                           >
                             ⚠ {j.flags.length}
                           </span>

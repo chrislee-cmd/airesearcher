@@ -183,7 +183,7 @@ export function RecruitingJourneyShell({
             type="button"
             onClick={onRefresh}
             aria-label={t('fv.refresh')}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border-[1.5px] border-ink bg-paper text-md text-mute-soft shadow-memphis-sm hover:text-ink"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--fv-radius-close)] border border-soft-line bg-paper text-md text-mute-soft hover:text-ink"
           >
             ↻
           </button>
@@ -200,7 +200,7 @@ export function RecruitingJourneyShell({
             aria-selected={active}
             onClick={() => onTabChange(tab.key)}
             title={tab.hint}
-            className={`relative -mb-[2px] flex items-center gap-2 rounded-t-[var(--fv-radius-card)] border-2 border-b-0 border-ink px-[18px] py-[9px] ${
+            className={`relative -mb-[2px] flex items-center gap-2 rounded-t-[var(--fv-radius-card)] border border-b-0 border-soft-line px-[18px] py-[9px] ${
               active ? 'bg-surface-canvas' : 'bg-paper/35'
             }`}
           >
@@ -309,7 +309,7 @@ function MasterLinkChip({
       .catch(() => {});
   };
   return (
-    <span className="inline-flex items-center gap-[7px] rounded-pill border-[1.5px] border-ink bg-sky px-3 py-[5px] shadow-memphis-sm">
+    <span className="inline-flex items-center gap-[7px] rounded-pill bg-tint-sky px-3 py-[5px]">
       <span aria-hidden className="text-xs">
         🔗
       </span>

@@ -16,9 +16,9 @@
      의존 없이 안정 렌더.
    - DeskMarkdownBody — 공용 markdown→React 렌더러(프로즈 섹션).
 
-   레이아웃(§F4 Desk): 좌 210px scroll-spy nav(border-r-2 ink · paper-soft)
+   레이아웃(§F4 Desk): 좌 210px scroll-spy nav(border-r 1 --hair · paper-soft)
    + 우 flex-1 스크롤 스트림. 스트림 = 판단로그 카드 → 확장 키워드 → 섹션
-   카드(border-3 ink · rounded-sm · shadow-memphis-lg, 헤드 tint = kind별
+   카드(border 1 --line · rounded-sm · 그림자 없음, 헤드 tint = kind별
    rose/mint/sun/lav/neutral) → export 액션. scroll-spy 동작(Intersection
    Observer + 클릭 점프)은 워커 소유(BUILD-SPEC §4).
 
@@ -297,9 +297,9 @@ export function DeskFullviewBody({
 
   return (
     <div className="flex h-full min-h-0 bg-surface-canvas">
-      {/* 좌 nav — scroll-spy(§F4: 210px · border-r-2 ink · paper-soft). */}
+      {/* 좌 nav — scroll-spy(§F4: 210px · border-r ink · paper-soft). */}
       {navItems.length > 0 && (
-        <nav className="flex w-[210px] shrink-0 flex-col gap-1 overflow-y-auto border-r-2 border-ink bg-paper-soft px-3 py-4">
+        <nav className="flex w-[210px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-soft-hair bg-paper-soft px-3 py-4">
           <div className="px-2 pb-2 pt-0.5 font-mono-label text-xs font-bold uppercase tracking-[0.1em] text-faint">
             {t('sections')}
           </div>
@@ -318,7 +318,7 @@ export function DeskFullviewBody({
                 }}
                 className={`flex items-center gap-2 rounded-[var(--fv-radius-nav)] px-2.5 py-2 text-left text-sm transition-colors ${
                   active
-                    ? 'bg-cyan font-extrabold text-ink'
+                    ? 'border border-soft-line bg-soft-surface font-bold text-ink'
                     : 'font-semibold text-mute-soft hover:text-ink'
                 }`}
               >
@@ -357,7 +357,7 @@ export function DeskFullviewBody({
               {similarKeywords.map((k) => (
                 <span
                   key={k}
-                  className="rounded-pill border-[1.4px] border-line bg-paper px-3 py-[5px] text-sm font-semibold text-ink"
+                  className="rounded-pill border border-soft-line bg-paper px-3 py-[5px] text-sm font-semibold text-ink"
                 >
                   {k}
                 </span>
@@ -388,7 +388,7 @@ export function DeskFullviewBody({
           ))
         ) : (
           // 인식 가능한 섹션 0 — raw markdown fallback(파서 계약).
-          <article className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-lg">
+          <article className="overflow-hidden rounded-sm border border-soft-line bg-paper">
             <div className="px-4 py-4 text-md leading-[1.65] text-ink-2">
               <DeskMarkdownBody source={job.output ?? ''} />
             </div>
@@ -409,7 +409,7 @@ export function DeskFullviewBody({
 // ── AI 판단 로그 카드(§09: border 1.5 line · radius-panel · 2-col grid) ──────
 function JudgmentLog({ lines, label }: { lines: string[]; label: string }) {
   return (
-    <section className="overflow-hidden rounded-[var(--fv-radius-panel)] border-[1.5px] border-line bg-paper">
+    <section className="overflow-hidden rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper">
       <div className="flex items-center gap-2 border-b border-line-soft px-3.5 py-2.5">
         <span aria-hidden className="text-lg leading-none">
           🧠
@@ -442,7 +442,7 @@ function JudgmentLog({ lines, label }: { lines: string[]; label: string }) {
   );
 }
 
-// ── 섹션 카드(§F4 Desk: border-3 ink · rounded-sm · shadow-memphis-lg) ──────
+// ── 섹션 카드(§F4 Desk: border 1 --line · rounded-sm · 그림자 없음) ─────────
 function SectionCard({
   section,
   quantClaims,
@@ -504,18 +504,18 @@ function SectionCard({
     <article
       ref={ref}
       id={section.id}
-      className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-lg"
+      className="overflow-hidden rounded-sm border border-soft-line bg-paper"
     >
-      {/* eslint-disable-next-line react/forbid-elements -- CD §F4 Desk 섹션 헤드는 border-b-2 ink·kind별 파스텔 tint 밴드의 collapsible 헤더 chrome 으로 Button primitive variant 와 형태 불일치. appendix 접기/펼치기 토글. */}
+      {/* eslint-disable-next-line react/forbid-elements -- CD §F4 Desk 섹션 헤드는 border-b ink·kind별 파스텔 tint 밴드의 collapsible 헤더 chrome 으로 Button primitive variant 와 형태 불일치. appendix 접기/펼치기 토글. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`flex w-full items-center gap-2.5 border-b-2 border-ink px-4 py-3 text-left ${visual.headBg}`}
+        className={`flex w-full items-center gap-2.5 border-b border-soft-hair px-4 py-3 text-left ${visual.headBg}`}
       >
         <span
           aria-hidden
-          className={`h-[9px] w-[9px] shrink-0 rounded-full border-[1.5px] border-ink ${visual.dot}`}
+          className={`h-[9px] w-[9px] shrink-0 rounded-full border border-soft-line ${visual.dot}`}
         />
         <span aria-hidden className="text-lg leading-none">
           {visual.icon}
@@ -585,7 +585,7 @@ function SectionCard({
               {section.topics.map((topic) => (
                 <div
                   key={topic.id}
-                  className="rounded-[var(--fv-radius-card)] border-2 border-ink bg-paper p-3.5 shadow-memphis-sm-faint"
+                  className="rounded-[var(--fv-radius-card)] border border-soft-line bg-paper p-3.5"
                 >
                   {topic.title && (
                     <div className="mb-1.5 text-md font-bold text-ink">
@@ -605,7 +605,7 @@ function SectionCard({
   );
 }
 
-// ── RQ 카드(§F4: border-2 ink · radius-card(11) · shadow-memphis-sm-faint) ──
+// ── RQ 카드(§F4: border 1 --line · radius-card(11) · 그림자 없음) ───────────
 function RQCard({
   rq,
   answer,
@@ -619,14 +619,14 @@ function RQCard({
 }) {
   const conf = answer ? CONFIDENCE_VISUAL[answer.confidence] : null;
   return (
-    <div className="rounded-[var(--fv-radius-card)] border-2 border-ink p-3.5 shadow-memphis-sm-faint">
+    <div className="rounded-[var(--fv-radius-card)] border border-soft-line p-3.5">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="font-mono-label text-xs font-extrabold tracking-[0.05em] text-mute-soft">
           {rq.id} · {rq.category} · {tDesk('importance')} {rq.importance}/5
         </span>
         {conf && answer && (
           <span
-            className={`ml-auto inline-flex items-center gap-1 rounded-pill border-[1.4px] px-2.5 py-[2px] text-sm font-bold ${conf.border} ${conf.text}`}
+            className={`ml-auto inline-flex items-center gap-1 rounded-pill border px-2.5 py-[2px] text-sm font-bold ${conf.border} ${conf.text}`}
           >
             <span aria-hidden>{conf.dot}</span>
             {answer.confidence}
@@ -643,7 +643,7 @@ function RQCard({
       )}
       {/* "To explore" 노트(§F4: warning-bg · warning-line-amber · warning-text). */}
       {answer && answer.missing_data.length > 0 && (
-        <div className="flex items-start gap-2 rounded-[var(--fv-radius-field)] border-[1.3px] border-warning-line-amber bg-warning-bg px-3 py-2">
+        <div className="flex items-start gap-2 rounded-[var(--fv-radius-field)] border border-warning-line-amber bg-warning-bg px-3 py-2">
           <span aria-hidden className="text-sm leading-none">
             🔎
           </span>
@@ -672,7 +672,7 @@ function QuantTable({
             {(['subject', 'value', 'source', 'tier'] as const).map((col) => (
               <th
                 key={col}
-                className={`border-b-[1.5px] border-line px-2 py-1.5 font-mono-label text-xs font-bold uppercase tracking-[0.05em] text-mute-soft ${
+                className={`border-b border-soft-hair px-2 py-1.5 font-mono-label text-xs font-bold uppercase tracking-[0.05em] text-mute-soft ${
                   col === 'value'
                     ? 'text-right'
                     : col === 'tier'
@@ -724,7 +724,7 @@ function ExportButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-[var(--fv-radius-panel)] border-[1.5px] border-ink bg-paper px-3.5 py-2 text-md font-bold text-ink shadow-memphis-sm"
+      className="inline-flex items-center gap-1.5 rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper px-3.5 py-2 text-md font-bold text-ink"
     >
       {label}
     </button>

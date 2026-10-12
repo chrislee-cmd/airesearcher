@@ -192,7 +192,7 @@ export function SchedulingCalendar({
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       {/* Toolbar — Group pill · week range (Outfit) · nav chips · Week/Day. */}
-      <div className="flex flex-wrap items-center gap-3 border-b-2 border-ink bg-paper px-5 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-soft-hair bg-paper px-5 py-3">
         {groupFilter && (
           <Select
             aria-label={groupFilter.ariaLabel}
@@ -240,7 +240,7 @@ export function SchedulingCalendar({
 
       {/* Weekday header — bg paper-soft, today date in amore. */}
       <div
-        className="grid border-b-2 border-ink bg-paper-soft"
+        className="grid border-b border-soft-hair bg-paper-soft"
         style={{ gridTemplateColumns: gridCols }}
       >
         <div />
@@ -332,7 +332,7 @@ export function SchedulingCalendar({
                         }
                       }}
                       className={[
-                        'absolute inset-x-1 z-fab cursor-pointer overflow-hidden border-2 px-1.5 py-1 text-left',
+                        'absolute inset-x-1 z-fab cursor-pointer overflow-hidden border px-1.5 py-1 text-left',
                         // design-allow-hardcoded -- CD frame 02 time-block radius 9px (documented outlier band, PROJECT.md §9); no exact DS radius token between rounded-xs(4) and rounded-sm(14)
                         'rounded-[9px]',
                         skin.block,
@@ -368,7 +368,7 @@ export function SchedulingCalendar({
       </div>
 
       {/* Legend — colored swatches + click hint. */}
-      <div className="flex flex-wrap items-center gap-4 border-t-2 border-ink bg-paper-soft px-5 py-2.5">
+      <div className="flex flex-wrap items-center gap-4 border-t border-soft-hair bg-paper-soft px-5 py-2.5">
         <LegendChip
           className="border-slot-proposed-border bg-slot-proposed-bg"
           label={t('statusProposed')}
@@ -391,7 +391,7 @@ function LegendChip({ className, label }: { className: string; label: string }) 
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
-        className={`inline-block h-3.5 w-3.5 rounded-xs border-[1.5px] ${className}`}
+        className={`inline-block h-3.5 w-3.5 rounded-xs border ${className}`}
       />
       <span className="text-xs font-semibold text-mute">{label}</span>
     </span>
@@ -420,7 +420,7 @@ function NavChip({
       aria-label={ariaLabel}
       onClick={onClick}
       className={[
-        'inline-flex h-[30px] items-center justify-center border-[1.5px] border-ink bg-paper text-md font-bold text-ink shadow-memphis-sm transition-colors hover:bg-paper-soft',
+        'inline-flex h-[30px] items-center justify-center border border-soft-line bg-paper text-md font-bold text-ink transition-colors hover:bg-paper-soft',
         // design-allow-hardcoded -- CD frame 02 nav-chip radius 8px (documented outlier band, PROJECT.md §9); no exact DS radius token between rounded-xs(4) and rounded-sm(14)
         'rounded-[8px]',
         wide ? 'px-3' : 'w-[30px]',
@@ -449,7 +449,7 @@ function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className="inline-flex shrink-0 overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm"
+      className="inline-flex shrink-0 overflow-hidden rounded-pill border border-soft-line "
     >
       {options.map((o) => {
         const active = o.value === value;

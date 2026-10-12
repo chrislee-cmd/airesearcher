@@ -248,7 +248,7 @@ export function ToplineBlockView({ block }: { block: ToplineBlock }) {
     return (
       <blockquote
         {...common}
-        className="my-3 border-l-2 border-amore bg-amore-bg px-4 py-2"
+        className="my-3 border-l-2 border-rose pl-[18px]"
       >
         <p className="whitespace-pre-wrap text-md italic leading-[1.7] text-ink-2">
           {block.md}
@@ -310,7 +310,7 @@ export function ToplineBlockView({ block }: { block: ToplineBlock }) {
     return (
       <div
         {...common}
-        className="my-3 rounded-sm border border-line border-l-2 border-l-amore bg-paper px-4 py-3"
+        className="my-3 rounded-sm border border-soft-line border-l-2 border-l-rose bg-paper px-4 py-3"
       >
         {block.question && (
           <div className="mb-2 flex items-start gap-2">
@@ -341,7 +341,7 @@ export function ToplineBlockView({ block }: { block: ToplineBlock }) {
     return (
       <section
         {...common}
-        className="my-3 rounded-sm border border-line border-l-2 border-l-amore bg-paper px-4 py-3"
+        className="my-3 rounded-sm border border-soft-line border-l-2 border-l-rose bg-paper px-4 py-3"
       >
         <div className="mb-1.5">
           <span className="inline-block rounded-xs bg-amore-bg px-1.5 py-0.5 text-xs-soft font-semibold uppercase tracking-[0.18em] text-amore">
@@ -360,7 +360,7 @@ export function ToplineBlockView({ block }: { block: ToplineBlock }) {
       {...common}
       className={
         isInsight
-          ? 'my-2 rounded-sm border-l-2 border-line px-3 py-1'
+          ? 'my-2 rounded-sm border-l border-soft-hair px-3 py-1'
           : 'my-2'
       }
     >

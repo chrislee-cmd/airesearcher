@@ -49,9 +49,9 @@ export function CreditsStatusBanner({
       aria-live="polite"
       style={{
         background: isSuccess ? 'var(--canvas-bg)' : '#fff',
-        border: '3px solid var(--canvas-card-border)',
+        border: '1px solid var(--canvas-card-border)',
         borderRadius: 'var(--canvas-card-radius)',
-        boxShadow: '4px 4px 0 var(--canvas-card-border)',
+        boxShadow: 'var(--sh-card)',
         fontFamily: 'var(--font-outfit), var(--font-sans)',
       }}
       className="mb-4 flex items-center justify-between gap-4 px-4 py-3 text-md rounded-sm"

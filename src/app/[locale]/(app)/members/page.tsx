@@ -34,9 +34,9 @@ export default async function MembersPage({
               style={{
                 background: 'var(--sidebar-bg)',
                 border:
-                  'var(--sidebar-border-width) solid var(--sidebar-border)',
+                  '1px solid var(--line)',
                 borderRadius: 'var(--sidebar-nav-radius)',
-                boxShadow: 'var(--memphis-shadow-sm)',
+                boxShadow: 'var(--sh-card)',
               }}
             >
               <div
@@ -44,7 +44,7 @@ export default async function MembersPage({
                 style={{
                   fontFamily: OUTFIT_STACK,
                   fontWeight: 800,
-                  color: 'var(--sidebar-border)',
+                  color: 'var(--ink)',
                 }}
               >
                 {t('invite')}
@@ -66,9 +66,9 @@ function MembersHeader({ title }: { title: string }) {
       className="mb-6 flex items-end justify-between gap-4 px-5 py-4"
       style={{
         background: 'var(--sidebar-bg-strong)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <h1
@@ -77,7 +77,7 @@ function MembersHeader({ title }: { title: string }) {
           fontFamily: OUTFIT_STACK,
           fontWeight: 800,
           letterSpacing: '-0.03em',
-          color: 'var(--sidebar-border)',
+          color: 'var(--ink)',
           lineHeight: 1,
         }}
       >
@@ -88,9 +88,8 @@ function MembersHeader({ title }: { title: string }) {
         className="hidden h-5 w-5 sm:inline-block"
         style={{
           background: 'var(--sidebar-active-bg)',
-          border: '2px solid var(--sidebar-border)',
+          border: '1px solid var(--line)',
           borderRadius: 999,
-          boxShadow: 'var(--memphis-shadow-xs)',
         }}
       />
     </div>
@@ -104,10 +103,10 @@ async function EmptyAuthCard() {
       className="p-6 text-md"
       style={{
         background: 'var(--sidebar-nav-bg)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
-        color: 'var(--sidebar-border)',
+        boxShadow: 'var(--sh-card)',
+        color: 'var(--ink)',
         fontFamily: OUTFIT_STACK,
         fontWeight: 600,
       }}
@@ -161,9 +160,9 @@ async function MembersTable({
       className="overflow-hidden"
       style={{
         background: 'var(--sidebar-nav-bg)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <table className="w-full text-md">
@@ -171,7 +170,7 @@ async function MembersTable({
           style={{
             background: 'var(--sidebar-bg)',
             borderBottom:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-border)',
+              '1px solid var(--line)',
           }}
         >
           <tr>
@@ -180,7 +179,7 @@ async function MembersTable({
               style={{
                 fontFamily: OUTFIT_STACK,
                 fontWeight: 800,
-                color: 'var(--sidebar-border)',
+                color: 'var(--ink)',
               }}
             >
               {t('email')}
@@ -190,7 +189,7 @@ async function MembersTable({
               style={{
                 fontFamily: OUTFIT_STACK,
                 fontWeight: 800,
-                color: 'var(--sidebar-border)',
+                color: 'var(--ink)',
               }}
             >
               {t('role')}
@@ -225,9 +224,9 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
       className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center"
       style={{
         background: 'var(--sidebar-nav-bg)',
-        border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+        border: '1px solid var(--line)',
         borderRadius: 'var(--sidebar-nav-radius)',
-        boxShadow: 'var(--memphis-shadow-sm)',
+        boxShadow: 'var(--sh-card)',
       }}
     >
       <span
@@ -235,9 +234,8 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
         className="inline-block h-10 w-10"
         style={{
           background: 'var(--sidebar-active-bg)',
-          border: 'var(--sidebar-border-width) solid var(--sidebar-border)',
+          border: '1px solid var(--line)',
           borderRadius: 999,
-          boxShadow: 'var(--memphis-shadow-xs)',
         }}
       />
       <div
@@ -246,7 +244,7 @@ async function EmptyMembersCard({ canManage }: { canManage: boolean }) {
           fontFamily: OUTFIT_STACK,
           fontWeight: 800,
           letterSpacing: '-0.02em',
-          color: 'var(--sidebar-border)',
+          color: 'var(--ink)',
         }}
       >
         {t('emptyTitle')}

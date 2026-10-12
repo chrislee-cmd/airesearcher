@@ -63,19 +63,19 @@ function cardClassName(selected: boolean, variant: ModeVariant): string {
     // 절대 건드리지 말 것 (MODECARD-FIX 는 default variant 한정).
     return (
       'relative flex aspect-square flex-col items-center justify-start gap-1.5 ' +
-      'overflow-hidden rounded-sm border-[2px] border-line-soft bg-paper p-3 text-center'
+      'overflow-hidden rounded-sm border border-soft-line bg-paper p-3 text-center'
     );
   }
   // default — 고정 128 프레임(box-border, flex column, top-align). 남는 공간은
   // 카드 하단 패딩으로 한 번에 모임 (justify-content:space-between 금지 — 내부 갭
   // 재발). radius 13/shadow glow 는 proposed 토큰(rounded-mode-card·
-  // shadow-select-glow). border 폭은 idle/selected 동일 border-2 로 유지해 선택
+  // shadow-select-glow). border 폭은 idle/selected 동일 1px 로 유지해 선택
   // 시 reflow 를 막고 색만 swap (CD 1.4/2 는 stand-alone 렌더 값 — 보수적으로 폭
   // 고정, canvas 안에서는 어차피 memphis globals 가 폭을 governs). 높이/clamp/
   // top-align 는 canvas·비-canvas 양쪽 모두 적용되는 핵심 델타.
   return (
     'relative flex flex-col items-center justify-start box-border h-[var(--mode-card-h)] ' +
-    'rounded-mode-card border-2 py-[13px] px-[11px] text-center transition-colors ' +
+    'rounded-mode-card border py-[13px] px-[11px] text-center transition-colors ' +
     'disabled:cursor-not-allowed disabled:opacity-40 ' +
     (selected
       ? 'border-amore bg-paper shadow-select-glow'

@@ -43,7 +43,7 @@ export function LibraryEmpty() {
   const router = useRouter();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3.5 p-8 text-center">
-      <div className="flex h-[66px] w-[66px] items-center justify-center rounded-modal border-[3px] border-ink bg-paper-soft text-display shadow-memphis-md">
+      <div className="flex h-[66px] w-[66px] items-center justify-center rounded-modal bg-soft-fill text-display">
         📥
       </div>
       <div className="text-3xl font-extrabold text-ink" style={OUTFIT}>
@@ -55,7 +55,7 @@ export function LibraryEmpty() {
           <Pressable
             key={f}
             onPress={() => router.push(FEATURE_OPEN_HREF[f])}
-            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-pill border-2 border-ink px-3.5 py-[7px] text-md font-bold text-ink shadow-memphis-sm ${FEATURE_TONE_BG[f]}`}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-pill border border-soft-line px-3.5 py-[7px] text-md font-bold text-ink ${FEATURE_TONE_BG[f]}`}
           >
             {FEATURE_ICON[f]} {t(`empty.cta.${f}`)}
           </Pressable>
@@ -77,7 +77,7 @@ export function LibraryFilteredEmpty({
   const t = useTranslations('Library');
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-      <div className="flex h-[58px] w-[58px] items-center justify-center rounded-panel-lg border-[2.5px] border-dashed border-line-empty bg-surface-canvas text-2xl">
+      <div className="flex h-[58px] w-[58px] items-center justify-center rounded-panel-lg border-[1.5px] border-dashed border-soft-line-hover bg-surface-canvas text-2xl">
         🔍
       </div>
       <div className="text-2xl font-extrabold text-ink" style={OUTFIT}>
@@ -89,7 +89,7 @@ export function LibraryFilteredEmpty({
             <Pressable
               key={c.key}
               onPress={c.onRemove}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill border-[1.4px] border-amore bg-amore-bg/40 px-2.5 py-[3px] text-sm font-bold text-amore-deep"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill border border-amore bg-amore-bg/40 px-2.5 py-[3px] text-sm font-bold text-amore-deep"
               ariaLabel={c.label}
             >
               {c.label} ✕
@@ -102,7 +102,7 @@ export function LibraryFilteredEmpty({
       </p>
       <Pressable
         onPress={onClear}
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill border-2 border-ink bg-paper px-4 py-2 text-md font-extrabold text-ink shadow-memphis-sm"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-4 py-2 text-md font-extrabold text-ink "
       >
         ↺ {t('filteredEmpty.clear')}
       </Pressable>
@@ -114,7 +114,7 @@ export function LibraryError({ onRetry }: { onRetry: () => void }) {
   const t = useTranslations('Library');
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3.5 p-8 text-center">
-      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-modal border-[3px] border-ink bg-error-bg text-display shadow-memphis-md-error">
+      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-modal bg-soft-err-bg text-display">
         ⚠️
       </div>
       <div className="text-3xl font-extrabold text-ink" style={OUTFIT}>
@@ -124,11 +124,11 @@ export function LibraryError({ onRetry }: { onRetry: () => void }) {
       <div className="flex gap-2.5">
         <Pressable
           onPress={onRetry}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill border-2 border-ink bg-ink px-[18px] py-2 text-md font-extrabold text-paper shadow-memphis-md"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-pill border border-soft-line bg-ink px-[18px] py-2 text-md font-extrabold text-paper "
         >
           ↻ {t('error.retry')}
         </Pressable>
-        <span className="inline-flex items-center gap-1.5 rounded-pill border-[1.5px] border-ink/20 bg-paper px-4 py-2 text-md font-semibold text-mute">
+        <span className="inline-flex items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-4 py-2 text-md font-semibold text-mute">
           {t('error.support')}
         </span>
       </div>

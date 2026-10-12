@@ -15,7 +15,7 @@ import { CONSENT_CHANGED_EVENT } from '@/hooks/use-consent';
 // changes so Accept/Reject/Customize still wire to the same handlers.
 const memphisCard: CSSProperties = {
   background: '#fff',
-  border: '3px solid var(--canvas-card-border)',
+  border: '1px solid var(--canvas-card-border)',
   borderRadius: 'var(--canvas-card-radius)',
   boxShadow: 'var(--canvas-card-shadow)',
 };
@@ -25,11 +25,11 @@ function memphisAction(tone: 'ink' | 'paper'): CSSProperties {
   return {
     background: isInk ? '#000' : '#fff',
     color: isInk ? '#fff' : '#000',
-    border: '2.5px solid var(--canvas-card-border)',
+    border: '1px solid var(--canvas-card-border)',
     borderRadius: '10px',
     boxShadow: isInk
-      ? '3px 3px 0 var(--canvas-accent)'
-      : '3px 3px 0 var(--canvas-card-border)',
+      ? 'none'
+      : 'none',
     fontWeight: 700,
   };
 }

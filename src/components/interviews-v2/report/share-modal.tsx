@@ -223,9 +223,9 @@ export function InterviewShareModal({
 
   return (
     <Modal open={open} onClose={onClose} size="sm" bare labelledBy="iv-share-title">
-      <div className="overflow-hidden rounded-modal border-[3px] border-ink bg-paper shadow-iv-modal-share">
+      <div className="overflow-hidden rounded-modal border border-soft-line bg-paper shadow-iv-modal-share">
         {/* 헤더 — rose. */}
-        <div className="flex items-center gap-2.5 border-b-2 border-ink bg-widget-header-rose px-[18px] py-3">
+        <div className="flex items-center gap-2.5 border-b border-soft-hair bg-widget-header-rose px-[18px] py-3">
           <DuotoneIcon name="link" size={18} />
           <div
             id="iv-share-title"
@@ -253,14 +253,14 @@ export function InterviewShareModal({
               {/* 링크 필드 + 복사 — 활성일 때만. */}
               {active && (
                 <div className="flex items-center gap-2.5">
-                  <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-control border-[1.5px] border-ink bg-paper-soft px-3 py-2.5 font-mono-label text-xs text-mute">
+                  <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-control border border-soft-line bg-paper-soft px-3 py-2.5 font-mono-label text-xs text-mute">
                     {viewerUrl(locale, share!.token)}
                   </div>
                   {/* eslint-disable-next-line react/forbid-elements -- 복사는 solid ink rounded-control chrome(memphis-sm-faint); Button primary radius 와 불일치 */}
                   <button
                     type="button"
                     onClick={() => void copyLink()}
-                    className="inline-flex shrink-0 items-center rounded-control bg-ink px-4 py-2.5 text-md font-extrabold text-paper shadow-memphis-sm-faint"
+                    className="inline-flex shrink-0 items-center rounded-control bg-ink px-4 py-2.5 text-md font-extrabold text-paper"
                   >
                     {t('shareCopy')}
                   </button>
@@ -268,7 +268,7 @@ export function InterviewShareModal({
               )}
 
               {/* 게이트 토글 카드. */}
-              <div className="flex flex-col gap-2.5 rounded-card border-[1.5px] border-ink/[0.14] bg-paper-soft px-3.5 py-3">
+              <div className="flex flex-col gap-2.5 rounded-card border border-soft-line/[0.14] bg-paper-soft px-3.5 py-3">
                 <div className="flex items-center gap-2.5">
                   {/* eslint-disable-next-line react/forbid-elements -- CD §1.4 토글 스위치는 34×20 전용 chrome(track success·knob·border 2 ink); primitive 부재(Checkbox 와 형태 상이) */}
                   <button
@@ -278,7 +278,7 @@ export function InterviewShareModal({
                     disabled={busy}
                     onClick={() => (active ? void disable() : void enable())}
                     aria-label={t('shareGateLabel')}
-                    className={`relative h-5 w-[34px] shrink-0 rounded-pill border-2 border-ink transition-colors disabled:opacity-50 ${
+                    className={`relative h-5 w-[34px] shrink-0 rounded-pill border border-soft-line transition-colors disabled:opacity-50 ${
                       active ? 'bg-success' : 'bg-paper'
                     }`}
                   >

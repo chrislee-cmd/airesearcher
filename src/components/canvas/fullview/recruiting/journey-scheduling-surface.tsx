@@ -116,7 +116,7 @@ const MAX_CHAT_PANELS = 4;
 
 // Pastel tints cycled across confirmed-roster group heads (BUILD-SPEC §1); the
 // inbox (미할당) head stays neutral (paper-soft) separately.
-const HEAD_TINTS = ['bg-sky', 'bg-mint', 'bg-lav', 'bg-peach', 'bg-cyan'] as const;
+const HEAD_TINTS = ['bg-tint-sky', 'bg-tint-mint', 'bg-tint-lav', 'bg-tint-peach', 'bg-tint-aqua'] as const;
 
 export function JourneySchedulingSurface({
   project,
@@ -646,7 +646,7 @@ export function JourneySchedulingSurface({
             sticky <td> is ignored in Chrome so scrolling columns bleed through
             the frozen ones. */}
         <table className="w-full border-separate border-spacing-0 whitespace-nowrap text-sm">
-          <thead className="[&_th]:border-b-2 [&_th]:border-ink [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
+          <thead className="[&_th]:border-b [&_th]:border-soft-hair [&_th]:bg-paper-soft [&_th]:font-mono [&_th]:text-xs [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-mute-soft">
             <tr className="text-left">
               <th
                 className="sticky z-table-cell-sticky px-3 py-2.5"
@@ -665,7 +665,7 @@ export function JourneySchedulingSurface({
                 {t('colName')}
               </th>
               <th
-                className="sticky z-table-cell-sticky border-r-2 border-ink px-3.5 py-2.5"
+                className="sticky z-table-cell-sticky border-r border-soft-hair px-3.5 py-2.5"
                 style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
               >
                 {t('colContact')}
@@ -732,7 +732,7 @@ export function JourneySchedulingSurface({
                       </div>
                     </td>
                     <td
-                      className={`sticky z-table-cell-sticky border-r-2 border-ink bg-paper px-3.5 py-2.5 font-mono text-md transition-colors group-hover:bg-paper-soft ${
+                      className={`sticky z-table-cell-sticky border-r border-soft-hair bg-paper px-3.5 py-2.5 font-mono text-md transition-colors group-hover:bg-paper-soft ${
                         contactMasked ? 'text-faint' : 'text-ink-2'
                       }`}
                       style={stickyStyle(STICKY_LEFT.contact, STICKY_W.contact)}
@@ -846,7 +846,7 @@ export function JourneySchedulingSurface({
 
         {/* Two-pane card (수정2, h 1020) — colored-block calendar (left) +
             multi-tile chat rail (right). */}
-        <div className="flex flex-col overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md lg:h-[1020px] lg:flex-row">
+        <div className="flex flex-col overflow-hidden rounded-sm border border-soft-line lg:h-[1020px] lg:flex-row">
           {/* Calendar pane — collapsible horizontally on desktop (수정3). Always
               shown on mobile (panes stack there). */}
           {!calendarFolded && (
@@ -885,7 +885,7 @@ export function JourneySchedulingSurface({
             type="button"
             onClick={() => setCalendarFolded((v) => !v)}
             aria-label={calendarFolded ? t('calendarExpand') : t('calendarFold')}
-            className="hidden shrink-0 flex-col items-center justify-center gap-3 bg-paper-soft transition-colors hover:bg-paper lg:flex lg:w-9 lg:border-l-2 lg:border-ink"
+            className="hidden shrink-0 flex-col items-center justify-center gap-3 bg-paper-soft transition-colors hover:bg-paper lg:flex lg:w-9 lg:border-l lg:border-soft-hair"
           >
             <span className="text-lg font-bold text-ink" aria-hidden>
               {calendarFolded ? '›' : '‹'}
@@ -903,7 +903,7 @@ export function JourneySchedulingSurface({
               closes independently. 타일폭 380px (comp 승, GAP-AUDIT §3). */}
           <div
             className={[
-              'flex w-full flex-col overflow-x-auto border-t-2 border-ink lg:min-h-0 lg:flex-row lg:border-t-0',
+              'flex w-full flex-col overflow-x-auto border-t border-soft-hair lg:min-h-0 lg:flex-row lg:border-t-0',
               calendarFolded
                 ? 'lg:min-w-0 lg:flex-1'
                 : 'lg:w-auto lg:max-w-[800px] lg:shrink-0',
@@ -918,7 +918,7 @@ export function JourneySchedulingSurface({
                   className={[
                     'flex min-h-[540px] w-full flex-col lg:min-h-0 lg:w-[380px] lg:shrink-0',
                     i > 0
-                      ? 'border-t-2 border-ink lg:border-l-2 lg:border-t-0'
+                      ? 'border-t border-soft-hair lg:border-l lg:border-t-0'
                       : '',
                   ].join(' ')}
                 >
@@ -971,7 +971,7 @@ export function JourneySchedulingSurface({
             project as 그룹뷰 sections (pastel head + count + rename) + 미할당 inbox;
             the calendar's current group floats to the top. The header CTA opens the
             broadcast chat thread; row selection drives the bulk action bar. */}
-        <div className="flex flex-col gap-2 rounded-sm border-2 border-ink p-4 shadow-memphis-sm">
+        <div className="flex flex-col gap-2 rounded-sm border border-soft-line p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {/* Roster disclosure toggle (수정1) — chevron + heading fold the
@@ -985,7 +985,7 @@ export function JourneySchedulingSurface({
                 className="-mx-1.5 -my-1 flex min-w-0 items-center gap-2 rounded-xs px-1.5 py-1 text-left transition-colors hover:bg-paper-soft"
               >
                 <span
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-2 border-ink bg-paper text-xs text-ink shadow-memphis-2xs transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border border-soft-line bg-paper text-xs text-ink transition-transform ${rosterOpen ? '' : '-rotate-90'}`}
                   aria-hidden
                 >
                   ▾
@@ -1029,7 +1029,7 @@ export function JourneySchedulingSurface({
           {/* Bulk action bar (탭② parity) — amber surface + amber hard shadow.
               그룹으로 보내기 인라인 reveal(신규 제목 Input / 기존 그룹 Select). */}
           {rosterOpen && selected.size > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-sm border-2 border-ink bg-warning-bg px-4 py-3 shadow-memphis-md-amber">
+            <div className="flex flex-wrap items-center gap-2 rounded-sm border border-soft-line bg-warning-bg px-4 py-3">
               <span className="text-md font-extrabold text-ink">
                 {t('bulkSelected', { count: selected.size })}
               </span>
@@ -1101,10 +1101,10 @@ export function JourneySchedulingSurface({
                 {rosterSections.map(({ key, title, rows, isInbox }, i) => (
                   <div
                     key={key}
-                    className="overflow-hidden rounded-sm border-2 border-ink shadow-memphis-md"
+                    className="overflow-hidden rounded-sm border border-soft-line"
                   >
                     <div
-                      className={`flex flex-wrap items-center gap-3 border-b-2 border-ink px-4 py-3 ${
+                      className={`flex flex-wrap items-center gap-3 border-b border-soft-hair px-4 py-3 ${
                         isInbox
                           ? 'bg-paper-soft'
                           : HEAD_TINTS[i % HEAD_TINTS.length]
@@ -1136,7 +1136,7 @@ export function JourneySchedulingSurface({
                           {title}
                         </span>
                       )}
-                      <span className="shrink-0 rounded-pill border-[1.4px] border-ink bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
+                      <span className="shrink-0 rounded-pill border border-soft-line bg-paper px-2.5 py-0.5 font-mono text-sm font-bold text-ink-2">
                         {rows.length}
                       </span>
                       {!isInbox && (
@@ -1306,7 +1306,7 @@ function RosterScopeToggle<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className="inline-flex shrink-0 overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm"
+      className="inline-flex shrink-0 overflow-hidden rounded-pill border border-soft-line "
     >
       {options.map((o) => {
         const active = o.value === value;

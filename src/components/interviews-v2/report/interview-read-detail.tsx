@@ -103,7 +103,7 @@ function ActionPill({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-3 py-1.5 text-md font-bold text-ink shadow-memphis-sm-faint disabled:opacity-45"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-3 py-1.5 text-md font-bold text-ink disabled:opacity-45"
     >
       {icon && <DuotoneIcon name={icon} size={15} />}
       {label}
@@ -176,7 +176,7 @@ function statusChipNode(
 ): ReactNode {
   if (status === 'done') {
     return (
-      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill border-[1.5px] border-success-line bg-success-bg px-3 py-1 font-mono-label text-sm font-extrabold text-success-text">
+      <span className="inline-flex shrink-0 items-center gap-[7px] rounded-pill bg-soft-ok-bg px-3 py-1 font-mono-label text-sm font-extrabold text-soft-ok-fg">
         <span className="inline-flex h-[14px] w-[14px] items-center justify-center rounded-full bg-success text-xs text-paper">
           ✓
         </span>
@@ -186,14 +186,14 @@ function statusChipNode(
   }
   if (status === 'generating') {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
         <span aria-hidden className="h-[7px] w-[7px] rounded-full bg-processing" />
         {labels.generating}
       </span>
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] border-ink bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-soft-line bg-paper px-[11px] py-1 font-mono-label text-sm font-bold text-ink">
       <span aria-hidden className="h-[7px] w-[7px] rounded-full bg-faint" />
       {labels.none}
     </span>
@@ -582,7 +582,7 @@ export function InterviewReadDetail({
         />
 
         {/* 탭바 (신규 행) — border-b 2px ink · paper. 좌: ← · 탭 pill · 우: 액션. */}
-        <div className="flex shrink-0 items-center gap-[11px] border-b-2 border-ink bg-paper px-5 py-[9px]">
+        <div className="flex shrink-0 items-center gap-[11px] border-b border-soft-hair bg-paper px-5 py-[9px]">
           {/* eslint-disable-next-line react/forbid-elements -- CD 탭바 ← 는 텍스트 back 어포던스(inline chrome); Button variant 와 불일치 */}
           <button
             type="button"
@@ -593,7 +593,7 @@ export function InterviewReadDetail({
             ←
           </button>
           {/* 탭 pill 그룹 — border 1.5 ink · rounded-pill · 활성 bg-ink text-paper. */}
-          <div className="inline-flex shrink-0 items-stretch overflow-hidden rounded-pill border-[1.5px] border-ink bg-paper">
+          <div className="inline-flex shrink-0 items-stretch overflow-hidden rounded-pill border border-soft-line bg-paper">
             {(['topline', 'search'] as const).map((tab) => (
               // eslint-disable-next-line react/forbid-elements -- CD 탭 pill 은 세그먼트 chrome(활성 bg-ink text-paper); Button variant 와 불일치
               <button
@@ -666,10 +666,10 @@ export function InterviewReadDetail({
                 aria-checked={editMode}
                 onClick={() => setEditMode((v) => !v)}
                 title={t('reportEditFull')}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-pill border-2 border-ink bg-ink px-[22px] py-[9px] text-md font-extrabold text-paper ${
+                className={`inline-flex shrink-0 items-center gap-2 rounded-pill border border-soft-line bg-ink px-[22px] py-[9px] text-md font-extrabold text-paper ${
                   editMode
                     ? 'translate-x-px translate-y-px shadow-none'
-                    : 'shadow-memphis-md-faint'
+                    : ''
                 }`}
               >
                 <DuotoneIcon name="typos" size={16} mono />
@@ -683,17 +683,17 @@ export function InterviewReadDetail({
         <div className="flex min-h-0 flex-1">
           {/* 파일 패널 — done=접힘 56 rail / 그 외 펼침 300. */}
           {collapsed ? (
-            <div className="flex w-[var(--iv-file-rail-w)] shrink-0 flex-col items-center gap-3 border-r-2 border-ink bg-paper-soft py-3.5">
+            <div className="flex w-[var(--iv-file-rail-w)] shrink-0 flex-col items-center gap-3 border-r border-soft-hair bg-paper-soft py-3.5">
               {/* eslint-disable-next-line react/forbid-elements -- CD 접힘 rail 펼치기 버튼은 30px 스퀘어 chrome(rounded-nav·memphis-sm); IconButton 고정 radius 와 불일치 */}
               <button
                 type="button"
                 onClick={() => setCollapsed(false)}
                 aria-label={t('reportExpandFiles')}
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-nav border-[1.5px] border-ink bg-paper shadow-memphis-sm"
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-nav border border-soft-line bg-paper "
               >
                 <DuotoneIcon name="chevron" size={14} />
               </button>
-              <div className="rounded-chip border-[1.4px] border-line-strong bg-paper px-[5px] py-0.5 font-mono-label text-xs font-extrabold text-ink">
+              <div className="rounded-chip border border-soft-line bg-paper px-[5px] py-0.5 font-mono-label text-xs font-extrabold text-ink">
                 {documents.length}
               </div>
               <div className="font-mono-label text-xs uppercase tracking-[0.16em] text-faint [writing-mode:vertical-rl]">
@@ -703,7 +703,7 @@ export function InterviewReadDetail({
           ) : (
             <div
               ref={fileListRef}
-              className="flex w-[var(--iv-file-panel-w)] shrink-0 flex-col gap-[11px] overflow-y-auto border-r-2 border-ink bg-paper p-4"
+              className="flex w-[var(--iv-file-panel-w)] shrink-0 flex-col gap-[11px] overflow-y-auto border-r border-soft-hair bg-paper p-4"
             >
               <div className="flex items-center gap-2">
                 <div className="font-mono-label text-xs uppercase tracking-[0.14em] text-mute-soft">
@@ -730,7 +730,7 @@ export function InterviewReadDetail({
                 <div
                   key={d.id}
                   data-doc-id={d.id}
-                  className={`flex items-center gap-[9px] rounded-card border-[1.5px] px-3 py-2.5 transition-colors ${
+                  className={`flex items-center gap-[9px] rounded-card border px-3 py-2.5 transition-colors ${
                     highlightDocId === d.id
                       ? 'border-amore bg-amore-bg'
                       : 'border-line-strong bg-paper'
@@ -803,7 +803,7 @@ export function InterviewReadDetail({
 
           {/* 목차 rail — done 한정 220. */}
           {showToc && (
-            <nav className="flex w-[var(--iv-toc-w)] shrink-0 flex-col gap-1 overflow-y-auto border-l-2 border-ink bg-paper px-3.5 py-4">
+            <nav className="flex w-[var(--iv-toc-w)] shrink-0 flex-col gap-1 overflow-y-auto border-l border-soft-hair bg-paper px-3.5 py-4">
               <div className="mb-2 font-mono-label text-xs uppercase tracking-[0.14em] text-mute-soft">
                 {t('reportToc')}
               </div>
@@ -815,8 +815,8 @@ export function InterviewReadDetail({
                   onClick={() => scrollToBlock(item.id)}
                   className={`border-l-[3px] py-1.5 pl-[11px] text-left text-md leading-[1.5] ${
                     i === 0
-                      ? 'border-amore bg-rose-bg font-extrabold text-ink'
-                      : 'border-transparent text-mute'
+                      ? 'border-rose font-bold text-ink'
+                      : 'border-transparent text-soft-mute'
                   }`}
                 >
                   {item.num != null ? `${String(item.num).padStart(2, '0')} ` : ''}

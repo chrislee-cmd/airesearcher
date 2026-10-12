@@ -122,14 +122,14 @@ function SectionQuestionRow({
   const rel = formatRelative(question.emitted_at, nowMs, t);
   const technique = techniqueLabelOf(question.technique, t);
   const leftAccent = question.is_starred
-    ? 'border-l-[3px] border-l-amore'
+    ? 'border-l border-l-amore'
     : question.importance === 'high'
-      ? 'border-l-[3px] border-l-amber'
+      ? 'border-l border-l-amber'
       : '';
 
   return (
     <li
-      className={`group rounded-[var(--fv-radius-field)] border-[1.4px] border-line px-[11px] py-[9px] ${leftAccent}`}
+      className={`group rounded-[var(--fv-radius-field)] border border-soft-line px-[11px] py-[9px] ${leftAccent}`}
     >
       <div className="mb-[3px] flex items-center gap-[7px]">
         <span

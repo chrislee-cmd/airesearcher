@@ -48,15 +48,17 @@ export function chipStatusOf(status: ChainNodeStatus): ChainChipStatus {
   }
 }
 
-// 색 = §3 칩 열. border/bg/text 세트로 묶어 토큰만 쓴다.
+// 색 = §3 칩 열. Soft Identity 핵심규칙 4 — **상태 배지는 테두리가 없다**:
+// 틴트 면(--*-bg) + 진한 글자(--*-fg) + 점. 상태 구분을 테두리가 아니라
+// 면/글자 색과 점이 전담하므로 bg/text 세트만 둔다.
 const CHIP_CLASS: Record<ChainChipStatus, string> = {
-  running: 'border-lav-line bg-lav-bg text-lav-text',
-  awaiting: 'border-amber-line bg-warning-bg text-amber-text',
-  pending: 'border-ink/[0.2] bg-paper text-mute',
-  done: 'border-success-line bg-success-bg text-success-text',
-  // 멈춤 = amber 실선 + paper(틴트 없음) — 바의 paused 노드와 같은 문법.
-  stopped: 'border-amber bg-paper text-amber-text',
-  skipped: 'border-ink/[0.24] bg-surface-disabled text-mute',
+  running: 'bg-soft-run-bg text-soft-run-fg',
+  awaiting: 'bg-soft-warn-bg text-soft-warn-fg',
+  pending: 'bg-soft-fill text-soft-mute',
+  done: 'bg-soft-ok-bg text-soft-ok-fg',
+  // 멈춤 = warn 글자 + 중립 면(틴트 없음) — 바의 paused 노드와 같은 문법.
+  stopped: 'bg-soft-fill text-soft-warn-fg',
+  skipped: 'bg-soft-fill text-soft-faint',
 };
 
 export type ChainChipProps = {
@@ -100,7 +102,7 @@ export function ChainChip({ step, stepTo, total, status }: ChainChipProps) {
     <span
       data-chain="chip"
       data-chain-chip={status}
-      className={`inline-flex shrink-0 items-center gap-[5px] rounded-pill border-[1.5px] py-0.5 pl-[7px] pr-[9px] text-xs-soft font-extrabold ${CHIP_CLASS[status]}`}
+      className={`inline-flex shrink-0 items-center gap-[5px] rounded-pill py-0.5 pl-[7px] pr-[9px] text-xs-soft font-extrabold ${CHIP_CLASS[status]}`}
     >
       <DuotoneIcon name="link" size={12} stroke="currentColor" />
       {label}

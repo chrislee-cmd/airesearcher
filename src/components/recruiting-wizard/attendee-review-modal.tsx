@@ -163,7 +163,7 @@ export function AttendeeReviewModal({
           </div>
         ) : error ? (
           <div className="p-5">
-            <div className="border-[2px] border-warning-line bg-warning-bg shadow-[2px_2px_0_var(--color-warning)] p-3 text-md text-ink-2 rounded-sm">
+            <div className="border border-warning-line bg-warning-bg p-3 text-md text-ink-2 rounded-sm">
               응답을 불러오지 못했어요: {error}
             </div>
           </div>

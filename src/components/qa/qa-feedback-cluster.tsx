@@ -113,9 +113,9 @@ export function QaFeedbackCluster() {
           style={{
             background: 'var(--sidebar-nav-bg)',
             border:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+              '1px solid var(--line)',
             borderRadius: 'var(--sidebar-nav-radius)',
-            boxShadow: 'var(--memphis-shadow-sm)',
+            boxShadow: 'var(--sh-card)',
           }}
         >
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-mute-soft">

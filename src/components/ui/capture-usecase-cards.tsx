@@ -19,8 +19,8 @@
    native <button> (ui/ 는 react/forbid-elements 예외 — 프리미티브 정의
    지점). disabled 면 전체 그룹 비활성 (세션 중 소스 잠금).
 
-   토큰: 선택 = border-amore + shadow-memphis-md-amore + amore 코너 체크.
-   미선택 = border-line + shadow-memphis-sm-faint. rounded-sm / bg-paper.
+   토큰: 선택 = border-amore(1px) + amore 코너 체크 (그림자 없음).
+   미선택 = border-soft-line(1px) + 그림자 없음. rounded-sm / bg-paper.
    하드코딩 hex/px 없음 (design-system 가드 준수).
    ──────────────────────────────────────────────────────────────────── */
 
@@ -88,20 +88,20 @@ export function CaptureUseCaseCards({
               // padding 13x11 · border 2 고정(상태 무관 → 선택 시 폭 변화로 인한
               // 레이아웃 shift 0). radius 는 토큰 rounded-sm(14px) 사용 — 실측 13 과
               // 1px 차, 디자인 하드코드 게이트(check:design)상 토큰만 허용이라
-              // 보수적으로 근접 토큰 선택. 선택 = amore border-2 + soft glow
+              // 보수적으로 근접 토큰 선택. 선택 = amore border(1px) + soft glow
               // (shadow-select-glow, R6 proposed) — 기존 memphis 하드 오프셋 대체.
               // 높이 = 고정 128 (MODECARD-FIX 델타). 카드 높이가 title/desc 줄수에
               // 따라 flex 로 늘어나 같은 행(2-card UT 제목1줄 vs 3-card 인터뷰
               // 제목+설명)의 높이가 어긋나던 버그를 봉인 — box-border + flex-col
               // justify-start(top-align, 남는 공간은 하단 균일 패딩) + 텍스트 clamp.
               // overflow-hidden 으로 선택 note 초과분도 프레임 밖 유출 방지.
-              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border-2 bg-paper box-border px-[11px] py-[13px] text-left',
+              'relative flex h-[var(--mode-card-h)] flex-col justify-start gap-1.5 overflow-hidden rounded-sm border bg-paper box-border px-[11px] py-[13px] text-left',
               'transition-[border-color,box-shadow] duration-[120ms]',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amore',
               'disabled:cursor-not-allowed disabled:opacity-50',
               selected
                 ? 'border-amore shadow-select-glow'
-                : 'border-line shadow-memphis-sm-faint',
+                : 'border-line',
             ].join(' ')}
           >
             {/* 코너 체크 — 선택된 카드에만. amore 원형 + ✓ */}

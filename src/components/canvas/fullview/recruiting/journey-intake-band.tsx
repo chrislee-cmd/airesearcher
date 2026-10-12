@@ -13,8 +13,8 @@
    라벨 + 우측 `N명 등록됨` 상태. 바디 2행 = 업로드(1.5px dashed ink · 찾아보기)
    · Google Sheets(1.5px solid line · Import ink-fill · 서브라인 = 연동 시트명
    mono truncate, 미연동 시 URL 입력). 카드 셸은 좌패널 3카드 공통 규격
-   (border-2 ink · rounded-[var(--fv-radius-panel)](12) · paper ·
-   shadow-memphis-sm-faint) — 형제 recruiting-criteria-panel 과 동일.
+   (border 1 --line · rounded-[var(--fv-radius-panel)](12) · 흰 면 ·
+   그림자 없음) — 형제 recruiting-criteria-panel 과 동일.
 
    이식(재구현 금지): 업로드/시트 인제스트·재동기화·에러 노출 계약을 그대로
    옮겼다 (POST /batches/[inbox]/upload 10MB 가드 · POST /import-sheet ·
@@ -231,9 +231,9 @@ export function JourneyIntakeBand({
     importing || (!sheetLinked && (!sheetUrl.trim() || !inboxBatchId));
 
   return (
-    <section className="shrink-0 rounded-[var(--fv-radius-panel)] border-2 border-ink bg-paper shadow-memphis-sm-faint">
+    <section className="shrink-0 rounded-[var(--fv-radius-panel)] border border-soft-line bg-paper">
       {/* Head — LIST SOURCES 라벨 + 우측 등록 카운트(0명이어도 노출). */}
-      <header className="flex items-center gap-2 border-b-[1.5px] border-ink/12 px-[13px] py-2">
+      <header className="flex items-center gap-2 border-b border-soft-hair px-[13px] py-2">
         <span className="font-mono-label text-xs font-bold uppercase tracking-[0.12em] text-mute-soft">
           {tj('listSources')}
         </span>
@@ -245,7 +245,7 @@ export function JourneyIntakeBand({
       {/* Body — 2 sources only (upload · Google Sheets). */}
       <div className="flex flex-col gap-[7px] px-[11px] py-[9px]">
         {/* Upload row — 1.5px dashed ink · 찾아보기 → hidden file input. */}
-        <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border-[1.5px] border-dashed border-ink px-2.5 py-[7px]">
+        <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border-[1.5px] border-dashed border-soft-line-hover px-2.5 py-[7px]">
           <span aria-hidden className="shrink-0 text-md">
             📄
           </span>
@@ -270,7 +270,7 @@ export function JourneyIntakeBand({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading || !inboxBatchId}
-            className="shrink-0 rounded-[var(--fv-radius-strip-btn)] border-[1.4px] border-ink bg-paper px-[9px] py-[3px] text-xs-soft font-bold text-ink transition-colors hover:bg-paper-soft disabled:cursor-not-allowed disabled:opacity-40"
+            className="shrink-0 rounded-[var(--fv-radius-strip-btn)] border border-soft-line bg-paper px-[9px] py-[3px] text-xs-soft font-bold text-ink transition-colors hover:bg-paper-soft disabled:cursor-not-allowed disabled:opacity-40"
           >
             {tj('browse')}
           </button>
@@ -278,7 +278,7 @@ export function JourneyIntakeBand({
 
         {/* Sheets row — 1.5px solid line · 서브라인=연동 시트명(mono truncate)
             또는 URL 입력 · Import(ink fill). */}
-        <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border-[1.5px] border-line px-2.5 py-[7px]">
+        <div className="flex items-center gap-2 rounded-[var(--fv-radius-strip-row)] border border-soft-line px-2.5 py-[7px]">
           <span aria-hidden className="shrink-0 text-md">
             📗
           </span>

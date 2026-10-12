@@ -103,7 +103,7 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
   if (isReady) {
     return (
       <div
-        className="flex items-center gap-2.5 rounded-card bg-paper shadow-memphis-sm-faint"
+        className="flex items-center gap-2.5 rounded-card bg-paper"
         style={{ padding: '11px 13px', border: `2px solid ${INK}` }}
       >
         <DuotoneIcon name={icon} size={17} />
@@ -131,7 +131,7 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
     return (
       <div
         className="flex items-center gap-2.5 rounded-card bg-error-bg"
-        style={{ padding: '11px 13px', border: '1.5px solid var(--color-error-line)' }}
+        style={{ padding: '11px 13px', border: '1px solid var(--color-error-line)' }}
       >
         <DuotoneIcon name={icon} size={17} />
         <div className="min-w-0 flex-1">
@@ -160,7 +160,7 @@ export function FileRow({ doc }: { doc: InterviewDocument }) {
     return (
       <div
         className="flex flex-col gap-2 rounded-card bg-lav-bg"
-        style={{ padding: '11px 13px', border: '1.5px solid var(--color-lav-line)' }}
+        style={{ padding: '11px 13px', border: '1px solid var(--color-lav-line)' }}
       >
         <div className="flex items-center gap-2.5">
           <DuotoneIcon name={icon} size={17} />
@@ -225,7 +225,7 @@ export function FileSummaryCard({ doc }: { doc: InterviewDocument }) {
   return (
     <div
       className="flex items-center gap-2.5 rounded-card bg-paper"
-      style={{ padding: '10px 12px', border: '1.5px solid var(--color-line)' }}
+      style={{ padding: '10px 12px', border: '1px solid var(--color-line)' }}
     >
       <DuotoneIcon name={icon} size={15} />
       <div className="min-w-0">

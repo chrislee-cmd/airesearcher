@@ -9,7 +9,7 @@ import { ChipField } from '@/components/ui/chip-field';
 // 이전엔 데스크 키워드 컨테이너를 손수 복제했으나(focus-within frame + amore
 // pill + ghost-brand × + ChipInput + draft/commit/backspace), ChipField 가 그
 // 스켈레톤을 그대로 담아 4개 소비처를 하나로 합쳤다. bordered 변형 = 기존의
-// 진한 border-2 border-ink 프레임 파리티.
+// 진한 border border-soft-line 프레임 파리티.
 //
 // 검증은 서버(zod) 가 최종 강제한다. 클라이언트 선제 가드는 ChipField 표준을
 // 따른다: trim · 공백 제거 · maxLength(20) slice · maxItems(10) · exact-match

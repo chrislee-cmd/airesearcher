@@ -62,7 +62,7 @@ function QuestionRow({ q }: { q: ProbingPersonaSnapshotQuestion }) {
   return (
     <li
       className={`rounded-xs border bg-paper px-3 py-2 ${
-        q.is_starred ? 'border-amore border-l-[3px]' : 'border-line-soft'
+        q.is_starred ? 'border-amore border-l' : 'border-soft-hair'
       }`}
     >
       <div className="mb-1 flex items-center gap-2">

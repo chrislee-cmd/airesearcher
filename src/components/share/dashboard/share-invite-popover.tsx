@@ -41,9 +41,9 @@ export function ShareInvitePopover({
     <div
       ref={ref}
       role="dialog"
-      className="absolute left-0 top-[calc(100%+6px)] z-fab w-max max-w-[420px] overflow-hidden rounded-panel border-2 border-ink bg-paper shadow-popover"
+      className="absolute left-0 top-[calc(100%+6px)] z-fab w-max max-w-[420px] overflow-hidden rounded-panel border border-soft-line bg-paper shadow-soft-popover"
     >
-      <div className="flex items-center gap-2 border-b-[1.5px] border-line-strong bg-paper-soft px-3.5 py-2.5">
+      <div className="flex items-center gap-2 border-b border-soft-hair bg-paper-soft px-3.5 py-2.5">
         <span className="font-mono-label text-xs font-extrabold uppercase tracking-[0.12em] text-mute">
           {headerLabel}
         </span>

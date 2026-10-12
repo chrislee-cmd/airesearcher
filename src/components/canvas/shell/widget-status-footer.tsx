@@ -85,8 +85,8 @@ export function WidgetStatusFooter({
   // ── 진행중 — amore 톤 flat 상태 표시. dismiss 개념 없음(항상 노출).
   if (status === 'running') {
     return (
-      <div className="mt-auto shrink-0 border-t-[2px] border-ink bg-amore-bg px-5 py-3">
-        <div className="flex w-full items-center gap-2 rounded-sm border-[2px] border-amore bg-paper px-4 py-3 text-md font-semibold text-ink">
+      <div className="mt-auto shrink-0 border-t border-soft-hair bg-amore-bg px-5 py-3">
+        <div className="flex w-full items-center gap-2 rounded-sm border border-amore bg-paper px-4 py-3 text-md font-semibold text-ink">
           <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center">
             <span
               aria-hidden
@@ -105,7 +105,7 @@ export function WidgetStatusFooter({
   const showBadge = typeof count === 'number' && count > 1;
 
   return (
-    <div className="mt-auto shrink-0 border-t-[2px] border-ink bg-paper-soft px-5 py-3">
+    <div className="mt-auto shrink-0 border-t border-soft-hair bg-paper-soft px-5 py-3">
       {/* eslint-disable-next-line react/forbid-elements -- 완료 CTA: 풀-폭
           justify-between 복합 레이아웃(✓칩+라벨+count 배지 / 전체보기)이라
           Button primitive variant 에 매핑되지 않음. data-canvas-action 으로
@@ -118,12 +118,12 @@ export function WidgetStatusFooter({
         }}
         data-canvas-action
         className={
-          'flex w-full items-center justify-between gap-3 rounded-sm border-[2px] border-ink bg-paper px-4 py-3 text-md font-semibold text-ink shadow-[3px_3px_0_black] transition-all duration-[120ms] hover:-translate-x-px hover:-translate-y-px hover:bg-mint hover:shadow-[4px_4px_0_black] active:translate-x-0 active:translate-y-0 active:shadow-[1px_1px_0_black]' +
+          'flex w-full items-center justify-between gap-3 rounded-sm border border-soft-line bg-paper px-4 py-3 text-md font-semibold text-ink transition-all duration-[120ms] hover:bg-mint ' +
           (pulse ? ' completed-cta-pulse' : '')
         }
       >
         <span className="flex min-w-0 items-center gap-2">
-          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border-[1.5px] border-ink bg-mint">
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-xs border border-soft-line bg-mint">
             <CheckIcon className="h-3 w-3 text-ink" />
           </span>
           <span className="truncate">{label}</span>

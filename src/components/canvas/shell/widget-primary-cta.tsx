@@ -24,7 +24,7 @@ type Props = {
 //
 // 규격 = ui <Button variant="primary" size="cta"> = 정본 ink pill (GEOMETRY.md:34 /
 // BUILD-SPEC-AI-UT.md:29). feature-placeholder 의 run CTA 와 동일 패턴:
-//   준비(enabled)  = bg-ink/text-paper + rounded-full + border-ink + shadow-memphis
+//   준비(enabled)  = bg-ink/text-paper + rounded-full (테두리·그림자 없음)
 //                    (Button primary·cta 자동). 흰 mono start 아이콘이 ink 위에서 정상.
 //   미준비(disabled)= 명시적 gray pill — disabled:opacity-100 으로 primary 의
 //                    opacity-40 을 무력화하고 bg-ink/10(≈#eceef1 중립 gray)·

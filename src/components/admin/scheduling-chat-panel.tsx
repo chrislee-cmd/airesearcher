@@ -453,9 +453,9 @@ export function SchedulingChatPanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-paper">
       {/* Header — lav band, avatar, thread title + hint, close. */}
-      <div className="flex shrink-0 items-center gap-2.5 border-b-2 border-ink bg-lav px-4 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-soft-hair bg-tint-lav px-4 py-3">
         <span
-          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border-2 border-ink bg-paper text-md font-extrabold text-ink shadow-memphis-sm"
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-soft-line bg-paper text-md font-extrabold text-ink "
           aria-hidden
         >
           {avatarLetter}
@@ -599,7 +599,7 @@ export function SchedulingChatPanel({
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-mute-soft">
               {t('chatScheduleHeading')}
             </span>
-            <span className="inline-flex min-w-5 items-center justify-center rounded-pill border-2 border-ink bg-paper px-1.5 py-px font-mono text-xs font-bold text-ink">
+            <span className="inline-flex min-w-5 items-center justify-center rounded-pill border border-soft-line bg-paper px-1.5 py-px font-mono text-xs font-bold text-ink">
               {scopedSlots.length}
             </span>
             <span
@@ -698,7 +698,7 @@ export function SchedulingChatPanel({
                     }
                     if (e.key === 'Escape') cancelEdit();
                   }}
-                  className="resize-none border-2 border-ink"
+                  className="resize-none border border-soft-line"
                 />
                 <div className="flex items-center gap-2">
                   <Button
@@ -752,11 +752,11 @@ export function SchedulingChatPanel({
               return (
                 <div
                   key={m.id}
-                  className="group overflow-hidden rounded-sm border-2 border-ink bg-warning-bg shadow-memphis-md-amber"
+                  className="group overflow-hidden rounded-sm border border-soft-line bg-warning-bg"
                 >
                   <div
-                    className="flex items-center gap-1.5 border-b-2 border-ink px-3 py-1.5"
-                    style={{ background: 'var(--widget-header-bg-sun)' }}
+                    className="flex items-center gap-1.5 border-b border-soft-hair px-3 py-1.5"
+                    style={{ background: 'var(--tint-sun)' }}
                   >
                     <span className="text-xs" aria-hidden>
                       📢
@@ -792,8 +792,8 @@ export function SchedulingChatPanel({
                     // design-allow-hardcoded -- CD frame 02 chat-bubble radius 13px (documented outlier band, PROJECT.md §9); tail corner uses rounded-xs(4) token
                     'rounded-[13px]',
                     fromAdmin
-                      ? 'rounded-br-xs border-2 border-ink bg-amore-bg shadow-memphis-sm'
-                      : 'rounded-bl-xs border-[1.5px] border-line bg-paper shadow-memphis-sm-faint',
+                      ? 'rounded-br-xs border border-soft-line bg-amore-bg'
+                      : 'rounded-bl-xs border border-soft-line bg-paper',
                   ].join(' ')}
                 >
                   {isEditing ? (
@@ -814,8 +814,8 @@ export function SchedulingChatPanel({
         )}
       </div>
 
-      {/* Composer — border-2 ink field + ➤ ink button. */}
-      <div className="shrink-0 border-t-2 border-ink bg-paper p-3">
+      {/* Composer — border ink field + ➤ ink button. */}
+      <div className="shrink-0 border-t border-soft-hair bg-paper p-3">
         {error && <p className="mb-2 text-sm text-warning">{error}</p>}
         {/* 문자 알림 opt-in — Solapi 설정된 배포에서만 노출. 대상 수(M명)=문자 자격
             (합류∩전화). 서버가 최종 필터라 근사. M=0 이면 비활성(보낼 사람 없음 →
@@ -872,7 +872,7 @@ export function SchedulingChatPanel({
                 void send();
               }
             }}
-            className="resize-none border-2 border-ink"
+            className="resize-none border border-soft-line"
           />
           {/* eslint-disable-next-line react/forbid-elements -- CD send affordance: 44×44 ink Memphis square (2px hard shadow); no Button/IconButton variant reproduces the square ink fill + offset shadow */}
           <button
@@ -880,7 +880,7 @@ export function SchedulingChatPanel({
             aria-label={t('chatSend')}
             onClick={() => void send()}
             disabled={!draft.trim() || sending || !sendReady}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border-2 border-ink bg-ink text-lg text-paper shadow-memphis-sm transition-opacity disabled:opacity-40"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm border border-soft-line bg-ink text-lg text-paper transition-opacity disabled:opacity-40"
           >
             ➤
           </button>
@@ -921,7 +921,7 @@ function Radio({
       }`}
     >
       <span
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
           selected ? 'border-ink' : 'border-line'
         }`}
       >
@@ -953,7 +953,7 @@ function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`inline-flex overflow-hidden rounded-pill border-2 border-ink shadow-memphis-sm ${
+      className={`inline-flex overflow-hidden rounded-pill border border-soft-line ${
         fullWidth ? 'flex w-full' : 'shrink-0'
       }`}
     >

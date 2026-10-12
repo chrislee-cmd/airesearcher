@@ -256,7 +256,7 @@ export function TopbarAccount({
             style={{
               fontFamily: outfitStack,
               fontWeight: 700,
-              color: 'var(--sidebar-border)',
+              color: 'var(--ink)',
               lineHeight: 1.1,
             }}
           >
@@ -292,7 +292,7 @@ export function TopbarAccount({
               style={{
                 fontFamily: outfitStack,
                 fontWeight: 600,
-                color: 'var(--sidebar-border)',
+                color: 'var(--ink)',
               }}
             >
               <span
@@ -331,7 +331,7 @@ export function TopbarAccount({
           aria-label={t('settings')}
           aria-expanded={open}
           className="group shrink-0"
-          style={{ color: 'var(--sidebar-border)' }}
+          style={{ color: 'var(--ink)' }}
         >
           <Gear />
         </IconButton>
@@ -343,9 +343,9 @@ export function TopbarAccount({
           style={{
             background: 'var(--sidebar-nav-bg)',
             border:
-              'var(--sidebar-nav-border-width) solid var(--sidebar-nav-border)',
+              '1px solid var(--line)',
             borderRadius: 'var(--sidebar-nav-radius)',
-            boxShadow: 'var(--memphis-shadow-sm)',
+            boxShadow: 'var(--sh-card)',
           }}
         >
           <div className="px-3 py-2">

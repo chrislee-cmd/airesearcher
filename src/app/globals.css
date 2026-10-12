@@ -40,32 +40,13 @@
   --raw-ink-mid: #555555;
 
   /* border color */
-  --raw-border-strong: #000000;
   --raw-border-medium: rgba(29, 27, 32, 0.10);
   --raw-border-subtle: rgba(29, 27, 32, 0.06);
 
-  /* border width */
-  --raw-border-width-hairline: 1px;
-  --raw-border-width-medium: 2px;
-  --raw-border-width-strong: 2.5px;
-  --raw-border-width-heavy: 3px;
-
-  /* shadow — pop 톤은 hard offset shadow */
-  --raw-shadow-hard-md: 6px 6px 0 #000000;
-  --raw-shadow-hard-sm: 3px 3px 0 #000000;
-  --raw-shadow-hard-xs: 2px 2px 0 #000000;
-  --raw-shadow-chrome: 4px 4px 0 #000000;
+  /* shadow — Soft Identity 전환 후 blur 계열만 남는다(하드 오프셋 퇴역) */
+  --raw-shadow-chrome: var(--sh-popover);
   --raw-shadow-soft: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
 
-  /* memphis offset scale — 시그니처 hard offset shadow 의 기하값(offset-x/y)만.
-     색은 @theme --shadow-memphis-* 에서 조합(offset atom + 색 토큰). 톤 조정(예:
-     md 3px→2px) 은 이 한 곳만 수정하면 전 ui/ 프리미티브가 따라감. blur 는 항상 0. */
-  --raw-memphis-2xs: 1px 1px;
-  --raw-memphis-xs: 1.5px 1.5px;
-  --raw-memphis-sm: 2px 2px;
-  --raw-memphis-md: 3px 3px;
-  --raw-memphis-lg: 4px 4px;
-  --raw-memphis-2xl: 8px 8px;
 
   /* accent */
   --raw-accent-pink: #ff5c8a;
@@ -119,7 +100,7 @@
   --cd-solid-border: 1.5px solid var(--raw-ink-100);        /* paste box */
   --cd-hairline-border: 1.4px solid rgba(29, 27, 32, 0.14); /* survey row·info */
   --cd-amore-border: 1.4px solid var(--raw-accent-pink);    /* required chip·amore pill */
-  --cd-amore-shadow: 2px 2px 0 rgba(255, 92, 138, 0.28);    /* amore pill hard glow */
+  --cd-amore-shadow: none;    /* 버튼·칩에 그림자 없음 (핵심규칙 2) */
   --cd-review-ring: 0 0 0 4px rgba(255, 92, 138, 0.12);     /* review 노드 halo */
   --cd-disabled-bg: #eceef1;                                /* disabled pill bg */
   --cd-disabled-fg: #a3a7ad;                                /* disabled pill fg */
@@ -134,9 +115,9 @@
      var 로 인라인 소비(--cd-amore-shadow 와 동일 sanctioned 패턴). */
   --raw-slot-proposed-bg: #ffeef4;                          /* CD 전용 로즈(기존 pink-bg #ffe1eb 아님) */
   --raw-slot-cancelled-border: rgba(29, 27, 32, 0.2);       /* ink/20 (정확 매칭 없음) */
-  --slot-proposed-shadow: 3px 3px 0 rgba(255, 92, 138, 0.4);  /* amore(#ff5c8a) 0.4 */
-  --slot-confirmed-shadow: 3px 3px 0 rgba(22, 163, 74, 0.35); /* success(#16a34a) 0.35 */
-  --slot-cancelled-shadow: 3px 3px 0 rgba(29, 27, 32, 0.1);   /* ink 0.1 */
+  --slot-proposed-shadow: none;  /* 상태는 칩/점이 전담 — 색 오프셋 그림자 퇴역 */
+  --slot-confirmed-shadow: none; /* 동일 */
+  --slot-cancelled-shadow: none; /* 동일 */
 
   /* radius scale */
   --raw-radius-2xs: 2px;
@@ -178,32 +159,18 @@
   --raw-ink-mid: #5b5965;
 
   /* border — 굵은 검정 → 얇은 line */
-  --raw-border-strong: rgba(29, 27, 32, 0.10);
   --raw-border-medium: rgba(29, 27, 32, 0.10);
   --raw-border-subtle: rgba(29, 27, 32, 0.06);
 
   /* border width — 모두 1px */
-  --raw-border-width-hairline: 1px;
-  --raw-border-width-medium: 1px;
-  --raw-border-width-strong: 1px;
-  --raw-border-width-heavy: 1px;
 
   /* shadow — hard offset → soft only */
-  --raw-shadow-hard-md: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
-  --raw-shadow-hard-sm: 0 1px 2px rgba(29, 27, 32, 0.04), 0 4px 12px rgba(29, 27, 32, 0.04);
-  --raw-shadow-hard-xs: 0 1px 2px rgba(29, 27, 32, 0.04);
   --raw-shadow-chrome: 0 1px 2px rgba(29, 27, 32, 0.04), 0 4px 12px rgba(29, 27, 32, 0.04);
   --raw-shadow-soft: 0 1px 2px rgba(29, 27, 32, 0.04), 0 8px 24px rgba(29, 27, 32, 0.06);
 
   /* memphis offset scale — pop 과 동일 기하값 유지(순수 치환: 기존 ui/ 하드코드가
      테마 무관하게 hard offset 이었으므로 diff-0 위해 동일 px). editorial 전용
      softening 은 DS-2+ 에서 별도 판단(현재 editorial 은 dormant, layout=pop 고정). */
-  --raw-memphis-2xs: 1px 1px;
-  --raw-memphis-xs: 1.5px 1.5px;
-  --raw-memphis-sm: 2px 2px;
-  --raw-memphis-md: 3px 3px;
-  --raw-memphis-lg: 4px 4px;
-  --raw-memphis-2xl: 8px 8px;
 
   /* accent — mono (액센트 제거) */
   --raw-accent-pink: #1d1b20;
@@ -261,7 +228,7 @@
    NODE_ENV 가드로 dev 에서만 <html data-theme="audit"> 를 붙임).
 
    목적: 미관이 아니라 감사. Layer 1 raw 를 전부 명백한 sentinel(형광/극단)로
-   오염시키면 — 토큰(var(--color-*)·shadow-memphis-*·radius/font 유틸)을 경유하는
+   오염시키면 — 토큰(var(--color-*)·shadow-soft-*·radius/font 유틸)을 경유하는
    요소는 전부 형광/극단으로 확 변하고, 인라인 #hex·arbitrary shadow-[...]·
    rounded-[Npx] 같은 하드코드는 var 를 안 거치므로 그대로 남아 시각적으로 튄다.
    → "형광으로 안 변한 게 하드코드(범인)". 627 정적 가드의 시각 QA 보조 렌즈.
@@ -286,30 +253,16 @@
   --raw-ink-mid: #00ffcc;
 
   /* border color — 형광 라임(토큰 보더가 확 튐) */
-  --raw-border-strong: #00ff00;
   --raw-border-medium: #00ff00;
   --raw-border-subtle: #ff00ff;
 
   /* border width — 극단 확대(토큰 보더는 두꺼워지고 border-[Npx] 하드코드는 그대로) */
-  --raw-border-width-hairline: 2px;
-  --raw-border-width-medium: 3px;
-  --raw-border-width-strong: 4px;
-  --raw-border-width-heavy: 5px;
 
   /* shadow — 형광 극단(토큰 섀도우는 형광 glow 로 확 달라지고 shadow-[...] 는 그대로) */
-  --raw-shadow-hard-md: 8px 8px 0 #ff00ff, 0 0 0 3px #00ff00;
-  --raw-shadow-hard-sm: 5px 5px 0 #ff00ff, 0 0 0 2px #00ff00;
-  --raw-shadow-hard-xs: 3px 3px 0 #ff00ff;
-  --raw-shadow-chrome: 6px 6px 0 #00ff00;
+  --raw-shadow-chrome: 0 0 0 4px #ff00ff;
   --raw-shadow-soft: 0 0 0 4px #ff00ff, 0 0 16px #00ffff;
 
   /* memphis offset — 극단 확대(토큰 memphis 섀도우가 눈에 띄게 부풀어 pop) */
-  --raw-memphis-2xs: 4px 4px;
-  --raw-memphis-xs: 5px 5px;
-  --raw-memphis-sm: 6px 6px;
-  --raw-memphis-md: 8px 8px;
-  --raw-memphis-lg: 10px 10px;
-  --raw-memphis-2xl: 16px 16px;
 
   /* accent — 형광 대비색 */
   --raw-accent-pink: #ff0066;
@@ -384,7 +337,9 @@
   --fg-inverse: var(--raw-surface-card);
 
   /* border */
-  --border-strong: var(--raw-border-strong);
+  /* Soft Identity (2단계) — 전: #000 검정 강조 보더. 후: 1px 바깥 테두리 --line.
+     Memphis 원자(검정 강조 보더)가 퇴역하므로 Layer 2 를 Soft 로 재지정한다. */
+  --border-strong: var(--line);
   --border-medium: var(--raw-border-medium);
   --border-subtle: var(--raw-border-subtle);
 
@@ -400,11 +355,7 @@
   --signal-progress: var(--raw-signal-progress);
 
   /* component foundations — primitive 가 이 값들을 참조 */
-  --component-card-border-width: var(--raw-border-width-heavy);
   --component-card-radius: var(--raw-radius-sm);
-  --component-card-shadow: var(--raw-shadow-hard-md);
-  --component-button-border-width: var(--raw-border-width-medium);
-  --component-button-shadow: var(--raw-shadow-hard-sm);
 }
 
 /* =========================================================================
@@ -421,39 +372,35 @@
   --canvas-bg-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
   --canvas-bg-size: 22px 22px;
   --canvas-card-bg: var(--surface-card);
-  --canvas-card-border: var(--border-strong);
-  --canvas-card-border-width: var(--component-card-border-width);
+  --canvas-card-border: var(--line);
   --canvas-card-radius: var(--component-card-radius);
-  --canvas-card-shadow: var(--component-card-shadow);
+  /* 전: 6px6px0 검정 하드 오프셋. 후: --sh-card (블러 4단계 중 1단). */
+  --canvas-card-shadow: var(--sh-card);
   --canvas-card-header-bg: var(--surface-banner);
-  --canvas-card-header-divider: var(--border-strong);
+  --canvas-card-header-divider: var(--hair);
   --canvas-card-header-text: var(--fg-primary);
   --canvas-card-mute: var(--raw-ink-mid);
   --canvas-accent: var(--accent-action);
-  --canvas-edge: var(--border-strong);
+  --canvas-edge: var(--line);
   --canvas-edge-live: var(--accent-action);
-  --canvas-edge-width: var(--component-card-border-width);
   --canvas-chrome-bg: var(--surface-card);
-  --canvas-chrome-border: var(--border-strong);
+  --canvas-chrome-border: var(--line);
   --canvas-chrome-text: var(--fg-primary);
   --canvas-chrome-shadow: var(--raw-shadow-chrome);
   --canvas-chrome-radius: var(--raw-radius-chrome);
   --canvas-selection-border: var(--accent-action);
-  --canvas-selection-width: var(--component-card-border-width);
 
   /* sidebar */
   --sidebar-bg: var(--surface-accent-bg);
   --sidebar-bg-strong: var(--surface-accent-bg-strong);
-  --sidebar-border: var(--border-strong);
-  --sidebar-border-width: var(--component-card-border-width);
+  --sidebar-border: var(--line);
   --sidebar-nav-bg: var(--surface-card);
   --sidebar-nav-bg-hover: var(--raw-surface-nav-hover);
-  --sidebar-nav-border: var(--border-strong);
-  --sidebar-nav-border-width: var(--raw-border-width-strong);
+  --sidebar-nav-border: var(--line);
   --sidebar-nav-radius: var(--raw-radius-nav);
   --sidebar-active-bg: var(--accent-action);
   --sidebar-active-text: var(--fg-inverse);
-  --sidebar-active-border: var(--border-strong);
+  --sidebar-active-border: var(--ink);
   --sidebar-group-heading: var(--fg-primary);
 
   /* motion — 마이크로인터랙션 duration/easing/distance SSOT.
@@ -472,8 +419,6 @@
   --motion-rise: 6px;
 
   /* memphis hard shadows — 기존 이름 보존 */
-  --memphis-shadow-sm: var(--raw-shadow-hard-sm);
-  --memphis-shadow-xs: var(--raw-shadow-hard-xs);
 
   /* widget header — 기본값. per-widget 액센트는 별 spec (D-widget-header-color). */
   --widget-header-bg-default: var(--surface-banner);
@@ -507,9 +452,7 @@
      통과 — raw rounded-[Npx]/shadow-[..] 는 차단하므로 var 가 유일한 로컬 경로).
      다른 곳에서 재사용되면 그때 글로벌 승격. design-handoff/FULLVIEW-SHELL §F6(B).
      (--fv-radius-field 는 위 recsched 공유 정의 재사용 — 여기 재선언 안 함.) */
-  --fv-frame-shadow: 8px 8px 0 rgba(29, 27, 32, 0.28);   /* 풀뷰 프레임 (솔리드 memphis-2xl 아님) */
-  --fv-shadow-crimson: 2px 2px 0 var(--color-amore-deep); /* End-session 버튼 (= amore-deep 톤 memphis-sm) */
-  --fv-shadow-modal-amber: 8px 8px 0 var(--color-amber);  /* spotlight 모달 전용 */
+  --fv-shadow-modal-amber: var(--sh-modal);  /* spotlight 모달 — 변환표 모달 행 */
   --fv-title-size: 22px;             /* 풀뷰 헤더 타이틀 (Outfit 800/ls-0.5 는 사용처 클래스) — 29px 카드 타이틀과 구분 */
   --fv-spotlight-q-size: 31px;       /* spotlight question (Outfit 700) */
   /* radius — DS 스케일(2/4/14/24/999)이 성겨 off-scale 값들을 var 경유로 로컬 소비.
@@ -533,12 +476,13 @@
    이 블록은 tokens.css 를 그 이름·그 값으로 등재한 것이고, 아래 @theme 가
    Tailwind util(`bg-tint-*` · `shadow-soft-*` · `border-soft-line` …)로 노출한다.
 
-   ── Memphis 공존 (WRITER-ANSWERS §2) ───────────────────────────────────────
-   위 Layer 1~3(pop/editorial/audit · --raw-* · --canvas-* · --fv-* ·
-   shadow-memphis-*)은 **한 줄도 건드리지 않는다.** 1단계는 공유 셸 4계층만 Soft
-   로 바꾸고, 위젯 본문 7종·보고서 블록·공개 표면은 2단계 소유다. Memphis 토큰
-   삭제는 2단계 마지막(CD README "작업 순서" 6번) — 그때까지 두 팔레트가 동시에
-   살아 있는 것이 정상이다.
+   ── Memphis 퇴역 완료 (2단계 작업 6) ───────────────────────────────────────
+   1단계는 공유 셸 4계층만 Soft 로 바꾸고 Memphis 와 공존했다(WRITER-ANSWERS §2).
+   2단계가 위젯 본문 7종·보고서 블록·공개 표면을 전환한 뒤, 작업 6 에서 하드
+   오프셋 그림자 패밀리와 Memphis 보더 폭 원자를 **삭제**했다. 지금 남은 그림자는
+   CD 4단계(--sh-card/-popover/-modal/-frame) + --focus-ring + --sh-chip 뿐이고,
+   Layer 2 의 검정 강조 보더는 --line/--hair 로 재지정됐다. 자세한 삭제 목록은
+   아래 @theme 의 "Memphis 하드 오프셋 그림자 패밀리: 퇴역 완료" 주석 참고.
 
    theme-agnostic — CD 는 단일 톤 대체를 제공하므로 [data-theme] 분기를 두지
    않는다(--fv-* · tokens.json 2.0 리터럴 선례).
@@ -552,12 +496,12 @@
      --r-widget 20  → --widget-card-frame-radius(기존 20px, 위젯 카드 전용)
    `--r-*` 자체는 CD 대조(픽셀 diff·2단계)용 SSOT 로 등재해 둔다.
 
-   ── tokens.css 와의 유일한 차이: mono 폰트 이름 ────────────────────────────
-   CD 는 `--font-mono` 로 적었으나, 그 이름은 Tailwind v4 기본 theme 변수라
-   :root 에 재선언하면 기존 `font-mono` util 이 **앱 전역**(= 미전환 2단계
-   표면 포함) JetBrains 로 조용히 갈린다. 1단계 범위(셸)를 넘으므로
-   `--font-mono-soft` 로 네임스페이스하고, 2단계 Memphis 삭제 시 canonical
-   `--font-mono` 로 합친다. 값은 CD 그대로.
+   ── mono 폰트: 2단계에서 canonical 로 합침 ─────────────────────────────────
+   1단계는 `font-mono` util 이 앱 전역(= 당시 미전환 표면 포함) JetBrains 로
+   조용히 갈리는 것을 막기 위해 `--font-mono-soft` 로 네임스페이스했다.
+   작업 6 에서 전 표면이 Soft 로 넘어왔으므로 **canonical `--font-mono` 로
+   합친다**(CD tokens.css 가 그 이름으로 지정). `--font-mono-soft` ·
+   `--font-mono-label` 은 기존 소비처 보존용 별칭으로 남긴다 — 값은 하나다.
    ========================================================================= */
 :root {
   /* neutrals */
@@ -592,6 +536,25 @@
   --tone-rose: #ffd0e2;  --tint-rose: #fff4f8;   /* 인터뷰 결과 생성기 */
   --tone-peach: #ffd9be; --tint-peach: #fff6ef;  /* AI UT */
   --rose-text: #b8325a;  /* eyebrow / accent text on rose surfaces */
+  /* ── 장면 02 전용 원자 4종 (리브랜드 2단계 작업 6) ───────────────────────
+     CD `soft-identity-product.dc.html` 장면 02 + README §Screens 02 가 리터럴로
+     지정한 절대값인데 tokens.css 팔레트에도, 기존 토큰에도 **같은 값이 없다**.
+     3~5 커밋에서는 globals.css 하드 제약(phase1 머지 전 수정 금지) 때문에 가장
+     가까운 Soft 신호 토큰으로 임시 배선해 두었고, 여기서 전용 원자로 승격해
+     전수 교체한다 — "CD 값 → 가장 가까운 기존 토큰 폴백"이 임시로 시작해
+     영구가 되는 경로가 AUTHORITY 역전 사고의 입구라 게이트 항목이었다.
+     근사값으로 굽히지 않는다(AUTHORITY: CD 가 비주얼 SSOT).
+
+     4번째 값 `#d9e8fb`("열린 셋업 단계 테두리")는 **등재하지 않는다** — 장면 02
+     는 셋업 단계를 테두리 있는 프레임으로 그렸지만, 이 레포의 셋업 아코디언 3종
+     (transcript · probing · recruiting)은 단계 행에 프레임이 없는 구조다(hover
+     bg 만). 프레임을 새로 만드는 것은 "레이아웃·치수 무변경" 제약 위반이고
+     확정 장면 밖의 구조 창작이라 머지 게이트 예외(사용자 상신) 대상이다.
+     소비처 없는 토큰을 미리 박으면 과잉 토큰이므로, 구조 판단이 내려진 뒤
+     그 PR 에서 함께 등재한다. */
+  --row-run-bg: #fbf9ff;      /* 진행 중 파일 행 면 (run-bg #f4f0ff 보다 옅음) */
+  --row-err-bg: #fffafa;      /* 실패 파일 행 면 (err-bg #fdf0f0 보다 옅음) */
+  --run-band-line: #ebe4fb;   /* 진행 밴드 border-t (run-track #e6dffb 와 구분값) */
   /* aqua 의 레거시 별칭 — 데스크 위젯의 `accent` 값이 아직 `cyan` 이다(정식
      이름은 aqua, 동일값 — tokens.json 2.0 §A4 + --widget-header-bg-aqua 선례).
      셸이 `var(--tint-{accent})` 로 조립하므로 별칭이 없으면 데스크 카드만
@@ -635,7 +598,8 @@
   /* type */
   --font-display: 'Bricolage Grotesque', 'Pretendard Variable', 'Pretendard', sans-serif; /* titles; Korean falls back to Pretendard (의도) */
   --font-body: 'Pretendard Variable', 'Pretendard', sans-serif;
-  --font-mono-soft: 'JetBrains Mono', ui-monospace, monospace;      /* numbers, times, IDs, eyebrows only */
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;           /* numbers, times, IDs, eyebrows only */
+  --font-mono-soft: var(--font-mono);                               /* 1단계 네임스페이스 별칭 (동일값) */
 }
 
 /* =========================================================================
@@ -787,7 +751,9 @@
   --font-hand: var(--raw-font-hand);
   /* Fullview §F7.1 (writer 승인) — 기술 캡션/타임스탬프/ID/테이블헤더/배지 전용
      monospace (CD authority). 프로덕션 본문은 mono 아님 — 스코프 한정 소비. */
-  --font-mono-label: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* mono 라벨/eyebrow 도 CD 의 JetBrains 로 합친다(장면 02~05 의 mono 는
+     전부 같은 서체다 — 숫자·시각·ID·eyebrow). 별칭으로 남겨 소비처 무변경. */
+  --font-mono-label: var(--font-mono);
 
   /* Radius scale */
   --radius-2xs: var(--raw-radius-2xs);
@@ -851,47 +817,22 @@
   /* Single shadow token (bento soft elevation) */
   --shadow-bento: var(--raw-shadow-soft);
 
-  /* Memphis hard offset shadows — ui/ 프리미티브 시그니처 그림자 SSOT.
-     offset atom(--raw-memphis-*) + 색 토큰 조합. 실 사용 분포(ui/ 32곳)에서
-     확정한 최소 집합 — 미사용 스케일(6px 등)·색은 만들지 않음(과잉 토큰 금지).
-     `shadow-memphis-md` 처럼 Tailwind utility 로 소비. 색 기본은 ink(tokens.json
-     2.0 §A3 로 통일; 아래 참조), 변형은 -faint/-warning/-amore/-card 접미. */
-  /* tokens.json 2.0 §A3: memphis 그림자색을 패밀리 전체 ink(#1d1b20)로 통일.
-     1.x 는 2xs/xs/sm/md/lg 가 black·rgba(0,0,0)이고 2xl 만 ink 였던 내부 불일치 —
-     모든 comp 는 ink 를 쓴다. 순수 black 은 ink 텍스트 옆에서 차갑게 튀어(2nd ink)
-     오프셋이 붙어 보인다. CD authority — 코드값으로 스냅백 금지. */
-  --shadow-memphis-2xs: var(--raw-memphis-2xs) 0 var(--color-ink);
-  --shadow-memphis-xs: var(--raw-memphis-xs) 0 var(--color-ink);
-  --shadow-memphis-xs-amore: var(--raw-memphis-xs) 0 var(--color-amore);
-  --shadow-memphis-sm: var(--raw-memphis-sm) 0 var(--color-ink);
-  --shadow-memphis-sm-faint: var(--raw-memphis-sm) 0 rgba(29, 27, 32, 0.12); /* tokens.json 2.0 — ink 저알파(패밀리 ink 통일; 기존 rgba(0,0,0,.15)) */
-  --shadow-memphis-sm-mid: var(--raw-memphis-sm) 0 rgba(29, 27, 32, 0.28); /* ADDED — widget-chain BUILD-SPEC §1.1 체인 바 주 버튼(2px2px0 ink/28). 알파 0.28 = --shadow-frame 과 동일 스텝으로, faint(0.12)와 솔리드 ink 사이 갭. ink 채움 pill 위의 "부드러운 회색 오프셋" 이 CD 절대값이라 솔리드 memphis-sm 으로 굽히지 않는다(AUTHORITY). */
-  --shadow-memphis-md: var(--raw-memphis-md) 0 var(--color-ink);
-  --shadow-memphis-md-faint: var(--raw-memphis-md) 0 rgba(29, 27, 32, 0.14); /* ADDED 2.0 — table wrapper·grouped panel (솔리드 md 보다 약함) */
-  --shadow-memphis-md-warning: var(--raw-memphis-md) 0 var(--color-warning);
-  --shadow-memphis-md-amore: var(--raw-memphis-md) 0 var(--color-amore);
-  --shadow-memphis-md-card: var(--raw-memphis-md) 0 var(--canvas-card-border);
-  --shadow-memphis-md-success: var(--raw-memphis-md) 0 var(--color-success); /* done 성공 카드 초록 offset (Canvas 1c transDone) · recsched 토스트(BUILD-SPEC §2)도 재사용 */
-  --shadow-memphis-md-amber: var(--raw-memphis-md) 0 var(--color-tag-confusion); /* recsched 공지배너 amber offset (BUILD-SPEC §2) — amber #e0a83a = tag-confusion 과 동일 값 재사용(중복 민팅 회피) */
-  --shadow-memphis-md-error: var(--raw-memphis-md) 0 var(--color-error); /* ADDED 2.0 — error 상태 카드 */
-  --shadow-memphis-md-processing: var(--raw-memphis-md) 0 rgba(139, 92, 246, 0.35); /* interview-results BUILD-SPEC §2 A — stuck 배너·순회중 파일 행 (accent-violet 35%). md-error/amber 와 짝 */
-  --shadow-memphis-sm-crimson: var(--raw-memphis-sm) 0 var(--color-amore-deep); /* ADDED 2.0 — destructive 버튼 (= --fv-shadow-crimson 값과 동일, @theme util 로 승격). share-management BUILD-SPEC §2 A 의 목록 철회 버튼·확인 모달 확정 버튼이 이 토큰 재사용 — .dc.html 의 24%/35% alpha 는 렌더값, DS memphis 패밀리는 불투명 signal 색(§2 주석: md-error/-amber 와 같은 문법). */
-  --shadow-memphis-sm-success: var(--raw-memphis-sm) 0 var(--color-success); /* ADDED — share-management BUILD-SPEC §2 A 복사됨 상태. md-success 의 sm 변형(불투명 signal 색, memphis 패밀리 문법). */
-  --shadow-memphis-lg: var(--raw-memphis-lg) 0 var(--color-ink);
-  --shadow-memphis-lg-faint: var(--raw-memphis-lg) 0 rgba(29, 27, 32, 0.16); /* interview-results BUILD-SPEC §1.3 — executive_summary 카드(4px4px0 ink/16 · 솔리드 lg 보다 약함, memphis-*-faint 패밀리) */
-  --shadow-memphis-2xl: var(--raw-memphis-2xl) 0 var(--color-ink);
+  /* ── Memphis 하드 오프셋 그림자 패밀리: 퇴역 완료 (리브랜드 2단계 작업 6) ──
+     `--raw-memphis-*`(offset 원자) · `--shadow-memphis-*`(ui/ 시그니처) ·
+     `--memphis-shadow-*` · `--shadow-popover/-frame/-dropzone/-iv-modal-regen/
+     -picker-panel` · `--raw-shadow-hard-*` · `--fv-frame-shadow` ·
+     `--fv-shadow-crimson` 전부 삭제했다. 그림자는 이제 CD 4단계
+     (`--sh-card / -popover / -modal / -frame`) + `--focus-ring` + `--sh-chip`
+     만 존재하고, 버튼·칩·배지·입력·타일에는 그림자가 없다(핵심규칙 2).
+     `Npx Npx 0` 형태는 앱 전역에서 0건이다. */
   /* ADDED 2.0 — 신규 shadow 패밀리 (tokens.json 2.0 shadow.*). 기존 셸-스코프 --fv-
      로컬 정의와 값 동일한 것은 @theme util 로 승격해 전 앱에서 소비 가능하게. */
-  --shadow-frame: 8px 8px 0 rgba(29, 27, 32, 0.28); /* full-surface frame (fullview·library·share) = --fv-frame-shadow 승격 */
-  --shadow-modal-amber: 8px 8px 0 var(--color-amber); /* spotlight 모달 = --fv-shadow-modal-amber 승격 */
+  --shadow-modal-amber: var(--sh-modal); /* spotlight 모달 = --fv-shadow-modal-amber 승격 */
   --shadow-tile-lift: 0 6px 20px rgba(29, 27, 32, 0.08); /* the ONE soft shadow — 참가자 비디오 타일·인모니터 mock UI */
-  --shadow-popover: 4px 4px 0 rgba(29, 27, 32, 0.20); /* interview-results BUILD-SPEC §2 A — 근거 팝오버·부유 카드 (memphis-lg 불투명과 sm-faint 사이 갭) */
-  --shadow-dropzone: 4px 4px 0 rgba(29, 27, 32, 0.16); /* interview-results BUILD-SPEC §2 A — 활성 드롭존 (file-drop-zone.tsx 인라인값 승격) */
-  --shadow-iv-modal-regen: 8px 8px 0 rgba(29, 27, 32, 0.4); /* interview-results BUILD-SPEC §1.4 — 재생성 모달(8px8px0 ink/40). CD 절대값 승격(AUTHORITY) — memphis-2xl 솔리드로 굽히지 않음 */
-  --shadow-iv-modal-share: 6px 6px 0 rgba(29, 27, 32, 0.3); /* interview-results BUILD-SPEC §1.4 — 공유 모달(6px6px0 ink/30). CD 절대값 승격 */
+  --shadow-iv-modal-share: var(--sh-modal); /* 공유 모달 — 변환표 모달 행(--sh-modal) */
 
   /* Soft selection glow — Canvas 1c 카드 프레임 method 카드 선택(R6, proposed).
-     memphis 하드 오프셋(--raw-memphis-*)과 달리 blur 소프트 글로우로, 선택 카드에
+     하드 오프셋(퇴역)과 달리 blur 소프트 글로우로, 선택 카드에
      은은한 amore 후광을 준다 (GEOMETRY.md §3: `0 4px 12px rgba(255,92,138,.16)`).
      rgba = amore(--raw-accent-pink #ff5c8a) .16 알파 — 색 원자는 토큰 정의 층
      (globals.css)에만 존재하고 JSX 는 `shadow-select-glow` utility 로만 소비. */
@@ -918,8 +859,7 @@
      paper 갭 + 4px amore 링. CD §6 #4 writer 확정값. shadow-focus-ring 로 소비. */
   --shadow-focus-ring: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-amore);
   /* 플로팅 픽커 패널 lift — memphis-md 와 -lg 사이의 tinted 솔리드 오프셋.
-     shadow-picker-panel 로 소비. */
-  --shadow-picker-panel: 4px 4px 0 rgba(29, 27, 32, 0.22);
+     shadow-soft-popover 로 소비(Memphis 전용 토큰은 작업 6 에서 퇴역). */
   /* 픽커 스코프 radius 4종 (rounded-picker-{check,option,trigger,panel}).
      radius-picker-trigger(10) 는 --widget-card-frame-toolbar-radius(10) 과 값이
      우연히 같으나 병합 금지 — 위젯 셸 토큰은 CD 셸 권위, 픽커 토큰은 픽커 권위. */
@@ -980,6 +920,10 @@
   --color-soft-run-fg: var(--run-fg);
   --color-soft-run-dot: var(--run-dot);
   --color-soft-run-track: var(--run-track);
+  /* 장면 02 전용 원자 4종 — 위 :root 블록 주석 참고 (CD 절대값). */
+  --color-row-run-bg: var(--row-run-bg);
+  --color-row-err-bg: var(--row-err-bg);
+  --color-run-band-line: var(--run-band-line);
   --color-soft-warn-bg: var(--warn-bg);
   --color-soft-warn-fg: var(--warn-fg);
   --color-soft-warn-dot: var(--warn-dot);
@@ -1205,10 +1149,13 @@ html, body {
 
 /* probing-popup-pulse — high importance popup 카드 등장 시 1회 짧은 pulse.
    사용자 시선을 끌어당기는 시각만 — 사운드 X. */
+/* Soft Identity (2단계) — 상주 하드 오프셋(8px8px0 warning)을 걷어내고 ring 만
+   남긴다. 등장 1회 시선 유도라는 의도는 ring 확산으로 충분하고, 애니메이션이
+   끝난 뒤에도 남던 오프셋 그림자가 "하드 그림자 0" 을 깨고 있었다. */
 @keyframes probingPopupPulse {
-  0%   { box-shadow: 0 0 0 0 var(--color-warning), 8px 8px 0 var(--color-warning); }
-  60%  { box-shadow: 0 0 0 14px transparent, 8px 8px 0 var(--color-warning); }
-  100% { box-shadow: 0 0 0 0 transparent, 8px 8px 0 var(--color-warning); }
+  0%   { box-shadow: 0 0 0 0 var(--color-warning); }
+  60%  { box-shadow: 0 0 0 14px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 .probing-popup-pulse {
   animation: probingPopupPulse 1.2s ease-out 1;
@@ -1276,12 +1223,19 @@ html, body {
    **running 에만** 붙인다 — 실패·멈춤·대기에 깜빡임이 남으면 유령 상태이고,
    번들 §11 Done-when 이 "실패/멈춤/대기에 깜빡임 0" 을 명시한다.
    reduced-motion 에서는 끄고 정적 점으로 남긴다(상태 색은 유지). */
-@keyframes palettePulse {
+/* CD `@keyframes sipulse` (README §Interactions: opacity 1 → .35 → 1,
+   1.4s ease-in-out 무한, running 에만, prefers-reduced-motion 이면 꺼짐).
+   캔버스 모듈화 Phase 1 이 같은 모션을 `palettePulse` 라는 이름으로 먼저
+   넣었으므로, 리브랜드 2단계에서 **CD 이름으로 합치고 keyframe 은 하나만
+   둔다**(동일 모션 중복 정의 금지). `.palette-pulse` 는 phase1 소비처가
+   그대로 쓰도록 유지하고, 위젯 본문/진행 밴드는 `.animate-sipulse` 를 쓴다. */
+@keyframes sipulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
-.palette-pulse {
-  animation: palettePulse 1.4s ease-in-out infinite;
+.palette-pulse,
+.animate-sipulse {
+  animation: sipulse 1.4s ease-in-out infinite;
 }
 
 /* palette-ring — P1b "행을 누른 뒤": 레인 카드로 팬한 뒤 그 카드에 링
@@ -1316,6 +1270,7 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .palette-pulse,
+  .animate-sipulse,
   .palette-ring,
   .palette-fade-in,
   .palette-fade-out {
@@ -1637,50 +1592,65 @@ html, body {
    primitive, probing-card 의 fixed-size action 버튼) 은 제외 — globals
    의 padding 0.4rem 0.85rem 가 28×28/32×32 박스의 content area 를 음수로
    만들어 SVG 글리프가 사라지는 회귀 (PR #466 후) 발생. */
-/* 값은 3-layer 토큰 참조 — pop 테마에서 기존 리터럴과 diff-0
-   (2.5px/#000/#fff/8px/3px·4px·1px shadow 그대로), [data-theme] swap 시
-   canvas 컨트롤도 Layer 1 을 따라간다(과거 하드코드가 swap 을 막던 원인 해소).
-   shadow 는 offset 이 1/3/4px 를 정확히 커버하는 @theme memphis 패밀리로. */
+/* ── Soft Identity 전환 (리브랜드 2단계, 작업 6) ──────────────────────────
+   전: 2.5px 검정 보더 + 하드 오프셋 그림자(3px/4px/1px) + translate 리프트.
+   후: 1px --line + 그림자 0 + pill. 이 캐스케이드가 **위젯 본문 7종의 모든
+   버튼·입력 외형을 단독으로 결정**하므로(컴포넌트 클래스의 `border`(1px)를
+   specificity 로 덮었다), 작업 3 의 컴포넌트 편집이 화면에 보이려면 여기가
+   같이 바뀌어야 한다 — 그래서 토큰 삭제와 같은 커밋이다.
+   근거: 핵심규칙 1(선 전부 1px) · 2(하드 오프셋 폐지 · 버튼 그림자 0) ·
+   5(버튼 전부 pill · 보조 = 흰 면 + 1px --line · 600) · README §Interactions
+   (hover 는 색 전환 120ms ease-out · focus 는 border ink + --focus-ring). */
 [data-canvas-body] button:not([data-canvas-action]) {
-  border: var(--raw-border-width-strong) solid var(--raw-border-strong);
-  border-radius: var(--raw-radius-canvas-button);
-  background: var(--surface-card);
-  color: var(--fg-primary);
-  font-weight: 700;
-  box-shadow: var(--shadow-memphis-md);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: none;
   padding: 0.4rem 0.85rem;
-  transition: transform 0.12s, box-shadow 0.12s;
+  transition: background-color 0.12s ease-out, border-color 0.12s ease-out;
 }
 [data-canvas-body] button:not([data-canvas-action]):hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-memphis-lg);
+  border-color: var(--line-hover);
+  background: var(--surface-2);
 }
 [data-canvas-body] button:not([data-canvas-action]):active {
-  transform: translate(2px, 2px);
-  box-shadow: var(--shadow-memphis-2xs);
+  background: var(--fill);
 }
-/* ModeButton selected — canvas 안에서는 위 memphis 검정 border 가 .border-amore
-   를 덮으므로(specificity), selected 일 때 accent(=amore) border 로 선택을
-   표시한다. ✓ 글리프 제거 후 유일한 선택 신호. data-mode-card 로 좁혀 다른
+[data-canvas-body] button:not([data-canvas-action]):focus-visible {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: var(--focus-ring);
+}
+/* ModeButton selected — 변환표 "옵션 카드 선택 = border 1 ink + --tint-* bg".
+   캐스케이드가 1px --line 을 깔아 두므로 선택은 **ink 보더**로 표시한다(이전엔
+   memphis 검정이 .border-amore 를 덮어 accent 보더로 우회했는데, 이제 기본
+   보더가 중립이라 CD 문법 그대로 쓸 수 있다). data-mode-card 로 좁혀 다른
    canvas 토글 버튼(record/필터 칩/분포 셀 등 aria-pressed)엔 새지 않게 한다. */
 [data-canvas-body] [data-mode-card][aria-checked='true'],
 [data-canvas-body] [data-mode-card][aria-pressed='true'] {
-  border-color: var(--canvas-accent);
+  border-color: var(--ink);
 }
 /* checkbox / radio 는 제외 — 자체 primitive(Checkbox) 스타일(appearance-none +
    checked:bg-amore + ✓ 글리프) 을 쓴다. 여기 background:#fff + padding 을
    씌우면 checked 배경이 흰색으로 덮여 체크가 안 보이는 회귀 발생. */
 [data-canvas-body]
   :is(input:not([type='checkbox']):not([type='radio']), textarea, select) {
-  border: var(--raw-border-width-medium) solid var(--raw-border-strong);
-  border-radius: var(--raw-radius-canvas-input);
-  background: var(--surface-card);
-  color: var(--fg-primary);
+  /* 변환표 "입력/피커 트리거": border 1.5 ink + shadow → border 1 --line ·
+     radius 10(--r-inner) · 그림자 없음. */
+  border: 1px solid var(--line);
+  border-radius: var(--r-inner);
+  background: var(--surface);
+  color: var(--ink);
   padding: 0.5rem 0.75rem;
 }
 [data-canvas-body] :is(input, textarea, select):focus {
-  outline: 3px solid var(--canvas-accent);
-  outline-offset: 2px;
+  /* focus = border --ink + --focus-ring. 하드 그림자/굵은 outline 으로
+     포커스를 표시하지 않는다(README §Interactions). */
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: var(--focus-ring);
 }
 /* display typography — 큰 헤딩 + 굵게 + tight tracking */
 [data-canvas-body] :is(h1, h2, h3, .text-xl, .text-2xl, .text-3xl, .text-display) {

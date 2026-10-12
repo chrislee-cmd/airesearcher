@@ -21,11 +21,11 @@ export async function RecruitingShareBody({
   return (
     <div className="flex flex-col gap-3.5">
       {/* ── 참여자 조건 ─────────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-md">
-        <div className="flex items-center gap-2.5 border-b-2 border-ink bg-sun-bg px-3.5 py-2.5">
+      <section className="overflow-hidden rounded-sm border border-soft-line bg-paper">
+        <div className="flex items-center gap-2.5 border-b border-soft-hair bg-sun-bg px-3.5 py-2.5">
           <span
             aria-hidden
-            className="h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-ink bg-amore"
+            className="h-2.5 w-2.5 shrink-0 rounded-full bg-amore"
           />
           <span aria-hidden className="text-md">
             🎯
@@ -54,7 +54,7 @@ export async function RecruitingShareBody({
               {criteria.map((c, i) => (
                 <li
                   key={i}
-                  className={`inline-flex items-center gap-1.5 rounded-pill border-[1.4px] bg-paper px-2.5 py-[5px] text-sm ${
+                  className={`inline-flex items-center gap-1.5 rounded-pill border bg-paper px-2.5 py-[5px] text-sm ${
                     c.required ? 'border-amore' : 'border-line'
                   }`}
                 >
@@ -77,11 +77,11 @@ export async function RecruitingShareBody({
       </section>
 
       {/* ── 성별 × 연령 분포 ────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-md">
-        <div className="flex items-center gap-2.5 border-b-2 border-ink bg-mint-bg px-3.5 py-2.5">
+      <section className="overflow-hidden rounded-sm border border-soft-line bg-paper">
+        <div className="flex items-center gap-2.5 border-b border-soft-hair bg-mint-bg px-3.5 py-2.5">
           <span
             aria-hidden
-            className="h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-ink bg-success"
+            className="h-2.5 w-2.5 shrink-0 rounded-full bg-soft-ok-dot"
           />
           <span aria-hidden className="text-md">
             📊
@@ -107,11 +107,11 @@ export async function RecruitingShareBody({
       </section>
 
       {/* ── 참여자 부합도 ───────────────────────────────────────────── */}
-      <section className="overflow-hidden rounded-sm border-[3px] border-ink bg-paper shadow-memphis-md">
-        <div className="flex items-center gap-2.5 border-b-2 border-ink bg-lav-bg-3 px-3.5 py-2.5">
+      <section className="overflow-hidden rounded-sm border border-soft-line bg-paper">
+        <div className="flex items-center gap-2.5 border-b border-soft-hair bg-lav-bg-3 px-3.5 py-2.5">
           <span
             aria-hidden
-            className="h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-ink bg-violet"
+            className="h-2.5 w-2.5 shrink-0 rounded-full border border-soft-line bg-violet"
           />
           <span aria-hidden className="text-md">
             ✅
@@ -169,7 +169,7 @@ function FitBar({
       <div className="flex w-[92px] shrink-0 items-center gap-1.5">
         <span
           aria-hidden
-          className={`h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-ink ${dot}`}
+          className={`h-2.5 w-2.5 shrink-0 rounded-full border border-soft-line ${dot}`}
         />
         <span className="text-md font-semibold text-ink">{label}</span>
       </div>
@@ -243,7 +243,7 @@ function CrosstabGrid({
           ))}
         </tbody>
         <tfoot>
-          <tr className="border-t-[1.5px] border-ink/15">
+          <tr className="border-t border-soft-hair">
             <td className="px-1 py-1.5 text-left font-sans text-md font-extrabold text-ink">
               Σ
             </td>
