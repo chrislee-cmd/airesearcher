@@ -119,22 +119,29 @@ function laneStatusOf(node: ChainNodeStatus): LocationStatus {
 export function locationsOf(params: {
   view: ChainView | null;
   dockedStep: string | null;
+  /**
+   * 레인에 들어 있는 **카드 순서**. 단계 번호의 폴백이다 — 카드가 1장일 때는
+   * 아직 체인이 아니라 서버 행이 없고(`syncComposition` 은 2단계부터 POST 한다)
+   * `view` 가 null 이라 번호를 못 센다. 그래도 사용자에게는 "체인 1 · 1단계"
+   * 로 보여야 한다(장면 P2a — 1장 도킹 상태의 타일 문구).
+   */
+  laneCards: readonly string[];
   widgetState: WidgetStateInfo;
 }): WidgetLocation[] {
-  const { view, dockedStep, widgetState } = params;
+  const { view, dockedStep, laneCards, widgetState } = params;
   const out: WidgetLocation[] = [];
 
   if (dockedStep) {
-    const idx = view
-      ? view.steps.findIndex((s) => s.feature === dockedStep)
-      : -1;
-    const node = idx >= 0 ? view!.steps[idx] : null;
+    const steps = view?.steps ?? [];
+    const idx = steps.findIndex((s) => s.feature === dockedStep);
+    const node = idx >= 0 ? steps[idx] : null;
+    const laneIdx = laneCards.indexOf(dockedStep);
     out.push({
       id: dockedStep,
       kind: 'lane',
       status: node ? laneStatusOf(node.status) : 'pending',
-      step: idx >= 0 ? idx + 1 : null,
-      totalSteps: view ? view.steps.length : null,
+      step: idx >= 0 ? idx + 1 : laneIdx >= 0 ? laneIdx + 1 : null,
+      totalSteps: view ? steps.length : laneCards.length || null,
       detail: node?.error ?? null,
     });
   }

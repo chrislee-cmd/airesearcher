@@ -299,6 +299,11 @@ export function CanvasBoard({
     () => new Map<string, string>(dockedKeys),
     [dockedKeys],
   );
+  /** 레인 카드 순서 — 팔레트가 단계 번호를 세는 폴백(서버 행 생성 전). */
+  const laneCardKeys = useMemo<readonly string[]>(
+    () => (lane?.cards ?? []).slice(),
+    [lane],
+  );
   const isChainable = useCallback(
     (key: string) => stepOfWidget.has(key),
     [stepOfWidget],
@@ -869,6 +874,7 @@ export function CanvasBoard({
         laneActive={laneActive}
         view={view}
         dockedSteps={dockedKeyStrings}
+        laneCards={laneCardKeys}
         stepOfWidget={stepOfWidgetStrings}
         nextStepNumber={nextStepNumber}
         isChainable={isChainable}

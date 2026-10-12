@@ -103,6 +103,8 @@ export type PalettePanelProps = {
   view: ChainView | null;
   /** 위젯 key → 레인에 들어 있는 단계 key. */
   dockedSteps: Map<string, string>;
+  /** 레인 카드 순서 — 단계 번호의 폴백(1장일 땐 서버 행이 아직 없다). */
+  laneCards: readonly string[];
   /** 위젯 key → 체인 단계 key (체인 미지원이면 undefined). */
   stepOfWidget: Map<string, string>;
   /** 다음에 들어갈 단계 번호 — fit 칩 "→ n단계". */
@@ -126,6 +128,7 @@ export function PalettePanel({
   laneActive,
   view,
   dockedSteps,
+  laneCards,
   stepOfWidget,
   nextStepNumber,
   isChainable,
@@ -355,6 +358,7 @@ export function PalettePanel({
           widgets={widgets}
           view={view}
           dockedSteps={dockedSteps}
+          laneCards={laneCards}
           hover={hover}
           onExpand={toggleCollapsed}
           onOpenWidget={openWidget}
@@ -415,6 +419,7 @@ export function PalettePanel({
                 widget={w}
                 view={view}
                 dockedStep={dockedSteps.get(w.key) ?? null}
+                laneCards={laneCards}
                 feature={stepOfWidget.get(w.key) ?? w.key}
                 laneActive={laneActive}
                 nextStepNumber={nextStepNumber}
@@ -522,6 +527,7 @@ type TileRowProps = {
   widget: WidgetContent;
   view: ChainView | null;
   dockedStep: string | null;
+  laneCards: readonly string[];
   feature: string;
   laneActive: boolean;
   nextStepNumber: number;
@@ -542,6 +548,7 @@ function PaletteTileRow({
   widget,
   view,
   dockedStep,
+  laneCards,
   feature,
   laneActive,
   nextStepNumber,
@@ -563,8 +570,8 @@ function PaletteTileRow({
   const widgetState = useWidgetStateOf(widget.key);
 
   const locations = useMemo(
-    () => locationsOf({ view, dockedStep, widgetState }),
-    [view, dockedStep, widgetState],
+    () => locationsOf({ view, dockedStep, laneCards, widgetState }),
+    [view, dockedStep, laneCards, widgetState],
   );
 
   // 다시 돌기 시작하면 "완료 1회" 확인 기록을 비운다 — 다음 완료도 한 번
@@ -783,6 +790,7 @@ function PaletteRail({
   widgets,
   view,
   dockedSteps,
+  laneCards,
   hover,
   onExpand,
   onOpenWidget,
@@ -794,6 +802,7 @@ function PaletteRail({
   widgets: WidgetContent[];
   view: ChainView | null;
   dockedSteps: Map<string, string>;
+  laneCards: readonly string[];
   hover: Hover;
   onExpand: () => void;
   onOpenWidget: (key: string) => void;
@@ -815,6 +824,7 @@ function PaletteRail({
           widget={w}
           view={view}
           dockedStep={dockedSteps.get(w.key) ?? null}
+          laneCards={laneCards}
           hovered={hover?.key === w.key}
           hoverRect={hover?.key === w.key ? hover.rect : null}
           expanded={expandedKey === w.key}
@@ -834,6 +844,7 @@ function PaletteRailTile({
   widget,
   view,
   dockedStep,
+  laneCards,
   hovered,
   hoverRect,
   expanded,
@@ -845,6 +856,7 @@ function PaletteRailTile({
   widget: WidgetContent;
   view: ChainView | null;
   dockedStep: string | null;
+  laneCards: readonly string[];
   hovered: boolean;
   hoverRect: DOMRect | null;
   expanded: boolean;
@@ -858,8 +870,8 @@ function PaletteRailTile({
   const tRoot = useTranslations();
   const widgetState = useWidgetStateOf(widget.key);
   const locations = useMemo(
-    () => locationsOf({ view, dockedStep, widgetState }),
-    [view, dockedStep, widgetState],
+    () => locationsOf({ view, dockedStep, laneCards, widgetState }),
+    [view, dockedStep, laneCards, widgetState],
   );
   const lead = leadLocation(locations);
   const name = resolveWidgetLabel(tRoot, widget.meta);
