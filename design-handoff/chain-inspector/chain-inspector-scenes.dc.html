@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.min.css">
+<style>*{box-sizing:border-box;}body{margin:0;font-family:'Pretendard',sans-serif;color:#1d1b20;}a{color:#b8325a;text-decoration:none;}a:hover{color:#8f2446;}
+@keyframes sipulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;}}</style>
+</helmet>
+
+<div style="min-height:100vh;width:max-content;background:#ececee;padding:64px;display:flex;flex-direction:column;align-items:flex-start;gap:64px;">
+
+  <div style="width:1868px;display:flex;flex-direction:column;gap:12px;">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.14em;color:#6e6a75;">CHAIN INSPECTOR · 시안 I0–I4</span>
+    <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:46px;font-weight:700;letter-spacing:-1.5px;line-height:1.1;">레인은 읽고, 오른쪽에서 고친다</span>
+    <span style="font-size:15px;color:#3a3640;line-height:1.8;max-width:1180px;">레인 카드를 604×900 설정 폼에서 <b>240×300 읽기 전용 요약 카드</b>로 바꾸고, 세부 설정은 카드를 누르면 열리는 <b>오른쪽 인스펙터 400</b>으로 옮겼습니다. 카드가 작아져 1440 뷰포트에서 3단계 체인이 <b>줌 100%</b>로 한 화면에 읽힙니다. 세그먼트·캡슐·팔레트·상태 어휘는 그대로입니다. 시각 값은 Soft Identity 입니다. 프레임은 모두 실치수입니다.</span>
+  </div>
+
+  <!-- I1 gallery -->
+  <div id="I1" style="display:flex;gap:28px;align-items:flex-start;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">I1</span><span style="font-size:18px;font-weight:700;">요약 카드 단독 — 상태 4종</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">240 × 300 · 1:1 · 인터뷰 결과 생성기</span></div>
+      <div style="width:1440px;background:#f7f7f8;background-image:radial-gradient(#e2e1e6 1px,transparent 1px);background-size:22px 22px;border-radius:14px;box-shadow:0 2px 4px rgba(29,27,32,.04),0 24px 48px rgba(29,27,32,.08);padding:44px 56px;display:grid;grid-template-columns:repeat(4,240px);justify-content:space-between;row-gap:18px;">
+        <sc-for list="{{ gallery }}" as="g" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;align-items:center;gap:7px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;background:#fff;border-radius:4px;padding:1px 6px;">{{ g.key }}</span><span style="font-size:14px;font-weight:700;">{{ g.name }}</span></div>
+            <div style="width:240px;height:300px;border:{{ g.c.bd }};border-radius:14px;background:{{ g.c.bg }};box-shadow:{{ g.c.sh }};display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;">
+              <div style="padding:14px 14px 0;display:flex;align-items:center;gap:10px;">
+                <span style="width:30px;height:30px;border-radius:8px;background:{{ g.c.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ g.c.icon }}</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ g.c.n }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9a96a1;">{{ g.c.step }}</span></div>
+              </div>
+              <div style="padding:10px 14px 0;display:flex;"><span style="display:inline-flex;align-items:center;gap:5px;background:{{ g.c.bb }};color:{{ g.c.bf }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:{{ g.c.bdot }};animation:{{ g.c.anim }};"></span>{{ g.c.btext }}</span></div>
+              <div style="flex:1;min-height:0;padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+                <sc-if value="{{ g.c.isRun }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:6px;"><div style="height:4px;border-radius:2px;background:#e6dffb;overflow:hidden;"><div style="height:100%;width:{{ g.c.pct }};background:#7c5cf0;"></div></div><span style="font-size:12px;color:#3a3640;">{{ g.c.runText }}</span></div></sc-if>
+                <sc-if value="{{ g.c.isUnset }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px;"><span style="font-size:12.5px;font-weight:600;color:#3a3640;">{{ g.c.need }}</span><sc-for list="{{ g.c.needs }}" as="nd" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#6e6a75;"><span style="width:12px;height:12px;border-radius:50%;border:1.5px solid #c4c1c9;flex-shrink:0;"></span>{{ nd }}</div></sc-for></div></sc-if>
+                <sc-for list="{{ g.c.rows }}" as="r" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:2px;opacity:{{ r.op }};"><span style="font-size:10.5px;color:#9a96a1;">{{ r.l }}</span><span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.v }}</span></div></sc-for>
+                <sc-if value="{{ g.c.more }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;color:#6e6a75;">{{ g.c.moreText }}</span></sc-if>
+              </div>
+              <div style="height:44px;border-top:1px solid #efedf1;padding:0 14px;display:flex;align-items:center;gap:8px;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;white-space:nowrap;">{{ g.c.footL }}</span><span style="flex:1;"></span>
+                <sc-if value="{{ g.c.isBtn }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#1d1b20;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;">{{ g.c.footR }}</span></sc-if>
+                <sc-if value="{{ g.c.isLink }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:600;white-space:nowrap;">{{ g.c.footR }}</span></sc-if>
+                <sc-if value="{{ g.c.isText }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#6e6a75;white-space:nowrap;">{{ g.c.footR }}</span></sc-if>
+              </div>
+            </div>
+            <span style="font-size:12.5px;color:#3a3640;line-height:1.75;">{{ g.rule }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="width:400px;display:flex;flex-direction:column;gap:10px;padding-top:40px;">
+      <sc-for list="{{ galleryNotes }}" as="n" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:3px;background:#fff;border-radius:12px;padding:12px 14px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#6e6a75;">{{ n.k }}</span><span style="font-size:13px;color:#3a3640;line-height:1.7;">{{ n.t }}</span></div></sc-for>
+    </div>
+  </div>
+
+  <!-- screen frames -->
+  <sc-for list="{{ frames }}" as="fr" hint-placeholder-count="6">
+    <div id="{{ fr.id }}" style="display:flex;gap:28px;align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:baseline;gap:12px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;background:#1d1b20;color:#fff;border-radius:6px;padding:3px 9px;">{{ fr.id }}</span><span style="font-size:18px;font-weight:700;">{{ fr.title }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">{{ fr.code }}</span></div>
+        <div style="width:{{ fr.wpx }};height:{{ fr.hpx }};position:relative;overflow:hidden;border-radius:14px;background:#fff;box-shadow:0 2px 4px rgba(29,27,32,.04),0 24px 48px rgba(29,27,32,.08);">
+
+          <sc-if value="{{ fr.palFull }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:0;top:0;width:240px;height:100%;background:#fff;border-right:1px solid #efedf1;padding:16px 12px;display:flex;flex-direction:column;gap:4px;z-index:3;">
+              <div style="display:flex;align-items:center;gap:9px;padding:0 6px 14px;"><span style="width:22px;height:22px;border-radius:7px;background:#1d1b20;"></span><span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:16px;font-weight:700;">리서치캔버스</span></div>
+              <div style="display:flex;flex-direction:column;gap:2px;padding:0 6px 8px;"><span style="font-size:13px;font-weight:700;">위젯 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a96a1;font-weight:500;">9</span></span><span style="font-size:11.5px;color:#9a96a1;">누르면 열리고, 끌면 체인에 들어갑니다</span></div>
+              <sc-for list="{{ fr.pal }}" as="t" hint-placeholder-count="9">
+                <div style="width:216px;height:64px;border-radius:10px;display:flex;align-items:center;gap:11px;padding:0 10px;flex-shrink:0;">
+                  <span style="width:36px;height:36px;border-radius:9px;background:{{ t.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ t.icon }}</span>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.n }}</span>
+                    <sc-if value="{{ t.isBadge }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;background:{{ t.bb }};color:{{ t.bf }};border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:{{ t.bdot }};animation:{{ t.anim }};"></span>{{ t.text }}</span></sc-if>
+                    <sc-if value="{{ t.isMeta }}" hint-placeholder-val="{{ true }}"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;">{{ t.meta }}</span></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ fr.palRail }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;top:0;width:72px;height:100%;background:#fff;border-right:1px solid #efedf1;padding:16px 0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:3;">
+              <span style="width:22px;height:22px;border-radius:7px;background:#1d1b20;margin-bottom:10px;"></span>
+              <sc-for list="{{ fr.pal }}" as="t" hint-placeholder-count="9">
+                <span style="position:relative;width:44px;height:44px;border-radius:11px;background:{{ t.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ t.icon }}<sc-if value="{{ t.isBadge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;right:-3px;top:-3px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:{{ t.bdot }};"></span></sc-if></span>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="position:absolute;left:{{ fr.palWpx }};top:0;width:{{ fr.canWpx }};height:100%;background:#f7f7f8;background-image:radial-gradient(#e2e1e6 1px,transparent 1px);background-size:22px 22px;overflow:hidden;">
+            <div style="position:absolute;left:{{ fr.laneXpx }};top:76px;width:1168px;background:#fff;border:1px solid #e7e5ea;border-radius:16px;box-shadow:0 1px 0 rgba(29,27,32,.04),0 6px 18px rgba(29,27,32,.05);">
+              <div style="height:52px;padding:0 18px 0 {{ fr.lane.padL }};border-bottom:1px solid #efedf1;display:flex;align-items:center;gap:12px;white-space:nowrap;">
+                <span style="width:28px;height:28px;border-radius:8px;background:#f4f3f6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ linkIcon }}</span>
+                <span style="font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:15px;font-weight:700;">체인 1</span>
+                <sc-if value="{{ fr.lane.editable }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;background:#f4f3f6;border-radius:999px;padding:2px;"><span style="background:#fff;border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:600;box-shadow:0 1px 2px rgba(29,27,32,.08);">단계별 승인</span><span style="padding:4px 11px;font-size:11.5px;color:#6e6a75;">자동</span></span></sc-if>
+                <sc-if value="{{ fr.lane.badge }}" hint-placeholder-val="{{ false }}"><span style="background:#f4f3f6;border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:600;color:#3a3640;">단계별 승인</span></sc-if>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:{{ fr.lane.stFg }};"><span style="width:6px;height:6px;border-radius:50%;background:{{ fr.lane.stDot }};animation:{{ fr.lane.anim }};"></span>{{ fr.lane.status }}</span>
+              </div>
+              <div style="padding:28px 24px;display:flex;align-items:center;">
+                <sc-for list="{{ fr.items }}" as="c" hint-placeholder-count="7">
+                  <div style="display:flex;align-items:center;flex-shrink:0;">
+                    <sc-if value="{{ c.isCard }}" hint-placeholder-val="{{ true }}">
+                      <div style="width:240px;height:300px;border:{{ c.bd }};border-radius:14px;background:{{ c.bg }};box-shadow:{{ c.sh }};display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;">
+                        <div style="padding:14px 14px 0;display:flex;align-items:center;gap:10px;">
+                          <span style="width:30px;height:30px;border-radius:8px;background:{{ c.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ c.icon }}</span>
+                          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.n }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9a96a1;">{{ c.step }}</span></div>
+                          <sc-if value="{{ c.sel }}" hint-placeholder-val="{{ false }}"><span style="background:#1d1b20;color:#fff;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:600;white-space:nowrap;flex-shrink:0;">편집 중</span></sc-if>
+                        </div>
+                        <div style="padding:10px 14px 0;display:flex;"><span style="display:inline-flex;align-items:center;gap:5px;background:{{ c.bb }};color:{{ c.bf }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:{{ c.bdot }};animation:{{ c.anim }};"></span>{{ c.btext }}</span></div>
+                        <div style="flex:1;min-height:0;padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+                          <sc-if value="{{ c.isRun }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:6px;"><div style="height:4px;border-radius:2px;background:#e6dffb;overflow:hidden;"><div style="height:100%;width:{{ c.pct }};background:#7c5cf0;"></div></div><span style="font-size:12px;color:#3a3640;">{{ c.runText }}</span></div></sc-if>
+                          <sc-if value="{{ c.isUnset }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px;"><span style="font-size:12.5px;font-weight:600;color:#3a3640;">{{ c.need }}</span><sc-for list="{{ c.needs }}" as="nd" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#6e6a75;"><span style="width:12px;height:12px;border-radius:50%;border:1.5px solid #c4c1c9;flex-shrink:0;"></span>{{ nd }}</div></sc-for></div></sc-if>
+                          <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:2px;opacity:{{ r.op }};"><span style="font-size:10.5px;color:#9a96a1;">{{ r.l }}</span><span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.v }}</span></div></sc-for>
+                          <sc-if value="{{ c.more }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;color:#6e6a75;">{{ c.moreText }}</span></sc-if>
+                        </div>
+                        <div style="height:44px;border-top:1px solid #efedf1;padding:0 14px;display:flex;align-items:center;gap:8px;">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;white-space:nowrap;">{{ c.footL }}</span><span style="flex:1;"></span>
+                          <sc-if value="{{ c.isBtn }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#1d1b20;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;">{{ c.footR }}</span></sc-if>
+                          <sc-if value="{{ c.isLink }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:600;white-space:nowrap;">{{ c.footR }}</span></sc-if>
+                          <sc-if value="{{ c.isText }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#6e6a75;white-space:nowrap;">{{ c.footR }}</span></sc-if>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ c.isSeg }}" hint-placeholder-val="{{ false }}">
+                      <div style="width:96px;height:300px;position:relative;">
+                        <div style="position:absolute;left:0;width:42px;top:149px;border-top:{{ c.l1 }};"></div>
+                        <div style="position:absolute;left:42px;right:11px;top:149px;border-top:{{ c.l2 }};"></div>
+                        <div style="position:absolute;right:0;top:143px;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:11px solid {{ c.tip }};"></div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ c.isOut }}" hint-placeholder-val="{{ false }}">
+                      <div style="width:112px;height:140px;border:1.5px dashed #d6d4da;border-radius:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:0 8px;"><span style="width:28px;height:28px;border-radius:8px;background:#fff4f8;display:flex;align-items:center;justify-content:center;">{{ reportIcon }}</span><span style="font-size:11.5px;font-weight:600;color:#6e6a75;">탑라인 보고서</span><span style="font-size:10.5px;color:#9a96a1;">{{ c.outText }}</span></div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="position:absolute;left:20px;top:18px;display:flex;align-items:center;gap:10px;">
+              <span style="display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:999px;background:#f4f3f6;color:#9a96a1;font-size:13px;font-weight:600;white-space:nowrap;">+ 새 체인</span>
+              <sc-if value="{{ fr.tbTip }}" hint-placeholder-val="{{ true }}"><span style="font-size:11.5px;color:#9a96a1;white-space:nowrap;">파일럿에서는 체인을 하나만 만들 수 있어요</span></sc-if>
+            </div>
+            <span style="position:absolute;right:18px;bottom:16px;display:inline-flex;align-items:center;gap:12px;height:32px;padding:0 13px;border-radius:999px;border:1px solid #e7e5ea;background:#fff;font-family:'JetBrains Mono',monospace;font-size:11.5px;white-space:nowrap;"><span>−</span><span>100%</span><span>+</span></span>
+          </div>
+
+          <sc-if value="{{ fr.hasInsp }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;right:0;top:0;width:{{ fr.inspWpx }};height:100%;background:#fff;border-left:1px solid #efedf1;display:flex;flex-direction:column;z-index:4;">
+              <div style="height:64px;flex-shrink:0;padding:0 14px 0 20px;border-bottom:1px solid #efedf1;display:flex;align-items:center;gap:11px;">
+                <span style="width:32px;height:32px;border-radius:9px;background:{{ fr.insp.c }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ fr.insp.icon }}</span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9a96a1;">{{ fr.insp.eyebrow }}</span><span style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ fr.insp.title }}</span></div>
+                <span style="width:30px;height:30px;border-radius:50%;border:1px solid #e7e5ea;display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ fr.insp.prevFg }};flex-shrink:0;">‹</span>
+                <span style="width:30px;height:30px;border-radius:50%;border:1px solid #e7e5ea;display:flex;align-items:center;justify-content:center;font-size:13px;color:{{ fr.insp.nextFg }};flex-shrink:0;">›</span>
+                <span style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ closeIcon }}</span>
+              </div>
+              <div style="flex-shrink:0;padding:10px 20px;border-bottom:1px solid #efedf1;display:flex;align-items:center;gap:10px;">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:{{ fr.insp.bb }};color:{{ fr.insp.bf }};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:{{ fr.insp.bdot }};animation:{{ fr.insp.anim }};"></span>{{ fr.insp.btext }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6e6a75;white-space:nowrap;">{{ fr.insp.cost }}</span>
+              </div>
+              <div style="flex:1;min-height:0;overflow:hidden;padding:20px;display:flex;flex-direction:column;gap:26px;">
+                <sc-if value="{{ fr.insp.lock }}" hint-placeholder-val="{{ false }}"><div style="background:#f4f0ff;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#5b44c4;line-height:1.6;flex-shrink:0;">실행 중에는 설정을 바꿀 수 없어요. 바꾸려면 체인을 종료하세요.</div></sc-if>
+                <sc-for list="{{ fr.insp.sections }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:14px;flex-shrink:0;">
+                    <div style="display:flex;flex-direction:column;gap:3px;"><span style="font-size:13px;font-weight:700;">{{ s.t }}</span><sc-if value="{{ s.hasD }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#6e6a75;line-height:1.55;">{{ s.d }}</span></sc-if></div>
+                    <sc-for list="{{ s.fields }}" as="fd" hint-placeholder-count="2">
+                      <div style="display:flex;flex-direction:column;gap:6px;">
+                        <sc-if value="{{ fd.isToggle }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:12px;min-height:38px;"><div style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:12.5px;font-weight:600;color:{{ fd.lFg }};">{{ fd.label }}</span><sc-if value="{{ fd.hasHint }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;color:#9a96a1;">{{ fd.hint }}</span></sc-if></div><span style="width:36px;height:20px;border-radius:999px;background:{{ fd.swBg }};position:relative;flex-shrink:0;"><span style="position:absolute;top:2px;left:{{ fd.knob }};width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(29,27,32,.18);"></span></span></div>
+                        </sc-if>
+                        <sc-if value="{{ fd.isStack }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12.5px;font-weight:600;color:{{ fd.lFg }};">{{ fd.label }}</span><sc-if value="{{ fd.hasReq }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;color:#9a96a1;">필수</span></sc-if><sc-if value="{{ fd.hasHint }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:11px;color:#9a96a1;">{{ fd.hint }}</span></sc-if></div>
+                          <sc-if value="{{ fd.isRO }}" hint-placeholder-val="{{ false }}"><div style="border:1px solid #efedf1;border-radius:10px;background:#fafafa;padding:10px 12px;display:flex;align-items:center;gap:10px;"><span style="width:26px;height:26px;border-radius:7px;background:{{ fd.tone }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ fd.icon }}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;"><span style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ fd.v }}</span><span style="font-size:11px;color:#6e6a75;">{{ fd.sub }}</span></div><span style="background:#f4f3f6;border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:600;color:#6e6a75;white-space:nowrap;">앞 단계</span></div></sc-if>
+                          <sc-if value="{{ fd.isSeg }}" hint-placeholder-val="{{ false }}"><div style="display:flex;background:#f4f3f6;border-radius:999px;padding:3px;"><sc-for list="{{ fd.opts }}" as="o" hint-placeholder-count="3"><span style="flex:1;text-align:center;padding:6px 0;border-radius:999px;font-size:12.5px;font-weight:{{ o.w }};background:{{ o.bg }};color:{{ o.fg }};box-shadow:{{ o.sh }};">{{ o.t }}</span></sc-for></div></sc-if>
+                          <sc-if value="{{ fd.isSelect }}" hint-placeholder-val="{{ false }}"><div style="height:38px;border:1px solid {{ fd.cBd }};border-radius:10px;background:{{ fd.cBg }};padding:0 12px;display:flex;align-items:center;font-size:13px;color:{{ fd.cFg }};"><span style="flex:1;">{{ fd.v }}</span><span style="font-size:9px;color:#9a96a1;">▼</span></div></sc-if>
+                          <sc-if value="{{ fd.isText }}" hint-placeholder-val="{{ false }}"><div style="min-height:78px;border:1px solid {{ fd.cBd }};border-radius:10px;background:{{ fd.cBg }};padding:10px 12px;font-size:13px;line-height:1.6;color:{{ fd.cFg }};">{{ fd.v }}</div></sc-if>
+                          <sc-if value="{{ fd.isList }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:6px;"><sc-for list="{{ fd.items }}" as="it" hint-placeholder-count="4"><div style="height:38px;border:1px solid #efedf1;border-radius:9px;background:{{ fd.cBg }};padding:0 10px;display:flex;align-items:center;gap:10px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a96a1;">{{ it.n }}</span><span style="flex:1;min-width:0;font-size:12.5px;color:{{ fd.cFg }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.t }}</span><span style="font-size:13px;color:#c4c1c9;">⋮</span></div></sc-for><sc-if value="{{ fd.canAdd }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:600;color:#3a3640;padding:4px 2px;">{{ fd.addLabel }}</span></sc-if></div></sc-if>
+                          <sc-if value="{{ fd.isChips }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-wrap:wrap;gap:6px;"><sc-for list="{{ fd.chips }}" as="ch" hint-placeholder-count="4"><span style="padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;background:{{ ch.bg }};color:{{ ch.fg }};">{{ ch.t }}</span></sc-for></div></sc-if>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex-shrink:0;padding:14px 20px;border-top:1px solid #efedf1;display:flex;align-items:center;gap:12px;">
+                <div style="display:flex;flex-direction:column;gap:2px;"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:{{ fr.insp.fFg }};"><span style="width:6px;height:6px;border-radius:50%;background:{{ fr.insp.fDot }};"></span>{{ fr.insp.footL }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9a96a1;">{{ fr.insp.saved }}</span></div>
+                <span style="flex:1;"></span>
+                <span style="display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:999px;background:{{ fr.insp.btnBg }};color:{{ fr.insp.btnFg }};border:{{ fr.insp.btnBd }};font-size:13px;font-weight:600;white-space:nowrap;">{{ fr.insp.btn }}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="width:400px;display:flex;flex-direction:column;gap:10px;padding-top:40px;">
+        <sc-for list="{{ fr.notes }}" as="n" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:3px;background:#fff;border-radius:12px;padding:12px 14px;"><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#6e6a75;">{{ n.k }}</span><span style="font-size:13px;color:#3a3640;line-height:1.7;">{{ n.t }}</span></div></sc-for>
+      </div>
+    </div>
+  </sc-for>
+
+  <!-- answers -->
+  <div style="width:1868px;background:#fff;border-radius:16px;box-shadow:0 1px 0 rgba(29,27,32,.04),0 6px 18px rgba(29,27,32,.05);overflow:hidden;">
+    <div style="padding:22px 26px;border-bottom:1px solid #efedf1;font-family:'Bricolage Grotesque','Pretendard',sans-serif;font-size:22px;font-weight:700;">열린 질문 Q1–Q6 — 판정</div>
+    <div style="display:grid;grid-template-columns:200px minmax(0,1.3fr) minmax(0,1fr);background:#fafafa;border-bottom:1px solid #efedf1;">
+      <span style="padding:9px 18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:#6e6a75;font-weight:700;">질문</span>
+      <span style="padding:9px 18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:#13803d;font-weight:700;">고른 것</span>
+      <span style="padding:9px 18px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:#9a96a1;font-weight:700;">버린 것</span>
+    </div>
+    <sc-for list="{{ answers }}" as="q" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:200px minmax(0,1.3fr) minmax(0,1fr);border-bottom:1px solid #f4f3f6;">
+        <div style="padding:14px 18px;display:flex;flex-direction:column;gap:4px;"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#9a96a1;">{{ q.id }}</span><span style="font-size:13.5px;font-weight:700;line-height:1.5;">{{ q.q }}</span></div>
+        <span style="padding:14px 18px;font-size:13px;color:#1d1b20;line-height:1.75;">{{ q.a }}</span>
+        <span style="padding:14px 18px;font-size:12.5px;color:#6e6a75;line-height:1.75;background:#fcfcfd;">{{ q.no }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const e = React.createElement;
+const W = {
+  D: { n: '데스크 리서치', c: '#bfe9ef', tint: '#effafc' }, R: { n: '리크루팅', c: '#ffe8a8', tint: '#fffaeb' },
+  G: { n: '가이드라인 생성기', c: '#e9e7ec', tint: '#f7f6f8' }, P: { n: '인터뷰 어시스턴트', c: '#cfe6ff', tint: '#f2f8ff' },
+  L: { n: '라이브 통역', c: '#cdebd9', tint: '#f1f9f4' }, T: { n: '전사록 생성기', c: '#e7defe', tint: '#f7f4ff' },
+  I: { n: '인터뷰 결과 생성기', c: '#ffd0e2', tint: '#fff4f8' }, U: { n: 'AI UT', c: '#ffd9be', tint: '#fff6ef' },
+  V: { n: '영상 분석기', c: '#e9e7ec', tint: '#f7f6f8' },
+};
+const CR = { D: 60, R: 30, G: null, P: 25, L: 50, T: 1, I: 10, U: 40, V: null };
+const ORDER = ['D', 'R', 'G', 'P', 'L', 'T', 'I', 'U', 'V'];
+const IP = {
+  D: [['circle', { cx: 11, cy: 11, r: 6, fill: '#fff' }], ['path', { d: 'M16 16l4.5 4.5' }]],
+  R: [['circle', { cx: 12, cy: 8, r: 3.5, fill: '#fff' }], ['path', { d: 'M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6z', fill: '#fff' }]],
+  G: [['rect', { x: 5, y: 3, width: 14, height: 18, rx: 2, fill: '#fff' }], ['path', { d: 'M8 8l1.5 1.5L12 7M8 14l1.5 1.5L12 13M14 8.5h2M14 14.5h2' }]],
+  P: [['path', { d: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-4 4v-4H6a2 2 0 0 1-2-2z', fill: '#fff' }]],
+  L: [['circle', { cx: 12, cy: 12, r: 8, fill: '#fff' }], ['path', { d: 'M4 12h16M12 4c2.5 2.2 2.5 13.8 0 16M12 4c-2.5 2.2-2.5 13.8 0 16' }]],
+  T: [['path', { d: 'M6 3h8l4 4v14H6z', fill: '#fff' }], ['path', { d: 'M14 3v4h4M9 12h6M9 16h5' }]],
+  I: [['rect', { x: 4, y: 12, width: 4, height: 8, fill: '#fff' }], ['rect', { x: 10, y: 7, width: 4, height: 13, fill: '#fff' }], ['rect', { x: 16, y: 4, width: 4, height: 16, fill: '#fff' }]],
+  U: [['path', { d: 'M5 3l14 7-6 2-2 6z', fill: '#fff' }]],
+  V: [['rect', { x: 3, y: 5, width: 18, height: 14, rx: 2, fill: '#fff' }], ['path', { d: 'M10 9l5 3-5 3z' }]],
+  link: [['path', { d: 'M9.5 14.5l5-5M11 6.5l1-1a3.8 3.8 0 0 1 5.4 5.4l-1 1M13 17.5l-1 1a3.8 3.8 0 0 1-5.4-5.4l1-1' }]],
+  x: [['path', { d: 'M6 6l12 12M18 6L6 18' }]],
+};
+const ic = (k, s = 16, stroke = '#1d1b20', sw = 1.8) => e('svg', { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke, strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flexShrink: 0 } }, IP[k].map(([t, p], i) => e(t, { key: i, ...p })));
+const SIG = { ok: ['#eaf7ef', '#13803d', '#16a34a'], run: ['#f4f0ff', '#5b44c4', '#7c5cf0'], warn: ['#fff6e5', '#93640c', '#d29a1f'], idle: ['#f4f3f6', '#3a3640', '#9a96a1'] };
+const PULSE = 'sipulse 1.4s ease-in-out infinite';
+const SH = '0 1px 0 rgba(29,27,32,.04), 0 6px 18px rgba(29,27,32,.05)';
+const badge = (sig, text, pulse) => ({ bb: SIG[sig][0], bf: SIG[sig][1], bdot: SIG[sig][2], btext: text, anim: pulse ? PULSE : 'none' });
+
+const SUM = {
+  P: { rows: [['가이드', '신규 온보딩 가이드 v2 · 12문항'], ['세션', '10/14 (화) 14:00 · 60분'], ['프로빙', '깊게 · 후속 질문 2회']], more: '외 1개 설정', foot: '💎25 예상' },
+  T: { rows: [['입력', '1단계 세션 녹음'], ['언어', '한국어 · 화자 분리'], ['용어집', '3개']], more: '', foot: '💎1 + 파일당 25' },
+  I: { rows: [['보고서', '탑라인'], ['핵심 질문', '4개'], ['세그먼트', '연령 · 사용 기간']], more: '외 2개 설정', foot: '💎10 예상' },
+};
+const DONE = {
+  P: { rows: [['산출물', '세션 녹음 · 58분'], ['참여자', 'P07 · 김민서'], ['프로빙', '후속 질문 14회']], foot: '10/14 15:02' },
+  I: { rows: [['산출물', '탑라인 보고서 · 14쪽'], ['핵심 발견', '5개'], ['인용', '23개']], foot: '10/14 16:42' },
+};
+const RUN = { T: ['75%', '6 / 8 파일 전사 중', '약 12분 남음'], I: ['75%', '섹션 3 / 4 작성 중', '약 2분 남음'] };
+const NEED = { I: ['보고서 유형', '리서치 목적', '핵심 질문'], T: ['언어'] };
+const rows = (arr, op = 1) => arr.map(([l, v]) => ({ l, v, op }));
+
+function card(k, st, step, sel) {
+  const c = { isCard: true, isSeg: false, isOut: false, ...W[k], icon: ic(k), step, sel: !!sel, bd: '1px solid #e7e5ea', bg: '#fff', sh: SH, isRun: false, isUnset: false, rows: [], more: false, moreText: '', footL: '', footR: '', isBtn: false, isLink: false, isText: false, pct: '0%', runText: '', need: '', needs: [] };
+  if (st === 'unset') Object.assign(c, badge('warn', '설정 필요'), { bd: '1.5px dashed #c4c1c9', bg: '#fcfcfd', sh: 'none', isUnset: true, need: `필수 설정 ${NEED[k].length}개가 남았어요`, needs: NEED[k], footL: SUM[k].foot, isBtn: true, footR: '설정하기' });
+  if (st === 'ready') Object.assign(c, badge('idle', '준비됨'), { rows: rows(SUM[k].rows), more: !!SUM[k].more, moreText: SUM[k].more, footL: SUM[k].foot, isText: true, footR: '편집' });
+  if (st === 'run') Object.assign(c, badge('run', '진행 중', true), { isRun: true, pct: RUN[k][0], runText: RUN[k][1], rows: rows(SUM[k].rows.slice(0, 2), .55), footL: RUN[k][2] });
+  if (st === 'done') Object.assign(c, badge('ok', '완료'), { rows: rows(DONE[k].rows), footL: DONE[k].foot, isLink: true, footR: '결과 보기 ↗' });
+  if (sel) c.sh = `0 0 0 2px #1d1b20, 0 0 0 6px ${W[k].c}`;
+  return c;
+}
+const SEGS = { done: ['2px solid #1d1b20', '2px solid #1d1b20', '#1d1b20'], run: ['2px solid #7c5cf0', '2px solid #7c5cf0', '#7c5cf0'], pend: ['2px dashed #d6d4da', '2px dashed #d6d4da', '#d6d4da'], block: ['2px solid #c4c1c9', '2px dashed #d29a1f', '#d29a1f'] };
+const seg = k => ({ isCard: false, isSeg: true, isOut: false, l1: SEGS[k][0], l2: SEGS[k][1], tip: SEGS[k][2] });
+const out = t => ({ isCard: false, isSeg: false, isOut: true, outText: t || '대기' });
+
+function pal(map = {}) {
+  return ORDER.map(k => {
+    const t = { ...W[k], icon: ic(k, 18), isMeta: true, isBadge: false, meta: CR[k] == null ? '💎 —' : '💎 ' + CR[k], bb: '', bf: '', bdot: '', text: '', anim: 'none' };
+    if (map[k]) Object.assign(t, { isMeta: false, isBadge: true }, badge(map[k][0], '', map[k][2]), { text: map[k][1] });
+    return t;
+  });
+}
+const PAL_BUILD = pal({ P: ['idle', '체인 1 · 1단계'], T: ['idle', '체인 1 · 2단계'], I: ['warn', '체인 1 · 설정 필요'] });
+const PAL_READY = pal({ P: ['idle', '체인 1 · 1단계'], T: ['idle', '체인 1 · 2단계'], I: ['idle', '체인 1 · 3단계'] });
+const PAL_RUN = pal({ P: ['ok', '체인 1 · 완료'], T: ['run', '체인 1 · 진행 중', true], I: ['idle', '체인 1 · 3단계'] });
+
+const LANE = {
+  blocked: { editable: true, badge: false, status: '3단계 설정 필요 · 아직 시작할 수 없어요', stFg: '#93640c', stDot: '#d29a1f', anim: 'none' },
+  ready: { editable: true, badge: false, status: '준비됨 · 세션이 끝나면 시작', stFg: '#1d1b20', stDot: '#9a96a1', anim: 'none' },
+  running: { editable: false, badge: true, status: '2/3 · 전사 중', stFg: '#5b44c4', stDot: '#7c5cf0', anim: PULSE },
+};
+
+const ON = { swBg: '#1d1b20', knob: '18px' }, OFF = { swBg: '#d6d4da', knob: '2px' };
+function F(kind, o) {
+  const f = { isToggle: kind === 'toggle', isStack: kind !== 'toggle', isRO: kind === 'ro', isSeg: kind === 'seg', isSelect: kind === 'select', isText: kind === 'text', isList: kind === 'list', isChips: kind === 'chips', hasHint: !!o.hint, hasReq: !!o.req, lFg: '#3a3640', cBg: '#fff', cBd: '#e7e5ea', cFg: '#1d1b20', canAdd: kind === 'list', swBg: '', knob: '', opts: [], items: [], chips: [], ...o };
+  if (kind === 'toggle') Object.assign(f, o.on ? ON : OFF);
+  if (kind === 'seg') f.opts = o.opts.map((t, i) => i === o.sel ? { t, bg: '#fff', fg: '#1d1b20', w: 600, sh: '0 1px 2px rgba(29,27,32,.08)' } : { t, bg: 'transparent', fg: '#6e6a75', w: 500, sh: 'none' });
+  if (kind === 'chips') f.chips = o.opts.map((t, i) => o.sel.includes(i) ? { t, bg: '#1d1b20', fg: '#fff' } : { t, bg: '#f4f3f6', fg: '#3a3640' });
+  return f;
+}
+function lockField(f) {
+  const l = { ...f, lFg: '#6e6a75', cBg: '#f4f3f6', cBd: 'transparent', cFg: '#9a96a1', canAdd: false };
+  if (f.isToggle) l.swBg = f.swBg === '#1d1b20' ? '#9a96a1' : '#e7e5ea';
+  if (f.isSeg) l.opts = f.opts.map(o => ({ ...o, fg: '#9a96a1', sh: 'none', bg: o.w === 600 ? '#e9e7ec' : 'transparent' }));
+  if (f.isChips) l.chips = f.chips.map(c => ({ ...c, bg: c.fg === '#fff' ? '#c4c1c9' : '#f4f3f6', fg: c.fg === '#fff' ? '#fff' : '#9a96a1' }));
+  return l;
+}
+const S = (t, fields, d) => ({ t, d: d || '', hasD: !!d, fields });
+
+const SECTIONS_T = [
+  S('입력', [F('ro', { label: '전사할 파일', v: '인터뷰 어시스턴트 세션 녹음', sub: '1단계가 끝나면 자동으로 들어옵니다', tone: W.P.c, icon: ic('P', 14) })]),
+  S('전사', [F('select', { label: '언어', v: '한국어', req: true }), F('toggle', { label: '화자 분리', hint: '인터뷰어와 참여자를 나눠 표기', on: true }), F('select', { label: '화자 수', v: '자동 감지' })]),
+  S('용어집', [F('list', { label: '고유명사·전문용어', hint: '전사 정확도에 반영', items: [{ n: '01', t: '온보딩' }, { n: '02', t: '리텐션' }, { n: '03', t: 'NPS' }], addLabel: '+ 용어 추가' })]),
+  S('출력', [F('seg', { label: '타임스탬프', opts: ['문장', '문단', '없음'], sel: 1 }), F('toggle', { label: '필러 단어 정리', hint: '"음", "그러니까" 등', on: false })]),
+];
+const SECTIONS_I = [
+  S('입력', [F('ro', { label: '분석할 전사록', v: '전사록 생성기 결과 · 예상 8건', sub: '2단계가 끝나면 자동으로 들어옵니다', tone: W.T.c, icon: ic('T', 14) })]),
+  S('보고서', [F('seg', { label: '유형', req: true, opts: ['탑라인', '상세', '비교'], sel: 0 }), F('text', { label: '리서치 목적', req: true, hint: '보고서 첫 문단의 기준', v: '신규 가입 후 첫 2주 안에 이탈하는 사용자가 어떤 지점에서 막히는지 파악한다.' })]),
+  S('핵심 질문', [F('list', { label: '질문', req: true, hint: '이 순서로 섹션이 만들어집니다', items: [{ n: '01', t: '가입 직후 처음 한 일은 무엇인가' }, { n: '02', t: '첫 프로젝트를 만들 때 막힌 곳' }, { n: '03', t: '팀원 초대를 미룬 이유' }, { n: '04', t: '유료 전환을 고민한 순간' }], addLabel: '+ 질문 추가' })]),
+  S('분석', [F('chips', { label: '세그먼트 기준', opts: ['연령', '사용 기간', '직군', '지역'], sel: [0, 1] }), F('toggle', { label: '인용 원문 표기', hint: '요약 옆에 참여자 발화 그대로', on: true })]),
+];
+const LOCKED_T = SECTIONS_T.map(s => ({ ...s, fields: s.fields.map(f => f.isRO ? f : lockField(f)) }));
+
+const INSP_BASE = { prevFg: '#1d1b20', nextFg: '#1d1b20', lock: false, saved: '자동 저장됨 · 방금', btnBg: '#1d1b20', btnFg: '#fff', btnBd: '1px solid #1d1b20', fFg: '#13803d', fDot: '#16a34a' };
+const INSP = {
+  T: { ...INSP_BASE, ...W.T, icon: ic('T', 17), eyebrow: '체인 1 · 2 / 3', title: '전사록 생성기', ...badge('idle', '준비됨'), cost: '💎1 + 파일당 25', sections: SECTIONS_T, footL: '필수 1 / 1 완료', btn: '다음 단계 →' },
+  I: { ...INSP_BASE, ...W.I, icon: ic('I', 17), eyebrow: '체인 1 · 3 / 3', title: '인터뷰 결과 생성기', ...badge('idle', '준비됨'), cost: '💎10 예상', sections: SECTIONS_I, footL: '필수 3 / 3 완료', btn: '닫기', btnBg: '#fff', btnFg: '#1d1b20', btnBd: '1px solid #e7e5ea', nextFg: '#c4c1c9' },
+  Trun: { ...INSP_BASE, ...W.T, icon: ic('T', 17), eyebrow: '체인 1 · 2 / 3', title: '전사록 생성기', ...badge('run', '진행 중 · 6 / 8', true), cost: '약 12분 남음', sections: LOCKED_T, lock: true, footL: '실행 중 · 설정 잠김', fFg: '#5b44c4', fDot: '#7c5cf0', saved: '시작 10/14 15:03', btn: '진행 보기 ↗', btnBg: '#fff', btnFg: '#1d1b20', btnBd: '1px solid #e7e5ea' },
+};
+
+const N = (k, t) => ({ k, t });
+const px = v => v + 'px';
+function frame(o) {
+  const palW = o.rail ? 72 : 240, inspW = o.inspW || 0, w = o.w || 1440, h = o.h || 900;
+  const canW = w - palW - inspW;
+  return { tbTip: !o.narrow, palFull: !o.rail, palRail: !!o.rail, hasInsp: !!inspW, insp: o.insp || INSP.T, ...o,
+    wpx: px(w), hpx: px(h), palWpx: px(palW), canWpx: px(canW), inspWpx: px(inspW), laneXpx: px(o.laneX),
+    lane: { ...o.lane, padL: px(Math.max(18, -o.laneX + 18)), editable: o.lane.editable && !o.narrow } };
+}
+const LANE_BLOCKED = sel => [card('P', 'ready', '1단계', sel === 'P'), seg('pend'), card('T', 'ready', '2단계', sel === 'T'), seg('block'), card('I', 'unset', '3단계', sel === 'I'), seg('pend'), out()];
+
+const FRAMES = [
+  frame({ id: 'I0', title: '레인 전경 — 인스펙터 닫힘', code: '1440 × 900 · 줌 100% · 3단계 중 1장 미설정', laneX: 16, pal: PAL_BUILD, lane: LANE.blocked, items: LANE_BLOCKED(),
+    notes: [N('읽히는 것', '줌 100% 에서 체인 전체 — 무엇이 몇 단계로, 각 단계가 어떻게 설정됐고, 어디가 비었는지 — 가 한 화면에 들어옵니다. 레인 폭 1168 = 패딩 24×2 + 카드 240×3 + 세그먼트 96×3 + 산출물 112.'), N('미설정이 말하는 법', '카드 자체(점선 · 설정 필요 · 남은 필수 항목) + 그 앞 세그먼트(v3 차단 표현) + 레인 헤더 상태 문구. 세 곳이 같은 사실을 말하고, 버튼은 카드의 "설정하기" 하나뿐입니다.'), N('세그먼트', '세그먼트 문법은 v3 그대로입니다(폭 96, 화살촉 7/11, 차단 = 반반 선). 컴프의 선 색과 굵기는 줌 100% 기준 근사치이고, v3 세그먼트 SSOT 가 우선합니다.'), N('레인 헤더 재환산', '헤더 72 · 제목 22 · 상태 18 은 줌 0.3–0.45 전제의 캔버스 값이었습니다. 줌 100% 가 기본이 되면 화면에 그대로 보이므로 52 · 15 · 12 로 낮췄습니다. 본문 패딩 32/40 → 28/24 (proposed).')] }),
+  frame({ id: 'I2', title: '인스펙터 열림 — 카드 선택', code: '1440 · 인스펙터 400 밀어내기 · 2단계 선택', laneX: -80, pal: PAL_BUILD, lane: LANE.blocked, items: LANE_BLOCKED('T'), inspW: 400, insp: INSP.T,
+    notes: [N('밀어내기', '인스펙터가 열리면 캔버스 뷰포트가 400 좁아집니다. 레인의 캔버스 좌표는 그대로이고, 보이는 창만 줄어듭니다. 선택 카드가 그 창 밖으로 밀리거나 가려질 때만 240ms 팬해서 창 가운데로 옮깁니다(줌은 바꾸지 않음).'), N('연결', '선택 카드 = 2px ink 링 + 6px 위젯 톤 halo + "편집 중" pill. 인스펙터 헤더가 같은 톤 타일과 "체인 1 · 2 / 3" 을 반복합니다. 커넥터 선은 쓰지 않습니다.'), N('헤더 고정', '레인을 팬해서 헤더 왼쪽이 화면 밖으로 나가면, 헤더 내용이 보이는 창의 왼쪽 끝에 붙어 따라옵니다(sticky-left). 컴프의 헤더 시작점이 그 상태입니다.'), N('닫기', '✕ · Esc · 같은 카드를 다시 누르기 · 빈 작업면 누르기. ‹ › 로 앞뒤 단계로 옮기면 팬과 선택이 함께 이동합니다.')] }),
+  frame({ id: 'I3', title: '인스펙터 내부 — 세부 설정', code: '1440 · 3단계 · 필수 3/3 채움 직후', laneX: -416, pal: PAL_READY, lane: LANE.ready, items: [card('P', 'ready', '1단계'), seg('pend'), card('T', 'ready', '2단계'), seg('pend'), card('I', 'ready', '3단계', true), seg('pend'), out()], inspW: 400, insp: INSP.I,
+    notes: [N('형식', '섹션 제목 13/700 + 설명 12. 라벨은 입력 위(12.5/600), 필수 표시와 힌트는 라벨 줄 오른쪽. 입력은 전폭 360 · 높이 38 · radius 10. 필드 간격 14 · 섹션 간격 26 · 패널 패딩 20. 토글만 라벨 왼쪽 + 스위치 오른쪽 한 줄.'), N('입력 출처', '앞 단계에서 넘어오는 입력은 편집 필드가 아니라 읽기 전용 행(앞 단계 톤 타일 + "앞 단계" 칩)입니다. 레인의 세그먼트를 말로 바꾼 것입니다.'), N('저장', '자동 저장입니다. 값을 바꾸는 즉시 카드 요약에 반영됩니다 — 컴프의 3단계 카드가 I0 의 "설정 필요"에서 "준비됨"으로 바뀐 상태입니다. 저장·되돌리기 버튼은 없고, 되돌리기는 필드 단위 Cmd+Z 입니다.'), N('하단', '필수 진행도("필수 3 / 3 완료") + 주 버튼. 마지막 단계가 아니면 "다음 단계 →"(I2), 마지막이면 보조 "닫기". 필수가 남았을 때는 진행도가 warn 색이고, 다음 단계로 넘어가는 것은 막지 않습니다.')] }),
+  frame({ id: 'I3b', title: '인스펙터 — 실행 중 잠금', code: '1440 · 2단계 진행 중', laneX: -80, pal: PAL_RUN, lane: LANE.running, items: [card('P', 'done', '1단계'), seg('done'), card('T', 'run', '2단계', true), seg('run'), card('I', 'ready', '3단계'), seg('pend'), out()], inspW: 400, insp: INSP.Trun,
+    notes: [N('잠금', '실행 중이거나 완료된 단계의 인스펙터는 읽기 전용입니다. 컨트롤은 --fill 면 + --faint 글자로 바꾸고, 래퍼 opacity 는 쓰지 않습니다. 맨 위 안내 한 줄로 이유와 푸는 방법(체인 종료)을 말합니다.'), N('결과로 가는 길', '하단 보조 버튼 "진행 보기 ↗" 는 기존 풀뷰를 엽니다. 완료 단계에서는 같은 자리가 "결과 보기 ↗" 입니다. 인스펙터에 결과 탭은 두지 않습니다(Q6).'), N('대기 단계', '아직 차례가 오지 않은 단계(3단계)는 실행 중에도 편집할 수 있습니다. 그 단계가 시작되는 순간 잠깁니다.')] }),
+  frame({ id: 'I4a', title: '좁은 화면 — 1180', code: '팔레트 72 레일 · 인스펙터 400 밀어내기', w: 1180, h: 800, rail: true, narrow: false, laneX: -126, pal: PAL_BUILD, lane: LANE.blocked, items: LANE_BLOCKED('T'), inspW: 400, insp: INSP.T,
+    notes: [N('규칙', '≥ 1280: 팔레트 240 + 인스펙터 400. 1024–1279: 팔레트가 72 레일로 접힘(기존 규칙) + 인스펙터 400. 900–1023: 레일 + 인스펙터 360. 900 미만은 모바일 시트로 이번 범위 밖입니다.'), N('우선순위', '폭이 모자라면 먼저 팔레트를 접고, 그다음 인스펙터를 줄이고, 레인 창은 최소 카드 1장 + 양옆 세그먼트(≈ 432)를 지킵니다. 인스펙터가 레인을 덮는 일은 없습니다.')] }),
+  frame({ id: 'I4b', title: '좁은 화면 — 960', code: '레일 72 · 인스펙터 360 · 레인 창 528', w: 960, h: 760, rail: true, narrow: true, laneX: -216, pal: PAL_BUILD, lane: LANE.blocked, items: LANE_BLOCKED('T'), inspW: 360, insp: INSP.T,
+    notes: [N('레인 창', '528 이면 선택 카드 한 장과 양옆 세그먼트가 보입니다. 이 폭에서는 ‹ › 단계 이동이 주 탐색입니다.'), N('축약', '레인 헤더의 모드 세그먼트와 툴바 안내 문구를 숨깁니다. 모드는 인스펙터를 닫으면 다시 보입니다.'), N('인스펙터 360', '입력 전폭이 320 으로 줄 뿐 형식은 같습니다. 세그먼트 컨트롤 옵션이 4개 이상이면 select 로 바꿉니다.')] }),
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      linkIcon: ic('link', 14, '#3a3640'), reportIcon: ic('I', 14, '#b8325a'), closeIcon: ic('x', 15, '#6e6a75'),
+      gallery: [
+        { key: 'unset', name: '미설정', c: card('I', 'unset', '3단계'), rule: '방금 끼워 넣음. 1.5 dashed 테두리 + warn 배지 + 남은 필수 항목(최대 3). 카드에서 유일한 버튼 "설정하기" — 누르면 인스펙터가 열립니다(카드 아무 곳이나 눌러도 같음).' },
+        { key: 'ready', name: '설정 완료', c: card('I', 'ready', '3단계'), rule: '요약 = 레이블 / 값 최대 3행 + "외 n개 설정". 값은 한 줄 말줄임. 푸터 = 예상 비용 + "편집".' },
+        { key: 'running', name: '실행 중', c: card('I', 'run', '3단계'), rule: '진행 바 4px + 지금 하는 일 한 줄. 설정 요약은 2행으로 줄이고 흐리게(.55). 맥동은 배지 점에만.' },
+        { key: 'done', name: '완료 · 산출물', c: card('I', 'done', '3단계'), rule: '요약이 설정에서 결과로 바뀝니다(산출물 · 수량). 푸터 "결과 보기 ↗" = 기존 풀뷰.' },
+      ],
+      galleryNotes: [
+        N('고정 치수', '240 × 300 · radius 14 · 1px --line · --sh-card. 상태가 바뀌어도 높이는 같습니다 — 레인의 세그먼트 가운데선(y 150)이 흔들리지 않게.'), N('구조', '헤더(톤 타일 30 + 이름 13.5/700 + 단계 mono) → 상태 배지 → 본문(최대 3행) → 푸터 44. 입력 필드 · 토글 · 실행 버튼 없음.'), N('요약 규칙(writer 정의 대상)', '위젯마다 "가장 먼저 확인하는 3개"를 순서대로 고릅니다. 4번째부터는 "외 n개 설정" 으로 접습니다. 레이블 6자 이내, 값 한 줄. 미설정이면 같은 자리에 필수 항목 체크리스트.'), N('누르기', '카드 전체가 히트 영역이고, 누르면 인스펙터가 열립니다. 완료 카드의 "결과 보기" 와 미설정 카드의 "설정하기" 만 별도 타깃입니다.'),
+      ],
+      frames: FRAMES,
+      answers: [
+        { id: 'Q1', q: '요약 카드의 크기와 형태', a: '세로 카드 240 × 300 고정, 요약은 최대 3행. 1440 뷰포트에서 3단계 체인이 줌 100% 로 한 화면에 들어갑니다. 줌은 남기되 기본 fit 상한을 100% 로 두고, 축소는 4단계 이상 체인에서만 쓰입니다 — 퇴역 여부는 후속 결정으로 둡니다. 따라서 레인 헤더 72→52, 본문 패딩 32/40→28/24 로 재환산합니다(proposed).', no: '가로로 넓은 낮은 카드 — 요약 3행을 담으면 폭이 400 을 넘어 3장이 안 들어감. 정사각 타일 — 상태와 값을 동시에 담을 수 없음(요약 1행).' },
+        { id: 'Q2', q: '설정 결과 요약 형식', a: '레이블(10.5 --faint) 위 · 값(13/600) 아래 스택 행, 최대 3행 + "외 n개 설정". 값은 한 줄 말줄임. 위젯별로 어떤 3개를 어떤 순서로 보일지는 writer 가 정의합니다. 완료되면 같은 자리가 결과 요약(산출물 · 수량)으로 바뀝니다.', no: '칩 묶음 — 값 길이가 제각각이라 줄 수를 예측할 수 없고 카드 높이가 흔들림. 레이블 : 값 한 줄 — 240 폭에서 값이 너무 일찍 잘림.' },
+        { id: 'Q3', q: '미설정 상태와 실행 차단', a: '카드(점선 + "설정 필요" + 남은 필수 항목 + "설정하기") · 앞 세그먼트(v3 차단 표현) · 레인 헤더 상태("3단계 설정 필요 · 아직 시작할 수 없어요")가 같은 사실을 말합니다. 체인은 세션 종료로 시작되므로, 그때까지 미설정이면 앞 단계까지 진행한 뒤 그 단계 앞에서 paused(사유: 설정 필요)로 멈춥니다. 상태 어휘는 새로 만들지 않습니다.', no: '체인 시작 자체를 막는 모달 — 세션 종료가 트리거라 막을 시점이 없음. 미설정 카드를 회색 처리 — "못 쓰는 위젯"으로 읽힘.' },
+        { id: 'Q4', q: '인스펙터 폭 · 열림 방식 · 연결', a: '밀어내기 400(뷰포트 축소). 레인의 캔버스 좌표는 움직이지 않고 보이는 창만 좁아지며, 선택 카드가 가려질 때만 240ms 자동 팬합니다. 연결 = 선택 링(2px ink + 6px 톤) + "편집 중" pill + 인스펙터 헤더의 같은 톤 타일과 단계 번호. 닫기 = ✕ · Esc · 같은 카드 · 빈 작업면. 레인 헤더는 팬해도 왼쪽에 붙어 따라옵니다.', no: '오버레이 — 선택 카드를 가림(writer 우려 그대로). 고정 3분할 — 선택이 없을 때 400 을 비워 둠. 카드↔패널 커넥터 선 — 팬·줌마다 다시 그려야 하고 세그먼트 선과 헷갈림.' },
+        { id: 'Q5', q: '설정 UI 를 새로 그리는가', a: '새로 그립니다. 패널 폭 기준 형식: 섹션(13/700 + 설명) · 라벨 위 · 입력 전폭 · 높이 38 · 필드 간격 14 · 섹션 간격 26. 앞 단계 입력은 읽기 전용 행. 자동 저장이라 저장·되돌리기 버튼이 없고, 하단은 필수 진행도 + "다음 단계 →". 실행 중·완료 단계는 잠금. 위젯별 필드 목록은 기존 셋업 항목을 이 형식에 옮겨 담습니다.', no: '기존 셋업 아코디언 이식 — 604 폭 전제의 2열 옵션 카드가 360 에 맞지 않음. 명시 저장 버튼 — 카드 요약과 패널 값이 어긋나는 시간이 생김.' },
+        { id: 'Q6', q: '산출물은 어디에', a: '요약 카드의 "결과 보기 ↗" → 기존 풀뷰. 인스펙터는 편집 전용으로 두고, 완료 단계에서는 설정을 읽기 전용으로 보여주며 하단 버튼만 "결과 보기 ↗" 로 바뀝니다. 체인 끝 산출물 노드도 완료되면 같은 풀뷰로 갑니다.', no: '인스펙터 결과 탭 — 400 폭에 보고서를 담을 수 없고 풀뷰와 이중 표면이 됨.' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>
