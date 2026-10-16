@@ -61,6 +61,7 @@ CD 원문(컴프 `rule` 필드): _"requiredFields · 편집 필드가 0개면 un
 | 필수 판정 | `requiredFields` 전부 채워지면 ready. 하나라도 비면 unset + 체크리스트(최대 3) |
 | 앞 단계 공급 | `source: 'upstream'` 필드는 **필수 계산에서 제외**하고 읽기 전용 행으로 렌더 |
 | 기본값 | 체인 단계에서는 **품질을 좌우하는 필드에 기본값을 두지 않는다**(§2 각주) — 무인 진행이라 잘못된 기본값으로 돌면 세션 전체가 버려진다 |
+| **필수 판정 대상** | **`steps[].config` 에 들어가는 값만** 센다. 파일 업로드·녹음처럼 config 밖에서 오는 입력은 필수에 넣지 않는다 — 넣으면 **영구 unset → 영구 paused** 가 된다(§3.2 정정 근거) |
 | 완료 요약 | done 상태의 3행은 **설정이 아니라 결과**(CD §1.3) — 별도 `doneFields` 로 선언 |
 
 ---
@@ -115,9 +116,14 @@ CD 원문(컴프 `rule` 필드): _"requiredFields · 편집 필드가 0개면 un
 
 ### 3.2 requiredFields
 - **체인 2번째 이상** (앞에 `probing` 이 있음): `method` · `language` — `audio` 는 `source: 'upstream'`
-- **체인 첫 단계**: `method` · `language` · `audio`
+- **체인 첫 단계**: `method` · `language` — **`audio` 는 필수 집합에서 제외** (아래 정정)
 
 > 같은 위젯이 체인 위치에 따라 필수 집합이 달라집니다. `requiredFields` 는 **정적 배열이 아니라 `(position, upstreamFeature) => string[]`** 로 선언해야 합니다 (§5.2).
+
+> **⚠️ writer 정정 (2026-10-16, `#1349` 워커 발견 — 초판이 틀렸습니다).**
+> 초판은 "체인 첫 단계면 `audio` 도 필수" 라고 적었습니다. **그러면 그 단계는 영구 unset → 영구 paused 로 막힙니다.**
+> 이유: `audio` 는 드롭존/녹음으로 들어오는 **파일**이고 `steps[].config` 에 사는 값이 아닙니다. `requiredFields` 는 config 키를 보고 채워짐을 판정하므로, config 에 영원히 나타나지 않는 키를 필수로 세면 **사용자가 파일을 올려도 unset 이 해제되지 않습니다.**
+> 따라서 `audio` 는 **필수 판정 대상이 아니라 실행 전제**입니다 — 파일 없음은 인스펙터의 unset 이 아니라 **기존 전사록 위젯의 실행 가드**가 다룹니다. (config 에 들어가는 값만 필수로 센다 — 이 원칙을 §1 공통 규칙에도 적용하십시오.)
 
 ### 3.3 doneFields
 | 순서 | 레이블 | 값 |
