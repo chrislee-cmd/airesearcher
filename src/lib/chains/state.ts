@@ -294,6 +294,61 @@ export async function replaceChainSteps(
   );
 }
 
+// ── 단계 설정 쓰기 (steps[].config) ──────────────────────────────────────
+
+// 그 단계의 설정을 지금 고칠 수 있는가 — CD §5 클라이언트 잠금의 **서버측
+// 대응물**(클라 잠금만 믿지 않는다).
+//
+// 허용 집합을 "쓸 수 있는 상태" 로 **양성 선언**한다: 단계가 pending 또는
+// awaiting_approval 일 때만. 스펙이 명시한 running·done 거절을 포함하면서,
+// skipped/error 처럼 **그 설정이 소비될 일이 영구히 없는** 단계도 같이 막는다
+// (저장은 됐는데 아무도 읽지 않는 설정 = 유령 필드를 새로 만드는 일).
+//
+// 체인 레벨도 함께 본다 — 종결(done/cancelled/error)된 체인의 남은 단계는 row
+// 상 pending 으로 남아 있어(view.ts 가 표시만 접는다) 단계 상태만 보면 통과해
+// 버린다. 죽은 체인에 설정을 쓰는 경로를 만들지 않는다. 재개 가능한 멈춤
+// (paused_insufficient_credits)은 활성이라 통과하지만, 그 체인의 커서 단계는
+// steps 상 'running' 이므로 결국 커서 단계만 잠긴다(= CD 의 잠금과 같다).
+export function isStepConfigEditable(row: ChainRow, index: number): boolean {
+  if (!ACTIVE_STATUSES.includes(row.status)) return false;
+  const step = row.steps?.[index];
+  if (!step) return false;
+  return step.status === 'pending' || step.status === 'awaiting_approval';
+}
+
+// 단계 설정 쓰기 — **그 index 원소만** 교체한 steps 로 update.
+//
+// status·current_step 은 건드리지 않는다(설정 저장은 상태 전이가 아니다).
+// 그래서 CAS 술어가 `updated_at` 낙관적 토큰 하나다: 읽은 뒤 누군가 이 행을
+// 건드렸으면(동시 설정 PATCH · 승인 · 조립 수정 · 전진 · sweep) 0 행 매칭으로
+// 떨어지고, 호출부가 **다시 읽어 재시도**한다. 동시 PATCH 2건이 서로를 조용히
+// 덮어쓰는 경로가 없다.
+//
+// jsonb 부분 갱신(`jsonb_set`)을 쓰지 않은 이유: 그건 DB 함수/RPC 가 필요하고
+// 이 작업은 마이그 0 이 전제다. 대신 **같은 읽기에서 온 배열의 한 원소만**
+// 바꿔 쓰고 토큰으로 경합을 가른다 — 낡은 스냅샷이 새 조립을 덮어쓸 수 없다.
+export async function patchStepConfig(
+  admin: SupabaseClient,
+  row: ChainRow,
+  index: number,
+  config: Record<string, unknown>,
+): Promise<CasResult> {
+  if (!isStepConfigEditable(row, index)) {
+    return { applied: false, reason: 'conflict' };
+  }
+  const steps = row.steps.map((s, i) => (i === index ? { ...s, config } : s));
+  const { data, error } = await admin
+    .from(CHAINS_TABLE)
+    .update({ steps })
+    .eq('id', row.id)
+    .eq('updated_at', row.updated_at)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return { applied: false, reason: 'conflict' };
+  return { applied: true, row: data as ChainRow };
+}
+
 // ── 단계 완료 이벤트 매칭 · 전진 계획 (B′) ────────────────────────────────
 //
 // advance 훅의 **순수 부분**을 여기 둔다 — 후보 행 집합에서 어느 체인을

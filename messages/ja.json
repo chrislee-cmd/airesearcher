@@ -1600,6 +1600,97 @@
     }
   },
   "Chain": {
+    "inspector": {
+      "section": {
+        "input": "入力",
+        "language": "言語",
+        "questions": "質問",
+        "researchContext": "調査コンテキスト",
+        "method": "方式",
+        "output": "出力",
+        "direction": "作成方針",
+        "advanced": "詳細"
+      },
+      "hint": {
+        "probing": {
+          "input": "インタビューをどう聞き取るかを決めます。",
+          "questions": "セッション中に AI が参照する質問を事前に登録します。",
+          "researchContext": "セッション中もフルビューから変更できます。"
+        },
+        "transcripts": {
+          "method": "書き起こし後の整理形式を決めます。"
+        },
+        "topline": {
+          "direction": "レポートの重点を 1〜2 文で。",
+          "allowPartial": "一部の段階が失敗してもレポートを作成します。"
+        }
+      },
+      "field": {
+        "probing": {
+          "source": "入力",
+          "outputLang": "出力語",
+          "questions": "質問",
+          "researchGoal": "目的"
+        },
+        "transcripts": {
+          "method": "方式",
+          "language": "言語",
+          "audio": "入力"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "入力",
+          "projectDocuments": "文書"
+        },
+        "topline": {
+          "output_lang": "出力語",
+          "user_direction": "方針",
+          "allow_partial": "部分"
+        }
+      },
+      "option": {
+        "source": {
+          "mic": "オフライン",
+          "both": "オンライン",
+          "tab": "視聴"
+        },
+        "method": {
+          "research": "リサーチインタビュー",
+          "meeting": "議事録"
+        },
+        "outputLang": {
+          "ko": "한국어",
+          "en": "English",
+          "ja": "日本語",
+          "zh": "中文",
+          "es": "Español",
+          "th": "ไทย"
+        }
+      },
+      "done": {
+        "probing": {
+          "questionCount": "質問",
+          "duration": "長さ",
+          "recording": "録音"
+        },
+        "transcripts": {
+          "duration": "分量",
+          "speakers": "話者",
+          "artifact": "成果物"
+        },
+        "interview_ingest": {
+          "analysis": "分析",
+          "documents": "文書",
+          "artifact": "成果物"
+        },
+        "topline": {
+          "report": "レポート",
+          "length": "分量",
+          "generatedAt": "生成"
+        }
+      },
+      "noSettings": "設定なし",
+      "emptyNote": "この段階は前の段階の結果をそのまま分析するため、設定する項目はありません。"
+    },
     "label": "チェーン",
     "mode": {
       "approve": "ステップごとに承認",

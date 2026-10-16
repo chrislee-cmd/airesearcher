@@ -16,7 +16,8 @@ import {
   type ChainRow,
   type ChainStepEventMatch,
 } from './state';
-import type { ChainStepKey } from './registry';
+import { readStepConfig, type ChainStepKey } from './registry';
+import { resolveToplineKick } from './step-config';
 
 // 위젯 연쇄 체인 — advance 훅 (PR-B).
 //
@@ -354,6 +355,13 @@ async function markChainError(
  * 세션 없는 서버 지점에서 부르므로 쿠키가 없다 → CRON_SECRET Bearer + body 로
  * 행위자/테넌트를 명시 전달하는 내부 경로를 탄다(`/api/interviews/convert` 가
  * C 에서 이미 쓰는 동일 패턴).
+ *
+ * 보고서 옵션(`output_lang` · `user_direction` · `allow_partial`)은 **이 단계의
+ * 사용자 설정**(steps[].config — 인스펙터가 저장한 값)에서 읽어 body 에 싣는다.
+ * 설정이 없으면 **키를 아예 보내지 않는다** — 라우트의 기존 폴백(output_lang
+ * 미지정 → 프로필 로케일 → 기본 한국어 · user_direction 없음 · allow_partial
+ * false)을 그대로 타게 해 config 없는 기존 체인의 동작이 변하지 않게 한다.
+ * `force`(강제 재생성)는 설정이 아니라 재실행 동작이라 싣지 않는다(필드정의 §5.4).
  */
 async function kickTopline(
   admin: AdminClient,
@@ -367,6 +375,13 @@ async function kickTopline(
     return { ok: false, reason: 'chain_project_required', retryable: true };
   }
 
+  // 설정 → 라우트 body. 변환·폴백은 `resolveToplineKick`(step-config.ts)이
+  // 소유한다(순수 함수 — 소비 계약을 단위 테스트로 고정). 타입이 맞는 키만
+  // 실리므로 라우트 zod 가 거절해 체인이 멈추는 경로를 만들지 않는다.
+  const toplineOptions = resolveToplineKick(
+    readStepConfig(chain.steps?.[stepIndex]),
+  );
+
   let res: Response;
   try {
     res = await fetch(`${getDeploymentBaseUrl()}/api/interviews/v2/topline`, {
@@ -379,6 +394,7 @@ async function kickTopline(
         project_id: chain.project_id,
         chain_user_id: chain.created_by,
         chain_org_id: chain.org_id,
+        ...toplineOptions,
       }),
       // 라우트는 Opus 생성을 after() 로 미루고 즉시 { status:'generating' } 을
       // 돌려주므로 왕복은 짧다. 상한은 호출측(전사/인덱싱 done 지점) 예산 안.

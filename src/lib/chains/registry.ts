@@ -131,7 +131,34 @@ export type ChainStepInstance = {
   // 경로에서는 없거나 null. optional 이라 기존 steps jsonb(이 필드 없는 A 시절
   // 인스턴스)도 그대로 읽힌다.
   error?: string | null;
+  // 이 단계의 **사용자 설정**. 키 = ui-meta.ts 의 inspectorSchema 필드 id.
+  //
+  // 왜 jsonb 안에 두는가: `widget_chains.steps` 가 이미 jsonb 이므로 DDL 이
+  // 필요 없고(마이그 0), 단계 설정은 단계 인스턴스의 속성이라 같은 원소에
+  // 사는 것이 사실에 맞다. 값의 의미는 어댑터·kick 경로가 해석한다
+  // (adapters.ts 전사 language/method · advance.ts 토플라인 output_lang 등).
+  //
+  // **반드시 optional** — 이 PR 이전에 만들어진 row 에는 이 키가 없다. 읽을
+  // 때는 `readStepConfig` 로 `{}` 정규화하고, "없음" 과 `{}` 를 구분하지
+  // 않는다(구분할 의미가 없고, 구분하면 모든 소비 지점이 두 경우를 따로
+  // 다뤄야 한다).
+  config?: Record<string, unknown> | null;
 };
+
+/**
+ * 단계 설정을 정규화해 읽는다 — 없거나 null 이면 빈 객체.
+ *
+ * 소비 지점(어댑터·kick)이 `step.config?.x` 를 직접 더듬지 않게 하는 단일
+ * 진입점. jsonb 에서 올라온 값이 객체가 아닌 경우(손으로 쓴 row 등)도 빈
+ * 객체로 흡수한다 — 설정 하나 때문에 체인 전진이 예외로 멈추면 안 된다.
+ */
+export function readStepConfig(
+  step: Pick<ChainStepInstance, 'config'> | null | undefined,
+): Record<string, unknown> {
+  const raw = step?.config;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  return raw as Record<string, unknown>;
+}
 
 // ── 시퀀스 검증 ──────────────────────────────────────────────────────────
 

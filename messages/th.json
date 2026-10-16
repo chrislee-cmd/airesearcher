@@ -1600,6 +1600,97 @@
     }
   },
   "Chain": {
+    "inspector": {
+      "section": {
+        "input": "อินพุต",
+        "language": "ภาษา",
+        "questions": "คำถาม",
+        "researchContext": "บริบทการวิจัย",
+        "method": "รูปแบบ",
+        "output": "เอาต์พุต",
+        "direction": "แนวทางการเขียน",
+        "advanced": "ขั้นสูง"
+      },
+      "hint": {
+        "probing": {
+          "input": "เลือกวิธีรับเสียงการสัมภาษณ์",
+          "questions": "เพิ่มคำถามให้ AI ใช้อ้างอิงระหว่างเซสชัน",
+          "researchContext": "เปลี่ยนได้จากมุมมองเต็มระหว่างเซสชัน"
+        },
+        "transcripts": {
+          "method": "เลือกรูปแบบการจัดเรียงหลังถอดเสียง"
+        },
+        "topline": {
+          "direction": "ระบุจุดเน้นของรายงานใน 1–2 ประโยค",
+          "allowPartial": "สร้างรายงานแม้บางขั้นตอนล้มเหลว"
+        }
+      },
+      "field": {
+        "probing": {
+          "source": "อินพุต",
+          "outputLang": "ภาษาผลลัพธ์",
+          "questions": "คำถาม",
+          "researchGoal": "เป้าหมาย"
+        },
+        "transcripts": {
+          "method": "รูปแบบ",
+          "language": "ภาษา",
+          "audio": "อินพุต"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "อินพุต",
+          "projectDocuments": "เอกสาร"
+        },
+        "topline": {
+          "output_lang": "ภาษาผลลัพธ์",
+          "user_direction": "แนวทาง",
+          "allow_partial": "บางส่วน"
+        }
+      },
+      "option": {
+        "source": {
+          "mic": "ออฟไลน์",
+          "both": "ออนไลน์",
+          "tab": "สังเกตการณ์"
+        },
+        "method": {
+          "research": "สัมภาษณ์วิจัย",
+          "meeting": "บันทึกประชุม"
+        },
+        "outputLang": {
+          "ko": "한국어",
+          "en": "English",
+          "ja": "日本語",
+          "zh": "中文",
+          "es": "Español",
+          "th": "ไทย"
+        }
+      },
+      "done": {
+        "probing": {
+          "questionCount": "คำถาม",
+          "duration": "ความยาว",
+          "recording": "การบันทึก"
+        },
+        "transcripts": {
+          "duration": "ปริมาณ",
+          "speakers": "ผู้พูด",
+          "artifact": "ผลลัพธ์"
+        },
+        "interview_ingest": {
+          "analysis": "การวิเคราะห์",
+          "documents": "เอกสาร",
+          "artifact": "ผลลัพธ์"
+        },
+        "topline": {
+          "report": "รายงาน",
+          "length": "ปริมาณ",
+          "generatedAt": "สร้างเมื่อ"
+        }
+      },
+      "noSettings": "ไม่มีการตั้งค่า",
+      "emptyNote": "ขั้นตอนนี้วิเคราะห์ผลจากขั้นก่อนหน้าโดยตรง จึงไม่มีการตั้งค่า"
+    },
     "label": "เชน",
     "mode": {
       "approve": "อนุมัติทีละขั้น",

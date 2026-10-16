@@ -12,7 +12,8 @@ import { resolveMime } from '@/lib/file-extract';
 import { hashString } from '@/lib/cache';
 import { logError } from '@/lib/observability/log-error';
 import type { ChainRow } from './state';
-import type { ChainStepInstance } from './registry';
+import { readStepConfig, type ChainStepInstance } from './registry';
+import { resolveTranscriptKick } from './step-config';
 
 // 위젯 연쇄 체인 — 단계 간 인제스트 어댑터 (PR-C).
 //
@@ -438,9 +439,18 @@ export async function kickTranscriptFromProbingRecording(args: {
     }
   }
 
-  // 3. 전사 job row. 체인은 언어를 고르지 않으므로 전사록 위젯의 기본값
-  //    (language 미지정 → multi → ElevenLabs Scribe)을 그대로 쓴다.
-  const langEntry = getLanguage(null);
+  // 3. 전사 job row. 언어·방식은 **이 단계의 사용자 설정**(steps[].config —
+  //    인스펙터가 저장한 값)에서 읽는다. 설정이 없으면 **현행 동작 그대로**:
+  //    language 미지정 → getLanguage(null) → multi → ElevenLabs Scribe,
+  //    mode → 'research'. 기존 체인(config 키가 없는 row)의 행동이 이 PR 로
+  //    바뀌면 그 자체가 회귀다.
+  //
+  //    변환·폴백은 `resolveTranscriptKick`(step-config.ts)이 소유한다 — 순수
+  //    함수라 "설정이 정말 소비되는가" 를 단위 테스트로 고정할 수 있다
+  //    (이 모듈은 server-only 라 tests 가 로드하지 못한다).
+  const kick = resolveTranscriptKick(readStepConfig(chain.steps?.[stepIndex]));
+
+  const langEntry = getLanguage(kick.language);
   const provider = langEntry.provider;
   const apiModel = provider === 'deepgram' ? langEntry.dgModel : ELEVENLABS_API_MODEL;
 
@@ -461,7 +471,7 @@ export async function kickTranscriptFromProbingRecording(args: {
       size_bytes: sizeBytes,
       provider,
       model: apiModel,
-      mode: 'research',
+      mode: kick.mode,
       speaker_count: null,
       status: 'submitting',
     })

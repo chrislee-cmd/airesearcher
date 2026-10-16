@@ -22,6 +22,7 @@
 import {
   CHAIN_STEP_KEYS,
   CHAIN_COMPAT_EDGES,
+  readStepConfig,
   stepCostByKey,
   nextCompatSteps,
   validateSteps,
@@ -60,6 +61,14 @@ export type ChainStepView = {
    * 기록하지 않으므로 항상 undefined → 프레젠테이션은 cost 합계 폴백.
    */
   fileCount?: number;
+  /**
+   * 이 단계의 사용자 설정(`steps[].config`) — 키는 `ui-meta.ts`
+   * inspectorSchema 의 필드 id. 요약 카드 3행·인스펙터·unset/ready 판정이
+   * 전부 이 값에서 파생되므로 **표시 상태에도 실려야** 한다(설정 PATCH 응답이
+   * 갱신된 ChainView 인 이유 — 프론트가 카드 요약을 즉시 다시 그린다).
+   * 설정이 없던 기존 row 는 빈 객체로 정규화된다(readStepConfig).
+   */
+  config: Record<string, unknown>;
 };
 
 export type ChainView = {
@@ -129,6 +138,7 @@ export function toChainView(
         typeof (s as { file_count?: unknown }).file_count === 'number'
           ? ((s as { file_count?: number }).file_count as number)
           : undefined,
+      config: readStepConfig(s),
     }));
 
   const cursor = Math.max(0, Math.min(row.current_step, steps.length - 1));

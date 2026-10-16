@@ -1600,6 +1600,97 @@
     }
   },
   "Chain": {
+    "inspector": {
+      "section": {
+        "input": "Input",
+        "language": "Language",
+        "questions": "Questions",
+        "researchContext": "Research context",
+        "method": "Method",
+        "output": "Output",
+        "direction": "Direction",
+        "advanced": "Advanced"
+      },
+      "hint": {
+        "probing": {
+          "input": "Choose how the interview audio is captured.",
+          "questions": "Add questions for the AI to reference during the session.",
+          "researchContext": "You can still change this from the full view during the session."
+        },
+        "transcripts": {
+          "method": "Choose how the transcript is organized afterwards."
+        },
+        "topline": {
+          "direction": "In a sentence or two, where the report should focus.",
+          "allowPartial": "Build the report even if some steps fail."
+        }
+      },
+      "field": {
+        "probing": {
+          "source": "Input",
+          "outputLang": "Output",
+          "questions": "Questions",
+          "researchGoal": "Goal"
+        },
+        "transcripts": {
+          "method": "Method",
+          "language": "Language",
+          "audio": "Input"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "Input",
+          "projectDocuments": "Docs"
+        },
+        "topline": {
+          "output_lang": "Output",
+          "user_direction": "Focus",
+          "allow_partial": "Partial"
+        }
+      },
+      "option": {
+        "source": {
+          "mic": "Offline",
+          "both": "Online",
+          "tab": "Observe"
+        },
+        "method": {
+          "research": "Research interview",
+          "meeting": "Meeting notes"
+        },
+        "outputLang": {
+          "ko": "한국어",
+          "en": "English",
+          "ja": "日本語",
+          "zh": "中文",
+          "es": "Español",
+          "th": "ไทย"
+        }
+      },
+      "done": {
+        "probing": {
+          "questionCount": "Questions",
+          "duration": "Length",
+          "recording": "Recording"
+        },
+        "transcripts": {
+          "duration": "Length",
+          "speakers": "Speakers",
+          "artifact": "Output"
+        },
+        "interview_ingest": {
+          "analysis": "Analysis",
+          "documents": "Docs",
+          "artifact": "Output"
+        },
+        "topline": {
+          "report": "Report",
+          "length": "Length",
+          "generatedAt": "Created"
+        }
+      },
+      "noSettings": "No settings",
+      "emptyNote": "This step analyzes the previous step's result as-is, so there is nothing to set."
+    },
     "label": "Chain",
     "mode": {
       "approve": "Step approval",
