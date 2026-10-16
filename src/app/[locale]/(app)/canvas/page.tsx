@@ -9,7 +9,6 @@ import { getCanvasVisibility } from '@/lib/canvas/visibility-server';
 import {
   getCanvasOnboardingPending,
   getCurrentUser,
-  getDisplayName,
 } from '@/lib/supabase/user';
 import { PREVIEW_FEATURES, type FeatureKey } from '@/lib/features';
 import { getActiveOrg, getOrgFlags } from '@/lib/org';
@@ -90,12 +89,12 @@ export default async function CanvasPage({
   const user = await getCurrentUser();
   const vis = await getCanvasVisibility(user?.email);
 
-  // 팔레트 사용자 줄(§4.1) + 전환 온보딩 대상 여부(P4). 둘 다 유저 단위이고
-  // cache() 라 layout 의 중복 조회와 dedupe 된다.
-  const [userName, onboardingPending] = await Promise.all([
-    getDisplayName(),
-    getCanvasOnboardingPending(),
-  ]);
+  // 전환 온보딩 대상 여부(P4). 유저 단위이고 cache() 라 layout 의 중복
+  // 조회와 dedupe 된다. 팔레트 사용자 줄에 쓰던 표시 이름 조회는 2026-10-16
+  // CD 결정(질의 ① A — 브랜드·사용자·크레딧은 Topbar 단독 소유)으로 그 줄과
+  // 함께 사라졌다(`getDisplayName` 정의까지 제거 — 소비처가 이 한 곳이었다).
+  // 이름 표시는 Topbar 가 자기 경로로 읽는다.
+  const onboardingPending = await getCanvasOnboardingPending();
 
   // 3단 필터: (1) **DB 기반 visibility**(옛 하드코딩 CANVAS_VISIBILITY 대체) →
   // (2) preview 게이트(FeatureKey 인 recruiting·desk·interviews 등 일반계정
@@ -147,7 +146,6 @@ export default async function CanvasPage({
         lockedKeys={lockedKeys}
         hiddenBadgeKeys={hiddenBadgeKeys}
         orgId={orgId}
-        userName={userName}
         onboardingPending={onboardingPending}
       />
       </ChainLaneProvider>

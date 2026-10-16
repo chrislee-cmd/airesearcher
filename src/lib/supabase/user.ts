@@ -57,23 +57,3 @@ export const getCanvasOnboardingPending = cache(async (): Promise<boolean> => {
   return data?.canvas_palette_onboarding === 'pending';
 });
 
-/**
- * 팔레트 사용자 줄(§4.1)에 쓰는 표시 이름. `full_name` 이 없으면 이메일 local
- * part 로 폴백한다 — 아바타 이니셜까지 비는 것을 막는다.
- */
-export const getDisplayName = cache(async (): Promise<string | null> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from('profiles')
-    .select('full_name, email')
-    .eq('id', user.id)
-    .single();
-  const full = data?.full_name?.trim();
-  if (full) return full;
-  const email = data?.email ?? user.email ?? null;
-  return email ? (email.split('@')[0] ?? null) : null;
-});
