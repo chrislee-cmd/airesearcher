@@ -751,7 +751,12 @@ export function CanvasBoard({
   //   screenX(x_s) = (W_c − W_s)/2 + W_s/2 + pan.x + (x_s − W_s/2)·zoom
   //                = W_c/2 + pan.x + (x_s − W_s/2)·zoom
   // 레인 왼쪽(x_s = LANE_LEFT)의 화면 x 가 음수인 만큼이 "밀려난 양" 이다.
-  const laneHeaderOffset = useMemo(() => {
+  //
+  // **`useMemo` 를 쓰지 않는다.** 산술 3줄이라 메모할 값이 아니고, 메모로 두면
+  // 팬 직후 오프셋이 옛 `pan.x` 에 묶여 0 으로 남는 것을 실측했다(프리뷰:
+  // 레인이 −417 로 밀렸는데 헤더는 안 따라옴). 매 렌더 계산이 정답이다 —
+  // 입력이 전부 같은 렌더의 값이라 DOM 과 어긋날 수 없다.
+  const laneHeaderOffset = (() => {
     if (!lane || zoom <= 0 || containerSize.w === 0) return 0;
     const laneScreenLeft =
       containerSize.w / 2 + pan.x + (LANE_LEFT - SURFACE_W / 2) * zoom;
@@ -760,17 +765,30 @@ export function CanvasBoard({
     // 레인 밖으로 나가 더 이상 그 레인의 머리로 읽히지 않는다.
     const limit = Math.max(0, laneSize.w - STICKY_HEADER_MIN);
     return Math.min(-laneScreenLeft / zoom, limit);
-  }, [lane, zoom, pan.x, containerSize.w, SURFACE_W, laneSize.w]);
+  })();
 
   // ── 인스펙터 열림/이동 시 팬 (§4.1 "가려질 때만") ────────────────────
   // 뷰포트가 400 좁아지면 선택 카드가 그 창 밖으로 밀릴 수 있다. **밀렸을
   // 때만** 창 가운데로 옮기고, 줌은 바꾸지 않는다. 측정이 필요하므로 effect 다
   // — 레이아웃(flex 축소)이 반영된 **뒤**에 rect 를 읽어야 해서 rAF 를 한 번
   // 거친다(LEARNINGS §8-8 의 "전이가 가라앉기 전 좌표" 함정과 같은 이유).
+  //
+  // **닫으면 밀어낸 만큼 되돌린다.** 창이 다시 넓어질 때 아무것도 안 하면 레인이
+  // 오른쪽으로 치우친 채 남아 산출물 노드가 창 밖으로 잘린다(프리뷰 실측: 닫은
+  // 뒤 레인 왼쪽이 +455). CD 가 닫힘 팬을 적지 않은 것은 "가려질 때만" 이 열림·
+  // 이동의 규칙이기 때문이고, 그 규칙의 짝은 "밀어서 생긴 이동은 되돌린다" 다.
+  // 사용자가 중간에 직접 팬했어도 **같은 델타만큼** 되돌리므로 상대 위치는
+  // 유지된다(사용자 팬을 덮어쓰지 않는다).
+  const inspectorPanRef = useRef(0);
   const selectedFeature =
     inspectorIndex === null ? null : (view?.steps[inspectorIndex]?.feature ?? null);
   useEffect(() => {
-    if (!selectedFeature) return;
+    if (!selectedFeature) {
+      const applied = inspectorPanRef.current;
+      inspectorPanRef.current = 0;
+      if (applied !== 0) setPan((p) => ({ x: p.x - applied, y: p.y }));
+      return;
+    }
     const target = dockTargets[selectedFeature];
     const container = containerRef.current;
     if (!target || !container) return;
@@ -781,6 +799,7 @@ export function CanvasBoard({
       const visible = tr.left >= cr.left && tr.right <= cr.right;
       if (visible) return;
       const dx = cr.left + cr.width / 2 - (tr.left + tr.width / 2);
+      inspectorPanRef.current += dx;
       setPan((p) => ({ x: p.x + dx, y: p.y }));
     });
     return () => cancelAnimationFrame(id);

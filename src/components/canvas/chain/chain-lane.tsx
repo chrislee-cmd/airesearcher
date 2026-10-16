@@ -139,6 +139,11 @@ export function ChainLane({
         <span
           data-chain-el="header-inner"
           data-chain-sticky={headerOffset > 0 ? 'true' : 'false'}
+          // 계산값을 DOM 에 노출한다 — sticky 는 **파생값이 DOM 과 어긋나면
+          // 조용히 안 움직이는** 종류라(실측: 팬 직후 오프셋이 0 으로 남았다)
+          // conformance 하네스가 기대 오프셋과 실제 레인 위치를 기계로 대조할
+          // 수 있어야 한다.
+          data-chain-header-offset={Math.round(headerOffset)}
           style={
             headerOffset > 0
               ? { transform: `translateX(${headerOffset}px)` }
