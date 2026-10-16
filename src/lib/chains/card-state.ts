@@ -218,7 +218,15 @@ export function cardBadgeOf(ctx: ChainStepContext): ChainCardBadge {
     return { tone: 'warn', labelKey: 'Chain.chip.state.stopped', pulse: false };
   }
   if (ctx.status === 'awaiting') {
-    return { tone: 'warn', labelKey: 'Chain.chip.state.awaiting', pulse: false };
+    // **진입 단계(커서 0)의 awaiting 은 "승인 대기" 가 아니다.** 진입은 서버가
+    // kick 할 것이 없는 수동 단계라, 사용자가 그 위젯을 돌리기 전까지는 그냥
+    // 대기다 — 레인 헤더가 이미 같은 규칙으로 "준비됨 · 세션이 끝나면 시작" 을
+    // 쓴다(`laneStatus` 의 currentStep===0 분기). 카드만 "승인 대기" 로 적으면
+    // 같은 사실을 두 곳이 다르게 말한다(프리뷰 실측: 1단계 카드 "승인 대기" vs
+    // 헤더 "준비됨"). 승인 대기 문구는 **중간 단계로 들어갈 때**만 쓴다.
+    return ctx.position === 0
+      ? { tone: 'idle', labelKey: 'Chain.card.badge.ready', pulse: false }
+      : { tone: 'warn', labelKey: 'Chain.chip.state.awaiting', pulse: false };
   }
   // noconfig 는 **ready 그대로**(CD 확정 — 배지 신설 0).
   return { tone: 'idle', labelKey: 'Chain.card.badge.ready', pulse: false };
