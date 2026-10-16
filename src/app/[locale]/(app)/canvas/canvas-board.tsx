@@ -173,7 +173,6 @@ export function CanvasBoard({
   lockedKeys,
   hiddenBadgeKeys,
   orgId,
-  userName,
   onboardingPending,
 }: {
   widgets: WidgetContent[];
@@ -190,8 +189,6 @@ export function CanvasBoard({
   hiddenBadgeKeys?: string[];
   // vote 저장 컨텍스트 — 활성 org id (nullable).
   orgId?: string | null;
-  /** 팔레트 사용자 줄 (§4.1). 서버가 읽은 프로필 이름(없으면 이메일 local part). */
-  userName?: string | null;
   /**
    * 전환 온보딩 대상자인가 (P4 · §8). 그리드 캔버스를 쓴 적 있는 사용자의 첫
    * 진입 1회만 true — 판정과 기록 모두 **사용자 단위 서버 플래그**라 기기가
@@ -870,7 +867,6 @@ export function CanvasBoard({
     >
       <PalettePanel
         widgets={widgets}
-        userName={userName ?? null}
         laneActive={laneActive}
         view={view}
         dockedSteps={dockedKeyStrings}

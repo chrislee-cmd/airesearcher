@@ -40,7 +40,6 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 import { josa } from '@/lib/korean-particle';
-import { usePaywall } from '@/components/paywall-provider';
 import { DuotoneIcon } from '@/components/ui/icons/duotone-icon';
 import { widgetIconFor } from '@/components/canvas/shell/widget-icon';
 import { ACCENT_BG } from '@/components/canvas/shell/tokens';
@@ -95,8 +94,6 @@ type Hover = { key: string; rect: DOMRect } | null;
 export type PalettePanelProps = {
   /** 로스터 = 발행 SSOT 순서 그대로 (하드코딩 0). */
   widgets: WidgetContent[];
-  /** 사용자 줄 (§4.1) — 이름이 없으면 이메일 local part. */
-  userName: string | null;
   /** 레인이 있고 구성을 바꿀 수 있는가 — fit 상태·드래그 가능 판정. */
   laneActive: boolean;
   /** 서버 체인 투영 — 레인 카드 위치의 상태 출처(LEARNINGS §9). */
@@ -124,7 +121,6 @@ export type PalettePanelProps = {
 
 export function PalettePanel({
   widgets,
-  userName,
   laneActive,
   view,
   dockedSteps,
@@ -144,7 +140,6 @@ export function PalettePanel({
   // 복제하면 슬롯이 말하는 사유와 aria-live 가 갈라진다.
   const tChainRaw = useTranslations('Chain');
   const tRoot = useTranslations();
-  const { status: credits } = usePaywall();
 
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -347,7 +342,7 @@ export function PalettePanel({
       onPointerMove={onPointerMove}
       style={{
         width: collapsed ? RAIL_W : 'var(--palette-w)',
-        padding: collapsed ? '0' : '16px 12px',
+        padding: collapsed ? '0' : '18px 12px 16px',
       }}
       className={`relative z-fab flex h-full shrink-0 flex-col bg-soft-surface ${
         collapsed ? '' : 'border-r border-soft-hair'
@@ -369,45 +364,36 @@ export function PalettePanel({
         />
       ) : (
         <>
-          {/* 머리 (§4.1) — 로고 22 타일 + 워드마크 + 접기 버튼 28. */}
+          {/* 머리 (§4.1) — "위젯 n" + 힌트 + 접기 버튼 28.
+              로고 22 타일 + 워드마크 줄은 **2026-10-16 CD 결정(질의 ①
+              선택지 A)으로 제거**됐다: 컴프 프레임(1280×800)에 앱 Topbar 가
+              없어서 팔레트가 브랜드를 그렸던 것이고, 실제 앱에서는 Topbar 가
+              브랜드를 이미 소유해 중복이었다. 팔레트는 "위젯 모듈 서랍"으로
+              순수화하고 앱 chrome(브랜드·사용자·크레딧)은 Topbar 단독
+              소유다. 되살리지 말 것 — `Brand.name` 키가 남아 있는 건
+              Topbar 가 쓰기 때문이다(지우면 Topbar 가 blank).
+              접기 버튼은 CD 갱신판이 그리지 않는 요소(컴프엔 접힘 장면이
+              별도 프레임)라 §4.1 이 머리에 묶어 둔 대로 "위젯 n" 과 같은
+              행에 둔다 — 전용 행을 만들면 컴프에 없는 42px 가 생겨 아래
+              타일 전체가 밀린다. */}
           <div
-            style={{ gap: 9, padding: '0 6px 14px' }}
-            className="flex items-center"
+            style={{ gap: 9, padding: '0 6px 8px' }}
+            className="flex items-start"
           >
-            <span
-              aria-hidden
-              style={{ width: 22, height: 22 }}
-              className="shrink-0 rounded-chip bg-ink"
-            />
-            {/* 워드마크 — CD 는 16/700 이고 우리 스케일에선 text-2xl(18)이 그
-                밴드다. 다만 레포 브랜드명("Research-Canvas")이 컴프의 한글
-                워드마크보다 길어 240 폭에서 18px 은 잘린다(프리뷰 실측). 같은
-                CD 밴드 안의 text-xl(15)로 내려 **잘리지 않게** 한다 —
-                가장 가까운 DS 값으로 굽힌 것이 아니라 CD 가 못 본 제약
-                (브랜드명 길이)에 맞춘 것이다. */}
-            <span
-              style={{ fontFamily: 'var(--font-display)' }}
-              className="truncate text-xl font-bold text-ink"
-            >
-              {tRoot('Brand.name')}
-            </span>
+            <div style={{ gap: 2 }} className="flex min-w-0 flex-1 flex-col">
+              <span className="text-lg font-bold text-ink">
+                {t('heading')}{' '}
+                <span className="font-soft-mono text-sm font-medium text-soft-faint">
+                  {widgets.length}
+                </span>
+              </span>
+              <span className="text-sm text-soft-faint">{t('hint')}</span>
+            </div>
             <CollapseButton collapsed={false} onClick={toggleCollapsed} />
           </div>
 
-          <div
-            style={{ gap: 2, padding: '0 6px 8px' }}
-            className="flex flex-col"
-          >
-            <span className="text-lg font-bold text-ink">
-              {t('heading')}{' '}
-              <span className="font-soft-mono text-sm font-medium text-soft-faint">
-                {widgets.length}
-              </span>
-            </span>
-            <span className="text-sm text-soft-faint">{t('hint')}</span>
-          </div>
-
-          {/* 목록 — gap 4 · 세로 스크롤(사용자 줄은 하단 고정, §4.1 목록). */}
+          {/* 목록 — gap 4 · 세로 스크롤(§4.1 목록). 사용자 줄이 하단에서
+              사라졌으므로 목록이 패널 바닥까지 쓴다(CD 질의 ① A). */}
           <div
             data-palette-list
             style={{ gap: 4 }}
@@ -436,26 +422,6 @@ export function PalettePanel({
                 onFirstInteraction={onFirstInteraction}
               />
             ))}
-          </div>
-
-          {/* 사용자 줄 (§4.1) — 하단 고정. */}
-          <div
-            style={{ gap: 10, padding: '12px 6px 0' }}
-            className="mt-auto flex shrink-0 items-center border-t border-soft-hair"
-          >
-            <span
-              aria-hidden
-              style={{ width: 28, height: 28 }}
-              className="flex shrink-0 items-center justify-center rounded-full bg-tint-lav text-md font-bold text-ink"
-            >
-              {(userName ?? '').slice(0, 1)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-md font-semibold text-ink">
-              {userName ?? ''}
-            </span>
-            <span className="shrink-0 font-soft-mono text-sm text-soft-mute">
-              {t('credits', { n: credits?.balance ?? 0 })}
-            </span>
           </div>
         </>
       )}
