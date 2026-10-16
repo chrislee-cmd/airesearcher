@@ -1689,7 +1689,59 @@
         }
       },
       "noSettings": "설정 없음",
-      "emptyNote": "이 단계는 앞 단계 결과를 그대로 분석해서 따로 설정할 것이 없어요."
+      "emptyNote": "이 단계는 앞 단계 결과를 그대로 분석해서 따로 설정할 것이 없어요.",
+      "required": "필수",
+      "selectPlaceholder": "고르지 않음",
+      "addItem": "+ 항목 추가",
+      "reorder": "{n}번째 항목 순서 바꾸기",
+      "chip": {
+        "upstream": "앞 단계",
+        "chain": "체인 공통"
+      },
+      "valueUnknown": "—",
+      "ariaLabel": "{chain} · {n}단계 설정",
+      "eyebrow": "{chain} · {n} / {total}",
+      "prev": "앞 단계",
+      "next": "뒤 단계",
+      "nextStep": "다음 단계 →",
+      "openProgress": "진행 보기 ↗",
+      "lockedRunning": "실행 중에는 설정을 바꿀 수 없어요. 바꾸려면 체인을 종료하세요.",
+      "lockedEnded": "체인이 끝나 설정을 바꿀 수 없어요.",
+      "lockedFoot": "실행 중 · 설정 잠김",
+      "requiredProgress": "필수 {filled} / {total}",
+      "requiredDone": "필수 {total} / {total} 완료",
+      "saving": "저장 중…",
+      "saved": "자동 저장됨",
+      "saveFailed": "저장 실패",
+      "retry": "다시 시도",
+      "projectLabel": "프로젝트",
+      "projectSub": "체인 전체가 이 프로젝트에 저장됩니다",
+      "value": {
+        "probing": {
+          "questions": "{n, plural, =0 {없음} other {#개 주입}}",
+          "researchGoal": "{set, select, yes {지정함} other {기본}}"
+        },
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {직접 올린 파일} other {#단계 녹음}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {직접 넣은 전사록} other {#단계 전사록 · 자동}}",
+          "projectDocuments": "{known, select, yes {{n}건 함께 분석} other {프로젝트 문서}}"
+        },
+        "topline": {
+          "user_direction": "{set, select, yes {지정함} other {기본}}",
+          "allow_partial": "{on, select, yes {허용} other {전체 완료 대기}}"
+        }
+      },
+      "sub": {
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {전사록 생성기 전체보기에서 파일을 올립니다} other {#단계가 끝나면 자동으로 들어옵니다}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {앞 단계가 없어 직접 넣어야 해요} other {#단계가 끝나면 자동으로 들어옵니다}}",
+          "projectDocuments": "체인 프로젝트에 이미 있는 문서"
+        }
+      }
     },
     "label": "체인",
     "mode": {
@@ -1818,7 +1870,8 @@
       "statusReady": "준비됨 · 세션이 끝나면 시작",
       "costNote": "세션 후 💎{fixed} + 파일당 {perFile}",
       "costNoteFixed": "세션 후 💎{fixed}",
-      "restored": "↩ 원래 자리로"
+      "restored": "↩ 원래 자리로",
+      "statusBlocked": "{n}단계 설정 필요 · 아직 시작할 수 없어요"
     },
     "toolbar": {
       "newChain": "+ 새 체인",
@@ -1836,6 +1889,33 @@
       "ghostValid": "체인 {n}단계",
       "ghostInvalid": "놓을 수 없음",
       "originSlot": "원래 자리"
+    },
+    "card": {
+      "stepNumber": "{n}단계",
+      "badge": {
+        "unset": "설정 필요",
+        "ready": "준비됨",
+        "running": "진행 중",
+        "done": "완료",
+        "error": "실패"
+      },
+      "needCount": "필수 설정 {n}개가 남았어요",
+      "moreCount": "외 {n}개 설정",
+      "noConfigNote": "따로 설정할 것이 없어요",
+      "doneElsewhere": "자세한 결과는 결과 보기에서",
+      "costEstimate": "💎{cost} 예상",
+      "progressPercent": "{pct}%",
+      "editing": "편집 중",
+      "aria": "{chain} · {n}단계 {name}",
+      "action": {
+        "configure": "설정하기",
+        "edit": "편집",
+        "viewInput": "입력 보기",
+        "openResult": "결과 보기 ↗"
+      },
+      "done": {
+        "artifact": "1건"
+      }
     }
   },
   "Desk": {

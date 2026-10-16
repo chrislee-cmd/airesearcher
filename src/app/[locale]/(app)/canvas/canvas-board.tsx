@@ -21,11 +21,19 @@
       과도기 공존은 금지였다: 두 개가 같이 있으면 상태가 이중으로 표시된다.
 
    ── 카드는 항상 마운트돼 있고 보이지 않는다 ──────────────────────────────
-   카드를 부모가 바뀌게 옮기면 React 가 remount 해 라이브 세션(프로빙·통역)이
-   끊긴다. 그래서 모든 카드는 **숨은 호스트**에 상시 마운트되고, 도킹된 카드만
-   레인 슬롯으로 portal 된다(레포가 전체보기에서 이미 쓰는 always-mounted +
-   portal 패턴). 포커스·키보드는 **portal 되는 노드**가 가진다 — 숨은 호스트에
-   달면 레인 안 카드를 키보드로 만질 수 없다(LEARNINGS §8-3).
+   카드를 unmount 하면 라이브 세션(프로빙·통역)이 끊긴다. 그래서 모든 카드는
+   **숨은 호스트**에 상시 마운트된다. 체인 인스펙터 PR 부터는 **레인으로 portal
+   하지 않는다** — 레인 안은 240×300 요약 카드(`ChainStepCard`)가 그리고, 카드
+   본체를 보는 경로는 "결과 보기 ↗"/"진행 보기 ↗" → 풀뷰다. 그 덕에 portal 이
+   끌고 왔던 두 함정(합성 이벤트가 원래 트리로 버블 §8-2 · 숨은 래퍼
+   `display:none` §8-3)이 이 표면에서 사라졌고, 포커스·키보드·선택 링은 레인에
+   실제로 있는 요약 카드 노드가 들고 다닌다.
+
+   ── 인스펙터는 밀어내기다 (체인 인스펙터 §4.1) ──────────────────────────
+   오른쪽 400(좁은 화면 360) 패널은 팔레트와 같은 층 — `[data-canvas]` 의
+   **형제**다. flex 형제라 열리면 캔버스 뷰포트가 그만큼 좁아진다(오버레이 0).
+   레인의 캔버스 좌표는 그대로이고 보이는 창만 줄어들므로, 선택 카드가 그 창
+   밖으로 밀렸을 **때만** 240ms 팬한다(줌은 바꾸지 않는다).
 
    ── 레이어 (§9 · 스펙 제약 4) ───────────────────────────────────────────
    팔레트는 `[data-canvas]` 의 **형제**다 — 캔버스 transform 밖(화면 고정)이고
@@ -39,11 +47,9 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { WidgetShell } from '@/components/canvas/shell/widget-shell';
 import { WidgetStatesMapProvider } from '@/components/canvas/shell/widget-state-context';
 import { WidgetGateProvider } from '@/components/widget-gate-provider';
@@ -70,10 +76,13 @@ import { ChainChip } from '@/components/canvas/chain/chain-chip';
 import { useWidgetChain } from '@/components/canvas/chain/widget-chain-provider';
 import { useChainLane } from '@/components/canvas/chain/chain-lane-provider';
 import { ChainToolbarHost } from '@/components/canvas/chain/chain-toolbar-host';
+import { ChainLaneHost } from '@/components/canvas/chain/chain-lane-host';
 import {
-  ChainLaneHost,
-  dockReason,
-} from '@/components/canvas/chain/chain-lane-host';
+  ChainInspector,
+  INSPECTOR_W_NARROW,
+  useInspectorWidth,
+} from '@/components/canvas/chain/chain-inspector';
+import { useChainInspector } from '@/components/canvas/chain/chain-inspector-provider';
 import {
   CHAIN_STEP_WIDGET_KEY,
   type ChainStepFeature,
@@ -100,20 +109,24 @@ const FOCUS_THRESHOLD = 0.55;
 /** 툴바는 화면 고정(§7 배치 — 캔버스 영역 기준 left 24 · top 20). */
 const TOOLBAR_LEFT = 24;
 const TOOLBAR_TOP = 20;
-/** 레인은 캔버스 안(§7 배치 — left 24 · top 78 기준). */
-const LANE_TOP = 152;
-const LANE_LEFT = 24;
+/**
+ * 레인은 캔버스 안. 체인 인스펙터 `.dc.html` I0 의 실측 좌표(top 76 · left 16)
+ * 를 쓴다 — 레인이 1168×~404 로 줄면서 옛 값(top 152 · left 24)은 (가) 아래로
+ * 너무 내려가고 (나) 1440 에서 폭 예산을 8px 더 먹어 줌 100% fit 을 깨뜨린다.
+ * 폭 예산: 1440 − 팔레트 240 = 1200 ≥ 16 + 1168 = 1184 ✓
+ */
+const LANE_TOP = 76;
+const LANE_LEFT = 16;
 /** 작업면 여백 — 레인 밖으로도 끌고 다닐 수 있는 숨 쉬는 공간. */
 const WORKSPACE_PAD = 240;
 /** surface 컨테이너의 top offset (pt-8). pan 식에 들어가므로 상수로 둔다. */
 const SURFACE_PT = 32;
-// 클릭 vs pan 드래그 구분 — pointerdown→pointerup 이동거리가 이 픽셀 미만일
-// 때만 클릭(=focus)으로 판정.
-const CLICK_MOVE_THRESHOLD = 5;
 /** P1b — 레인 카드로 팬한 뒤 링을 띄우는 시간 (CSS `palette-ring` 1.2s + 여유). */
 const RING_MS = 1400;
 /** 레인이 없을 때의 실측값 — 상수라 파생 비교가 안정적이다. */
 const ZERO_BOX = { w: 0, h: 0 };
+/** sticky-left 가 헤더 내용을 밀 수 있는 한계 — 레인 오른쪽에 남겨 둘 폭. */
+const STICKY_HEADER_MIN = 420;
 
 // wheel target 의 가장 가까운 scrollable parent 를 찾는다. `data-canvas-surface`
 // marker 에 도달하면 위젯 밖 (= 캔버스 surface) 으로 간주하고 null 반환 — 캔버스
@@ -262,18 +275,18 @@ export function CanvasBoard({
   const {
     lane,
     locked: laneLocked,
-    drag: laneDrag,
     setDrag: setLaneDrag,
     evaluate: evaluateDock,
-    evaluateUndock,
     dock: dockCard,
-    undock: undockCard,
     createLane,
     dockTargets,
     laneBodyRef,
   } = useChainLane();
+  const { selectedIndex: inspectorIndex } = useChainInspector();
+  const inspectorWidth = useInspectorWidth();
+  const inspectorOpen = inspectorIndex !== null;
 
-  /** 도킹된 위젯 key ← 단계 key. 카드 본체는 레인 슬롯으로 portal 된다. */
+  /** 도킹된 위젯 key ← 단계 key. 레인 안에는 요약 카드가 그려진다. */
   const dockedKeys = useMemo(
     () =>
       new Map<string, ChainStepFeature>(
@@ -410,11 +423,15 @@ export function CanvasBoard({
         setRingKey(null);
         ringTimerRef.current = 0;
       }, RING_MS);
-      // 포커스는 **portal 되는 노드**로 — 숨은 호스트가 아니다(LEARNINGS §8-3).
+      // 포커스는 **레인 안에 실제로 있는 요약 카드**로. 위젯 카드 본체는 숨은
+      // 호스트(display:none)에 있어 포커스가 가지 않는다(LEARNINGS §8-3).
       requestAnimationFrame(() => {
         document
-          .querySelector<HTMLElement>(`[data-widget-node="${widgetKey}"]`)
-          ?.focus();
+          .querySelector<HTMLElement>(`[data-chain-card-step="${widgetKey}"]`)
+          // preventScroll 필수 — 아래 `onScroll` 주석 참고. 기본 focus 는
+          // overflow:hidden 인 캔버스 컨테이너를 **스크롤**해 pan 과 좌표계를
+          // 어긋나게 한다.
+          ?.focus({ preventScroll: true });
       });
     },
     [dockedKeys, dockTargets],
@@ -423,11 +440,14 @@ export function CanvasBoard({
   const onDropped = useCallback(
     (widgetKey: string, _position: DockPosition) => {
       void _position;
-      // 드롭 직후 포커스는 새 카드로 (§5 키보드 완료 · P2d).
+      // 드롭 직후 포커스는 새 **요약 카드**로 (§5 키보드 완료 · P2d).
       requestAnimationFrame(() => {
         document
-          .querySelector<HTMLElement>(`[data-widget-node="${widgetKey}"]`)
-          ?.focus();
+          .querySelector<HTMLElement>(`[data-chain-card-step="${widgetKey}"]`)
+          // preventScroll 필수 — 아래 `onScroll` 주석 참고. 기본 focus 는
+          // overflow:hidden 인 캔버스 컨테이너를 **스크롤**해 pan 과 좌표계를
+          // 어긋나게 한다.
+          ?.focus({ preventScroll: true });
       });
     },
     [],
@@ -561,53 +581,12 @@ export function CanvasBoard({
     return () => window.removeEventListener('keydown', onKey);
   }, [fullviewOpen, widgets]);
 
-  // ── 도킹 카드 키보드 언도킹 (v3 상호작용 보존) ──────────────────────
-  // 끌어내 빼는 경로는 **목적지(그리드 셀)가 퇴역**해 사라졌다. 대체 목적지를
-  // 발명하지 않고, 키보드 경로만 남긴다: Space 로 들어 판정을 띄우고(거절이면
-  // 레인이 사유를 보여준다) 한 번 더 Space 로 뺀다. Esc 로 취소.
-  const [liftedCard, setLiftedCard] = useState<string | null>(null);
-  const onCardKeyDown = useCallback(
-    (key: string) => (e: ReactKeyboardEvent<HTMLElement>) => {
-      if (e.target !== e.currentTarget) return;
-      const feature = dockedKeys.get(key);
-      if (!feature) return;
-      if (e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (liftedCard === key) {
-          if (evaluateUndock(feature).ok) undockCard(feature);
-          setLiftedCard(null);
-          setLaneDrag(null);
-          return;
-        }
-        setLiftedCard(key);
-        setLaneDrag({
-          feature,
-          over: null,
-          valid: false,
-          verdict: null,
-          undocking: evaluateUndock(feature),
-        });
-        return;
-      }
-      if (liftedCard === key && e.key === 'Escape') {
-        e.preventDefault();
-        setLiftedCard(null);
-        setLaneDrag(null);
-      }
-    },
-    [dockedKeys, liftedCard, evaluateUndock, undockCard, setLaneDrag],
-  );
-
-  const undockAnnounce = useMemo(() => {
-    if (!liftedCard || !laneDrag?.undocking) return '';
-    return laneDrag.undocking.ok
-      ? tChain('lane.dissolve')
-      : dockReason(laneDrag.verdict, laneDrag.feature, tChain, tRoot) ||
-          tChain(
-            `dock.${laneDrag.undocking.error === 'locked' ? 'locked' : 'middleUndock'}`,
-          );
-  }, [liftedCard, laneDrag, tChain, tRoot]);
+  // ── 도킹 카드 키보드 언도킹 ────────────────────────────────────────
+  // **레인 호스트로 이관했다.** 예전에는 `data-widget-node`(portal 되는 위젯
+  // 카드)에 달려 있었는데, 요약 카드로 바뀌면서 그 노드가 숨은 호스트
+  // (display:none)에만 남아 키보드가 영영 닿지 않는다(LEARNINGS §8-3 의 그
+  // 함정). 판정(`evaluateUndock`)·실행(`undock`)·사유 표시가 모두 레인 안에
+  // 있는 쪽이 맞으므로 `chain-lane-host` 가 소유한다.
 
   // ── 스페이스바 hold → pan 모드 ──────────────────────────────────────
   useEffect(() => {
@@ -731,8 +710,9 @@ export function CanvasBoard({
     };
   }, [isPanning, endPan]);
 
-  // click-to-focus 의 pointerdown 좌표 — pointerup 에서 이동거리로 클릭 판정.
-  const clickStartRef = useRef<{ x: number; y: number } | null>(null);
+  // click-to-focus 의 클릭 판정(pointerdown 좌표 · 이동거리)은 오버레이와 함께
+  // 레인 호스트로 옮겼다 — 오버레이가 레인 안 요약 카드 위에 깔리기 때문이다.
+  // 보드는 그 판정 결과를 `onFocusCard`(= focusCardZoom)로만 받는다.
 
   /** 저줌에서 레인 카드를 클릭하면 그 카드로 줌인 (click-to-focus). */
   const focusCardZoom = useCallback(
@@ -768,6 +748,69 @@ export function CanvasBoard({
     [dockedKeys, dockTargets, zoom],
   );
 
+  // ── 레인 헤더 sticky-left (체인 인스펙터 §2) ─────────────────────────
+  // CSS `position: sticky` 는 조상의 transform 을 모르므로 캔버스 팬에
+  // 반응하지 않는다. 그래서 pan·zoom 에서 **캔버스 좌표계 오프셋**을 순수식으로
+  // 계산해 레인에 내려준다(DOM 읽기·effect 0).
+  //
+  // 작업면은 컨테이너 가로 중앙에 놓이고 `transformOrigin: 'center top'` 이므로
+  //   screenX(x_s) = (W_c − W_s)/2 + W_s/2 + pan.x + (x_s − W_s/2)·zoom
+  //                = W_c/2 + pan.x + (x_s − W_s/2)·zoom
+  // 레인 왼쪽(x_s = LANE_LEFT)의 화면 x 가 음수인 만큼이 "밀려난 양" 이다.
+  //
+  // **`useMemo` 를 쓰지 않는다.** 산술 3줄이라 메모할 값이 아니고, 메모로 두면
+  // 팬 직후 오프셋이 옛 `pan.x` 에 묶여 0 으로 남는 것을 실측했다(프리뷰:
+  // 레인이 −417 로 밀렸는데 헤더는 안 따라옴). 매 렌더 계산이 정답이다 —
+  // 입력이 전부 같은 렌더의 값이라 DOM 과 어긋날 수 없다.
+  const laneHeaderOffset = (() => {
+    if (!lane || zoom <= 0 || containerSize.w === 0) return 0;
+    const laneScreenLeft =
+      containerSize.w / 2 + pan.x + (LANE_LEFT - SURFACE_W / 2) * zoom;
+    if (laneScreenLeft >= 0) return 0;
+    // 헤더 내용이 레인 오른쪽 끝을 넘지 않도록 묶는다 — 넘으면 "체인 1" 이
+    // 레인 밖으로 나가 더 이상 그 레인의 머리로 읽히지 않는다.
+    const limit = Math.max(0, laneSize.w - STICKY_HEADER_MIN);
+    return Math.min(-laneScreenLeft / zoom, limit);
+  })();
+
+  // ── 인스펙터 열림/이동 시 팬 (§4.1 "가려질 때만") ────────────────────
+  // 뷰포트가 400 좁아지면 선택 카드가 그 창 밖으로 밀릴 수 있다. **밀렸을
+  // 때만** 창 가운데로 옮기고, 줌은 바꾸지 않는다. 측정이 필요하므로 effect 다
+  // — 레이아웃(flex 축소)이 반영된 **뒤**에 rect 를 읽어야 해서 rAF 를 한 번
+  // 거친다(LEARNINGS §8-8 의 "전이가 가라앉기 전 좌표" 함정과 같은 이유).
+  //
+  // **닫으면 밀어낸 만큼 되돌린다.** 창이 다시 넓어질 때 아무것도 안 하면 레인이
+  // 오른쪽으로 치우친 채 남아 산출물 노드가 창 밖으로 잘린다(프리뷰 실측: 닫은
+  // 뒤 레인 왼쪽이 +455). CD 가 닫힘 팬을 적지 않은 것은 "가려질 때만" 이 열림·
+  // 이동의 규칙이기 때문이고, 그 규칙의 짝은 "밀어서 생긴 이동은 되돌린다" 다.
+  // 사용자가 중간에 직접 팬했어도 **같은 델타만큼** 되돌리므로 상대 위치는
+  // 유지된다(사용자 팬을 덮어쓰지 않는다).
+  const inspectorPanRef = useRef(0);
+  const selectedFeature =
+    inspectorIndex === null ? null : (view?.steps[inspectorIndex]?.feature ?? null);
+  useEffect(() => {
+    if (!selectedFeature) {
+      const applied = inspectorPanRef.current;
+      inspectorPanRef.current = 0;
+      if (applied !== 0) setPan((p) => ({ x: p.x - applied, y: p.y }));
+      return;
+    }
+    const target = dockTargets[selectedFeature];
+    const container = containerRef.current;
+    if (!target || !container) return;
+    const id = requestAnimationFrame(() => {
+      const cr = container.getBoundingClientRect();
+      const tr = target.getBoundingClientRect();
+      if (tr.width === 0) return;
+      const visible = tr.left >= cr.left && tr.right <= cr.right;
+      if (visible) return;
+      const dx = cr.left + cr.width / 2 - (tr.left + tr.width / 2);
+      inspectorPanRef.current += dx;
+      setPan((p) => ({ x: p.x + dx, y: p.y }));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedFeature, inspectorWidth, dockTargets]);
+
   // ── 초기 fit — 레인이 있으면 한눈에 들어오게 (mount 1회 latch) ───────
   const didInitialFitRef = useRef(false);
   useEffect(() => {
@@ -778,7 +821,10 @@ export function CanvasBoard({
     // rAF — 레인 생성 직후의 전이(0.28s)가 가라앉기 전에 좌표를 쓰면 엉뚱한
     // 곳에 안착한다(LEARNINGS §8-8). effect 본문 동기 setState 도 피한다.
     const id = requestAnimationFrame(() => {
-      const PADDING = 64;
+      // 여백 16 — CD §2 "1440 에서 3단계가 줌 100% 로 가로 스크롤 없이".
+      // 1200(캔버스) − 1168(레인) = 32 밖에 없으므로 옛 64 여백이면 fit 이
+      // 0.92 로 떨어진다. MAX_ZOOM 이 1.0 이라 상한은 그대로 100% 다.
+      const PADDING = 16;
       const boxW = laneSize.w;
       const boxH = laneSize.h;
       const fitZoom = Math.max(
@@ -893,6 +939,20 @@ export function CanvasBoard({
         className="relative h-full min-w-0 flex-1 overflow-hidden"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
+        // 캔버스는 **스크롤 컨테이너가 아니다** — 위치는 오직 `pan`/`zoom` 이
+        // 소유한다. 그런데 `overflow: hidden` 박스도 브라우저가 **프로그램적으로
+        // 스크롤**할 수 있다: `focus()`·`scrollIntoView` 가 화면 밖 자손을
+        // 가져오려고 숨은 스크롤을 움직인다. 그러면 DOM 은 움직였는데 `pan` 은
+        // 그대로라 **좌표계가 조용히 어긋난다** — 레인 헤더 sticky-left 가 팬
+        // 뒤 멈춰 보이던 실측 결함의 진짜 원인이 이것이었다(오프셋 식은 pan 을
+        // 보는데 레인은 숨은 스크롤로 밀려 있었다). 그래서 0 으로 되돌린다.
+        // 포커스 이동은 `focus({ preventScroll: true })` 로 애초에 안 밀고,
+        // 이 핸들러는 그 밖의 경로(브라우저 내부 scrollIntoView 등)의 백스톱이다.
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollLeft !== 0) el.scrollLeft = 0;
+          if (el.scrollTop !== 0) el.scrollTop = 0;
+        }}
       >
         {/* 툴바 — 화면 고정(변환 레이어 밖). Navigator 가 사라져 좌상단 충돌이
             없어졌으므로 CD 좌표(left 24 · top 20)를 그대로 쓴다(§7 배치). */}
@@ -914,11 +974,6 @@ export function CanvasBoard({
             덮어쓴다(LEARNINGS §9 — 돌고 있는 체인을 가리는 그 경로). 툴바가
             같은 이유로 `busy={hydrating}` 로 잠긴다. */}
         {!lane && !hydrating && <WorkspaceEmpty onNewChain={createLane} />}
-
-        {/* 언도킹 키보드 안내 — 시각 피드백은 레인이 이미 한다. */}
-        <div aria-live="polite" className="sr-only">
-          {undockAnnounce}
-        </div>
 
         <div className="absolute inset-0 flex items-start justify-center pt-8">
           <div
@@ -950,41 +1005,42 @@ export function CanvasBoard({
                   maxWidth: SURFACE_W - LANE_LEFT * 2,
                 }}
               >
-                <ChainLaneHost onOpenWidget={openFullview} />
+                <ChainLaneHost
+                  onOpenWidget={openFullview}
+                  narrow={inspectorOpen && inspectorWidth === INSPECTOR_W_NARROW}
+                  headerOffset={laneHeaderOffset}
+                  lowZoom={zoom < FOCUS_THRESHOLD}
+                  panMode={isSpaceHeld}
+                  onFocusCard={focusCardZoom}
+                  ringWidgetKey={ringKey}
+                />
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* 인스펙터 — 팔레트와 같은 층(`[data-canvas]` 의 형제). flex 형제라
+          열리면 캔버스가 그만큼 좁아진다 = 밀어내기(§4.1 오버레이 0). */}
+      <ChainInspector onOpenFullview={openFullview} width={inspectorWidth} />
     </div>
 
     {/* ── 카드 호스트 — 항상 마운트, 보이지 않음 ────────────────────────
-        위젯은 **꺼낸 것만** 작업면에 보인다(§2 규칙 3 · P3c). 그러나 카드를
-        unmount 하면 라이브 세션(프로빙·통역)이 끊기므로 여기에 상시 마운트해
-        두고, 도킹된 카드만 레인 슬롯으로 portal 한다. 포커스·키보드는 portal
-        되는 노드가 들고 다닌다(LEARNINGS §8-3). */}
+        위젯은 **꺼낸 것만** 작업면에 보인다(§2 규칙 3 · P3c). 카드를 unmount
+        하면 라이브 세션(프로빙·통역)이 끊기므로 여기에 상시 마운트해 둔다.
+        체인 인스펙터 PR 부터 **레인으로 portal 하지 않는다** — 레인 안은 요약
+        카드가 그리고, 본체는 풀뷰에서 본다. 그래서 여기 노드는 순수한 "살아
+        있는 세션의 거처" 이고 포커스·키보드 대상이 아니다. */}
     <div data-canvas-card-host style={{ display: 'none' }}>
       {widgets.map((w) => {
         const dockFeature = dockedKeys.get(w.key);
-        const target = dockFeature ? dockTargets[dockFeature] : null;
-        const tone = `var(--widget-header-bg-${w.meta.accent})`;
-        const node = (
+        return (
           <div
             key={w.key}
             data-widget-node={w.key}
             data-chain-docked={dockFeature ? 'true' : 'false'}
-            data-chain-lifted={liftedCard === w.key ? 'true' : undefined}
-            tabIndex={0}
             aria-label={tRoot(`Sidebar.${w.key}`)}
-            onKeyDown={onCardKeyDown(w.key)}
-            style={
-              ringKey === w.key
-                ? ({ '--palette-ring-tone': tone } as React.CSSProperties)
-                : undefined
-            }
-            className={`relative h-full focus-visible:outline-none focus-visible:shadow-soft-focus-ring ${
-              w.dimmed ? 'opacity-50' : ''
-            } ${ringKey === w.key ? 'palette-ring' : ''}`}
+            className={`relative h-full ${w.dimmed ? 'opacity-50' : ''}`}
           >
             <WidgetShell
               content={w}
@@ -1009,31 +1065,12 @@ export function CanvasBoard({
                 </Badge>
               </div>
             )}
-            {/* click-to-focus 오버레이 — 저줌(탐색 모드)에서만. 드래그 중에는
-                globals.css 가 `pointer-events: none` 을 줘 드롭이 성립한다
-                (§5 저줌 · LEARNINGS §2-1 · §8-8). */}
-            {dockFeature && zoom < FOCUS_THRESHOLD && (
-              <div
-                data-canvas-focus-overlay
-                className="absolute inset-0 z-overlay cursor-zoom-in"
-                onPointerDown={(e) => {
-                  clickStartRef.current = { x: e.clientX, y: e.clientY };
-                }}
-                onPointerUp={(e) => {
-                  const start = clickStartRef.current;
-                  clickStartRef.current = null;
-                  if (!start || isSpaceHeldRef.current) return;
-                  const moved = Math.hypot(
-                    e.clientX - start.x,
-                    e.clientY - start.y,
-                  );
-                  if (moved <= CLICK_MOVE_THRESHOLD) focusCardZoom(w.key);
-                }}
-              />
-            )}
+            {/* click-to-focus 오버레이는 **레인 안 요약 카드** 위로 옮겼다 —
+                여기 노드는 display:none 이라 포인터가 닿지 않는다. 레인 호스트
+                가 `lowZoom`/`onFocusCard` 로 같은 동작을 그린다(§9 저줌 규칙:
+                첫 클릭 = 포커스 줌인 · 둘째부터 인스펙터). */}
           </div>
         );
-        return dockFeature && target ? createPortal(node, target, w.key) : node;
       })}
     </div>
 

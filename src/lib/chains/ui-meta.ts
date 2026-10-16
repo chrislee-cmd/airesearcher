@@ -319,6 +319,31 @@ export const CHAIN_STEP_UI_META: Record<ChainStepKey, ChainStepUiMeta> = {
 // ── 조회 헬퍼 ────────────────────────────────────────────────────────────
 
 /**
+ * 사용자가 **인스펙터에서 직접 값을 정하는** 필드인가.
+ *
+ * `source` 가 user 가 아닌 필드(upstream = 앞 단계가 공급 · chain = 체인 레벨)와
+ * `dropzone`/`readonly` kind 는 **값의 거처가 config 가 아니다** — 업로드는 기존
+ * 업로드 경로가 소유하고, 읽기 전용 행은 앞 단계/체인에서 파생한 표시값이다.
+ * 그래서 필수 판정·"외 n개 설정"·하단 진행도의 분모에서 전부 빠진다.
+ *
+ * ⚠️ `step-config.ts` 가 **같은 판정을 자기 안에 따로 들고 있다**(`isWritable`).
+ * 그 모듈은 이 모듈을 런타임 import 할 수 없어서다(파일 머리 주석 — tests 로더가
+ * `@/` alias 를 해석하지 못한다). 한쪽만 고치면 "UI 는 그리는데 서버가 거절하는"
+ * 필드가 생기므로 **둘을 같이** 바꾼다.
+ */
+export function isUserConfigurableField(field: ChainStepFieldDef): boolean {
+  if ((field.source ?? 'user') !== 'user') return false;
+  return (
+    field.kind === 'segment' ||
+    field.kind === 'select' ||
+    field.kind === 'textarea' ||
+    field.kind === 'toggle' ||
+    field.kind === 'orderedList'
+  );
+}
+
+
+/**
  * 레지스트리 단계 key 인가 — **이 모듈의 키 집합으로** 판별한다.
  *
  * registry 의 `isChainStepKey` 를 쓰지 않는 이유: 그 함수를 런타임 import

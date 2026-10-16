@@ -1689,7 +1689,59 @@
         }
       },
       "noSettings": "設定なし",
-      "emptyNote": "この段階は前の段階の結果をそのまま分析するため、設定する項目はありません。"
+      "emptyNote": "この段階は前の段階の結果をそのまま分析するため、設定する項目はありません。",
+      "required": "必須",
+      "selectPlaceholder": "未選択",
+      "addItem": "+ 項目を追加",
+      "reorder": "{n}番目の項目を並べ替え",
+      "chip": {
+        "upstream": "前の段階",
+        "chain": "チェーン共通"
+      },
+      "valueUnknown": "—",
+      "ariaLabel": "{chain} · {n}番目の設定",
+      "eyebrow": "{chain} · {n} / {total}",
+      "prev": "前の段階",
+      "next": "次の段階",
+      "nextStep": "次の段階 →",
+      "openProgress": "進行を見る ↗",
+      "lockedRunning": "実行中は設定を変更できません。変更するにはチェーンを終了してください。",
+      "lockedEnded": "チェーンが終了したため設定は変更できません。",
+      "lockedFoot": "実行中 · 設定ロック",
+      "requiredProgress": "必須 {filled} / {total}",
+      "requiredDone": "必須 {total} / {total} 完了",
+      "saving": "保存中…",
+      "saved": "自動保存しました",
+      "saveFailed": "保存に失敗",
+      "retry": "再試行",
+      "projectLabel": "プロジェクト",
+      "projectSub": "チェーン全体がこのプロジェクトに保存されます",
+      "value": {
+        "probing": {
+          "questions": "{n, plural, =0 {なし} other {#件 注入}}",
+          "researchGoal": "{set, select, yes {指定あり} other {既定}}"
+        },
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {自分でアップロードしたファイル} other {#番目の録音}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {自分で追加した文字起こし} other {#番目の文字起こし · 自動}}",
+          "projectDocuments": "{known, select, yes {{n}件を一緒に分析} other {プロジェクト文書}}"
+        },
+        "topline": {
+          "user_direction": "{set, select, yes {指定あり} other {既定}}",
+          "allow_partial": "{on, select, yes {許可} other {全完了を待つ}}"
+        }
+      },
+      "sub": {
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {文字起こしの全体表示でファイルをアップロードします} other {#番目が終わると自動で入ります}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {前の段階がないため自分で追加します} other {#番目が終わると自動で入ります}}",
+          "projectDocuments": "チェーンのプロジェクトに既にある文書"
+        }
+      }
     },
     "label": "チェーン",
     "mode": {
@@ -1818,7 +1870,8 @@
       "statusReady": "準備完了 · セッション終了後に開始",
       "costNote": "セッション後 💎{fixed} + ファイルごと {perFile}",
       "costNoteFixed": "セッション後 💎{fixed}",
-      "restored": "↩ 元の位置へ"
+      "restored": "↩ 元の位置へ",
+      "statusBlocked": "{n}番目の設定が必要 · まだ開始できません"
     },
     "toolbar": {
       "newChain": "+ 新しいチェーン",
@@ -1836,6 +1889,33 @@
       "ghostValid": "チェーン {n}ステップ目",
       "ghostInvalid": "ここには置けません",
       "originSlot": "元の位置"
+    },
+    "card": {
+      "stepNumber": "{n}番目",
+      "badge": {
+        "unset": "設定が必要",
+        "ready": "準備完了",
+        "running": "実行中",
+        "done": "完了",
+        "error": "失敗"
+      },
+      "needCount": "必須設定が{n}件残っています",
+      "moreCount": "ほか{n}件の設定",
+      "noConfigNote": "設定するものはありません",
+      "doneElsewhere": "詳しい結果は結果表示で",
+      "costEstimate": "💎{cost} 予定",
+      "progressPercent": "{pct}%",
+      "editing": "編集中",
+      "aria": "{chain} · {n}番目 {name}",
+      "action": {
+        "configure": "設定する",
+        "edit": "編集",
+        "viewInput": "入力を見る",
+        "openResult": "結果を見る ↗"
+      },
+      "done": {
+        "artifact": "1件"
+      }
     }
   },
   "Desk": {

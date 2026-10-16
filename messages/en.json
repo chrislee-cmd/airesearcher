@@ -1689,7 +1689,59 @@
         }
       },
       "noSettings": "No settings",
-      "emptyNote": "This step analyzes the previous step's result as-is, so there is nothing to set."
+      "emptyNote": "This step analyzes the previous step's result as-is, so there is nothing to set.",
+      "required": "Required",
+      "selectPlaceholder": "Not selected",
+      "addItem": "+ Add item",
+      "reorder": "Reorder item {n}",
+      "chip": {
+        "upstream": "Previous step",
+        "chain": "Chain-wide"
+      },
+      "valueUnknown": "—",
+      "ariaLabel": "{chain} · step {n} settings",
+      "eyebrow": "{chain} · {n} / {total}",
+      "prev": "Previous step",
+      "next": "Next step",
+      "nextStep": "Next step →",
+      "openProgress": "View progress ↗",
+      "lockedRunning": "Settings can’t change while this step runs. End the chain to change them.",
+      "lockedEnded": "The chain has ended, so settings can’t change.",
+      "lockedFoot": "Running · settings locked",
+      "requiredProgress": "Required {filled} / {total}",
+      "requiredDone": "Required {total} / {total} done",
+      "saving": "Saving…",
+      "saved": "Saved automatically",
+      "saveFailed": "Save failed",
+      "retry": "Retry",
+      "projectLabel": "Project",
+      "projectSub": "The whole chain saves into this project",
+      "value": {
+        "probing": {
+          "questions": "{n, plural, =0 {None} one {# injected} other {# injected}}",
+          "researchGoal": "{set, select, yes {Set} other {Default}}"
+        },
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {Files you upload} other {Recording from step #}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {Transcripts you add} other {Transcript from step # · automatic}}",
+          "projectDocuments": "{known, select, yes {{n} analyzed together} other {Project documents}}"
+        },
+        "topline": {
+          "user_direction": "{set, select, yes {Set} other {Default}}",
+          "allow_partial": "{on, select, yes {Allowed} other {Wait for all steps}}"
+        }
+      },
+      "sub": {
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {Upload files in the transcript full view} other {Arrives automatically when step # finishes}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {No previous step — add them yourself} other {Arrives automatically when step # finishes}}",
+          "projectDocuments": "Documents already in the chain’s project"
+        }
+      }
     },
     "label": "Chain",
     "mode": {
@@ -1818,7 +1870,8 @@
       "statusReady": "Ready · starts when the session ends",
       "costNote": "After the session 💎{fixed} + {perFile} per file",
       "costNoteFixed": "After the session 💎{fixed}",
-      "restored": "↩ Back to its place"
+      "restored": "↩ Back to its place",
+      "statusBlocked": "Step {n} needs setup · can’t start yet"
     },
     "toolbar": {
       "newChain": "+ New chain",
@@ -1836,6 +1889,33 @@
       "ghostValid": "Chain step {n}",
       "ghostInvalid": "Cannot drop here",
       "originSlot": "Its place"
+    },
+    "card": {
+      "stepNumber": "Step {n}",
+      "badge": {
+        "unset": "Needs setup",
+        "ready": "Ready",
+        "running": "Running",
+        "done": "Done",
+        "error": "Failed"
+      },
+      "needCount": "{n, plural, one {# required setting left} other {# required settings left}}",
+      "moreCount": "+{n} more settings",
+      "noConfigNote": "Nothing to set up here",
+      "doneElsewhere": "Full result in the result view",
+      "costEstimate": "💎{cost} est.",
+      "progressPercent": "{pct}%",
+      "editing": "Editing",
+      "aria": "{chain} · step {n} {name}",
+      "action": {
+        "configure": "Set up",
+        "edit": "Edit",
+        "viewInput": "View input",
+        "openResult": "View result ↗"
+      },
+      "done": {
+        "artifact": "1 item"
+      }
     }
   },
   "Desk": {

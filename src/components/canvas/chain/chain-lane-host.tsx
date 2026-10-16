@@ -5,17 +5,28 @@
 
    CD SSOT: `v3/README.md` L0~L9.
 
-   **도킹 카드는 여기서 렌더하지 않는다.** 카드를 다른 부모로 옮기면 React 가
-   remount 해 라이브 세션(프로빙·통역)이 끊기기 때문이다. 대신 각 단계 자리에
-   빈 **portal 타깃**만 두고, canvas-board 가 항상 마운트해 둔 카드를 그 타깃으로
-   portal 한다 — 레포가 전체보기에서 이미 쓰는 "always-mounted 카드 + portal"
-   패턴 그대로다(fullview-shell-context 주석 참조).
+   ── 레인 안은 **요약 카드**다 (체인 인스펙터 §1) ────────────────────────
+   예전에는 각 단계 자리에 빈 portal 타깃만 두고 604×900 위젯 카드 본체를 그리로
+   portal 했다. 체인 인스펙터 PR 에서 레인 안은 **240×300 읽기 전용 요약
+   카드**(`ChainStepCard`)가 되고 설정은 오른쪽 인스펙터로 옮겨졌으므로, 더 이상
+   위젯 카드를 레인으로 옮기지 않는다 — 카드 본체는 숨은 호스트에 그대로 상시
+   마운트돼 있어 **라이브 세션(프로빙·통역)은 끊기지 않고**, 사용자가 그 본체를
+   보는 경로는 "결과 보기 ↗" / "진행 보기 ↗" → **기존 풀뷰**다(§7 결과 경로 3곳).
+
+   portal 을 걷어내면서 따라온 이점: React 합성 이벤트가 **원래 컴포넌트 트리**로
+   버블하던 함정(LEARNINGS §8-2)과 숨은 래퍼의 `display:none` 함정(§8-3)이 이
+   표면에서 통째로 사라진다. 포커스·키보드·선택 링은 전부 레인 안에 실제로 있는
+   카드 노드가 들고 다닌다.
+
+   단계 자리 `div` 는 그대로 남는다 — **좌표 판정의 기준**(도킹 드롭 타깃 ·
+   click-to-focus 줌 · P1b 팬)이라 보드가 ref 로 들고 있어야 한다.
 
    세그먼트 종류·캡슐 위치는 v2 의 `deriveEdgeKinds`/`capsuleEdgeIndex` 를 그대로
-   쓴다 — 순수 함수라 체인 구성이 자유로워져도 유효하다.
+   쓰고, **미설정 차단**(§3)만 그 위에 `blocked` 로 얹는다 — 설정은 상태가 아니라
+   config 라 순수 상태 함수가 알 수 없다.
    ──────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { josa } from '@/lib/korean-particle';
 import { usePaywall } from '@/components/paywall-provider';
@@ -36,8 +47,23 @@ import {
   type ChainStepFeature,
   type ChainView,
 } from '@/lib/chains/view';
+import {
+  cardLayoutOf,
+  chainCardModel,
+  derivedValuesOf,
+  isChainActive,
+  stepContextOf,
+  type ChainStepContext,
+} from '@/lib/chains/card-state';
+import { CHAIN_STEP_NAME_KEY, CHAIN_STEP_TONE } from '@/lib/chains/view';
+import { useWidgetStateOf } from '@/components/canvas/shell/widget-state-context';
 import { ChainLane, type ChainLaneStatusTone } from './chain-lane';
+import { ChainStepCard } from './chain-step-card';
+import { useChainInspector } from './chain-inspector-provider';
 import { ChainSlot, LANE_CARD_H, LANE_CARD_W } from './chain-slot';
+
+/** 클릭 vs 팬 드래그 — pointerdown→up 이동이 이 픽셀 미만일 때만 클릭. */
+const CLICK_MOVE_THRESHOLD = 5;
 import { ChainSegment } from './chain-segment';
 import { ChainReportNode } from './chain-report-node';
 import type { ChainCapsuleProps } from './chain-capsule';
@@ -46,8 +72,31 @@ import { useWidgetChain } from './widget-chain-provider';
 
 export function ChainLaneHost({
   onOpenWidget,
+  narrow = false,
+  headerOffset = 0,
+  lowZoom = false,
+  panMode = false,
+  onFocusCard,
+  ringWidgetKey = null,
 }: {
   onOpenWidget: (widgetKey: string) => void;
+  /** §6 900–1023 + 인스펙터 열림 — 레인 헤더 축약. */
+  narrow?: boolean;
+  /** sticky-left 오프셋(캔버스 px) — 보드가 pan/zoom 에서 계산해 내려준다. */
+  headerOffset?: number;
+  /**
+   * 줌 < FOCUS_THRESHOLD = "탐색 모드"(§9). 이때 카드 위에 click-to-focus
+   * 오버레이가 깔리고 **첫 클릭은 포커스 줌인**, 두 번째부터 인스펙터가 열린다
+   * (기존 규칙 그대로 — 멀어서 글자가 안 보이는 상태에서 패널을 여는 것은
+   * 사용자가 의도한 것이 아니다).
+   */
+  lowZoom?: boolean;
+  /** 스페이스바 팬 모드 — 이때의 클릭은 팬이지 포커스가 아니다. */
+  panMode?: boolean;
+  /** 저줌 첫 클릭 — 그 카드로 줌인(보드가 pan/zoom 을 소유). */
+  onFocusCard?: (widgetKey: string) => void;
+  /** P1b 링을 띄울 위젯 key(팔레트에서 레인 위치를 누른 직후 1.2s). */
+  ringWidgetKey?: string | null;
 }) {
   const t = useTranslations('Chain');
   const tRoot = useTranslations();
@@ -57,14 +106,20 @@ export function ChainLaneHost({
     drag,
     locked,
     dissolveLane,
+    evaluateUndock,
+    undock,
+    setDrag,
     registerDockTarget,
     laneBodyRef,
   } = useChainLane();
   const { showPaywall } = usePaywall();
   const { projects, create } = useInterviewV2Projects();
+  const inspector = useChainInspector();
   const [picked, setPicked] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  /** 키보드로 "들어 올린" 카드 — 한 번 더 누르면 빠진다. */
+  const [lifted, setLifted] = useState<ChainStepFeature | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -74,7 +129,10 @@ export function ChainLaneHost({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  // 포털 타깃 ref — **단계마다 같은 함수**여야 한다. 매 렌더 새 콜백을 주면
+  // 저줌 클릭 판정용 pointerdown 좌표 — 이동거리로 클릭/팬을 가른다.
+  const clickStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // 단계 자리 ref — **단계마다 같은 함수**여야 한다. 매 렌더 새 콜백을 주면
   // React 가 ref 를 detach(null) → attach(el) 하고, 그 두 번이 전부
   // registerDockTarget → setDockTargets 로 이어져 렌더 루프가 된다 (실측:
   // 도킹 드롭 순간 React #185 "Maximum update depth exceeded" 로 캔버스 트리
@@ -90,18 +148,82 @@ export function ChainLaneHost({
     return m;
   }, [laneCards, registerDockTarget]);
 
+  // ── 카드 키보드: 인스펙터는 Enter/Space, 언도킹은 Delete/Backspace ──
+  //
+  // CD §10 Done-when 이 **카드 Enter/Space = 인스펙터 열기**를 명시하는데, 그
+  // 자리를 쓰고 있던 것이 기존 언도킹 "들어 올리기" 였다(Space 두 번). 두
+  // 제스처가 한 키를 나눠 쓸 수 없으므로 CD 가 지정한 쪽이 Enter/Space 를
+  // 갖고, 언도킹은 **삭제 의미의 키**(Delete/Backspace)로 옮겼다 — 보수적
+  // 선택이고 PR 본문에 명시했다. 두 번 눌러야 빠지는 2단 확인은 그대로다.
+  const onCardKeyDown = (feature: ChainStepFeature) =>
+    (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (lifted === feature) {
+          if (evaluateUndock(feature).ok) undock(feature);
+          setLifted(null);
+          setDrag(null);
+          return;
+        }
+        setLifted(feature);
+        setDrag({
+          feature,
+          over: null,
+          valid: false,
+          verdict: null,
+          undocking: evaluateUndock(feature),
+        });
+        return;
+      }
+      if (lifted === feature && e.key === 'Escape') {
+        e.preventDefault();
+        setLifted(null);
+        setDrag(null);
+      }
+    };
+
   if (!lane) return null;
 
   const cards = lane.cards;
-  const kinds: ChainEdgeKind[] = view ? deriveEdgeKinds(view) : [];
+  const baseKinds: ChainEdgeKind[] = view ? deriveEdgeKinds(view) : [];
   const capsuleIdx = view ? capsuleEdgeIndex(view) : null;
   // 산출물 노드 판정은 **도킹된 카드** 기준이다 — 서버 steps 에는 탑라인이
   // 이미 들어 있어 둘 다 참이지만, 체인 생성 전(1장)에도 같은 규칙이 돈다.
   const showReport = laneHasReportNode(cards);
 
+  // ── 미설정 차단 (§3 — 세 곳이 같은 사실을 말한다) ─────────────────
+  // 설정은 **상태가 아니라 config** 라 `deriveEdgeKinds`(상태만 보는 순수
+  // 함수)가 알 수 없다. 그래서 여기서 단계별 레이아웃을 한 번 파생해
+  //   ① 카드 unset  ② 그 **앞** 세그먼트 `blocked`  ③ 레인 헤더 warn
+  // 세 표시의 **단일 근거**로 쓴다 — 셋이 각자 계산하면 갈라진다.
+  const steps = view?.steps ?? [];
+  const stepContexts: (ChainStepContext | null)[] = steps.map((_, i) => {
+    const ctx = stepContextOf(steps, i);
+    return ctx ? { ...ctx, config: inspector.configAt(i) } : null;
+  });
+  const unsetSteps = stepContexts.map(
+    (ctx) => !!ctx && cardLayoutOf(ctx) === 'unset',
+  );
+  /** 미설정 단계의 1-based 번호 — 가장 앞선 것 하나만 헤더가 말한다. */
+  const firstUnset = unsetSteps.indexOf(true);
+  const blockedStep = firstUnset >= 0 ? firstUnset + 1 : null;
+
+  // 엣지 i 는 steps[i] → steps[i+1] 이다. 도착 단계가 미설정이면 차단 표현.
+  const kinds: ChainEdgeKind[] = baseKinds.map((kind, i) =>
+    unsetSteps[i + 1] ? 'blocked' : kind,
+  );
+
   // ── 헤더 ─────────────────────────────────────────────────────────
-  const { statusText, statusTone } = laneStatus(view, cards.length, t);
+  const { statusText, statusTone } = laneStatus(view, cards.length, t, blockedStep);
   const costNote = buildCostNote(cards, t);
+
+  const chainActive = isChainActive(view?.status ?? '');
+  const projectDocumentCount = (() => {
+    if (!view?.projectId) return null;
+    const p = projects.find((x) => x.id === view.projectId);
+    return p ? p.document_count : null;
+  })();
 
   // ── 본문 ─────────────────────────────────────────────────────────
   const items: React.ReactNode[] = [];
@@ -147,14 +269,15 @@ export function ChainLaneHost({
         />,
       );
     }
-    // 도킹 카드 자리 — 빈 portal 타깃(카드는 board 가 여기로 portal 한다).
+    // 단계 자리 — **좌표 판정의 기준**이라 ref 를 유지한다(도킹 드롭 타깃 ·
+    // click-to-focus 줌 · P1b 팬). 안에 요약 카드가 실제로 들어간다.
     // 언도킹이 거절된 카드(가운데)는 **자기 자리 위에** 사유를 띄운다(CD
-    // Interactions). 카드 DOM 은 portal 로 뒤에 붙으므로 겹침 순서를 z 토큰으로
-    // 정한다 — 새 층을 만들지 않고 기존 `z-overlay` 를 쓴다(LEARNINGS §4).
+    // Interactions) — 겹침 순서는 기존 `z-overlay` 를 쓴다(LEARNINGS §4).
     const undockReject =
       drag?.feature === f && drag.undocking && !drag.undocking.ok
         ? drag.undocking
         : null;
+    const stepIndex = steps.findIndex((st) => st.feature === f);
     items.push(
       <div
         key={`dock-${f}`}
@@ -165,17 +288,58 @@ export function ChainLaneHost({
         style={{ width: LANE_CARD_W, height: LANE_CARD_H }}
         className="relative shrink-0"
       >
+        <LaneCard
+          feature={f}
+          stepIndex={stepIndex}
+          ctx={stepIndex >= 0 ? stepContexts[stepIndex] : null}
+          cost={stepIndex >= 0 ? (steps[stepIndex]?.cost ?? 0) : 0}
+          error={stepIndex >= 0 ? (steps[stepIndex]?.error ?? null) : null}
+          updatedAt={view?.updatedAt ?? null}
+          projectDocumentCount={projectDocumentCount}
+          chainActive={chainActive}
+          laneIndex={i}
+          laneTotal={cards.length}
+          selected={stepIndex >= 0 && inspector.selectedIndex === stepIndex}
+          onOpen={() => {
+            if (stepIndex >= 0) inspector.toggle(stepIndex);
+          }}
+          onOpenResult={() => onOpenWidget(CHAIN_STEP_WIDGET_KEY[f])}
+          onCardKeyDown={onCardKeyDown(f)}
+          ring={ringWidgetKey === CHAIN_STEP_WIDGET_KEY[f]}
+        />
+        {/* click-to-focus 오버레이 — 저줌(탐색 모드)에서만(§9). 드래그 중에는
+            globals.css 가 `[data-palette-dragging]` 아래에서
+            `pointer-events: none` 을 줘 드롭이 성립한다(LEARNINGS §2-1 · §8-8).
+            판정은 **기하**다: pointerdown 좌표와 pointerup 좌표의 거리만 본다
+            (enter/leave 이벤트 0). */}
+        {lowZoom && (
+          <div
+            data-canvas-focus-overlay
+            className="absolute inset-0 z-overlay cursor-zoom-in"
+            onPointerDown={(e) => {
+              clickStartRef.current = { x: e.clientX, y: e.clientY };
+            }}
+            onPointerUp={(e) => {
+              const start = clickStartRef.current;
+              clickStartRef.current = null;
+              if (!start || panMode) return;
+              const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+              if (moved <= CLICK_MOVE_THRESHOLD) {
+                onFocusCard?.(CHAIN_STEP_WIDGET_KEY[f]);
+              }
+            }}
+          />
+        )}
         {undockReject && (
           <div
             data-chain="undock-reject"
             aria-live="polite"
-            style={{ borderRadius: 'var(--widget-card-frame-radius)' }}
-            className="pointer-events-none absolute inset-0 z-overlay flex flex-col items-center justify-center gap-5 border-[1.5px] border-dashed border-error bg-error-bg/90"
+            className="pointer-events-none absolute inset-0 z-overlay flex flex-col items-center justify-center gap-2.5 rounded-sm border-[1.5px] border-dashed border-soft-err-dot bg-soft-err-bg/95"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-error text-display font-extrabold text-error-text">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-soft-err-dot text-xl font-extrabold text-soft-err-fg">
               <span aria-hidden>✕</span>
             </div>
-            <div className="px-10 text-center text-3xl font-extrabold text-error-text">
+            <div className="px-4 text-center text-md font-bold text-soft-err-fg">
               {t(
                 `dock.${undockReject.error === 'locked' ? 'locked' : 'middleUndock'}`,
               )}
@@ -250,9 +414,22 @@ export function ChainLaneHost({
             : { label: t('lane.dissolve'), onClick: dissolveLane }
         }
         bodyRef={laneBodyRef}
+        narrow={narrow}
+        headerOffset={headerOffset}
       >
         {items}
       </ChainLane>
+
+      {/* 언도킹 키보드 안내 — 시각 피드백은 카드 위 사유 박스가 이미 한다. */}
+      <div aria-live="polite" className="sr-only">
+        {lifted && drag?.undocking
+          ? drag.undocking.ok
+            ? t('lane.dissolve')
+            : t(
+                `dock.${drag.undocking.error === 'locked' ? 'locked' : 'middleUndock'}`,
+              )
+          : ''}
+      </div>
 
       <CreateProjectModal
         open={createOpen}
@@ -269,6 +446,124 @@ export function ChainLaneHost({
       />
     </>
   );
+}
+
+// ── 레인 안 요약 카드 ───────────────────────────────────────────────
+//
+// 분리된 이유는 **훅**이다: 실행 중 진척·현재 작업은 위젯 상태 채널
+// (`useWidgetStateOf`)에서 오고, 훅은 반복문 안에서 호출할 수 없다. 카드 1장당
+// 컴포넌트 1개면 그 채널을 각자 구독하면서도 규칙을 지킨다.
+
+function LaneCard({
+  feature,
+  stepIndex,
+  ctx,
+  cost,
+  error,
+  updatedAt,
+  projectDocumentCount,
+  chainActive,
+  laneIndex,
+  laneTotal,
+  selected,
+  onOpen,
+  onOpenResult,
+  onCardKeyDown,
+  ring,
+}: {
+  feature: ChainStepFeature;
+  /** `view.steps` 안의 index. 서버 행이 아직 없으면 -1. */
+  stepIndex: number;
+  ctx: ChainStepContext | null;
+  cost: number;
+  error: string | null;
+  updatedAt: string | null;
+  projectDocumentCount: number | null;
+  chainActive: boolean;
+  /** 레인 안 순서(서버 행이 없을 때의 단계 번호 폴백 — 팔레트와 같은 규칙). */
+  laneIndex: number;
+  laneTotal: number;
+  selected: boolean;
+  onOpen: () => void;
+  onOpenResult: () => void;
+  /** 카드가 쓰지 않는 키 입력 — 언도킹(Delete/Backspace) 경로. */
+  onCardKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+  ring: boolean;
+}) {
+  const tRoot = useTranslations();
+  const widgetKey = CHAIN_STEP_WIDGET_KEY[feature];
+  const widgetState = useWidgetStateOf(widgetKey);
+
+  // 서버 행이 아직 없는 구간(카드 1장 — `syncComposition` 은 2단계부터 POST)
+  // 에서도 카드가 보여야 한다. 그때는 레인 순서로 맥락을 만든다.
+  const effective: ChainStepContext =
+    ctx ??
+    {
+      feature,
+      position: laneIndex,
+      upstream: null,
+      status: 'pending',
+      config: {},
+    };
+
+  const derived = derivedValuesOf({ ctx: effective, projectDocumentCount });
+  const running =
+    widgetState.kind === 'running' ? widgetState : null;
+  const model = chainCardModel({
+    ctx: effective,
+    t: tRoot,
+    derived,
+    cost,
+    progress:
+      running && typeof running.progress === 'number' ? running.progress : null,
+    runLabel: running?.label ?? null,
+    doneAt: effective.status === 'done' ? formatClock(updatedAt) : null,
+    error,
+  });
+
+  void laneTotal;
+  void chainActive;
+  void stepIndex;
+
+  return (
+    <ChainStepCard
+      model={model}
+      widgetKey={widgetKey}
+      name={tRoot(`Chain.${CHAIN_STEP_NAME_KEY[feature]}`)}
+      tone={CHAIN_STEP_TONE[feature]}
+      selected={selected}
+      selectedLabel={tRoot('Chain.card.editing')}
+      onOpen={onOpen}
+      onOpenResult={onOpenResult}
+      onCardKeyDown={onCardKeyDown}
+      ring={ring}
+      ariaLabel={tRoot('Chain.card.aria', {
+        chain: tRoot('Chain.lane.title'),
+        n: effective.position + 1,
+        name: tRoot(`Chain.${CHAIN_STEP_NAME_KEY[feature]}`),
+      })}
+    />
+  );
+}
+
+/**
+ * 시각 표기 — 완료 카드 푸터("완료 시각")와 인스펙터 하단이 쓴다.
+ *
+ * 로케일 포맷을 쓰지 않는 이유: 이 값은 SSR 과 클라이언트의 시간대가 다르면
+ * 하이드레이션 불일치를 만든다. 레인은 클라이언트 fetch 결과(`view`)가 와야
+ * 그려지므로 실제로 SSR 출력이 없지만, 시각 한 줄 때문에 그 불변식에 의존하지
+ * 않도록 `Intl` 을 브라우저에서만 쓴다(서버 렌더 시 빈 값).
+ */
+function formatClock(iso: string | null): string | null {
+  if (!iso || typeof window === 'undefined') return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d);
 }
 
 // ── 슬롯 상태 ───────────────────────────────────────────────────────
@@ -354,7 +649,23 @@ export function laneStatus(
   view: ChainView | null,
   cardCount: number,
   t: (key: string, values?: Record<string, string | number>) => string,
+  /** 미설정 단계의 1-based 번호. null 이면 전부 설정됨. */
+  blockedStep: number | null = null,
 ): { statusText: string; statusTone: ChainLaneStatusTone } {
+  // 미설정이 있으면 그것이 **가장 급한 사실**이다 — 실행 중·완료 같은 진행
+  // 상태보다 앞서 말한다(§3: 카드 · 세그먼트 · 헤더가 같은 사실을 함께 말한다).
+  // 단 이미 돌고 있거나 끝난 체인에서는 미설정이 더 이상 막는 것이 없다.
+  if (
+    blockedStep !== null &&
+    view &&
+    (view.status === 'awaiting_approval' ||
+      view.status === 'paused_insufficient_credits')
+  ) {
+    return {
+      statusText: t('lane.statusBlocked', { n: blockedStep }),
+      statusTone: 'amber',
+    };
+  }
   if (!view) {
     return cardCount === 0
       ? { statusText: t('lane.statusEmpty'), statusTone: 'mute' }

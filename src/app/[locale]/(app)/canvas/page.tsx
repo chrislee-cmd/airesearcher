@@ -28,6 +28,7 @@ import { pptReportCard } from '@/components/canvas/widgets/ppt-report-card';
 import { RealtimeTranscriptProvider } from '@/components/realtime-transcript-provider';
 import { WidgetChainProvider } from '@/components/canvas/chain/widget-chain-provider';
 import { ChainLaneProvider } from '@/components/canvas/chain/chain-lane-provider';
+import { ChainInspectorProvider } from '@/components/canvas/chain/chain-inspector-provider';
 import type { WidgetContent } from '@/components/canvas/widget-types';
 
 // CanvasWidgetKey → WidgetContent 매핑. visibility 가 true 인 키만
@@ -134,6 +135,10 @@ export default async function CanvasPage({
       <WidgetChainProvider>
       {/* 레인(도킹) 클라 상태 — 체인 데이터 위에 얹히므로 안쪽에 둔다. */}
       <ChainLaneProvider>
+      {/* 인스펙터 상태(선택 단계 + 낙관적 설정) — 레인 카드와 오른쪽 패널이
+          **같은 값**을 읽어야 해서 보드 로컬이 아니라 여기 둔다. 체인 데이터
+          위에 얹히므로 레인 provider 와 같은 층. */}
+      <ChainInspectorProvider>
       {/* 그리드 좌표 **발행 배치의 소비**(publishedLayout/version · canPublish ·
           applyPublished)는 그리드 캔버스와 함께 퇴역했다 — 위젯이 작업면에
           펼쳐져 있지 않으니 적용할 좌표가 없다. 발행 데이터 자체는 파괴하지
@@ -150,6 +155,7 @@ export default async function CanvasPage({
         userName={userName}
         onboardingPending={onboardingPending}
       />
+      </ChainInspectorProvider>
       </ChainLaneProvider>
       </WidgetChainProvider>
     </RealtimeTranscriptProvider>

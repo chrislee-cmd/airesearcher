@@ -81,6 +81,15 @@ export type ChainView = {
   projectId: string | null;
   /** 잔액(WRITER-ANSWERS §2). null = 미조회 → B5 의 "잔액 💎N" 구절 생략. */
   creditBalance?: number | null;
+  /**
+   * 행의 마지막 변경 시각(`widget_chains.updated_at`, ISO).
+   *
+   * 체인 인스펙터(CD §1.3 done 푸터 "완료 시각" · §4.6 "자동 저장됨 · 방금")가
+   * 시각을 적어야 하는데 지금까지 뷰에 시각이 하나도 없었다. 행에 이미 있는
+   * 값이라 저장 계약 변경이 아니고(마이그·API 0), **표시 전용**이다 — 완료
+   * 체인에서는 마지막 전이 = 완료 시점이고, 설정 저장 직후에는 그 저장 시점이다.
+   */
+  updatedAt: string;
 };
 
 // 단계를 맡은 위젯의 헤더 톤 — 트랙 노드 채움(BUILD-SPEC §1.2). 실제 위젯
@@ -102,6 +111,19 @@ export const CHAIN_STEP_WIDGET_KEY: Record<ChainStepFeature, string> = {
   transcripts: 'quotes',
   interview_ingest: 'interviews',
   topline: 'interviews',
+};
+
+// 단계 → **표시 이름 i18n 키**. 요약 카드 헤더와 인스펙터 헤더는 단계 이름이
+// 아니라 **그 단계를 맡은 위젯 이름**을 쓴다(CD §1.2 "이름 13.5/700" = 컴프의
+// "인터뷰 결과 생성기"). `Chain.widget.*` 가 이미 그 이름의 체인-스코프 SSOT
+// 이지만, 탑라인은 interviews 위젯이 대신 열어 주는 단계라 위젯 이름을 쓰면
+// 3단계와 4단계가 같은 이름으로 보인다 — 그쪽만 단계 이름을 쓴다(카드로는
+// 그려지지 않고 인스펙터 헤더에서만 쓰인다).
+export const CHAIN_STEP_NAME_KEY: Record<ChainStepFeature, string> = {
+  probing: 'widget.probing',
+  transcripts: 'widget.quotes',
+  interview_ingest: 'widget.interviews',
+  topline: 'steps.topline',
 };
 
 const FEATURES = new Set<string>(Object.keys(CHAIN_STEP_TONE));
@@ -181,6 +203,7 @@ export function toChainView(
     currentStep: cursor,
     projectId: row.project_id,
     creditBalance: creditBalance ?? null,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -250,6 +273,17 @@ export type ChainEdgeKind =
   | 'paused'
   | 'error'
   | 'pending'
+  /**
+   * 뒤 단계가 **미설정**이라 거기까지 갈 수 없다 — 체인 인스펙터 §3 의 세 표시
+   * 중 "앞 세그먼트" 다(카드 unset · 이 세그먼트 · 레인 헤더 warn 이 같은 사실을
+   * 말한다). `paused`(멈춤)와 **다른 그림**이다: 멈춤은 들어가는 구간이 warn 이고
+   * 차단은 **나가는 구간**이 warn 이다(`.dc.html` SEGS.block — 앞 절반 회색 실선 ·
+   * 뒤 절반 warn 점선 · 화살촉 warn).
+   *
+   * 노드 **상태 어휘가 아니다** — 설정에서 파생한 표시 종류이고, 그래서
+   * `deriveEdgeKinds`(상태만 보는 순수 함수)가 아니라 레인 호스트가 얹는다.
+   */
+  | 'blocked'
   /** 진입 팝오버가 열려 있는 동안의 미리보기(아직 체인 없음). */
   | 'ghost';
 
