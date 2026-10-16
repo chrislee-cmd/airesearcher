@@ -185,7 +185,19 @@ export function cardLayoutOf(ctx: ChainStepContext): ChainCardLayout {
   return missingRequiredFields(ctx).length > 0 ? 'unset' : 'ready';
 }
 
-/** 상태 배지 — 기존 어휘만 쓴다(§3 "상태 어휘를 새로 만들지 않습니다"). */
+/**
+ * 상태 배지 — 기존 어휘만 쓴다(§3 "상태 어휘를 새로 만들지 않습니다").
+ *
+ * **미설정이 실행 전 상태들을 이긴다.** `pending`·`awaiting`·`paused` 는 전부
+ * "아직 안 돌았다" 를 말하는데, 그 셋보다 사용자가 먼저 알아야 하는 사실은
+ * "이 단계는 설정이 비어서 못 간다" 이고, §3 이 그 사실을 **카드·세그먼트·
+ * 헤더 세 곳이 함께** 말하라고 못박는다. 배지만 "승인 대기" 로 남으면 같은
+ * 카드 안에서 배지와 본문(남은 필수 체크리스트)이 다른 말을 한다(프리뷰 실측:
+ * 1단계 카드가 배지 "승인 대기" + 본문 "필수 설정 2개가 남았어요" 로 갈렸다).
+ *
+ * 실행 이후 상태(running·done·skipped·error)는 그대로 이긴다 — 이미 돌았거나
+ * 끝난 단계에서는 설정이 더 이상 막는 것이 아니다.
+ */
 export function cardBadgeOf(ctx: ChainStepContext): ChainCardBadge {
   switch (ctx.status) {
     case 'running':
@@ -196,17 +208,20 @@ export function cardBadgeOf(ctx: ChainStepContext): ChainCardBadge {
       return { tone: 'idle', labelKey: 'Chain.chip.state.skipped', pulse: false };
     case 'error':
       return { tone: 'err', labelKey: 'Chain.card.badge.error', pulse: false };
-    case 'paused':
-      return { tone: 'warn', labelKey: 'Chain.chip.state.stopped', pulse: false };
-    case 'awaiting':
-      return { tone: 'warn', labelKey: 'Chain.chip.state.awaiting', pulse: false };
-    case 'pending':
     default:
-      // unset 만 warn. noconfig 는 **ready 그대로**(CD 확정 — 배지 신설 0).
-      return cardLayoutOf(ctx) === 'unset'
-        ? { tone: 'warn', labelKey: 'Chain.card.badge.unset', pulse: false }
-        : { tone: 'idle', labelKey: 'Chain.card.badge.ready', pulse: false };
+      break;
   }
+  if (cardLayoutOf(ctx) === 'unset') {
+    return { tone: 'warn', labelKey: 'Chain.card.badge.unset', pulse: false };
+  }
+  if (ctx.status === 'paused') {
+    return { tone: 'warn', labelKey: 'Chain.chip.state.stopped', pulse: false };
+  }
+  if (ctx.status === 'awaiting') {
+    return { tone: 'warn', labelKey: 'Chain.chip.state.awaiting', pulse: false };
+  }
+  // noconfig 는 **ready 그대로**(CD 확정 — 배지 신설 0).
+  return { tone: 'idle', labelKey: 'Chain.card.badge.ready', pulse: false };
 }
 
 // ── 잠금 (CD §5) ────────────────────────────────────────────────────────
