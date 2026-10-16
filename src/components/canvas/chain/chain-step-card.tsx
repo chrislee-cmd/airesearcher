@@ -162,11 +162,14 @@ export function ChainStepCard({
         )}
       </div>
 
-      {/* 상태 배지 */}
+      {/* 상태 배지 — `leading-[1.2]` 은 장식이 아니라 **치수**다: CD §1.2 의
+          배지는 padding 2/9 + font 11 로 높이 17 인데, line-height 를 본문에서
+          상속하면(1.5~1.6) 20 이 된다. 토큰화 폰트 스케일(11 → text-sm 11.5)과
+          함께 쓰면서 CD 높이를 지키려면 줄높이를 명시해야 한다. */}
       <div className="flex shrink-0 px-3.5 pt-2.5">
         <span
           data-chain-el="card-badge"
-          className={`inline-flex items-center gap-[5px] rounded-pill px-[9px] py-0.5 text-sm font-semibold whitespace-nowrap ${sig.bg} ${sig.fg}`}
+          className={`inline-flex items-center gap-[5px] rounded-pill px-[9px] py-0.5 text-sm leading-[1.2] font-semibold whitespace-nowrap ${sig.bg} ${sig.fg}`}
         >
           <span
             aria-hidden

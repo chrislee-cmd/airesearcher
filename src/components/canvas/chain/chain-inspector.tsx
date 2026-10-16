@@ -312,7 +312,7 @@ export function ChainInspector({ onOpenFullview, width }: ChainInspectorProps) {
       {/* 상태 줄 */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-soft-hair px-5 py-2.5">
         <span
-          className={`inline-flex items-center gap-[5px] rounded-pill px-[9px] py-0.5 text-sm font-semibold whitespace-nowrap ${sig.bg} ${sig.fg}`}
+          className={`inline-flex items-center gap-[5px] rounded-pill px-[9px] py-0.5 text-sm leading-[1.2] font-semibold whitespace-nowrap ${sig.bg} ${sig.fg}`}
         >
           <span
             aria-hidden
