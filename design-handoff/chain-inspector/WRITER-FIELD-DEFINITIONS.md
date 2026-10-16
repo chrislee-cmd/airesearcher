@@ -130,7 +130,14 @@ CD 원문(컴프 `rule` 필드): _"requiredFields · 편집 필드가 0개면 un
 >
 > **정답값**: `transcripts` position 0 의 미설정 체크리스트 = **`[]`** (`['audio']` 아님). 파일 부재는 인스펙터 unset 이 아니라 **기존 전사록 위젯의 실행 가드**가 다룹니다.
 >
-> **⚠️ 이 필터는 단일 판정자 안에 있어야 합니다.** 2026-10-16 현재 `step-config.ts` 의 `missingRequiredFields` 는 필터가 **없고**(옛 판정 = `['audio']`), `#1349` 의 `card-state.ts` 는 **있습니다**(`[]`) — 같은 이름의 두 함수가 **다른 답**을 냅니다. 통합은 `pr-chain-unset-paused-transition` 범위이고, **통일 방향은 필터가 있는 쪽(`[]`)** 입니다. 그 PR 은 `tests/chain-step-config.test.ts` 의 옛 기대값(L153·L368 `['audio']`)도 함께 고쳐야 합니다.
+> **기계적 근거**: `tests/chain-step-config.test.ts` L224 가 `validate('transcripts', { audio: 'some/key' })` → **`readonly_field` 거절**을 고정합니다. 즉 **`audio` 는 config 에 들어갈 수 없다는 것이 이미 테스트로 못박혀** 있습니다 — 그런 키를 필수로 세면 충족을 관측할 길이 없습니다. 이 한 줄이 §3.2 정정의 근거 전부입니다.
+>
+> **⚠️ 이 필터는 단일 판정자 안에 있어야 합니다.** 2026-10-16 현재 `step-config.ts` 의 `missingRequiredFields` 는 필터가 **없고**(옛 판정 = `['audio']`), `#1349` 의 `card-state.ts` 는 **있습니다**(`[]`) — 같은 이름의 두 함수가 **다른 답**을 냅니다. 통합은 `pr-chain-unset-paused-transition` 범위이고 **통일 방향은 필터가 있는 쪽(`[]`)** 입니다.
+>
+> **테스트 손댈 범위 — 정확히 1줄입니다 (혼동 주의):**
+> - **L368 `['audio']` → `[]`** — 이것만 고칩니다. **판정** 단언(`missingRequiredFields(...)`)이고 기대값이 낡았습니다.
+> - **L153 은 건드리지 않습니다** — 이것은 `requiredFields` **선언** 단언(`m.requiredFields(...)` → `['method','language','audio']`)이고, **선언 유지가 결정**입니다. red 가 나지도 않습니다. **L153 이 red 라면 선언을 잘못 건드린 것이니 그쪽을 되돌리십시오.**
+> - L224 는 무관(위 기계적 근거).
 
 ### 3.3 doneFields
 | 순서 | 레이블 | 값 |
