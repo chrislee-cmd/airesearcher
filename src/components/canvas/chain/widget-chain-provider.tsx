@@ -84,6 +84,21 @@ type WidgetChainApi = {
    * 409(`chain_locked`)면 **갱신된 상태를 다시 읽는다**(경합 시 상대 1승 구조).
    */
   patchSteps: (steps: string[]) => Promise<boolean>;
+  /**
+   * 단계 설정 저장 — `PATCH /api/chains/:id/steps/:index/config`(선행 PR #1347).
+   *
+   * body = **부분 config**(RFC 7396 머지 — `null` 은 그 키를 비운다). 인스펙터가
+   * 디바운스 400ms 로 바뀐 필드만 보낸다. 응답은 `{ chain, view }` 라 여기서는
+   * `chain`(행)만 반영하면 되고, 뷰는 아래 `toChainView` 가 다시 만든다.
+   *
+   * 반환은 **성공 여부**다. 409(`step_locked`/`chain_locked`)·400 은 전부
+   * false 로 접고 갱신된 상태를 다시 읽는다 — 재시도 판단은 호출부(인스펙터)가
+   * 한다(CD §4.5 "실패하면 재시도 버튼 하나").
+   */
+  patchStepConfig: (
+    index: number,
+    patch: Record<string, unknown>,
+  ) => Promise<boolean>;
   /** 이 위젯 카드에 붙일 칩 props. 체인 밖 카드는 null → 서브바 미렌더. */
   chipFor: (widgetKey: string) => ChainChipProps | null;
 };
@@ -265,6 +280,37 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
     [applyRow, refresh],
   );
 
+  const patchStepConfig = useCallback(
+    async (index: number, patch: Record<string, unknown>): Promise<boolean> => {
+      const current = rowRef.current;
+      if (!current) return false;
+      try {
+        const res = await fetch(
+          `/api/chains/${current.id}/steps/${index}/config`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch),
+          },
+        );
+        if (!res.ok) {
+          // 잠금(409)·검증 실패(400) 모두 "서버가 맞다" — 화면을 서버에 맞춘다.
+          // busy 를 켜지 않는 이유: 자동 저장은 배경 작업이고, 레인 전체를
+          // 잠그면 사용자가 다음 필드를 못 만진다(CD §4.5 "저장 버튼 없음").
+          await refresh();
+          return false;
+        }
+        const json = (await res.json()) as { chain?: ChainRow | null };
+        if (json.chain?.id === current.id) applyRow(json.chain);
+        else await refresh();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [applyRow, refresh],
+  );
+
   // ── 뷰 ───────────────────────────────────────────────────────────────
   const view = useMemo<ChainView | null>(() => {
     if (!row || row.id === dismissedId) return null;
@@ -312,6 +358,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
       refresh,
       createChain,
       patchSteps,
+      patchStepConfig,
       chipFor,
     }),
     [
@@ -326,6 +373,7 @@ export function WidgetChainProvider({ children }: { children: ReactNode }) {
       refresh,
       createChain,
       patchSteps,
+      patchStepConfig,
       chipFor,
     ],
   );
@@ -350,6 +398,7 @@ const INERT: WidgetChainApi = {
   refresh: async () => {},
   createChain: async () => false,
   patchSteps: async () => false,
+  patchStepConfig: async () => false,
   chipFor: () => null,
 };
 

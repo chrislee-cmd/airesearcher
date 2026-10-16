@@ -9,6 +9,8 @@
    인접하므로 v2 의 거터·다중 행 라우팅이 통째로 사라졌다.
 
    폭: 기본 96 → 캡슐이 들어가면 464(캡슐 400 + 좌우 32), 240ms ease-out.
+   높이는 카드와 같은 `LANE_CARD_H`(240×300 요약 카드로 바뀌어 300)이고, 선이
+   지나는 높이는 그 절반(150)이다 — 체인 인스펙터 §2 "가운데선 y 150".
    유령 상태 금지: paused/error 에는 보라·흐름이 하나도 없어야 한다.
 
    Soft Identity (캔버스 모듈화 Phase 1): 선 색만 Soft 시그널 원자로 갈아탄다 —
@@ -62,8 +64,10 @@ export function ChainSegment({
       {label && (
         <span
           data-chain-el="run-label"
-          style={{ top: LINE_Y - 34 }}
-          className="absolute left-1/2 -translate-x-1/2 rounded-pill bg-soft-run-bg px-4 py-1.5 text-lg font-semibold whitespace-nowrap text-soft-run-fg"
+          // 라벨 글자/패딩은 240×300 카드 기준으로 내려왔다(96 폭 구간 위에
+          // 얹히므로 좌우로 넘치는 것은 의도 — 가운데 정렬 유지).
+          style={{ top: LINE_Y - 26 }}
+          className="absolute left-1/2 -translate-x-1/2 rounded-pill bg-soft-run-bg px-2.5 py-1 text-sm font-semibold whitespace-nowrap text-soft-run-fg"
         >
           {label}
         </span>
@@ -88,10 +92,21 @@ function SegmentLine({
   kind: ChainEdgeKind;
   reducedMotion: boolean;
 }) {
-  const broken = kind === 'paused' || kind === 'error';
-  const headColor = kind === 'paused' ? 'var(--warn-dot)' : 'var(--err-dot)';
+  // 끊긴 구간 3종. `blocked`(뒤 단계 미설정)는 멈춤/실패와 **반대 방향**이다 —
+  // 앞 절반이 중립 실선이고 뒤 절반·화살촉이 warn 이다(체인 인스펙터 §3 ·
+  // `.dc.html` SEGS.block). 멈춤/실패는 그 반대로 앞 절반이 사유 색이다.
+  const broken = kind === 'paused' || kind === 'error' || kind === 'blocked';
+  const headColor =
+    kind === 'paused'
+      ? 'var(--warn-dot)'
+      : kind === 'error'
+        ? 'var(--err-dot)'
+        : 'var(--disabled-fg)';
+  const tailColor = kind === 'blocked' ? 'var(--warn-dot)' : 'var(--line-hover)';
   const tipColor = broken
-    ? 'var(--line-hover)'
+    ? kind === 'blocked'
+      ? 'var(--warn-dot)'
+      : 'var(--line-hover)'
     : kind === 'running'
       ? 'var(--run-dot)'
       : kind === 'awaiting'
@@ -137,7 +152,7 @@ function SegmentLine({
             />
             <span
               className="flex-1"
-              style={{ borderTop: '1.5px dashed var(--line-hover)' }}
+              style={{ borderTop: `1.5px dashed ${tailColor}` }}
             />
           </span>
         ) : (

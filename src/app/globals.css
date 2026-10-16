@@ -513,6 +513,13 @@
   --line: #e7e5ea;          /* 1px borders: cards, inputs, secondary buttons */
   --hair: #efedf1;          /* 1px dividers inside surfaces */
   --fill: #f4f3f6;          /* segmented track, neutral chips, hover rows */
+  /* 잠금 상태의 **선택된** 세그먼트 칩·칩 면 — CD 체인 인스펙터 §5 가 리터럴로
+     지정한 절대값(`#e9e7ec`)인데 Soft 팔레트에 같은 값이 없다. 잠금은 래퍼
+     opacity 를 금지하므로(§10 Done-when "opacity 0건") "선택됨" 을 면색만으로
+     말해야 하고, --fill(#f4f3f6 = 미선택 트랙)과 구분되는 한 단계 진한 면이
+     따로 필요하다. 가장 가까운 기존 토큰(--line #e7e5ea)으로 굽히지 않고
+     전용 원자로 승격한다(AUTHORITY — CD 가 비주얼 SSOT). */
+  --fill-locked-on: #e9e7ec; /* locked segmented/chip selected face */
   /* hover 원자 2종 — tokens.css 에는 없고 README §Interactions 가 리터럴로
      지정한 CD 절대값(주 버튼 hover bg #2e2b33 · 보조 버튼 hover border
      #d6d4da = 점선 빈 자리와 같은 값). 가장 가까운 기존 토큰(--ink-2 #3a3640)
@@ -767,6 +774,12 @@
      로컬 값과 동일 — 여기서 전역 util(rounded-chip/nav/…)로 소비 가능. 주의: 기존
      comp 를 구 스케일로 스냅 금지(22px 필드를 24 로 바꾸면 인접 pill 짝 깨짐). */
   --radius-chip: 6px;      /* mono micro-badge · table cell highlight */
+  /* 체인 인스펙터 읽기 전용 행의 26px 앞단계 톤 타일 — CD 체인 인스펙터 §4.4 가
+     `border-radius:7px` 로 지정한 절대값이다. 스케일의 chip(6)·nav(8) 사이라
+     어느 쪽으로도 굽히지 않고 등재한다(AUTHORITY — "가장 가까운 DS 기본값으로
+     대체" 가 리크루팅/데스크 4사이클 실패의 뿌리였다). 같은 값이 셸-스코프
+     `--fv-radius-strip-btn`(7px)로 이미 한 번 나왔으므로 전역 승격이 맞다. */
+  --radius-tile: 7px;      /* 24–28px tone tile inside a row */
   --radius-nav: 8px;       /* sidebar nav item · filter row · small select */
   --radius-icon: 9px;      /* 30–34px icon button · icon tile */
   --radius-control: 10px;  /* input · link field · footnote card */
@@ -896,6 +909,7 @@
   --color-soft-line-hover: var(--line-hover);    /* #d6d4da — 보조 버튼 hover 보더 */
   --color-soft-hair: var(--hair);                /* #efedf1 — 표면 안 구분선 */
   --color-soft-fill: var(--fill);                /* #f4f3f6 — 세그 트랙·중립 칩·hover 행 */
+  --color-soft-fill-locked-on: var(--fill-locked-on); /* #e9e7ec — 잠금 상태 선택된 세그먼트·칩 (체인 인스펙터 §5) */
   --color-soft-surface: var(--surface);          /* #ffffff */
   --color-soft-surface-2: var(--surface-2);      /* #fafafa — 사이드바·muted 패널 */
   --color-soft-canvas: var(--canvas);            /* #f7f7f8 — 작업면 바탕 */

@@ -1689,7 +1689,59 @@
         }
       },
       "noSettings": "ไม่มีการตั้งค่า",
-      "emptyNote": "ขั้นตอนนี้วิเคราะห์ผลจากขั้นก่อนหน้าโดยตรง จึงไม่มีการตั้งค่า"
+      "emptyNote": "ขั้นตอนนี้วิเคราะห์ผลจากขั้นก่อนหน้าโดยตรง จึงไม่มีการตั้งค่า",
+      "required": "จำเป็น",
+      "selectPlaceholder": "ยังไม่เลือก",
+      "addItem": "+ เพิ่มรายการ",
+      "reorder": "จัดลำดับรายการที่ {n}",
+      "chip": {
+        "upstream": "ขั้นก่อนหน้า",
+        "chain": "ทั้งเชน"
+      },
+      "valueUnknown": "—",
+      "ariaLabel": "{chain} · ตั้งค่าขั้นที่ {n}",
+      "eyebrow": "{chain} · {n} / {total}",
+      "prev": "ขั้นก่อนหน้า",
+      "next": "ขั้นถัดไป",
+      "nextStep": "ขั้นถัดไป →",
+      "openProgress": "ดูความคืบหน้า ↗",
+      "lockedRunning": "ไม่สามารถเปลี่ยนการตั้งค่าขณะทำงาน หากต้องการเปลี่ยน ให้จบเชนก่อน",
+      "lockedEnded": "เชนจบแล้ว จึงเปลี่ยนการตั้งค่าไม่ได้",
+      "lockedFoot": "กำลังทำงาน · ล็อกการตั้งค่า",
+      "requiredProgress": "จำเป็น {filled} / {total}",
+      "requiredDone": "จำเป็น {total} / {total} ครบแล้ว",
+      "saving": "กำลังบันทึก…",
+      "saved": "บันทึกอัตโนมัติแล้ว",
+      "saveFailed": "บันทึกไม่สำเร็จ",
+      "retry": "ลองอีกครั้ง",
+      "projectLabel": "โปรเจกต์",
+      "projectSub": "ทั้งเชนจะบันทึกไว้ในโปรเจกต์นี้",
+      "value": {
+        "probing": {
+          "questions": "{n, plural, =0 {ไม่มี} other {ใส่ไว้ # ข้อ}}",
+          "researchGoal": "{set, select, yes {กำหนดแล้ว} other {ค่าเริ่มต้น}}"
+        },
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {ไฟล์ที่คุณอัปโหลด} other {เสียงบันทึกจากขั้นที่ #}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {ถอดเสียงที่คุณเพิ่ม} other {ถอดเสียงจากขั้นที่ # · อัตโนมัติ}}",
+          "projectDocuments": "{known, select, yes {วิเคราะห์ร่วมกัน {n} รายการ} other {เอกสารโปรเจกต์}}"
+        },
+        "topline": {
+          "user_direction": "{set, select, yes {กำหนดแล้ว} other {ค่าเริ่มต้น}}",
+          "allow_partial": "{on, select, yes {อนุญาต} other {รอให้ครบทุกขั้น}}"
+        }
+      },
+      "sub": {
+        "transcripts": {
+          "audio": "{upstream, plural, =0 {อัปโหลดไฟล์ในหน้าเต็มของตัวถอดเสียง} other {จะเข้ามาเองเมื่อขั้นที่ # เสร็จ}}"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "{upstream, plural, =0 {ไม่มีขั้นก่อนหน้า ต้องเพิ่มเอง} other {จะเข้ามาเองเมื่อขั้นที่ # เสร็จ}}",
+          "projectDocuments": "เอกสารที่มีอยู่แล้วในโปรเจกต์ของเชน"
+        }
+      }
     },
     "label": "เชน",
     "mode": {
@@ -1818,7 +1870,8 @@
       "statusReady": "พร้อมแล้ว · เริ่มเมื่อเซสชันจบ",
       "costNote": "หลังเซสชัน 💎{fixed} + {perFile} ต่อไฟล์",
       "costNoteFixed": "หลังเซสชัน 💎{fixed}",
-      "restored": "↩ กลับที่เดิม"
+      "restored": "↩ กลับที่เดิม",
+      "statusBlocked": "ขั้นที่ {n} ต้องตั้งค่า · ยังเริ่มไม่ได้"
     },
     "toolbar": {
       "newChain": "+ เชนใหม่",
@@ -1836,6 +1889,33 @@
       "ghostValid": "เชนขั้นที่ {n}",
       "ghostInvalid": "วางตรงนี้ไม่ได้",
       "originSlot": "ตำแหน่งเดิม"
+    },
+    "card": {
+      "stepNumber": "ขั้นที่ {n}",
+      "badge": {
+        "unset": "ต้องตั้งค่า",
+        "ready": "พร้อม",
+        "running": "กำลังทำงาน",
+        "done": "เสร็จสิ้น",
+        "error": "ล้มเหลว"
+      },
+      "needCount": "เหลือการตั้งค่าที่จำเป็น {n} รายการ",
+      "moreCount": "และอีก {n} การตั้งค่า",
+      "noConfigNote": "ไม่มีอะไรต้องตั้งค่า",
+      "doneElsewhere": "ดูผลแบบเต็มในหน้าผลลัพธ์",
+      "costEstimate": "ประมาณ 💎{cost}",
+      "progressPercent": "{pct}%",
+      "editing": "กำลังแก้ไข",
+      "aria": "{chain} · ขั้นที่ {n} {name}",
+      "action": {
+        "configure": "ตั้งค่า",
+        "edit": "แก้ไข",
+        "viewInput": "ดูอินพุต",
+        "openResult": "ดูผลลัพธ์ ↗"
+      },
+      "done": {
+        "artifact": "1 รายการ"
+      }
     }
   },
   "Desk": {
