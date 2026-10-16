@@ -428,7 +428,10 @@ export function CanvasBoard({
       requestAnimationFrame(() => {
         document
           .querySelector<HTMLElement>(`[data-chain-card-step="${widgetKey}"]`)
-          ?.focus();
+          // preventScroll 필수 — 아래 `onScroll` 주석 참고. 기본 focus 는
+          // overflow:hidden 인 캔버스 컨테이너를 **스크롤**해 pan 과 좌표계를
+          // 어긋나게 한다.
+          ?.focus({ preventScroll: true });
       });
     },
     [dockedKeys, dockTargets],
@@ -441,7 +444,10 @@ export function CanvasBoard({
       requestAnimationFrame(() => {
         document
           .querySelector<HTMLElement>(`[data-chain-card-step="${widgetKey}"]`)
-          ?.focus();
+          // preventScroll 필수 — 아래 `onScroll` 주석 참고. 기본 focus 는
+          // overflow:hidden 인 캔버스 컨테이너를 **스크롤**해 pan 과 좌표계를
+          // 어긋나게 한다.
+          ?.focus({ preventScroll: true });
       });
     },
     [],
@@ -933,6 +939,20 @@ export function CanvasBoard({
         className="relative h-full min-w-0 flex-1 overflow-hidden"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
+        // 캔버스는 **스크롤 컨테이너가 아니다** — 위치는 오직 `pan`/`zoom` 이
+        // 소유한다. 그런데 `overflow: hidden` 박스도 브라우저가 **프로그램적으로
+        // 스크롤**할 수 있다: `focus()`·`scrollIntoView` 가 화면 밖 자손을
+        // 가져오려고 숨은 스크롤을 움직인다. 그러면 DOM 은 움직였는데 `pan` 은
+        // 그대로라 **좌표계가 조용히 어긋난다** — 레인 헤더 sticky-left 가 팬
+        // 뒤 멈춰 보이던 실측 결함의 진짜 원인이 이것이었다(오프셋 식은 pan 을
+        // 보는데 레인은 숨은 스크롤로 밀려 있었다). 그래서 0 으로 되돌린다.
+        // 포커스 이동은 `focus({ preventScroll: true })` 로 애초에 안 밀고,
+        // 이 핸들러는 그 밖의 경로(브라우저 내부 scrollIntoView 등)의 백스톱이다.
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollLeft !== 0) el.scrollLeft = 0;
+          if (el.scrollTop !== 0) el.scrollTop = 0;
+        }}
       >
         {/* 툴바 — 화면 고정(변환 레이어 밖). Navigator 가 사라져 좌상단 충돌이
             없어졌으므로 CD 좌표(left 24 · top 20)를 그대로 쓴다(§7 배치). */}

@@ -136,13 +136,15 @@ export function ChainInspector({ onOpenFullview, width }: ChainInspectorProps) {
       const card = document.querySelector<HTMLElement>(
         `[data-chain-card-step="${key}"]`,
       );
-      card?.focus();
+      // preventScroll — 캔버스(overflow:hidden)를 숨은 스크롤로 밀면 pan 과
+      // 좌표계가 어긋난다(canvas-board 의 onScroll 주석 참고).
+      card?.focus({ preventScroll: true });
       return;
     }
     const first = panelRef.current?.querySelector<HTMLElement>(
       '[data-chain-field] select:not([disabled]), [data-chain-field] textarea:not([disabled]), [data-chain-field] input:not([disabled]), [data-chain-field] button:not([disabled])',
     );
-    first?.focus();
+    first?.focus({ preventScroll: true });
   }, [index, widgetKey]);
 
   // 위젯 상태 채널 — 실행 중 진척/현재 작업(상태 줄의 "남은 시간" 자리).
