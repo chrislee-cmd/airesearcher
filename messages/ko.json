@@ -1600,6 +1600,97 @@
     }
   },
   "Chain": {
+    "inspector": {
+      "section": {
+        "input": "입력",
+        "language": "언어",
+        "questions": "질문",
+        "researchContext": "조사 맥락",
+        "method": "방식",
+        "output": "출력",
+        "direction": "작성 방향",
+        "advanced": "고급"
+      },
+      "hint": {
+        "probing": {
+          "input": "인터뷰를 어떻게 듣는지 정합니다",
+          "questions": "세션 중 AI 가 참고할 질문을 미리 넣어 둡니다",
+          "researchContext": "세션 중에도 풀뷰에서 바꿀 수 있어요"
+        },
+        "transcripts": {
+          "method": "전사 후 어떤 형태로 정리할지 정합니다"
+        },
+        "topline": {
+          "direction": "보고서가 어디에 초점을 둘지 한두 문장으로",
+          "allowPartial": "일부 단계가 실패해도 보고서를 만들어요"
+        }
+      },
+      "field": {
+        "probing": {
+          "source": "입력",
+          "outputLang": "출력어",
+          "questions": "질문",
+          "researchGoal": "목적"
+        },
+        "transcripts": {
+          "method": "방식",
+          "language": "언어",
+          "audio": "입력"
+        },
+        "interview_ingest": {
+          "upstreamTranscript": "입력",
+          "projectDocuments": "문서"
+        },
+        "topline": {
+          "output_lang": "출력어",
+          "user_direction": "방향",
+          "allow_partial": "부분"
+        }
+      },
+      "option": {
+        "source": {
+          "mic": "오프라인",
+          "both": "온라인",
+          "tab": "참관"
+        },
+        "method": {
+          "research": "리서치 인터뷰",
+          "meeting": "회의록"
+        },
+        "outputLang": {
+          "ko": "한국어",
+          "en": "English",
+          "ja": "日本語",
+          "zh": "中文",
+          "es": "Español",
+          "th": "ไทย"
+        }
+      },
+      "done": {
+        "probing": {
+          "questionCount": "질문",
+          "duration": "길이",
+          "recording": "녹음"
+        },
+        "transcripts": {
+          "duration": "분량",
+          "speakers": "화자",
+          "artifact": "산출물"
+        },
+        "interview_ingest": {
+          "analysis": "분석",
+          "documents": "문서",
+          "artifact": "산출물"
+        },
+        "topline": {
+          "report": "보고서",
+          "length": "분량",
+          "generatedAt": "생성"
+        }
+      },
+      "noSettings": "설정 없음",
+      "emptyNote": "이 단계는 앞 단계 결과를 그대로 분석해서 따로 설정할 것이 없어요."
+    },
     "label": "체인",
     "mode": {
       "approve": "단계별 승인",
